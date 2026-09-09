@@ -249,7 +249,11 @@ function fail(reason) {
 // Base argv for inspecting/disabling MCP servers as the parent verified them:
 // plugins, apps, and hooks are prevented from loading. Project/user configs
 // may still register MCP servers, so the enabled set is read and each
-// configured server is disabled explicitly.
+// configured server is replaced by a complete, disabled, inert definition.
+//
+// `mcp list` deliberately does NOT take `--ignore-user-config`: the overrides
+// must merge over the discovered definitions so the re-read proves the real
+// entries end up disabled (an empty server map would prove nothing).
 export const CODEX_MCP_LIST_BASE_ARGS = [
   'mcp',
   'list',
@@ -262,8 +266,26 @@ export const CODEX_MCP_LIST_BASE_ARGS = [
   'hooks',
 ]
 
-// Only strict JSON objects [{name, enabled}] are accepted (the observed
-// native shape). Anything else fails closed rather than being guessed at.
+// The inert stand-in definition per supported transport type. `codex exec
+// --ignore-user-config` drops the user/project server definitions, so an
+// override that only carries `enabled=false` leaves a transport-less
+// `mcp_servers.<name>` table behind and the CLI fails config parsing before
+// the model call. Each override therefore declares a COMPLETE definition of
+// the SAME transport type that goes nowhere: a stdio command that exits
+// immediately, or an HTTP url on the discard port. Nothing is ever started or
+// contacted because the same definition is disabled.
+const CODEX_MCP_INERT_TRANSPORTS = {
+  stdio: { field: 'command', value: '/usr/bin/false' },
+  streamable_http: { field: 'url', value: 'http://127.0.0.1:9' },
+}
+
+export const CODEX_MCP_SUPPORTED_TRANSPORTS = Object.keys(CODEX_MCP_INERT_TRANSPORTS)
+
+// Only strict JSON objects [{name, enabled, transport:{type}}] are accepted
+// (the observed native shape). Anything else fails closed rather than being
+// guessed at. ONLY name/enabled/transport.type are retained: the entry's
+// command, args, url, env and auth payloads are dropped here so they can
+// never reach an override, a log line, or a receipt.
 export function parseCodexMcpList(stdout) {
   let parsed
   try {
@@ -275,22 +297,34 @@ export function parseCodexMcpList(stdout) {
   if (!list) {
     throw new Error('codex mcp list output has an unexpected shape (expected a JSON array)')
   }
-  return list.map((entry) => {
+  return list.map((entry, index) => {
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
       throw new Error('codex mcp list contains a non-object entry')
     }
     if (typeof entry.name !== 'string' || entry.name.length === 0 || typeof entry.enabled !== 'boolean') {
-      throw new Error(`codex mcp list entry is missing usable "name"/"enabled": ${JSON.stringify(entry)}`)
+      // Deliberately positional: the entry itself may carry credentials.
+      throw new Error(`codex mcp list entry ${index} is missing usable "name"/"enabled"`)
     }
-    return { name: entry.name, enabled: entry.enabled }
+    const transport = entry.transport
+    const type =
+      transport && typeof transport === 'object' && !Array.isArray(transport) && typeof transport.type === 'string'
+        ? transport.type
+        : null
+    if (!type) {
+      throw new Error(`codex mcp list entry "${entry.name}" is missing usable "transport.type"`)
+    }
+    return { name: entry.name, enabled: entry.enabled, transport: { type } }
   })
 }
 
 const SAFE_CONFIG_NAME_RE = /^[A-Za-z0-9_-]+$/
 
-// Builds `-c mcp_servers.<name>.enabled=false` overrides for every configured
-// server. Names that are not plain TOML bare keys are REJECTED — never
-// interpolated — so a hostile server name cannot inject config.
+// Builds a COMPLETE inert disabled definition for every configured server:
+// `-c mcp_servers.<name>.enabled=false` plus the one transport field its own
+// transport type requires. Names that are not plain TOML bare keys are
+// REJECTED — never interpolated — so a hostile server name cannot inject
+// config. A transport type with no known inert stand-in also fails closed:
+// guessing a definition could silently produce a reachable server.
 export function buildCodexMcpDisableArgs(configuredServers) {
   const args = []
   for (const server of configuredServers) {
@@ -300,9 +334,45 @@ export function buildCodexMcpDisableArgs(configuredServers) {
           'refusing to build a disable override — disable it manually in codex config',
       )
     }
+    const type = server.transport?.type
+    const inert = typeof type === 'string' ? CODEX_MCP_INERT_TRANSPORTS[type] : undefined
+    if (!inert) {
+      throw new Error(
+        `configured codex MCP server "${server.name}" has transport type ${JSON.stringify(type ?? null)}, ` +
+          `which this preflight cannot replace with an inert definition (supported: ${CODEX_MCP_SUPPORTED_TRANSPORTS.join(', ')}); ` +
+          'disable it manually in codex config',
+      )
+    }
     args.push('-c', `mcp_servers.${server.name}.enabled=false`)
+    args.push('-c', `mcp_servers.${server.name}.${inert.field}="${inert.value}"`)
   }
   return args
+}
+
+// --- Native failure classification -------------------------------------------
+
+// Native stderr is NEVER copied into a reason string, a log line, or a
+// receipt: it can carry MCP command lines, environment values, and auth
+// payloads. It is only pattern-matched, and a match selects one FIXED,
+// payload-free message so the operator still gets an actionable diagnosis of
+// the one failure mode this preflight is responsible for.
+export const CODEX_MCP_CONFIG_FAILURE_CATEGORY = 'codex-mcp-transport-config'
+
+export const CODEX_MCP_CONFIG_FAILURE_MESSAGE =
+  'codex rejected its MCP server configuration (invalid or incomplete transport). ' +
+  'The preflight declares a complete inert disabled definition per configured server; ' +
+  'a server whose transport type it cannot make inert must be disabled manually in the codex config.'
+
+const CODEX_MCP_CONFIG_FAILURE_PATTERNS = [
+  /(?:invalid|unknown|missing|unsupported)[\s_-]*transport/i,
+  /(?:failed to parse|error parsing|invalid)[^\n]*config/i,
+  /mcp_servers?\.[^\n]*(?:invalid|missing|expected)/i,
+]
+
+export function classifyCodexNativeFailure(stderr) {
+  const text = String(stderr ?? '')
+  if (!CODEX_MCP_CONFIG_FAILURE_PATTERNS.some((pattern) => pattern.test(text))) return null
+  return { category: CODEX_MCP_CONFIG_FAILURE_CATEGORY, message: CODEX_MCP_CONFIG_FAILURE_MESSAGE }
 }
 
 export function assertNoMcpServersEnabled(list) {

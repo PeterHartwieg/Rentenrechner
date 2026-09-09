@@ -19,8 +19,14 @@
 //           the explicit tool allowlist + MCPTool deny are required)
 //   codex  exec --json -s read-only -m <m> --output-last-message <f>
 //          --disable plugins --disable apps --disable hooks
-//          --ignore-user-config --ignore-rules [-c mcp_servers.<n>.enabled=false] -
+//          --ignore-user-config --ignore-rules
+//          [-c mcp_servers.<n>.enabled=false
+//           -c mcp_servers.<n>.command="/usr/bin/false" | .url="http://127.0.0.1:9"] -
 //                                                                 (stdin: prompt)
+//          (`--ignore-user-config` drops the original server definitions, so
+//           each override must be a COMPLETE inert definition of the same
+//           transport type — `enabled=false` alone leaves a transport-less
+//           table and the CLI fails config parsing before the model call)
 //
 // Provider-reported model identity comes from each CLI's OWN native
 // metadata, never from the reviewer's text. For claude it is the `model`
@@ -40,7 +46,7 @@
 // the review. Thought/draft/reasoning fields in reviewer output are never
 // read — not even for failure detection — so they can never become a verdict.
 
-import { parseCodexExecEvents } from './codexSession.mjs'
+import { classifyCodexNativeFailure, parseCodexExecEvents } from './codexSession.mjs'
 
 export const CLAUDE_READONLY_TOOLS = 'Read,Grep,Glob'
 export const CLAUDE_MAX_TURNS = 35
@@ -86,8 +92,8 @@ export function collectModelUsageKeys(json) {
 
 // Single place that assembles the final argv per reviewer kind so tests can
 // pin the exact shapes against the CLIs' documented flags. `codexMcpArgs`
-// carries the per-server disable overrides produced by the MCP preflight
-// (adapters stays pure — the preflight itself spawns in runner.mjs).
+// carries the complete inert disabled definitions produced by the MCP
+// preflight (adapters stays pure — the preflight itself spawns in runner.mjs).
 export function buildReviewerInvocation({ reviewer, model, promptFile, outputLastMessageFile, codexMcpArgs = [] }) {
   switch (reviewer) {
     case 'claude':
@@ -357,8 +363,21 @@ export function parseGrokReviewerOutput({ stdout, exitCode, requestedModel }) {
 // runner.mjs via codexSession.verifyCodexIdentity; this parser only proves
 // the run completed and carries the thread id that pins that session.
 
-export function parseCodexReviewerOutput({ stdout, exitCode, lastMessage }) {
-  if (exitCode !== 0) return fail(`codex exited with code ${exitCode}`)
+export function parseCodexReviewerOutput({ stdout, stderr, exitCode, lastMessage }) {
+  if (exitCode !== 0) {
+    // The one recognised native failure gets a FIXED, payload-free
+    // explanation (the MCP overrides must declare complete inert transports
+    // because `--ignore-user-config` drops the originals). Native stderr is
+    // never quoted — it can carry MCP command lines, env values, and auth
+    // payloads — and every other failure stays generic.
+    const diagnosed = classifyCodexNativeFailure(stderr)
+    if (diagnosed) {
+      return fail(`codex exited with code ${exitCode}: ${diagnosed.message}`, {
+        meta: { failureCategory: diagnosed.category },
+      })
+    }
+    return fail(`codex exited with code ${exitCode}`)
+  }
 
   const events = parseCodexExecEvents(stdout)
   if (!events.ok) return fail(events.reason)

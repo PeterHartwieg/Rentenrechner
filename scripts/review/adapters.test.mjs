@@ -8,6 +8,7 @@ import {
   parseCodexReviewerOutput,
   parseGrokReviewerOutput,
 } from './lib/adapters.mjs'
+import { CODEX_MCP_CONFIG_FAILURE_CATEGORY, CODEX_MCP_CONFIG_FAILURE_MESSAGE } from './lib/codexSession.mjs'
 
 // Synthetic copies of the sanitized live envelopes (see
 // /tmp/rentenwiki-assurance-orchestration/ci-{grok,opus}-adapter-envelope.json
@@ -110,13 +111,15 @@ describe('argument builders (pinned to CLI --help + verified working invocations
     expect(invocation.inputMode).toBe('prompt-file')
   })
 
-  it('codex: exec, read-only sandbox, plugins/apps/hooks disabled, no user config or rules, MCP overrides, stdin prompt', () => {
+  it('codex: exec, read-only sandbox, plugins/apps/hooks disabled, no user config or rules, complete inert MCP definitions, stdin prompt', () => {
     const invocation = buildReviewerInvocation({
       reviewer: 'codex',
       model: 'gpt-6-astra',
       promptFile: '/tmp/p.md',
       outputLastMessageFile: '/tmp/last.txt',
-      codexMcpArgs: ['-c', 'mcp_servers.node_repl.enabled=false'],
+      // `--ignore-user-config` removes the original definition, so the
+      // override must carry a complete transport of the same type.
+      codexMcpArgs: ['-c', 'mcp_servers.node_repl.enabled=false', '-c', 'mcp_servers.node_repl.command="/usr/bin/false"'],
     })
     expect(invocation.args).toEqual([
       'exec',
@@ -137,6 +140,8 @@ describe('argument builders (pinned to CLI --help + verified working invocations
       '--ignore-rules',
       '-c',
       'mcp_servers.node_repl.enabled=false',
+      '-c',
+      'mcp_servers.node_repl.command="/usr/bin/false"',
       '-',
     ])
     expect(invocation.inputMode).toBe('stdin')
@@ -529,5 +534,33 @@ describe('codex parser (verified stdout: no model identity, positives required)'
 
   it('fails closed on non-zero exit', () => {
     expect(parseCodexReviewerOutput({ stdout: probeStdout, lastMessage: 't', exitCode: 1 }).ok).toBe(false)
+  })
+
+  it('diagnoses the known config/invalid-transport failure with a fixed message and leaks no stderr payload', () => {
+    const parsed = parseCodexReviewerOutput({
+      stdout: '',
+      lastMessage: null,
+      exitCode: 1,
+      stderr:
+        'Error: failed to parse config: mcp_servers.node_repl: invalid transport\n' +
+        'command=/opt/mcp/node-repl NPM_TOKEN=npm_s3cr3t Authorization: Bearer bearer-s3cr3t\n',
+    })
+    expect(parsed.ok).toBe(false)
+    expect(parsed.reason).toContain(CODEX_MCP_CONFIG_FAILURE_MESSAGE)
+    expect(parsed.meta.failureCategory).toBe(CODEX_MCP_CONFIG_FAILURE_CATEGORY)
+    expect(parsed.reason).not.toContain('s3cr3t')
+    expect(parsed.reason).not.toContain('/opt/mcp/node-repl')
+    expect(parsed.reason).not.toContain('failed to parse config')
+  })
+
+  it('keeps every other non-zero exit generic — stderr is never quoted', () => {
+    const parsed = parseCodexReviewerOutput({
+      stdout: '',
+      lastMessage: null,
+      exitCode: 1,
+      stderr: 'panic: connection reset; OPENAI_API_KEY=sk-s3cr3t',
+    })
+    expect(parsed.reason).toBe('codex exited with code 1')
+    expect(parsed.meta).toBeUndefined()
   })
 })

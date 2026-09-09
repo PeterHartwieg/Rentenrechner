@@ -55,7 +55,12 @@ may be added for this (backend boundary), and no telemetry may be introduced.
 4. **Reviewers run sandboxed, receipts are local and earned.** Each reviewer
    runs in a detached worktree pinned to the reviewed SHA with its CLI's
    config/customization surfaces disabled (claude `--safe-mode --restricted`;
-   codex config/hook/plugin isolation plus an MCP-disable preflight; grok a
+   codex config/hook/plugin isolation plus an MCP preflight that replaces
+   every discovered server with a COMPLETE inert disabled definition of its
+   own transport type — `--ignore-user-config` removes the original
+   definitions, so a partial `enabled=false` override would leave
+   transport-less config that codex refuses to parse — and re-reads the
+   native list to prove nothing stays enabled; grok a
    `grok inspect --json` discovery preflight that rejects project-owned
    hooks/plugins/MCP/LSP), and a worktree-mutation check voids any reviewer
    that wrote. Receipts are written only by the tooling into a gitignored

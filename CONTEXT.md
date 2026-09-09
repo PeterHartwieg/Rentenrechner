@@ -77,7 +77,7 @@ behaviour; tests live next to the module unless noted.
 | Concern | Module |
 |---------|--------|
 | Compare-mode top-level | `src/engine/simulate.ts` (`simulateRetirementComparison`) |
-| Pre-scenario funding context (bAV, Basisrente, AVD, Riester) | `src/engine/simulationContext.ts` (`buildContext`) |
+| Pre-scenario funding context (bAV, Basisrente, AVD, Riester) | `src/engine/simulationContext.ts` (`buildContext`; plus `EtfCalculationContext` — the first narrow per-product context, ADR-0003) |
 | Combine-mode top-level | `src/engine/portfolioCombine.ts` (`combinePortfolio`) |
 | Combine-mode adapter (per-instance projection + simulation orchestration) | `src/engine/portfolioAdapter.ts` (thin) |
 

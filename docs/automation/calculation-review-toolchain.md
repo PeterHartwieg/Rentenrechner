@@ -209,12 +209,32 @@ planting hooks or project plugins that run when the CLI starts:
   server owned by the project (or with no ownership source at all). The
   review itself runs with `--no-memory`, `--no-subagents`, a
   `read_file,grep,list_dir` allowlist, `--deny MCPTool`, and web search off.
-- **codex** runs `mcp list --json` twice — once plain, once with
-  `-c mcp_servers.<server>.enabled=false` overrides for every configured
-  server — and refuses to proceed while any server stays enabled. It also
-  runs with `--disable plugins --disable apps --disable hooks
-  --ignore-user-config --ignore-rules` and `-s read-only`. Unsafe server
-  names are rejected outright, never interpolated into argv.
+- **codex** runs `mcp list --json` twice — once plain, once with the override
+  set — and refuses to proceed while any server stays enabled. The overrides
+  are **complete inert disabled definitions**, not partial `enabled=false`
+  flags: because the review invocation also passes `--ignore-user-config`, the
+  user/project server definitions are gone by the time `exec` parses its
+  config, and a lone `mcp_servers.<server>.enabled=false` leaves a
+  transport-less table that fails config parsing before the model call. Each
+  discovered server therefore contributes
+  `-c mcp_servers.<server>.enabled=false` plus one complete transport of its
+  **own** type that goes nowhere — `command="/usr/bin/false"` for `stdio`,
+  `url="http://127.0.0.1:9"` for `streamable_http`. Nothing is started or
+  contacted, because the same definition is disabled. `mcp list` takes no
+  `--ignore-user-config` (an empty server map would merge and disable
+  nothing), so the second list proves the real entries end up disabled. Only
+  `name`, `enabled`, and `transport.type` are read from the discovered
+  entries — command, url, env, and auth payloads are dropped in the parser and
+  never reach an override, a log line, or a receipt. Unsafe server names and
+  transport types with no known inert stand-in are rejected outright, never
+  interpolated or guessed at. The review itself runs with `--disable plugins
+  --disable apps --disable hooks --ignore-user-config --ignore-rules` and
+  `-s read-only`.
+
+  When codex fails with its config/invalid-transport error, the tooling
+  reports one fixed, payload-free diagnosis (category
+  `codex-mcp-transport-config`); native stderr is pattern-matched but never
+  quoted into a reason or a receipt. Every other failure stays generic.
 
 Around every reviewer run: a `git status --porcelain` + HEAD snapshot before
 and after. Any worktree mutation or HEAD move voids that review — and one
@@ -520,6 +540,11 @@ reviewer latency (minutes, not seconds); publish adds two `gh` calls.
   diffs); its provider model identity is not in the `--json` event stream at
   all — it is read from the rollout session file the CLI itself writes, and
   a run without one fails closed rather than being trusted.
+- The codex MCP preflight only knows how to build an inert stand-in for the
+  transport types it has been verified against (`stdio`, `streamable_http`).
+  A configured server of any other type — or one whose `mcp list` entry
+  carries no `transport.type` — fails the review closed; disable it manually
+  in the codex config rather than widening the map on a guess.
 - Grok's native JSON field names are not documented beyond `--help`, so the
   parser reads the review text from the single verified native field `text`
   and from nothing else — no `response`/`result`/`content` fallback, no

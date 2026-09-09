@@ -27,6 +27,7 @@ import {
   CODEX_MCP_LIST_BASE_ARGS,
   assertNoMcpServersEnabled,
   buildCodexMcpDisableArgs,
+  classifyCodexNativeFailure,
   findCodexRolloutFile,
   parseCodexMcpList,
   rolloutMtimeMs,
@@ -307,17 +308,37 @@ export function defaultReviewerPreflight({ reviewer, ...options }) {
 
 // `--ignore-user-config` does not stop project-level codex config from
 // registering MCP servers, so before the model call we read the configured
-// server list (with plugins/apps/hooks disabled, in the exact checkout),
-// build `-c mcp_servers.<name>.enabled=false` overrides for each, and verify
-// with a second native list that nothing is left enabled. Server names that
-// are not safe config keys are rejected, never interpolated.
+// server list (with plugins/apps/hooks disabled, in the exact checkout) and
+// build one override set that fully replaces every discovered server.
+//
+// The override set is NOT just `enabled=false`: `codex exec
+// --ignore-user-config` drops the original definitions, so a bare
+// `enabled=false` leaves a transport-less table and the CLI fails config
+// parsing before the model call. Each server therefore gets a COMPLETE inert
+// definition of its own transport type (stdio → a command that exits
+// immediately; streamable_http → the discard port) alongside
+// `enabled=false` — valid config that is never started or contacted. Only
+// name/enabled/transport.type are read from the discovered entries; command,
+// url, env and auth payloads are dropped in the parser.
+//
+// A second native list (which merges over the real config — `mcp list` has no
+// `--ignore-user-config`) then proves every real entry ends up disabled.
+// Unsafe server names and transport types with no known inert stand-in are
+// rejected, never guessed at.
 export async function codexMcpPreflight({ command, cwd, timeoutMs = PREFLIGHT_TIMEOUT_MS, spawnImpl }) {
   const runList = async (args) => {
     const result = await runReviewerProcess({ command, args, timeoutMs, cwd, spawnImpl })
     if (result.exitCode !== 0) {
-      throw new Error(
-        `codex mcp list failed with exit code ${result.exitCode}: ${result.stderr.trim().slice(0, 400) || '(no stderr)'}`,
+      // Native stderr is classified, never quoted: it can carry MCP command
+      // lines, env values, and auth payloads.
+      const diagnosed = classifyCodexNativeFailure(result.stderr)
+      const error = new Error(
+        diagnosed
+          ? `codex mcp list failed with exit code ${result.exitCode}: ${diagnosed.message}`
+          : `codex mcp list failed with exit code ${result.exitCode} (native stderr withheld — it may carry MCP credentials)`,
       )
+      if (diagnosed) error.category = diagnosed.category
+      throw error
     }
     return parseCodexMcpList(result.stdout)
   }
@@ -326,23 +347,27 @@ export async function codexMcpPreflight({ command, cwd, timeoutMs = PREFLIGHT_TI
   try {
     configured = await runList(CODEX_MCP_LIST_BASE_ARGS)
   } catch (error) {
-    return { ok: false, reason: `codex MCP preflight failed: ${error.message}` }
+    return failPreflight(`codex MCP preflight failed: ${error.message}`, error)
   }
 
   let disableArgs
   try {
     disableArgs = buildCodexMcpDisableArgs(configured)
   } catch (error) {
-    return { ok: false, reason: error.message }
+    return failPreflight(error.message, error)
   }
 
   try {
     assertNoMcpServersEnabled(await runList([...CODEX_MCP_LIST_BASE_ARGS, ...disableArgs]))
   } catch (error) {
-    return { ok: false, reason: error.message }
+    return failPreflight(error.message, error)
   }
 
   return { ok: true, codexMcpArgs: disableArgs, configuredServers: configured.map((server) => server.name) }
+}
+
+function failPreflight(reason, error) {
+  return error?.category ? { ok: false, reason, category: error.category } : { ok: false, reason }
 }
 
 // --- Reviewer execution -----------------------------------------------------------

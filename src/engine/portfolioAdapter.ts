@@ -29,13 +29,19 @@ import type {
   ReturnScenario,
 } from '../domain'
 import type { PortfolioFunding, Workspace } from '../domain/workspace'
-import { buildContext, type BuildContextOverrides } from './simulationContext'
+import type { EtfInstance } from '../domain/instances'
+import {
+  buildContext,
+  buildEtfCalculationContext,
+  type BuildContextOverrides,
+  type EtfCalculationContext,
+} from './simulationContext'
 import {
   buildInstanceCapitalPolicy,
   collectTransferEvents,
 } from './portfolioTransfer'
 import { simulate as simulateBav } from './products/bav'
-import { simulate as simulateEtf } from './products/etf'
+import { simulateEtf } from './products/etf'
 import { simulate as simulateInsurance } from './products/insurance'
 import { simulate as simulateBasisrente } from './products/basisrente'
 import { simulate as simulateAvd } from './products/altersvorsorgedepot'
@@ -51,6 +57,7 @@ import {
   detectProductSlot,
   slotToProductId,
   applyPaidUpOverridesToProjection,
+  projectEtfInstanceToAssumptions,
   projectInstanceToScenarioAssumptions,
   singletonViewOfWorkspace,
   type AnyInstance,
@@ -166,19 +173,66 @@ export function simulatePortfolio(
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // ETF instances — narrow per-instance path (issue #380)
+  //
+  // ETF is the first product simulated WITHOUT the six-product singleton
+  // reconstruction: the per-instance context carries only the fields the ETF
+  // math reads (profile, rules, ETF assumption slice, payout horizon, explicit
+  // monthly cost, capital policy, optional shared allowance). No
+  // `projectInstanceToScenarioAssumptions`, no `buildContext` funding
+  // pre-pass, therefore no neutralised bAV / Basisrente / AVD / Riester
+  // inputs. Numbers are pinned against the pre-change engine freeze by
+  // `etfContextParity.test.ts` (full precision, last-digit drift only).
+  // ---------------------------------------------------------------------------
+  const buildEtfInstanceContext = (
+    inst: EtfInstance,
+    saverAllowanceOverride?: (yearIndex: number) => number,
+  ): EtfCalculationContext => {
+    const outbound = outboundBy.get(inst.instanceId) ?? []
+    const inbound = inboundBy.get(inst.instanceId) ?? []
+    return buildEtfCalculationContext({
+      profile,
+      rules,
+      assumptions: {
+        etf: projectEtfInstanceToAssumptions(inst),
+        inflationRate: wsa.inflationRate,
+        retirementEndAge: wsa.retirementEndAge,
+      },
+      // Paid-up stops contributions. An instance without `monthlyContribution`
+      // gets 0 — byte-identical to the previous path, where the override stayed
+      // undefined and the ETF fell back to `bavFunding.monthlyNetCost` of the
+      // neutralised bAV projection, which is 0.
+      monthlyUserCost: inst.status === 'paid_up' ? 0 : inst.monthlyContribution ?? 0,
+      instanceCapitalPolicy: buildInstanceCapitalPolicy(inst, workspace, rules, outbound, inbound),
+      saverAllowanceOverride,
+    })
+  }
+  const simulateEtfInstance = (
+    inst: EtfInstance,
+    scenario: ReturnScenario,
+    saverAllowanceOverride?: (yearIndex: number) => number,
+  ): ProductResult => {
+    const ctx = buildEtfInstanceContext(inst, saverAllowanceOverride)
+    const inputConfidence = confidenceForResult(
+      { productId: slotToProductId(detectProductSlot(inst)) },
+      inst.evidenceMap ?? {},
+    )
+    return { ...simulateEtf(ctx, scenario), instanceId: inst.instanceId, inputConfidence }
+  }
+
   runFor(wsa.bav, simulateBav, (inst) => ({
     bavFundingOverride: portfolioFunding.bavByInstanceId[inst.instanceId],
   }))
-  // Combine-mode honors per-instance ETF `monthlyContribution` via the override.
-  // Compare-mode (`simulateRetirementComparison`) never sets this and falls back
-  // to `bavFunding.monthlyNetCost` — see ETF simulator and CLAUDE.md.
-  //
-  // Initial pass uses the full per-instance Sparerpauschbetrag.
-  // `applyCrossInstanceSparerpauschbetrag` below re-runs when ≥2 ETF instances
-  // are present so they share the §20 Abs. 9 EStG allowance per year.
-  runFor(wsa.etf, simulateEtf, (inst) => ({
-    etfMonthlyUserCostOverride: inst.status === 'paid_up' ? 0 : inst.monthlyContribution,
-  }))
+  for (const inst of wsa.etf) {
+    if (inst.status === 'surrendered' || inst.status === 'offered') continue
+    // Initial pass uses the full per-instance Sparerpauschbetrag.
+    // `applyCrossInstanceSparerpauschbetrag` below re-runs when ≥2 ETF instances
+    // are present so they share the §20 Abs. 9 EStG allowance per year.
+    perInstance[inst.instanceId] = wsa.returnScenarios.map((scenario) =>
+      simulateEtfInstance(inst, scenario),
+    )
+  }
   // Combine-mode honors per-instance insurance `monthlyContribution` via the
   // override. Compare-mode falls back to `bavFunding.monthlyNetCost` — see
   // insurance simulator and CLAUDE.md.
@@ -203,7 +257,18 @@ export function simulatePortfolio(
   // single / €2 000 joint), not one per account. Re-run ETF instances with a
   // shared per-year schedule when ≥2 are active. Length-1 workspaces skip the
   // re-run (schedule reduces to the full allowance — byte-identical results).
-  applyCrossInstanceSparerpauschbetrag(wsa, perInstance, profile, rules, outboundBy, inboundBy, workspace, buildInstanceCapitalPolicy)
+  // The re-run reuses `simulateEtfInstance`, so it goes through the exact same
+  // narrow per-instance context assembly as the initial pass — the allowance
+  // schedule is the only delta.
+  const married = workspace.baseline.partner !== undefined
+  applyCrossInstanceSparerpauschbetrag({
+    wsa,
+    perInstance,
+    rules,
+    profile,
+    fullAllowance: rules.capitalGains.saverAllowance * (married ? 2 : 1),
+    resimulateEtfInstance: simulateEtfInstance,
+  })
 
   return { perInstance, portfolioFunding }
 }

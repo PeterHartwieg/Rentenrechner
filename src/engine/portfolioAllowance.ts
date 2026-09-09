@@ -21,8 +21,15 @@
  *      are skipped (the shared schedule reduces to the full allowance every
  *      year — byte-identical oracle goldens).
  *
+ * Re-simulation is INJECTED (`resimulateEtfInstance`, issue #380): the adapter
+ * owns per-instance context assembly (narrow `EtfCalculationContext` — real
+ * contribution, capital policy, evidence tagging), so this module re-runs ETF
+ * instances without reconstructing singleton assumptions or funding inputs
+ * itself. The only delta vs. the initial pass is the allowance schedule.
+ *
  * Joint filing (workspace.baseline.partner !== undefined): the §20 Abs. 9 EStG
- * cap doubles to €2 000 (Zusammenveranlagung).
+ * cap doubles to €2 000 (Zusammenveranlagung). The caller passes the resulting
+ * `fullAllowance`.
  *
  * Projection helpers live in `portfolioProjection.ts`.
  * Funding apportionment lives in `portfolioFunding.ts`.
@@ -33,29 +40,11 @@ import type {
   GermanRules,
   PersonalProfile,
   ProductResult,
+  ReturnScenario,
 } from '../domain'
 import type { EtfProductResult } from '../domain/results'
-import type { Workspace, WorkspaceAssumptionsV2 } from '../domain/workspace'
-import type { TransferEvent } from '../domain/instances'
-import { buildContext, type BuildContextOverrides, type InstanceCapitalPolicy } from './simulationContext'
-import { simulate as simulateEtf } from './products/etf'
-import { confidenceForResult } from '../utils/evidence'
-import {
-  detectProductSlot,
-  slotToProductId,
-  applyPaidUpOverridesToProjection,
-  projectInstanceToScenarioAssumptions,
-  type AnyInstance,
-} from './portfolioProjection'
-
-/** Function type matching `buildInstanceCapitalPolicy` in portfolioAdapter.ts. */
-type InstanceCapitalPolicyFn = (
-  instance: AnyInstance,
-  workspace: Workspace,
-  rules: GermanRules,
-  outbound: TransferEvent[],
-  inbound: TransferEvent[],
-) => InstanceCapitalPolicy | undefined
+import type { WorkspaceAssumptionsV2 } from '../domain/workspace'
+import type { EtfInstance } from '../domain/instances'
 
 // ---------------------------------------------------------------------------
 // Cross-instance Sparerpauschbetrag demand calculation
@@ -161,6 +150,35 @@ export function apportionSparerpauschbetrag(
 // ---------------------------------------------------------------------------
 
 /**
+ * Re-run one ETF instance for one scenario under a shared per-year allowance.
+ * Injected by `simulatePortfolio` so the re-run converges on the adapter's
+ * narrow per-instance ETF context assembly (see `buildEtfInstanceContext`
+ * there). Must return the result already tagged with `instanceId` and
+ * `inputConfidence`.
+ */
+export type ResimulateEtfInstanceFn = (
+  inst: EtfInstance,
+  scenario: ReturnScenario,
+  saverAllowanceOverride: (yearIndex: number) => number,
+) => ProductResult
+
+export interface CrossInstanceAllowanceParams {
+  /** Workspace product assumptions (return scenarios + per-instance ETF slots). */
+  wsa: WorkspaceAssumptionsV2
+  /** Per-instance results map — mutated in place. */
+  perInstance: Record<string, ProductResult[]>
+  rules: GermanRules
+  profile: PersonalProfile
+  /**
+   * Household §20 Abs. 9 EStG cap for one calendar year — already doubled for
+   * Zusammenveranlagung by the caller.
+   */
+  fullAllowance: number
+  /** Injected re-run path (see `ResimulateEtfInstanceFn`). */
+  resimulateEtfInstance: ResimulateEtfInstanceFn
+}
+
+/**
  * Re-run active ETF instances with a shared per-year §20 Abs. 9 EStG allowance.
  *
  * Mutates `perInstance` in place so the returned `simulatePortfolio` map carries
@@ -174,23 +192,15 @@ export function apportionSparerpauschbetrag(
  * Per scenario:
  *   1. Collect per-instance per-year demand from the initial pass.
  *   2. Apportion the allowance proportionally across instances.
- *   3. Re-simulate each ETF instance with its per-year schedule.
+ *   3. Re-run each ETF instance with its per-year schedule.
  */
 export function applyCrossInstanceSparerpauschbetrag(
-  wsa: WorkspaceAssumptionsV2,
-  perInstance: Record<string, ProductResult[]>,
-  profile: PersonalProfile,
-  rules: GermanRules,
-  outboundBy: Map<string, TransferEvent[]>,
-  inboundBy: Map<string, TransferEvent[]>,
-  workspace: Workspace,
-  buildCapitalPolicy: InstanceCapitalPolicyFn,
+  params: CrossInstanceAllowanceParams,
 ): void {
+  const { wsa, perInstance, rules, profile, fullAllowance, resimulateEtfInstance } = params
   const activeEtf = wsa.etf.filter((e) => e.status !== 'surrendered' && e.status !== 'offered')
   if (activeEtf.length < 2) return
 
-  const married = workspace.baseline.partner !== undefined
-  const fullAllowance = rules.capitalGains.saverAllowance * (married ? 2 : 1)
   const yearsToRetirement = profile.retirementAge - profile.age
   const retirementYears = wsa.retirementEndAge - profile.retirementAge
   const totalYears = Math.max(0, yearsToRetirement + retirementYears)
@@ -222,27 +232,9 @@ export function applyCrossInstanceSparerpauschbetrag(
     for (const inst of activeEtf) {
       const schedule = allowanceByInstance.get(inst.instanceId)
       if (!schedule) continue
-      const projectedRaw = projectInstanceToScenarioAssumptions(inst, wsa)
-      const projected = inst.status === 'paid_up'
-        ? applyPaidUpOverridesToProjection(projectedRaw, detectProductSlot(inst))
-        : projectedRaw
-      const outbound = outboundBy.get(inst.instanceId) ?? []
-      const inbound = inboundBy.get(inst.instanceId) ?? []
-      const instanceCapitalPolicy = buildCapitalPolicy(inst, workspace, rules, outbound, inbound)
-      const overrides: BuildContextOverrides = {
-        etfMonthlyUserCostOverride: inst.status === 'paid_up' ? 0 : inst.monthlyContribution,
-        etfSaverAllowanceOverride: (yearIdx: number) =>
-          schedule[yearIdx] ?? rules.capitalGains.saverAllowance,
-        ...(instanceCapitalPolicy ? { instanceCapitalPolicy } : {}),
-      }
-      const ctx = buildContext(profile, projected, rules, overrides)
-      const slotName = detectProductSlot(inst)
-      const inputConfidence = confidenceForResult(
-        { productId: slotToProductId(slotName) },
-        inst.evidenceMap ?? {},
+      const tagged = resimulateEtfInstance(inst, scenario, (yearIdx: number) =>
+        schedule[yearIdx] ?? rules.capitalGains.saverAllowance,
       )
-      const targetScenarioResult = simulateEtf(ctx, scenario)
-      const tagged = { ...targetScenarioResult, instanceId: inst.instanceId, inputConfidence }
 
       const arr = perInstance[inst.instanceId]
       if (!arr) continue
