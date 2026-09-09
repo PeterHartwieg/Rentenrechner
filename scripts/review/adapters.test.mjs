@@ -233,6 +233,62 @@ describe('claude parser (verified stream-json --verbose shape)', () => {
     ).toBe(true)
   })
 
+  it('fails closed on ANY assistant event without message.model — it is never filtered away', () => {
+    // Live finding (Grok 4.6 on ad2f987): unattributed assistant turns were
+    // dropped before the identity check, so a single opus-tagged message plus
+    // a matching modelUsage map vouched for the rest of the stream.
+    const stream = [
+      { type: 'system', subtype: 'init', model: 'claude-opus-5' },
+      { type: 'assistant', message: { model: 'claude-opus-5' } },
+      { type: 'assistant', message: { content: 'no model field here' } },
+      {
+        type: 'result',
+        subtype: 'success',
+        is_error: false,
+        num_turns: 3,
+        modelUsage: { 'claude-opus-5': {}, [CLAUDE_AUXILIARY]: {} },
+        result: 'verdict text',
+      },
+    ]
+      .map((event) => JSON.stringify(event))
+      .join('\n')
+    const parsed = parseClaudeReviewerOutput({ stdout: stream, exitCode: 0, requestedModel: 'opus' })
+    expect(parsed.ok).toBe(false)
+    expect(parsed.reason).toMatch(/without message\.model/)
+  })
+
+  it('fails closed when an assistant event carries a non-string model', () => {
+    const stream = [
+      { type: 'assistant', message: { model: { id: 'claude-opus-5' } } },
+      {
+        type: 'result',
+        subtype: 'success',
+        is_error: false,
+        modelUsage: { 'claude-opus-5': {} },
+        result: 'verdict text',
+      },
+    ]
+      .map((event) => JSON.stringify(event))
+      .join('\n')
+    const parsed = parseClaudeReviewerOutput({ stdout: stream, exitCode: 0, requestedModel: 'opus' })
+    expect(parsed.ok).toBe(false)
+    expect(parsed.reason).toMatch(/without message\.model/)
+  })
+
+  it('keeps auxiliary modelUsage bookkeeping distinct from the primary identity', () => {
+    // Haiku in the usage map is side-request bookkeeping: recorded, never
+    // identity, and never able to stand in for a missing assistant model.
+    const parsed = parseClaudeReviewerOutput({
+      stdout: CLAUDE_STREAM({ assistantModels: ['claude-opus-5'] }),
+      exitCode: 0,
+      requestedModel: 'opus',
+    })
+    expect(parsed.reportedModels).toEqual(['claude-opus-5'])
+    expect(parsed.auxiliaryModels).toEqual([CLAUDE_AUXILIARY])
+    expect(parsed.meta.auxiliaryModels).toEqual([CLAUDE_AUXILIARY])
+    expect(parsed.reportedModels).not.toContain(CLAUDE_AUXILIARY)
+  })
+
   it('fails closed when an assistant message reports a different model (wrong primary)', () => {
     for (const assistantModels of [['claude-sonnet-5'], ['claude-fable-5-1'], ['claude-opus-5', 'claude-sonnet-5']]) {
       const parsed = parseClaudeReviewerOutput({
@@ -353,6 +409,22 @@ describe('grok parser (verified envelope shape)', () => {
     expect(parsed.reportedModels).toEqual(['grok-4.6-build'])
     expect(parsed.meta.stopReason).toBe('end_turn')
     expect(parsed.meta.identityEvidence).toBe('native-model-usage-keys')
+  })
+
+  it('reads the verdict from `text` ONLY — no response/result/content fallback (as documented)', () => {
+    // The toolchain doc used to promise a wider allowlist than the parser
+    // implements. The narrow promise is the true one, and it is pinned here
+    // so widening the parser cannot happen silently either.
+    for (const field of ['response', 'result', 'content', 'message', 'output']) {
+      const envelope = JSON.stringify({
+        stopReason: 'end_turn',
+        modelUsage: { 'grok-4.6-build': {} },
+        [field]: '```json\n{"verdict":"approve"}\n```',
+      })
+      const parsed = parseGrokReviewerOutput({ stdout: envelope, exitCode: 0, requestedModel: 'grok-4.6' })
+      expect(parsed.ok, field).toBe(false)
+      expect(parsed.reason, field).toMatch(/native result text is missing or empty/)
+    }
   })
 
   it('NEVER uses thought/draft text as the verdict — text is the only verdict-bearing field', () => {

@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  CATALOGUED_SOURCE_PATHS,
   REVIEW_DOMAINS,
   classifyPath,
   contextFilesForImpact,
   isUntrustedContextPath,
   mapImpact,
 } from './lib/impactMap.mjs'
+import { RESEARCH_DOCS } from './sourceCatalog.mjs'
 
 describe('classifyPath — meaningful rules beat the cosmetic extension allowlist', () => {
   it('executable/worker/API surfaces are meaningful regardless of extension', () => {
@@ -29,6 +31,31 @@ describe('classifyPath — meaningful rules beat the cosmetic extension allowlis
     expect(classifyPath('docs/automation/calculation-review-toolchain.md')).toBe('meaningful')
     expect(classifyPath('docs/adr/0004-local-calculation-review-toolchain.md')).toBe('meaningful')
     expect(classifyPath('README.md')).toBe('meaningful')
+  })
+
+  it('every catalogued statutory research/legal source is meaningful, not prose', () => {
+    // Live finding (Grok 4.6 on ad2f987): the root research docs and the two
+    // legal docs are the catalogued statutory sources, yet the .md allowlist
+    // marked them cosmetic — a PR that moved an RV BBG row in the research
+    // table alone was presented to reviewers as presentational.
+    expect(CATALOGUED_SOURCE_PATHS).toContain('TAX_SOCIAL_SECURITY_2026_RESEARCH.md')
+    expect(CATALOGUED_SOURCE_PATHS).toContain('LEGAL_REVIEW.md')
+    expect(CATALOGUED_SOURCE_PATHS).toContain('LEGAL_IMPLEMENTATION_AUDIT_2026.md')
+    for (const path of CATALOGUED_SOURCE_PATHS) {
+      expect(classifyPath(path), path).toBe('meaningful')
+    }
+  })
+
+  it('coverage is catalog-driven, so a newly catalogued source cannot become cosmetic by omission', () => {
+    expect(CATALOGUED_SOURCE_PATHS).toEqual(RESEARCH_DOCS.map((doc) => doc.path))
+  })
+
+  it('domain assurance maps are meaningful; the UI map stays presentational', () => {
+    expect(classifyPath('docs/context/rules-and-tax.md')).toBe('meaningful')
+    expect(classifyPath('docs/context/products.md')).toBe('meaningful')
+    expect(classifyPath('docs/rules-versioning.md')).toBe('meaningful')
+    expect(classifyPath('docs/golden-coverage-audit.md')).toBe('meaningful')
+    expect(classifyPath('docs/context/ui.md')).toBe('cosmetic')
   })
 
   it('pure prose docs, styling, and static assets stay cosmetic', () => {
@@ -141,6 +168,26 @@ describe('mapImpact — conservative mapping', () => {
     expect(impact.domains).toEqual(REVIEW_DOMAINS)
     expect(impact.focusDomains).toEqual([])
     expect(impact.rationale).not.toMatch(/cosmetic|presentational/)
+  })
+
+  it('statutory research and legal docs map broad, with the catalog areas as focus', () => {
+    const tax = mapImpact(['TAX_SOCIAL_SECURITY_2026_RESEARCH.md'])
+    expect(tax.breadth).toBe('broad')
+    expect(tax.domains).toEqual(REVIEW_DOMAINS)
+    expect(tax.focusDomains).toEqual(['tax-payroll', 'kv-pv'])
+    expect(tax.meaningfulCategories).toContain('catalogued statutory research / legal source')
+    expect(tax.rationale).not.toMatch(/cosmetic|presentational/)
+
+    expect(mapImpact(['LEGAL_REVIEW.md']).breadth).toBe('broad')
+    const audit = mapImpact(['LEGAL_IMPLEMENTATION_AUDIT_2026.md'])
+    expect(audit.domains).toEqual(REVIEW_DOMAINS)
+    // The legal docs are catalogued against all five areas, so they focus all five.
+    expect(audit.focusDomains).toEqual(REVIEW_DOMAINS)
+  })
+
+  it('retirementTax focuses tax/payroll as well as KV/PV — it is the single retirement-tax pipeline', () => {
+    const impact = mapImpact(['src/engine/retirementTax.ts'])
+    expect(impact.focusDomains).toEqual(['tax-payroll', 'kv-pv'])
   })
 
   it('requires at least one changed file', () => {

@@ -86,14 +86,21 @@ export async function executeReview({
   spawnImpl,
   runGit = defaultRunGit,
   codexSessionsDir,
-  now = new Date(),
+  now = null,
   clock,
   save = saveReceipt,
   makeWorktreeDir,
 }) {
   // One panel timestamp for receipt bookkeeping; each reviewer gets its OWN
-  // invocation start/completion from the same injected clock.
-  const panelClock = clock ?? (() => now)
+  // invocation start/completion from the same clock.
+  //
+  // The DEFAULT reads real time on every call. A frozen default (`() => now`
+  // captured once) made a native receipt claim identical startedAt and
+  // completedAt for both reviewers of a 15-minute run, and — worse — pinned
+  // every reviewer to the panel start, which is exactly what pushes a delayed
+  // codex (Astra) rollout file outside its own identity window. `clock` and
+  // `now` stay injectable so tests can pin a fixed instant deliberately.
+  const panelClock = clock ?? (now ? () => now : () => new Date())
   const panelStartedAt = panelClock()
   const { prInfo, impact, panel, contextPaths } = await planReview({ pr, complex, repoRoot, ghRun })
 
@@ -180,12 +187,19 @@ export async function executeReview({
       options: { verifyCommit },
       generatedAt: panelStartedAt,
     })
-    const receiptPath = save({ receipt, repoRoot })
+    // Saved BEFORE publishing so a crash still leaves a record — that record
+    // is honestly unpublished (`published: null`). When publishing succeeds
+    // the SAME receipt (same filename: pr + head + generatedAt) is written
+    // again, now carrying the publication metadata, so the receipt on disk
+    // never understates a status that really was published. Nothing here ever
+    // reads a receipt back in: publishing is always from the in-memory run.
+    let receiptPath = save({ receipt, repoRoot })
 
     let published = null
     if (publish) {
       published = await publishRunStatus({ run: ghRun, prInfo, reviews, receipt, comment })
       receipt.published = { ...published, at: panelClock().toISOString() }
+      receiptPath = save({ receipt, repoRoot })
     }
 
     return {

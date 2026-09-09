@@ -186,8 +186,9 @@ export function buildReviewerInvocation({ reviewer, model, promptFile, outputLas
 // final `{ type: "result", subtype: "success", is_error: false, num_turns,
 // modelUsage: {...}, result: "..." }` event.
 //
-// Identity: every ACTUAL assistant message's `message.model` must be present
-// and must all agree and all match the requested model. The result's
+// Identity: EVERY assistant event must carry `message.model`; one that omits
+// it fails the run rather than being filtered out of the check. The models
+// present must all agree and all match the requested model. The result's
 // `modelUsage` keys are a separate bookkeeping fact: keys that do not match
 // the requested model (auxiliary models such as Haiku handling side requests)
 // are recorded as `auxiliaryModels` and are NOT an identity failure — but the
@@ -222,10 +223,18 @@ export function parseClaudeReviewerOutput({ stdout, exitCode, requestedModel }) 
   })
   if (!Array.isArray(events)) return events
 
-  const assistantModels = events
-    .filter((event) => event.type === 'assistant')
-    .map((event) => event.message?.model)
-    .filter((model) => model !== undefined)
+  // EVERY assistant event must carry its own message.model. Dropping the ones
+  // that omit it would let a stream with a single opus-tagged message vouch
+  // for an arbitrary number of unattributed assistant turns.
+  const assistantEvents = events.filter((event) => event.type === 'assistant')
+  const unattributed = assistantEvents.filter((event) => typeof event.message?.model !== 'string')
+  if (unattributed.length > 0) {
+    return fail(
+      `claude stream contains ${unattributed.length} assistant message(s) without message.model — ` +
+        'every assistant turn must carry its own model identity',
+    )
+  }
+  const assistantModels = assistantEvents.map((event) => event.message.model)
   if (assistantModels.length === 0) {
     return fail('claude stream records no assistant message model — cannot attribute the review to a model')
   }

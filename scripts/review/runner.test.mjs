@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest'
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -290,6 +290,57 @@ describe('executeReviewer — codex MCP preflight + rollout identity', () => {
     expect(result.ok).toBe(false)
     expect(result.reason).toMatch(/still enabled/)
     expect(spawned).toBe(false)
+  })
+
+  it('canonicalizes the worktree path BY DEFAULT, so a symlinked parent prefix still matches the rollout cwd', async () => {
+    // Live finding (Claude Opus 5 on ad2f987): the production caller never
+    // passed realpathImpl, so on macOS the runner compared the raw
+    // /var/folders/... mkdtemp path against the /private/var/folders/...
+    // cwd codex records, and every codex review was voided. No realpathImpl
+    // is injected here on purpose — this pins the DEFAULT.
+    const linkParent = mkdtempSync(join(tmpdir(), 'rw-review-linkparent-'))
+    const linked = join(linkParent, 'worktree-link')
+    symlinkSync(WORKTREE, linked)
+    try {
+      const result = await executeReviewer(
+        baseArgs({
+          reviewer: 'codex',
+          model: 'gpt-6-astra',
+          worktreePath: linked, // reached through a symlinked prefix
+          spawnImpl: fixtureSpawn({ cli: 'codex', mode: 'success', env: { FAKE_CODEX_THREAD_ID: THREAD } }),
+          parseOutput: parseCodexReviewerOutput,
+          preflight: async () => ({ ok: true, codexMcpArgs: [], configuredServers: [] }),
+          codexSessionsDir: codexSessionsFixture(), // records the CANONICAL cwd
+          startedAt: new Date(Date.now() - 60_000),
+        }),
+      )
+      expect(result.ok, result.reason).toBe(true)
+      expect(result.meta.codexSessionCwdMatched).toBe(true)
+    } finally {
+      rmSync(linkParent, { recursive: true, force: true })
+    }
+  })
+
+  it('still rejects a rollout whose cwd is a DIFFERENT directory — canonicalizing widens nothing', async () => {
+    const elsewhere = realpathSync(mkdtempSync(join(tmpdir(), 'rw-review-elsewhere-')))
+    try {
+      const result = await executeReviewer(
+        baseArgs({
+          reviewer: 'codex',
+          model: 'gpt-6-astra',
+          worktreePath: elsewhere,
+          spawnImpl: fixtureSpawn({ cli: 'codex', mode: 'success', env: { FAKE_CODEX_THREAD_ID: THREAD } }),
+          parseOutput: parseCodexReviewerOutput,
+          preflight: async () => ({ ok: true, codexMcpArgs: [], configuredServers: [] }),
+          codexSessionsDir: codexSessionsFixture(), // records WORKTREE, not `elsewhere`
+          startedAt: new Date(Date.now() - 60_000),
+        }),
+      )
+      expect(result.ok).toBe(false)
+      expect(result.reason).toMatch(/does not match the review worktree/)
+    } finally {
+      rmSync(elsewhere, { recursive: true, force: true })
+    }
   })
 
   it('fails closed when the rollout session records a different model', async () => {

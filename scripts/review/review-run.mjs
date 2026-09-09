@@ -18,21 +18,24 @@ import { pathToFileURL } from 'node:url'
 
 import { executeReview, DEFAULT_REVIEWER_TIMEOUT_MS } from './lib/orchestrate.mjs'
 import { makeSubprocessRun } from './lib/ghRun.mjs'
+import { assertExplicitComplexFlag } from './lib/panels.mjs'
 import { parseFlags, requirePositiveInt } from './lib/cliArgs.mjs'
 
 const PUBLISH_FAILURE_CODES = new Set(['STALE_HEAD', 'PR_MOVED', 'VERIFY_NOT_SUCCESSFUL'])
 
-async function main() {
-  const { flags } = parseFlags(process.argv.slice(2))
+// `execute` is injectable so tests can pin what THIS entrypoint passes on
+// (argv → review options), not just what the helpers do in isolation.
+export async function main({ argv = process.argv.slice(2), execute = executeReview, log = console.log } = {}) {
+  const { flags } = parseFlags(argv)
   if (!flags.pr) {
     console.error(
       'usage: npm run review:run -- --pr <number> [--complex] [--publish] [--comment] ' +
         '[--verify-commit <sha>] [--timeout-minutes <n>]',
     )
-    process.exit(1)
+    return { exitCode: 1, result: null }
   }
   const pr = requirePositiveInt(flags, 'pr')
-  const complex = flags.complex === true
+  const complex = assertExplicitComplexFlag(flags.complex)
   const publish = flags.publish === true
   const comment = flags.comment === true
   const verifyCommit = typeof flags['verify-commit'] === 'string' ? flags['verify-commit'] : null
@@ -41,7 +44,7 @@ async function main() {
     ? timeoutMinutes * 60 * 1000
     : DEFAULT_REVIEWER_TIMEOUT_MS
 
-  const result = await executeReview({
+  const result = await execute({
     pr,
     complex,
     publish,
@@ -52,37 +55,42 @@ async function main() {
     ghRun: makeSubprocessRun(),
   })
 
-  console.log(`Panel       : ${result.receipt.panel.kind}`)
+  log(`Panel       : ${result.receipt.panel.kind}`)
   for (const review of result.reviews) {
     const status = review.verdict?.ok
       ? review.verdict.verdict.verdict
       : `INVALID (${review.parse?.reason ?? review.verdict?.reason})`
-    console.log(`  ${review.reviewer} [${review.model}] -> ${status}`)
+    log(`  ${review.reviewer} [${review.model}] -> ${status}`)
   }
-  console.log(`Decision    : ${result.decision}`)
-  for (const reason of result.reasons) console.log(`  gate: ${reason}`)
-  console.log(`Receipt     : ${result.receiptPath}`)
+  log(`Decision    : ${result.decision}`)
+  for (const reason of result.reasons) log(`  gate: ${reason}`)
+  log(`Receipt     : ${result.receiptPath}`)
 
   if (result.published) {
-    console.log(`Published   : commit status "${result.published.state}" on ${result.published.headSha}`)
+    log(`Published   : commit status "${result.published.state}" on ${result.published.headSha}`)
     if (result.published.verifyCheck) {
-      console.log(
-        `Verify check: ${result.published.verifyCheck.name} concluded ${result.published.verifyCheck.conclusion}`,
-      )
+      log(`Verify check: ${result.published.verifyCheck.name} concluded ${result.published.verifyCheck.conclusion}`)
     }
   }
 
-  if (!result.ok) process.exit(1)
-  if (result.decision !== 'approve') process.exit(2)
+  // Exit codes are returned, not taken, so the entrypoint stays callable from
+  // tests; the wrapper below is the only place that ends the process.
+  if (!result.ok) return { exitCode: 1, result }
+  if (result.decision !== 'approve') return { exitCode: 2, result }
+  return { exitCode: 0, result }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((error) => {
-    if (error.code && PUBLISH_FAILURE_CODES.has(error.code)) {
-      console.error(`NOT PUBLISHED: ${error.message}`)
+  main()
+    .then(({ exitCode }) => {
+      if (exitCode !== 0) process.exit(exitCode)
+    })
+    .catch((error) => {
+      if (error.code && PUBLISH_FAILURE_CODES.has(error.code)) {
+        console.error(`NOT PUBLISHED: ${error.message}`)
+        process.exit(1)
+      }
+      console.error(error.message)
       process.exit(1)
-    }
-    console.error(error.message)
-    process.exit(1)
-  })
+    })
 }

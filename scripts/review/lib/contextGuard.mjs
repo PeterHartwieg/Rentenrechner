@@ -42,9 +42,11 @@ function isSymbolicLink(entry, lstat) {
 }
 
 // Walks the tree and rejects the review if ANY path — file or directory — is
-// a symlink. `.git` is skipped: a worktree's `.git` is a plain pointer file
-// and its target directory lives outside the checkout by design. Entries that
-// disappear mid-walk are re-checked through lstat failures and fail closed.
+// a symlink. Nothing is exempted, `.git` included: a git worktree's `.git` is
+// a plain pointer FILE, so it is neither a symlink nor descended into, and a
+// `.git` that IS a symlink is an offender like any other. Adding an exemption
+// would be a symlink escape hatch in the one guard that exists to prevent
+// one. Entries that disappear mid-walk fail closed through lstat.
 export function assertNoSymlinksUnder(rootPath, { lstat = lstatSync, listDir = readdirSync } = {}) {
   const offenders = []
   const walk = (dir) => {

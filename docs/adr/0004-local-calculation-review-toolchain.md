@@ -27,7 +27,10 @@ may be added for this (backend boundary), and no telemetry may be introduced.
 2. **Two panels, explicit escalation.** Routine = Grok 4.6 + Claude Opus.
    Complex =
    Fable 5.1 + GPT-6-Astra + Grok 4.6, reachable only via literal
-   `--complex`. No heuristic selects the expensive panel.
+   `--complex`. No heuristic selects the expensive panel, and both
+   entrypoints share one flag parser: a value-bearing `--complex <x>` other
+   than the documented `true` is rejected rather than silently downgraded to
+   the routine panel.
 3. **Fail-closed verdict gate.** A review counts only with proven completion,
    matching provider-reported model, an exact restated PR head SHA, and a
    well-formed non-contradictory verdict (`approve` with a blocker/major
@@ -38,7 +41,9 @@ may be added for this (backend boundary), and no telemetry may be introduced.
    would block a PR that did not touch it. Identity evidence is
    honest about its provenance and about which model actually did the work:
    for claude the reviewing model is read from the `model` field of the
-   native assistant messages themselves, with the result envelope's
+   native assistant messages themselves — EVERY assistant event must carry
+   one, and an event that omits it fails the run instead of being filtered
+   out of the check — with the result envelope's
    `modelUsage` keys recorded separately (auxiliary models such as Haiku
    handling side requests are bookkeeping, never identity); for grok the
    envelope's `modelUsage` keys; for codex the CLI's own rollout session
@@ -56,10 +61,16 @@ may be added for this (backend boundary), and no telemetry may be introduced.
    PR-controlled content: a tracked symlink anywhere in it voids the review
    before any context read, and every context file is read through a
    canonical-path containment check, so a diff can never route reviewer
-   context to a file outside the checkout. Each reviewer is timed on its own
-   clock (its own `startedAt`/`completedAt` around its own invocation), so a
-   long first reviewer cannot push the next one's identity evidence outside
-   the attribution window. Reviewer identity is command + model +
+   context to a file outside the checkout. The worktree path itself is
+   canonicalized at creation (macOS `tmpdir()` sits behind
+   `/var -> /private/var`, and the codex rollout cwd comparison is literal);
+   that is a root-path normalization, not a symlink exemption. Each reviewer
+   is timed on its own clock (its own `startedAt`/`completedAt` around its
+   own invocation, read from real time by default), so a long first reviewer
+   cannot push the next one's identity evidence outside the attribution
+   window. With `--publish`, the receipt is re-written after a successful
+   status write so the file on disk records the publication instead of
+   claiming `published: null`; nothing ever publishes FROM a receipt. Reviewer identity is command + model +
    provider-reported identity — never a person; the tooling never fabricates
    a human approval, and publishing re-derives the decision from the
    in-memory records and requires the records to constitute exactly the
@@ -76,7 +87,10 @@ may be added for this (backend boundary), and no telemetry may be introduced.
    `calculation-review`. No merge path exists in the toolchain.
 6. **Source freshness is deterministic and honest.** The catalog reuses
    `validationSources` ids (drift-pinned by tests) plus explicit research-doc
-   mappings; `lastCaptured` and `lastReviewed` are distinct and unknown
+   mappings; the impact map imports that same research-doc list, so every
+   catalogued statutory source (root `*_RESEARCH.md`, `LEGAL_REVIEW.md`,
+   `LEGAL_IMPLEMENTATION_AUDIT_2026.md`) maps broad and a newly catalogued
+   source cannot become cosmetic by omission; `lastCaptured` and `lastReviewed` are distinct and unknown
    review dates stay null. A golden source gets a review date only from an
    explicit, validated review record written by a real audit
    (`GOLDEN_SOURCE_REVIEWS`); an unknown id or a malformed date fails the

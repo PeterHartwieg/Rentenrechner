@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path'
 import { executeReview, planReview } from './lib/orchestrate.mjs'
 import { diffDigest } from './lib/prInfo.mjs'
 import { BASE_CONTEXT_FILES, DOMAIN_CONTEXT_FILES, contextFilesForImpact, mapImpact } from './lib/impactMap.mjs'
+import { saveReceipt } from './lib/receipts.mjs'
 import { DEFAULT_POLICY } from './lib/sources.mjs'
 
 // Full-pipeline tests. Everything external is faked: gh returns canned JSON,
@@ -197,7 +198,10 @@ async function runPipeline({
   codexModel,
   codexSessionNow = NOW,
   clock,
+  now = NOW,
   makeWorktreeDir,
+  repoRoot = process.cwd(),
+  save,
 } = {}) {
   const fake = gh ?? fakeGh()
   const git = fakeRunGit()
@@ -213,20 +217,25 @@ async function runPipeline({
       complex,
       publish,
       comment,
-      repoRoot: process.cwd(),
+      repoRoot,
       verifyCommit,
       timeoutMs: 30_000,
       ghRun: fake.run ?? fake,
       spawnImpl,
       runGit: git.run,
       codexSessionsDir: codexSessionsFixture({ model: codexModel, now: codexSessionNow }),
-      now: NOW,
+      now,
       clock,
       makeWorktreeDir: makeWorktreeDir ?? (() => WORKTREE),
-      save: ({ receipt }) => {
-        saved.push(receipt)
-        return `/fake/receipt-${saved.length}.json`
-      },
+      save:
+        save ??
+        (({ receipt }) => {
+          // Snapshot the receipt AS SAVED: the pipeline keeps mutating the
+          // same object (publication metadata), so a shared reference would
+          // hide what each write actually contained.
+          saved.push(structuredClone(receipt))
+          return `/fake/receipt-${saved.length}.json`
+        }),
     })
     return { ...result, saved, git, spawned }
   } catch (error) {
@@ -498,6 +507,185 @@ describe('executeReview — publish path', () => {
     // The pipeline's finally cleaned up through the fake git even though the
     // publish path threw.
     expect(result.git.calls).toContain(`worktree remove --force ${WORKTREE}`)
+  }, 60_000)
+})
+
+describe('executeReview — canonical review worktree path (macOS /var -> /private/var)', () => {
+  it('reaches approve through a symlinked PARENT PREFIX with no realpath injection at all', async () => {
+    // Live finding (Claude Opus 5 on ad2f987): production never passed
+    // realpathImpl, so the raw mkdtemp path (/var/folders/...) was compared
+    // against the canonical cwd codex records (/private/var/folders/...) and
+    // the complex panel could not produce a valid review on macOS. The
+    // pipeline is handed a path whose PARENT is a symlink — nothing inside
+    // the reviewed checkout is a symlink — and must canonicalize it itself.
+    const linkParent = mkdtempSync(join(tmpdir(), 'rw-orch-linkparent-'))
+    const linked = join(linkParent, 'worktree-link')
+    symlinkSync(WORKTREE, linked)
+    try {
+      const result = await runPipeline({ complex: true, makeWorktreeDir: () => linked })
+      expect(result.decision, JSON.stringify(result.reasons, null, 2)).toBe('approve')
+      const codex = result.receipt.reviewers.find((r) => r.reviewer === 'codex')
+      expect(codex.accepted).toBe(true)
+      expect(codex.identityEvidence).toBe('cli-session-turn-context')
+      // git saw the canonical path, not the symlinked one.
+      expect(result.git.calls).toContain(`worktree add --detach ${WORKTREE} ${SHA}`)
+    } finally {
+      rmSync(linkParent, { recursive: true, force: true })
+    }
+  }, 90_000)
+
+  it('still refuses a symlink TRACKED INSIDE the checkout reached through that prefix', async () => {
+    // Canonicalizing the root must not become a symlink escape hatch: a link
+    // planted inside the reviewed tree is still fatal.
+    const linkParent = mkdtempSync(join(tmpdir(), 'rw-orch-linkparent-'))
+    const linked = join(linkParent, 'worktree-link')
+    symlinkSync(WORKTREE, linked)
+    try {
+      const error = await runPipeline({
+        makeWorktreeDir: () => {
+          const planted = join(WORKTREE, 'CONTEXT.md')
+          rmSync(planted, { force: true })
+          symlinkSync('/etc/hostname', planted)
+          return linked
+        },
+      }).catch((e) => e)
+      expect(error.code).toBe('UNSAFE_REVIEW_TREE')
+      expect(error.message).toMatch(/CONTEXT\.md/)
+      expect(error.spawned).toHaveLength(0)
+    } finally {
+      rmSync(linkParent, { recursive: true, force: true })
+    }
+  }, 60_000)
+})
+
+describe('executeReview — production default clock', () => {
+  it('reads real time on EVERY invocation when neither clock nor now is injected', async () => {
+    // Live finding (root, on the native receipt for ad2f987): the default
+    // `now = new Date()` was captured once and reused via `() => now`, so a
+    // 15-minute two-reviewer run reported identical startedAt/completedAt for
+    // both reviewers — and pinned every reviewer to the panel start, which is
+    // exactly what pushes a delayed codex (Astra) rollout outside its own
+    // identity window. Date is stepped here rather than injected, so the
+    // DEFAULT path (no clock, no now) is what runs.
+    const RealDate = globalThis.Date
+    const STEP_MS = 60_000
+    let ticks = 0
+    class SteppingDate extends RealDate {
+      constructor(...args) {
+        if (args.length === 0) super(NOW.getTime() + ticks++ * STEP_MS)
+        else super(...args)
+      }
+      static now() {
+        return NOW.getTime() + ticks++ * STEP_MS
+      }
+    }
+    globalThis.Date = SteppingDate
+    let result
+    try {
+      // No `now` and no `clock` reach executeReview — the production default.
+      result = await runPipeline({ now: null, codexSessionNow: NOW })
+    } finally {
+      globalThis.Date = RealDate
+    }
+
+    expect(result.decision, JSON.stringify(result.reasons, null, 2)).toBe('approve')
+    const [first, second] = result.receipt.reviewers
+    const stamps = [
+      result.receipt.generatedAt,
+      first.startedAt,
+      first.completedAt,
+      second.startedAt,
+      second.completedAt,
+    ]
+    for (const stamp of stamps) expect(stamp).toEqual(expect.any(String))
+    const times = stamps.map((stamp) => new RealDate(stamp).getTime())
+    // Strictly increasing: no two of these may be the same frozen instant.
+    for (let i = 1; i < times.length; i++) {
+      expect(times[i], `stamp ${i} must be later than ${i - 1}: ${JSON.stringify(stamps)}`).toBeGreaterThan(times[i - 1])
+    }
+    expect(new Set(stamps).size).toBe(stamps.length)
+  }, 60_000)
+
+  it('an explicitly injected `now` still pins one deterministic instant', async () => {
+    const result = await runPipeline()
+    expect(result.receipt.generatedAt).toBe(NOW.toISOString())
+    for (const reviewer of result.receipt.reviewers) {
+      expect(reviewer.startedAt).toBe(NOW.toISOString())
+      expect(reviewer.completedAt).toBe(NOW.toISOString())
+    }
+  }, 60_000)
+})
+
+describe('executeReview — what the receipt on DISK says about publication', () => {
+  const VERIFY_SUCCESS = {
+    name: 'verify',
+    status: 'completed',
+    conclusion: 'success',
+    head_sha: SHA,
+    started_at: '2026-09-08T11:00:00Z',
+    completed_at: '2026-09-08T11:30:00Z',
+    id: 100,
+    app: { id: 15368 },
+  }
+
+  function receiptRoot() {
+    const root = mkdtempSync(join(tmpdir(), 'rw-orch-receipts-'))
+    return root
+  }
+
+  function readReceipt(path) {
+    return JSON.parse(readFileSync(path, 'utf8'))
+  }
+
+  it('persists the publication metadata to the SAVED FILE, not just the returned object', async () => {
+    // Live finding (root, on the native receipt for ad2f987): the receipt was
+    // written before publishRunStatus ran, so a genuinely published run left
+    // `published: null` on disk forever.
+    const root = receiptRoot()
+    try {
+      const gh = fakeGh({ checkRuns: [VERIFY_SUCCESS] })
+      const result = await runPipeline({ publish: true, comment: true, gh, repoRoot: root, save: saveReceipt })
+      expect(result.published.state).toBe('success')
+      const onDisk = readReceipt(result.receiptPath)
+      expect(onDisk.published).not.toBeNull()
+      expect(onDisk.published.state).toBe('success')
+      expect(onDisk.published.headSha).toBe(SHA)
+      expect(onDisk.published.at).toBe(NOW.toISOString())
+      expect(onDisk.decision).toBe('approve')
+      // One receipt file per run: the pre-publish write is replaced, never
+      // left behind as a second, contradictory record.
+      expect(readdirSync(join(root, '.review-receipts'))).toHaveLength(1)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  }, 60_000)
+
+  it('leaves an honestly UNPUBLISHED receipt on disk when publishing is refused', async () => {
+    const root = receiptRoot()
+    try {
+      const gh = fakeGh({ currentHead: 'd'.repeat(40), checkRuns: [VERIFY_SUCCESS] })
+      const error = await runPipeline({ publish: true, gh, repoRoot: root, save: saveReceipt }).catch((e) => e)
+      expect(error.code).toBe('STALE_HEAD')
+      const dir = join(root, '.review-receipts')
+      const files = readdirSync(dir)
+      expect(files).toHaveLength(1)
+      const onDisk = readReceipt(join(dir, files[0]))
+      expect(onDisk.published).toBeNull()
+      expect(gh.statusWrites()).toHaveLength(0)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  }, 60_000)
+
+  it('a run without --publish records published: null on disk', async () => {
+    const root = receiptRoot()
+    try {
+      const result = await runPipeline({ repoRoot: root, save: saveReceipt })
+      expect(result.decision).toBe('approve')
+      expect(readReceipt(result.receiptPath).published).toBeNull()
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   }, 60_000)
 })
 

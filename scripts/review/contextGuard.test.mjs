@@ -65,10 +65,22 @@ describe('assertNoSymlinksUnder', () => {
     }
   })
 
-  it('skips .git (a worktree pointer file is expected to point outside)', () => {
+  it('does not exempt .git: the plain worktree pointer file passes on its own merits', () => {
     const root = makeTree()
     writeFileSync(join(root, '.git'), 'gitdir: /somewhere/else/worktrees/demo\n', 'utf8')
     expect(() => assertNoSymlinksUnder(root)).not.toThrow()
+  })
+
+  it('reports a SYMLINKED .git as an offender — there is no name-based escape hatch', () => {
+    // The comment and the doc previously advertised a `.git` exemption the
+    // walk never implemented. The honest rule is: nothing is exempt.
+    const root = makeTree()
+    symlinkSync('/etc/hostname', join(root, '.git'))
+    try {
+      expect(() => assertNoSymlinksUnder(root)).toThrow(/\.git/)
+    } finally {
+      rmSync(join(root, '.git'))
+    }
   })
 })
 

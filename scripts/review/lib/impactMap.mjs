@@ -27,6 +27,13 @@
 //
 // Domain ids are shared with the source-freshness catalog (sourceCatalog.mjs)
 // so a stale research source and the PRs it affects speak the same language.
+// The catalogued statutory sources themselves are imported from that catalog
+// rather than re-listed here: a source that is worth tracking for freshness is
+// by definition able to move a statutory interpretation, so it must never be
+// classified as prose — and a source added to the catalog tomorrow must not be
+// able to become cosmetic here by omission.
+
+import { RESEARCH_DOCS } from '../sourceCatalog.mjs'
 
 export const REVIEW_DOMAINS = [
   'tax-payroll',
@@ -57,9 +64,15 @@ const MEANINGFUL_PREFIXES = [
   'docs/agents/', // agent process docs (review bar mirror)
 ]
 
+// Every catalogued statutory research/legal source, by path. Catalog-driven
+// on purpose: the freshness catalog and the impact map must never disagree
+// about which documents carry statutory interpretation.
+export const CATALOGUED_SOURCE_PATHS = RESEARCH_DOCS.map((doc) => doc.path)
+
 // Single files whose change is never presentational: assurance docs, the
 // review bar itself, and build/security config.
 const MEANINGFUL_FILES = new Set([
+  ...CATALOGUED_SOURCE_PATHS,
   'AGENTS.md',
   'CLAUDE.md',
   'CONTEXT.md',
@@ -68,6 +81,14 @@ const MEANINGFUL_FILES = new Set([
   'LICENSE.md',
   'COMMERCIAL_LICENSE.md',
   'docs/validation.md',
+  // Domain assurance maps: they route a change to the statutory rule file,
+  // engine function, and research doc that own it (rules-and-tax/products),
+  // define what the rule-year metadata promises, and enumerate which oracle
+  // pins which number. Drift here mis-routes a later statutory change.
+  'docs/context/rules-and-tax.md',
+  'docs/context/products.md',
+  'docs/rules-versioning.md',
+  'docs/golden-coverage-audit.md',
   'package.json',
   'package-lock.json',
   'eslint.config.js',
@@ -96,6 +117,7 @@ export const MEANINGFUL_CATEGORIES = {
   'engine-rules': 'engine/rules/statutory values',
   'worker-api': 'worker/API executable logic',
   'tooling-review-gates': 'dev tooling / review gates / CI',
+  'statutory-sources': 'catalogued statutory research / legal source',
   'assurance-config': 'assurance docs or build/security config',
   'application-code': 'application code (UI/state/display logic)',
 }
@@ -154,21 +176,34 @@ const PAYOUT_ENGINE_PATTERNS = [
   'src/engine/payoutMath.ts',
 ]
 
+// Catalogued statutory sources focus the domains the catalog says they
+// underpin — the same `areas` the freshness report uses, so a doc never
+// focuses one thing here and another there.
+function cataloguedSourcesForDomain(domain) {
+  return RESEARCH_DOCS.filter((doc) => doc.areas.includes(domain)).map((doc) => doc.path)
+}
+
 const DOMAIN_FOCUS_MATCHERS = [
   {
     domain: 'tax-payroll',
     patterns: [
       ...ALL_DOMAIN_PATTERNS,
+      ...cataloguedSourcesForDomain('tax-payroll'),
       'src/engine/tax.ts',
       'src/engine/salary.ts',
       'src/engine/salaryPhaseFunding.ts',
-      'TAX_SOCIAL_SECURITY_2026_RESEARCH.md',
+      // The single retirement-tax pipeline: cohort Besteuerungsanteil,
+      // Versorgungsfreibetrag, Werbungskosten/Sonderausgaben and
+      // Ehegattensplitting live here alongside the KV/PV apportionment, so
+      // the file focuses BOTH domains (see calculateRetirementTax).
+      'src/engine/retirementTax.ts',
     ],
   },
   {
     domain: 'kv-pv',
     patterns: [
       ...ALL_DOMAIN_PATTERNS,
+      ...cataloguedSourcesForDomain('kv-pv'),
       'src/engine/retirementPayout.ts',
       'src/engine/retirementTax.ts',
       'src/engine/salary.ts',
@@ -178,6 +213,7 @@ const DOMAIN_FOCUS_MATCHERS = [
     domain: 'funding-eligibility',
     patterns: [
       ...ALL_DOMAIN_PATTERNS,
+      ...cataloguedSourcesForDomain('funding-eligibility'),
       'src/engine/simulationContext.ts',
       'src/engine/portfolioFunding.ts',
       'src/engine/portfolioTransfer.ts',
@@ -193,6 +229,7 @@ const DOMAIN_FOCUS_MATCHERS = [
     domain: 'investment-insurance',
     patterns: [
       ...ALL_DOMAIN_PATTERNS,
+      ...cataloguedSourcesForDomain('investment-insurance'),
       ...PAYOUT_ENGINE_PATTERNS,
       'src/engine/accumulation.ts',
       'src/engine/fees.ts',
@@ -210,6 +247,7 @@ const DOMAIN_FOCUS_MATCHERS = [
     domain: 'household-interactions',
     patterns: [
       ...ALL_DOMAIN_PATTERNS,
+      ...cataloguedSourcesForDomain('household-interactions'),
       'src/engine/portfolioCombine.ts',
       'src/engine/combineContext.ts',
       'src/engine/portfolioAdapter.ts',
@@ -266,7 +304,10 @@ export function focusDomainsForPaths(paths) {
   return REVIEW_DOMAINS.filter((domain) => focused.has(domain))
 }
 
+const CATALOGUED_SOURCE_SET = new Set(CATALOGUED_SOURCE_PATHS)
+
 function meaningfulCategory(path) {
+  if (CATALOGUED_SOURCE_SET.has(path)) return MEANINGFUL_CATEGORIES['statutory-sources']
   if (path.startsWith('src/engine/') || path.startsWith('src/rules/') || path === 'src/storage.ts') {
     return MEANINGFUL_CATEGORIES['engine-rules']
   }

@@ -37,8 +37,21 @@ export function selectPanel({ complex = false } = {}) {
   }
 }
 
+// argv parsing for `--complex`, used by BOTH CLI entrypoints so neither can
+// drift into its own `=== true` check.
+//
+// `--complex` is a boolean flag, but the minimal argv parser assigns the next
+// non-`--` token as its value, so `--complex true` arrives as the STRING
+// 'true'. Comparing against `=== true` silently downgraded that explicit
+// escalation to the routine panel. The rule now: the bare flag and the
+// documented literal `true` (or an empty value) enable the complex panel;
+// absence keeps it routine; anything else is REJECTED loudly. An explicit
+// complex request is never quietly turned into a cheaper panel.
 export function assertExplicitComplexFlag(rawValue) {
-  // argv parsing helper: only the literal presence of the flag enables the
-  // complex panel. Anything else (missing, empty, 'false') stays routine.
-  return rawValue === true || rawValue === '' || rawValue === 'true'
+  if (rawValue === undefined || rawValue === false) return false
+  if (rawValue === true || rawValue === '' || rawValue === 'true') return true
+  throw new Error(
+    `--complex is a boolean flag and takes no value, got: ${JSON.stringify(rawValue)}. ` +
+      'Pass a bare --complex (or --complex true) to escalate to the complex panel, or omit it for the routine panel.',
+  )
 }

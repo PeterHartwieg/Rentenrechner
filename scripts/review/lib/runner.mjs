@@ -16,7 +16,7 @@
 // and void the review.
 
 import { spawn } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { execFile } from 'node:child_process'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -157,8 +157,21 @@ export async function snapshotGitState({ cwd, runGit = defaultRunGit }) {
 // Creates a clean detached worktree at the exact SHA under review. All
 // reviewers read the repo AS OF that commit — never the operator's current
 // checkout state.
-export async function createReviewWorktree({ repoRoot, headSha, runGit = defaultRunGit, makeTempDir = defaultMakeTempDir }) {
-  const path = makeTempDir('rentenwiki-review-worktree-')
+//
+// The path is CANONICALIZED before the worktree is created, so every later
+// consumer (git, the containment walk, the codex rollout identity check) sees
+// the same string the spawned CLIs record for their cwd. `tmpdir()` sits
+// behind a symlink on macOS (`/var/folders/... -> /private/var/folders/...`),
+// and codexSession.verifyCodexIdentity compares the rollout's canonical cwd
+// literally — a raw mkdtemp path voided every codex review on that platform.
+export async function createReviewWorktree({
+  repoRoot,
+  headSha,
+  runGit = defaultRunGit,
+  makeTempDir = defaultMakeTempDir,
+  realpath = realpathSync,
+}) {
+  const path = realpath(makeTempDir('rentenwiki-review-worktree-'))
   try {
     await runGit(['worktree', 'add', '--detach', path, headSha], { cwd: repoRoot })
   } catch (error) {
@@ -363,7 +376,10 @@ export async function executeReviewer({
   clock = defaultClock,
   startedAt,
   now,
-  realpathImpl,
+  // Canonicalization is the PRODUCTION default, not a test-only injection:
+  // codex records a canonical cwd in its rollout file, so the expected path
+  // must be canonical even when no test supplies an impl.
+  realpathImpl = realpathSync,
   statImpl = statSync,
   listDirImpl = readdirSync,
   existsImpl = existsSync,
@@ -484,7 +500,7 @@ function attributeCodexIdentity({
   codexSessionsDir,
   startedAt,
   now,
-  realpathImpl,
+  realpathImpl = realpathSync,
   statImpl,
   listDirImpl,
   existsImpl,
@@ -516,13 +532,22 @@ function attributeCodexIdentity({
     return { ok: false, reason: `codex rollout file could not be read: ${error.message}` }
   }
 
+  // Fail closed if the worktree path cannot be canonicalized: an
+  // un-resolvable review checkout must never be compared loosely.
+  let expectedCwdCanonical
+  try {
+    expectedCwdCanonical = realpathImpl(worktreePath)
+  } catch (error) {
+    return { ok: false, reason: `review worktree path could not be canonicalized: ${error.message}` }
+  }
+
   return verifyCodexIdentity({
     requestedModel: model,
     threadId,
     rolloutText,
     rolloutPath: rollout.path,
     rolloutWallClockMs: rollout.wallClockMs,
-    expectedCwdCanonical: realpathImpl ? realpathImpl(worktreePath) : worktreePath,
+    expectedCwdCanonical,
     startedAt,
     now,
     identityAccepts,

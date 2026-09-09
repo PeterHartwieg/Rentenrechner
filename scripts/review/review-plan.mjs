@@ -9,6 +9,7 @@ import { pathToFileURL } from 'node:url'
 import { describeReviewerBin } from './lib/binPaths.mjs'
 import { DOMAIN_LABELS } from './lib/impactMap.mjs'
 import { planReview } from './lib/orchestrate.mjs'
+import { assertExplicitComplexFlag } from './lib/panels.mjs'
 import { parseFlags, requirePositiveInt } from './lib/cliArgs.mjs'
 
 async function main() {
@@ -18,7 +19,7 @@ async function main() {
     process.exit(1)
   }
   const pr = requirePositiveInt(flags, 'pr')
-  const complex = flags.complex === true
+  const complex = assertExplicitComplexFlag(flags.complex)
 
   const plan = await planReview({ pr, complex, repoRoot: process.cwd() })
 

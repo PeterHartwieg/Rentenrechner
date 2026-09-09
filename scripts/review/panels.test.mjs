@@ -32,13 +32,21 @@ describe('panel routing', () => {
     expect(selectPanel().kind).toBe('routine')
   })
 
-  it('only a literal flag value enables complex', () => {
+  it('accepts the bare flag and the documented literal true', () => {
     expect(assertExplicitComplexFlag(true)).toBe(true)
     expect(assertExplicitComplexFlag('')).toBe(true)
     expect(assertExplicitComplexFlag('true')).toBe(true)
     expect(assertExplicitComplexFlag(false)).toBe(false)
     expect(assertExplicitComplexFlag(undefined)).toBe(false)
-    expect(assertExplicitComplexFlag('false')).toBe(false)
+  })
+
+  it('rejects any other value-bearing form instead of silently downgrading', () => {
+    // `--complex false` / `--complex 1` used to fall through to the routine
+    // panel with no warning. An explicit escalation request must never be
+    // answered with a cheaper panel.
+    for (const raw of ['false', '1', 'yes', 'no', '391', 0, 1]) {
+      expect(() => assertExplicitComplexFlag(raw), JSON.stringify(raw)).toThrow(/takes no value/)
+    }
   })
 
   it('panel definitions never leak fable/astra into the routine panel', () => {

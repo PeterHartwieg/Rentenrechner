@@ -47,7 +47,13 @@ Exit codes for `review:run`: `0` approve · `2` decision reject or needs-human �
 | `complex` | Fable 5.1 (`claude-fable-5-1`, exact id) + GPT-6-Astra (`codex exec`) + Grok 4.6 | rare; **only** via explicit `--complex` |
 
 The complex panel is unreachable without the literal flag — no heuristic picks
-it. This is pinned by tests (`panels.test.mjs`).
+it. Both entrypoints parse the flag through the same helper
+(`assertExplicitComplexFlag`): a bare `--complex` and the documented
+`--complex true` escalate, absence stays routine, and **any other
+value-bearing form is rejected loudly** rather than silently downgraded — an
+explicit escalation request must never be answered with a cheaper panel.
+Pinned at the entrypoints, not just on the helper (`panels.test.mjs`,
+`cli.test.mjs`).
 
 ### Executable configuration
 
@@ -105,6 +111,23 @@ One carve-out: styling files (`.css`/`.scss`/… ) inside an otherwise
 meaningful prefix count as cosmetic — meaningful prefixes beat file
 extensions, and this is the only place an extension narrows a prefix.
 Domain ids are shared with the source-freshness catalog.
+
+Every **catalogued statutory source** is meaningful, and the list is imported
+from `sourceCatalog.mjs` rather than restated: the root `*_RESEARCH.md` docs,
+`LEGAL_REVIEW.md` and `LEGAL_IMPLEMENTATION_AUDIT_2026.md` are the documents
+the freshness report tracks, so a change to one can move a statutory
+interpretation and must never be classified as prose. Being catalog-driven is
+the guarantee: a source added to the catalog tomorrow cannot become cosmetic
+here by omission, and each one focuses exactly the domains the catalog's
+`areas` say it underpins. The domain assurance maps
+(`docs/context/rules-and-tax.md`, `docs/context/products.md`,
+`docs/rules-versioning.md`, `docs/golden-coverage-audit.md`) are meaningful
+for the same reason — they route a later statutory change to the rule file,
+engine function, research doc, and oracle that own it. `docs/context/ui.md`
+stays presentational. `src/engine/retirementTax.ts` focuses **both**
+tax/payroll and KV/PV: it is the single retirement-tax pipeline (cohort
+Besteuerungsanteil, Versorgungsfreibetrag, Werbungskosten/Sonderausgaben,
+Ehegattensplitting) as well as the KV/PV apportionment.
 
 Files that look like review receipts or approvals (`*receipt*`, `*approval*`,
 `.review/*`) are flagged **untrusted**: they are excluded from reviewer
@@ -198,8 +221,10 @@ operator-private text to a model. Two independent, fail-closed guards:
 - `assertNoSymlinksUnder` walks the review tree **before** any context read
   or reviewer spawn and refuses the review if it finds a single symlink
   (`UNSAFE_REVIEW_TREE`, naming the offending paths). Nothing in this repo is
-  a tracked symlink, so the blunt rule is the safe rule. The worktree's
-  `.git` pointer file is the one exemption.
+  a tracked symlink, so the blunt rule is the safe rule. There is **no
+  exemption** — not even `.git`: a worktree's `.git` is a plain pointer file,
+  so it passes on its own merits, and a `.git` that is a symlink is reported
+  like any other offender.
 - `containedReadText` reads each context file through a canonical path proven
   to resolve inside the worktree root: relative paths only, no `..` escape,
   no symlinked component below the root, and a `realpath` re-check after
@@ -208,12 +233,24 @@ operator-private text to a model. Two independent, fail-closed guards:
   (macOS `/var -> /private/var`) — canonicalising it cannot defeat the
   containment check that follows.
 
-Per-reviewer clocks: `startedAt`/`completedAt` are taken from the injected
-clock immediately around **each** reviewer's own preflight+spawn, not from
-the panel's shared timestamp. Reusing the panel start would bind every
-reviewer to it, and a legitimately long first run (Fable) would push the next
-reviewer's (Astra) rollout session file outside the codex identity window and
-fail a valid review.
+Per-reviewer clocks: `startedAt`/`completedAt` are read from the clock
+immediately around **each** reviewer's own preflight+spawn, not from the
+panel's shared timestamp. Reusing the panel start would bind every reviewer to
+it, and a legitimately long first run (Fable) would push the next reviewer's
+(Astra) rollout session file outside the codex identity window and fail a
+valid review. The **default** clock reads real time on every call; `clock`/
+`now` are injectable only so tests can pin a deterministic instant. (A frozen
+default was a real bug: the first native panel receipt claimed identical
+start and finish stamps for both reviewers of a 15-minute run.)
+
+The review worktree path is **canonicalized when it is created**, before `git
+worktree add`, so every later consumer — git, the containment walk, and the
+codex rollout identity check — sees the same string the spawned CLIs record
+as their cwd. On macOS `tmpdir()` sits behind `/var -> /private/var`, and the
+codex identity comparison is literal, so a raw `mkdtemp` path voided every
+codex review on the documented operator platform. Canonicalizing the ROOT is
+not a symlink exemption: a symlink tracked anywhere inside the checkout is
+still fatal.
 
 ### Fail-closed parsing (`lib/adapters.mjs`, `lib/verdicts.mjs`)
 
@@ -229,8 +266,9 @@ that reviewer and therefore the whole panel (`adjudicatePanel` returns
   parsed + non-empty `--output-last-message` file),
 - provider-reported model identity matches the requested model. For **claude**
   the reviewing model is the `model` field of the native assistant messages
-  in the `stream-json --verbose` stream: every actual assistant message must
-  carry it, they must all agree, and they must match the requested model.
+  in the `stream-json --verbose` stream: EVERY assistant event must carry it
+  (one that omits it fails the run instead of being skipped), they must all
+  agree, and they must match the requested model.
   The final result's `modelUsage` keys are recorded separately — a key that
   is not the requested model (e.g. `claude-haiku-4-5-20251001` handling side
   requests) is logged as an `auxiliaryModels` fact, not an identity failure,
@@ -251,8 +289,9 @@ that reviewer and therefore the whole panel (`adjudicatePanel` returns
   needs-human), and every `unresolved` entry must be a non-empty string,
 - every finding carries all required fields.
 
-Grok-specific: result text is read only from known result fields
-(`response`, `result`, `content`, …, or the last assistant message).
+Grok-specific: the result text is read **only** from the native `text` field
+of the result envelope — there is no `response`/`result`/`content` fallback
+and no last-assistant-message reconstruction.
 `thought`/`draft`/`reasoning`-style fields are never consulted — a verdict
 that exists only inside them does not exist (pinned by tests).
 
@@ -273,6 +312,14 @@ deterministic-verification metadata. The tool never runs tests itself;
 `--verify-commit <sha>` records the caller's attestation as a claim, clearly
 labelled. Approval-shaped files inside a PR diff are never trusted as
 receipts — receipts are only what this tooling wrote locally.
+
+With `--publish`, the receipt is written **twice to the same path**: once
+before publishing (so a crash still leaves a record, honestly carrying
+`published: null`) and again after the status write succeeds, now carrying the
+publication metadata. The completed run's file therefore never understates a
+status that really was published. This is a re-write of the in-memory run's
+own receipt — there is still no path that reads a receipt back in, and
+publishing remains impossible from a receipt file.
 
 Publishing re-derives the decision from the in-memory reviewer records and
 refuses if the receipt does not match the run (decision, PR, head SHA, diff
@@ -428,8 +475,11 @@ reviewer latency (minutes, not seconds); publish adds two `gh` calls.
   all — it is read from the rollout session file the CLI itself writes, and
   a run without one fails closed rather than being trusted.
 - Grok's native JSON field names are not documented beyond `--help`, so the
-  parser accepts a conservative allowlist of result fields and fails closed
-  on anything it does not recognize. Its config-discovery posture relies on
+  parser reads the review text from the single verified native field `text`
+  and from nothing else — no `response`/`result`/`content` fallback, no
+  last-assistant-message reconstruction, and never a thought/draft field. An
+  envelope that carries the verdict anywhere else fails closed rather than
+  being salvaged. Its config-discovery posture relies on
   `grok inspect --json` (the CLI's own machine-readable report); if a future
   version changes that shape, the preflight fails closed.
 - The impact map is intentionally coarse: `src/features/**` code counts as
