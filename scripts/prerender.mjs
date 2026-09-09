@@ -86,10 +86,13 @@ async function loadSourceModules() {
     const vergleichDetail = await server.ssrLoadModule('/src/features/vergleich-detail/VergleichDetailPage.tsx')
     const impressum = await server.ssrLoadModule('/src/features/legal/ImpressumPage.tsx')
     const datenschutz = await server.ssrLoadModule('/src/features/legal/DatenschutzPage.tsx')
-    // AppShell wraps every prerendered page so the disclaimer banner appears
-    // in the static HTML the crawler fetches (P0 compliance invariant —
-    // verified by publicPages.test.tsx prerender suites).
-    const appShellMod = await server.ssrLoadModule('/src/ui/chrome/AppShell.tsx')
+    // `PrerenderShell` wraps every prerendered page in the AppShell chrome, so
+    // the disclaimer banner appears in the static HTML the crawler fetches (P0
+    // compliance invariant — verified by publicPages.test.tsx prerender
+    // suites), plus the Suspense boundary `App.tsx` mounts on the client. It is
+    // shared with `src/prerenderHydration.test.tsx` so the hydration contract
+    // is tested against the markup this script actually writes.
+    const prerenderShellMod = await server.ssrLoadModule('/src/seo/prerenderShell.tsx')
     // `pathToRoute` converts the canonical path string into the tagged-union
     // `Route` object that AppShell expects on its `route` prop. Loaded via
     // Vite SSR so the React + DOM dependencies inside `useRoute.ts` resolve
@@ -125,7 +128,7 @@ async function loadSourceModules() {
       vergleichDetail,
       impressum,
       datenschutz,
-      appShellMod,
+      prerenderShellMod,
       useRouteMod,
     }
   } catch (err) {
@@ -206,7 +209,7 @@ function pickComponent(routeId, componentMap) {
 
 async function renderRoute(routeId, componentMap, modules, { React, renderToString }) {
   const Component = pickComponent(routeId, componentMap)
-  const AppShell = modules.appShellMod.AppShell
+  const PrerenderShell = modules.prerenderShellMod.PrerenderShell
   const { pathToRoute } = modules.useRouteMod
   const noopNavigate = () => {}
   // AppShell's `route` prop is the tagged-union `Route` object (see
@@ -226,12 +229,15 @@ async function renderRoute(routeId, componentMap, modules, { React, renderToStri
   // The homepage stays editorial because the LandingPage renders in
   // editorial styling during prerender. PR 4 will add `/methode`.
   const editorial = EDITORIAL_ROUTE_IDS.has(routeId)
+  // `PrerenderShell` (src/seo/prerenderShell.tsx) owns the chrome + the
+  // Suspense boundary. The boundary is not decoration: `App.tsx` renders every
+  // route body inside `<Suspense fallback={null}>` because each page component
+  // is `lazy()`. Without it the HTML carries no boundary markers, so on a
+  // hydration-stable route React's first client render hits a *new*,
+  // still-loading boundary, renders the `null` fallback against page markup
+  // already in the DOM, and throws minified error #418.
   function withShell(child) {
-    return React.createElement(
-      AppShell,
-      { route, navigate: noopNavigate, editorial },
-      child,
-    )
+    return React.createElement(PrerenderShell, { route, editorial }, child)
   }
   if (Component) {
     // Legal pages + the ArticleHubPage take a `navigate` prop. The prerender
@@ -389,7 +395,7 @@ async function main() {
     const { React } = { React: modules.reactMod.default ?? modules.reactMod }
     const renderToString = modules.reactDomServer.renderToString
 
-    const { PUBLIC_ROUTE_IDS, publicRouteRegistry } = modules.seoMod
+    const { PUBLIC_ROUTE_IDS, HYDRATE_STABLE_ROUTE_IDS, publicRouteRegistry } = modules.seoMod
     const { renderRouteHeadHtml } = modules.headMod
     const { generateSitemap } = modules.sitemapMod
     const { generateRobots } = modules.robotsMod
@@ -456,17 +462,15 @@ async function main() {
       // the `/` non-hydrated path: the static HTML still serves first-paint
       // crawlers, and the client mounts via `createRoot`.
       //
-      // `/vergleich/details` (R3.3): demo mode reads localStorage via
-      // detectSavedMode(), so server HTML differs from client first render.
-      // Same non-hydrate path as `/` to avoid hydration mismatches.
-      const hydrateStable = routeId === '/rentenluecke-rechner' || routeId === '/404'
-        || routeId === '/artikel' || routeId === '/methode'
-        || routeId === '/bav-rechner' || routeId === '/etf-vs-bav'
-        || routeId === '/riester-rechner' || routeId === '/altersvorsorgedepot-rechner'
-        || routeId === '/riester-vs-altersvorsorgedepot'
-        || routeId === '/basisrente-rechner' || routeId === '/private-rentenversicherung-rechner'
-        || routeId === '/rente-netto-berechnen' || routeId === '/altersvorsorgeprodukte-vergleichen'
-        || routeId === '/impressum' || routeId === '/datenschutz'
+      // `/vergleich` and `/vergleich/details` read saved compare state
+      // (`visibleProducts`, the budget anchor, the profile trio,
+      // `detectSavedMode()`), so their server HTML differs from a returning
+      // user's first client render. Same non-hydrate path as `/`.
+      //
+      // The list itself lives in `src/seo/publicRouteRegistry.ts` so
+      // `src/prerenderHydration.test.tsx` hydrates exactly the routes this
+      // build marks.
+      const hydrateStable = HYDRATE_STABLE_ROUTE_IDS.includes(routeId)
       const rootMarker = hydrateStable ? ' data-rentenwiki-prerendered="1"' : ''
       pageHtml = pageHtml.replace(
         '<div id="root"></div>',

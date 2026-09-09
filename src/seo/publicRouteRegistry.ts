@@ -794,6 +794,47 @@ export const PUBLIC_ROUTE_ENTRIES: readonly PublicRoute[] = Object.values(public
 export const PUBLIC_ROUTE_IDS = Object.keys(publicRouteRegistry) as readonly PublicRouteId[]
 
 /**
+ * Prerendered routes whose static HTML is guaranteed to equal the client's
+ * FIRST render, so `scripts/prerender.mjs` may stamp
+ * `data-rentenwiki-prerendered="1"` on `<div id="root">` and `main.tsx` may
+ * call `hydrateRoot` instead of `createRoot`.
+ *
+ * A route belongs here only when nothing in its rendered output depends on
+ * `localStorage`, the share-URL, the viewport or the clock. Excluded on
+ * purpose:
+ *
+ *   - `/` — `App` reads saved mode to pick LandingPage vs dashboard.
+ *   - `/eingaben`, `/eingaben/produkte` — `useCalculatorState` reads the
+ *     persisted compare profile/assumptions in its lazy initializer.
+ *   - `/vergleich` — `VergleichJourneyPage` renders the saved compare
+ *     selection (`assumptions.visibleProducts`), the saved budget anchor and
+ *     the saved profile trio; the prerender renders the defaults.
+ *   - `/vergleich/details` — filters by the saved `visibleProducts` and reads
+ *     `detectSavedMode()` for its demo/empty state.
+ *
+ * The list is exported (rather than inlined in the prerender script) so
+ * `src/prerenderHydration.test.tsx` can hydrate exactly the routes the build
+ * marks, and so the two can never drift apart.
+ */
+export const HYDRATE_STABLE_ROUTE_IDS: readonly PublicRouteId[] = [
+  '/404',
+  '/artikel',
+  '/methode',
+  '/rentenluecke-rechner',
+  '/bav-rechner',
+  '/etf-vs-bav',
+  '/riester-rechner',
+  '/altersvorsorgedepot-rechner',
+  '/riester-vs-altersvorsorgedepot',
+  '/basisrente-rechner',
+  '/private-rentenversicherung-rechner',
+  '/rente-netto-berechnen',
+  '/altersvorsorgeprodukte-vergleichen',
+  '/impressum',
+  '/datenschutz',
+] as const
+
+/**
  * Look up a registry entry by canonical path. Returns undefined for unknown
  * paths so callers can render a 404 fallback.
  */
