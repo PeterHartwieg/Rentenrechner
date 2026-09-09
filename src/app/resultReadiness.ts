@@ -135,6 +135,16 @@ function statusOf(instance: AnyWorkspaceInstance, key: string): InputStatus {
   return resolveInputStatus(instance.inputStatus, instance.evidenceMap?.[key], key)
 }
 
+/**
+ * Whether this instance type carries a payout-mode input at all. ETF does not
+ * (its payout is hardcoded Kapitalverzehr), so an absent field must not count
+ * as an assumption — a reason has to name something the user could actually
+ * enter.
+ */
+function hasPayoutModeField(instance: AnyWorkspaceInstance): boolean {
+  return Object.prototype.hasOwnProperty.call(instance, 'payoutMode')
+}
+
 function instanceLabel(instance: AnyWorkspaceInstance, productId: ProductId): string {
   const label = instance.label?.trim()
   return label && label.length > 0 ? label : productId
@@ -273,7 +283,7 @@ export function selectResultReadiness(
     if (statusOf(instance, FEE_FIELD_BY_PRODUCT[productId]) === 'assumed') {
       anyAssumedFees = true
     }
-    if (statusOf(instance, 'payoutMode') === 'assumed') {
+    if (hasPayoutModeField(instance) && statusOf(instance, 'payoutMode') === 'assumed') {
       anyAssumedPayoutMode = true
     }
     if (productId === 'etf' || instance.payoutMode === 'kapitalverzehr') {
