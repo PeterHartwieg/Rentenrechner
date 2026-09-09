@@ -82,6 +82,7 @@ async function loadSourceModules() {
     const angabenProdukte = await server.ssrLoadModule(
       '/src/features/inputs/AngabenProduktePage.tsx',
     )
+    const vergleich = await server.ssrLoadModule('/src/features/vergleich/VergleichJourneyPage.tsx')
     const vergleichDetail = await server.ssrLoadModule('/src/features/vergleich-detail/VergleichDetailPage.tsx')
     const impressum = await server.ssrLoadModule('/src/features/legal/ImpressumPage.tsx')
     const datenschutz = await server.ssrLoadModule('/src/features/legal/DatenschutzPage.tsx')
@@ -120,6 +121,7 @@ async function loadSourceModules() {
       methode,
       angaben,
       angabenProdukte,
+      vergleich,
       vergleichDetail,
       impressum,
       datenschutz,
@@ -160,6 +162,7 @@ function buildComponentMap(modules) {
     '/private-rentenversicherung-rechner': modules.privateRvRechner.PrivateRentenversicherungRechnerPage,
     '/rente-netto-berechnen': modules.renteNettoBerechnen.RenteNettoBerechnePage,
     '/altersvorsorgeprodukte-vergleichen': modules.altersvorsorgeprodukte.AltersvorsorgeproduktePage,
+    '/vergleich': modules.vergleich.VergleichJourneyPage,
     '/vergleich/details': modules.vergleichDetail.VergleichDetailPage,
     '/impressum': modules.impressum.ImpressumPage,
     '/datenschutz': modules.datenschutz.DatenschutzPage,
@@ -241,7 +244,8 @@ async function renderRoute(routeId, componentMap, modules, { React, renderToStri
       routeId === '/artikel' ||
       routeId === '/methode' ||
       routeId === '/eingaben' ||
-      routeId === '/eingaben/produkte'
+      routeId === '/eingaben/produkte' ||
+      routeId === '/vergleich'
     ) {
       return renderToString(withShell(React.createElement(Component, { navigate: noopNavigate })))
     }

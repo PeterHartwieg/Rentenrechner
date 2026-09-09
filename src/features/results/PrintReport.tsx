@@ -41,8 +41,9 @@ import { simulateRetirementComparison } from '../../engine/simulate'
 import { buildAllProductsSimulation } from '../../app/buildAllProductsSimulation'
 import {
   evidenceStateToProvKind,
-  formatEvidenceStateForExport,
+  formatExportProvenance,
 } from './provenanceHelpers'
+import { householdTotalSuppressedNotice } from '../../utils/csvExport'
 import {
   buildPrintWohinRows,
   buildPrintZusammenRows,
@@ -133,6 +134,15 @@ interface Props {
    * + combined bundle threaded in via `portfolio`).
    */
   compareAllProductsSimulation?: ReturnType<typeof simulateRetirementComparison>
+  /**
+   * Set by the caller when `selectResultReadiness` says the household total may
+   * not be shown. The combine-mode "Netto-Einkommen mtl." cell then renders
+   * blank (never 0, never a placeholder) and a Hinweis line names the missing
+   * inputs — the print mirror of the CSV suppression (lead decision §10.3).
+   *
+   * Omitted → today's behaviour, so existing callers are unchanged.
+   */
+  combineHouseholdTotalBlocked?: { reasonLabels: string[] }
 }
 
 const SCENARIO_ORDER = ['konservativ', 'basis', 'optimistisch']
@@ -152,7 +162,7 @@ function KvRow({ label, children }: { label: string; children: ReactNode }) {
  * Routes the domain `EvidenceState` (or absence of it) through the issue 13
  * shared mapping layer:
  *   - `evidenceStateToProvKind` selects the visual-distinction class.
- *   - `formatEvidenceStateForExport` supplies the German label text.
+ *   - `formatExportProvenance` supplies the German label text.
  *
  * Visual mapping (className → marker):
  *   - `model` (model_estimate)        → `.pr-confidence-estimate`, prefixed 🤔 — visibly equivalent to the prior "🤔 Schätzung" treatment.
@@ -162,7 +172,7 @@ function KvRow({ label, children }: { label: string; children: ReactNode }) {
  */
 function ConfidenceIndicator({ state }: { state: EvidenceState | undefined }) {
   const kind = evidenceStateToProvKind(state)
-  const label = formatEvidenceStateForExport(state)
+  const label = formatExportProvenance(undefined, state)
   // statement is mapped to 'confirmed' by evidenceStateToProvKind, but we want
   // a distinct prefix so the document-source case is recognisable in print.
   const prefix =
@@ -201,6 +211,7 @@ export function PrintReport({
   combineSensitivityRows,
   selectedScenarioId,
   compareAllProductsSimulation,
+  combineHouseholdTotalBlocked,
 }: Props) {
   const date = new Date().toLocaleDateString('de-DE', {
     day: '2-digit',
@@ -256,6 +267,7 @@ export function PrintReport({
         portfolio={portfolio}
         workspace={combineWorkspace}
         sensitivityRows={combineSensitivityRows}
+        householdTotalBlocked={combineHouseholdTotalBlocked}
         date={date}
       />
     )
@@ -528,6 +540,8 @@ interface CombinePrintReportProps {
   /** Pre-computed sensitivity rows (PR 11 R1). Threaded so this component
    *  stays presentational; the cost is paid in Calculator.tsx. */
   sensitivityRows?: ReadonlyArray<PrintSensitivityRow>
+  /** See `Props.combineHouseholdTotalBlocked`. */
+  householdTotalBlocked?: { reasonLabels: string[] }
   date: string
 }
 
@@ -540,6 +554,7 @@ function CombinePrintReport({
   portfolio,
   workspace,
   sensitivityRows,
+  householdTotalBlocked,
   date,
 }: CombinePrintReportProps) {
   const { perInstance, combinedByScenarioId, scenarioLabels } = portfolio
@@ -729,13 +744,22 @@ function CombinePrintReport({
               return (
                 <tr key={id} className={id === 'basis' ? 'pr-basis' : ''}>
                   <td>{scenarioLabels[id] ?? id}</td>
-                  <td className="pr-num">{formatCurrency(c.monthlyNetIncome, 0)}/Monat</td>
+                  <td className="pr-num">
+                    {householdTotalBlocked
+                      ? '—'
+                      : `${formatCurrency(c.monthlyNetIncome, 0)}/Monat`}
+                  </td>
                   <td className="pr-num">{formatCurrency(c.statutoryPensionMonthlyNet, 0)}/Monat</td>
                 </tr>
               )
             })}
           </tbody>
         </table>
+        {householdTotalBlocked && (
+          <p className="pr-note pr-table-note">
+            {householdTotalSuppressedNotice(householdTotalBlocked.reasonLabels)}
+          </p>
+        )}
         <p className="pr-note pr-table-note">
           Aggregierte Steuer- und Sozialversicherungsabgaben über alle Verträge nach §32a EStG
           und §240 SGB V (KV/PV). Fettgedruckte Zeile = Basisszenario.

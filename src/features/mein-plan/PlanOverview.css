@@ -1,0 +1,91 @@
+.plan-overview {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 960px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 36px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  color: var(--rw-ink);
+  background: var(--rw-bg-cream);
+  font: 1rem/1.55 var(--rw-font-sans);
+  overflow-wrap: anywhere;
+}
+.plan-overview *, .plan-overview *::before, .plan-overview *::after { box-sizing: border-box; }
+.plan-overview h1 { margin: 0; font: 400 clamp(1.7rem, 4vw, 2.2rem)/1.15 Newsreader, Georgia, serif; }
+.plan-overview p { margin: 0; }
+.plan-overview button { font: inherit; cursor: pointer; max-width: 100%; }
+.plan-overview button:focus-visible, .plan-overview summary:focus-visible {
+  outline: 2px solid var(--rw-accent);
+  outline-offset: 4px;
+}
+.plan-overview__hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 24px;
+  padding: 24px 0;
+  border-block: 1px solid var(--rw-rule);
+}
+.plan-overview__figure { flex: 1 1 320px; min-width: 0; }
+.plan-overview__kicker { color: var(--rw-ink-soft); font: 0.75rem/1.6 var(--rw-font-mono); }
+.plan-overview .plan-overview__number {
+  margin: 12px 0;
+  color: var(--rw-accent);
+  font: 500 clamp(2rem, 6vw, 3.75rem)/1.15 var(--rw-font-mono);
+  letter-spacing: -1.5px;
+  overflow-wrap: anywhere;
+}
+.plan-overview__muted, .plan-overview small { color: var(--rw-ink-soft); font-size: 0.85rem; }
+.plan-overview__target { flex: 1 1 220px; min-width: 0; padding: 16px; background: var(--rw-bg-paper-soft); border: 1px solid var(--rw-rule-soft); }
+.plan-overview__target p + p, .plan-overview__target small + p { margin-top: 12px; }
+.plan-overview__notice { padding: 14px 16px; border-left: 2px solid var(--rw-rule); background: var(--rw-bg-paper-soft); font-size: 0.9rem; }
+.plan-overview__sources { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rw-rule); }
+.plan-overview__sources > li { border-bottom: 1px solid var(--rw-rule-soft); }
+.plan-overview__source {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 12px;
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+  padding: 16px 0;
+  border: 0;
+  background: transparent;
+  color: var(--rw-ink);
+  text-align: left;
+}
+.plan-overview__source:hover { background: var(--rw-bg-paper-soft); }
+.plan-overview__source small { display: block; margin-top: 3px; }
+.plan-overview__amount { font-family: var(--rw-font-mono); font-variant-numeric: tabular-nums; }
+.plan-overview__actions { display: flex; flex-wrap: wrap; gap: 10px 20px; }
+.plan-overview__primary, .plan-overview__secondary {
+  padding: 11px 18px;
+  min-height: 44px;
+  border: 1px solid var(--rw-ink);
+  text-align: center;
+}
+.plan-overview__primary { background: var(--rw-ink); color: var(--rw-bg-paper); align-self: flex-start; }
+.plan-overview__secondary { background: var(--rw-bg-paper); color: var(--rw-ink); }
+.plan-overview__primary:hover { background: var(--rw-accent); border-color: var(--rw-accent); }
+.plan-overview__secondary:hover { border-color: var(--rw-accent); }
+.plan-overview__link { padding: 8px 0; min-height: 44px; color: var(--rw-ink); border: 0; background: transparent; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
+.plan-overview__link:hover { color: var(--rw-accent); }
+.plan-overview__reasons, .plan-overview__assumptions { margin: 0; padding-left: 20px; }
+.plan-overview__assumptions { color: var(--rw-ink-soft); font-size: 0.85rem; }
+.plan-overview__details { border-top: 1px solid var(--rw-rule); padding-top: 14px; min-width: 0; }
+.plan-overview__details > summary { cursor: pointer; min-height: 44px; font-weight: 600; }
+.plan-overview__details > p { margin: 8px 0; }
+.plan-overview__details > .plan-overview__actions { margin-top: 12px; }
+.plan-duration-summary__row { display: flex; flex-direction: column; gap: 5px; padding: 16px 0; }
+@media (max-width: 639px) {
+  .plan-overview { padding: 24px 16px; gap: 18px; }
+  .plan-overview__hero { gap: 18px; }
+  .plan-overview__actions { flex-direction: column; align-items: stretch; gap: 8px; }
+  .plan-overview__actions > .plan-overview__primary { align-self: stretch; }
+  .plan-overview__source { grid-template-columns: minmax(0, 1fr) 12px; gap: 8px; }
+  .plan-overview__source > span:first-child { grid-column: 1; }
+  .plan-overview__amount { grid-column: 1; grid-row: 2; }
+  .plan-overview__source > span:last-child { grid-column: 2; grid-row: 1 / 3; }
+}

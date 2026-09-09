@@ -1,0 +1,59 @@
+.alternativen-page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 960px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 36px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  color: var(--rw-ink);
+  background: var(--rw-bg-cream);
+  font: 1rem/1.55 var(--rw-font-sans);
+  overflow-wrap: anywhere;
+}
+.alternativen-page *, .alternativen-page *::before, .alternativen-page *::after { box-sizing: border-box; min-width: 0; }
+.alternativen-page h1 { margin: 8px 0 12px; font: 400 clamp(1.7rem, 4vw, 2.2rem)/1.15 Newsreader, Georgia, serif; }
+.alternativen-page h2 { margin: 0 0 16px; font: 400 1.55rem/1.25 Newsreader, Georgia, serif; }
+.alternativen-page h3, .alternativen-page p { margin: 0; }
+.alternativen-page h3 { font-size: 1rem; }
+.alternativen__kicker { color: var(--rw-ink-soft); font: .75rem/1.6 var(--rw-font-mono); }
+.alternativen__lead { max-width: 56ch; }
+.alternativen__muted { color: var(--rw-ink-soft); font-size: .85rem; }
+.alternativen__form { display: flex; flex-direction: column; gap: 16px; max-width: 520px; }
+.alternativen__field { display: flex; flex-direction: column; gap: 6px; }
+.alternativen-page select, .alternativen-page input[type=number] { width: 100%; min-height: 44px; padding: 10px 12px; color: var(--rw-ink); background: var(--rw-bg-paper); border: 1px solid var(--rw-rule); border-radius: 0; font: inherit; }
+.alternativen-page button { max-width: 100%; font: inherit; cursor: pointer; white-space: normal; }
+.alternativen-page :is(button, input, select, [tabindex]):focus-visible { outline: 2px solid var(--rw-accent); outline-offset: 4px; }
+.alternativen-page button:disabled { cursor: default; opacity: .55; }
+.alternativen__actions { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; }
+.alternativen__primary, .alternativen__secondary { min-height: 44px; padding: 11px 18px; border: 1px solid var(--rw-ink); text-align: center; }
+.alternativen__primary { align-self: flex-start; color: var(--rw-bg-paper); background: var(--rw-ink); }
+.alternativen__secondary { color: var(--rw-ink); background: var(--rw-bg-paper); }
+.alternativen__primary:hover:not(:disabled) { background: var(--rw-accent); border-color: var(--rw-accent); }
+.alternativen__secondary:hover { border-color: var(--rw-accent); }
+.alternativen__link { min-height: 44px; padding: 8px 0; border: 0; background: transparent; color: var(--rw-ink); text-align: left; text-decoration: underline; text-underline-offset: 3px; }
+.alternativen__link:hover { color: var(--rw-accent); }
+.alternativen__comparison { display: flex; flex-direction: column; gap: 16px; border-block: 1px solid var(--rw-rule); padding: 24px 0; }
+.alternativen__comparison h2 { margin: 0; }
+.alternativen__columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.alternativen-page .alternativen__number { margin: 8px 0; font: 500 clamp(1.9rem, 5vw, 3.2rem)/1.15 var(--rw-font-mono); letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+.alternativen__number--after { color: var(--rw-accent); }
+.alternativen__delta, .alternativen__list-total { font-family: var(--rw-font-mono); font-variant-numeric: tabular-nums; }
+.alternativen__source { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 24px; padding-top: 16px; border-top: 1px solid var(--rw-rule-soft); }
+.alternativen__source > strong, .alternativen__source > span:nth-child(2) { grid-column: 1 / -1; }
+.alternativen__source > span:nth-child(2) { color: var(--rw-ink-soft); font-size: .85rem; }
+.alternativen__notice { padding: 14px 16px; border-left: 2px solid var(--rw-rule); background: var(--rw-bg-paper-soft); }
+.alternativen__notice > .alternativen__link { margin-left: 16px; }
+.alternativen__saved { border-top: 1px solid var(--rw-rule); padding-top: 24px; }
+.alternativen__saved ul { list-style: none; margin: 0; padding: 0; }
+.alternativen__saved li { display: flex; flex-direction: column; align-items: start; gap: 8px; padding: 20px 0; border-bottom: 1px solid var(--rw-rule-soft); }
+.alternativen__badge { padding: 3px 8px; border: 1px solid var(--rw-rule); background: var(--rw-bg-paper-soft); color: var(--rw-ink-soft); font-size: .8rem; }
+.alternativen-page [aria-live] > .alternativen__actions { margin: 20px 0 12px; }
+@media (max-width: 650px) {
+  .alternativen-page { padding: 24px 16px; gap: 20px; }
+  .alternativen__columns, .alternativen__source { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .alternativen__actions { width: 100%; flex-direction: column; align-items: stretch; gap: 8px; }
+  .alternativen__actions > .alternativen__primary, .alternativen__form > .alternativen__primary { align-self: stretch; }
+}

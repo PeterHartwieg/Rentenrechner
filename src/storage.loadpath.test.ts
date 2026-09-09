@@ -119,21 +119,25 @@ describe('A — valid v2 workspace load', () => {
     expect(mem.store[STORAGE_KEY_V2]).toBe(workspaceJson)
   })
 
-  it('keeps a combine workspace authoritative when a compare save also exists', () => {
+  it('never lets a saved combine plan overwrite existing comparison state', () => {
+    // `/vergleich` seeds from the plan only through the explicit "Angaben aus
+    // meinem Plan verwenden" action. The load path must not do it silently, so
+    // the V1 comparison save wins even while a combine plan exists — the
+    // workspace itself stays untouched and authoritative for the plan.
     const ws = makeValidV2Workspace()
     ws.mode = 'combine'
     ws.baseline.profile.age = 39
     saveWorkspace(ws)
     mem.store[STORAGE_KEY_V1] = makeV1Json({ ...defaultProfile, age: 42 })
-    expect(loadSavedState()?.profile.age).toBe(39)
+    expect(loadSavedState()?.profile.age).toBe(42)
     expect(loadSavedWorkspace()?.baseline.profile.age).toBe(39)
   })
 
   it.each([undefined, 'not json', makeV1Json({ ...defaultProfile, age: -1 })])(
-    'recovers a compare workspace when the singleton save is missing or invalid (%s)',
+    'derives the comparison singleton from a combine plan when no valid V1 save exists (%s)',
     (rawV1) => {
       const ws = makeValidV2Workspace()
-      ws.mode = 'compare'
+      ws.mode = 'combine'
       ws.baseline.profile.age = 39
       saveWorkspace(ws)
       if (rawV1 !== undefined) mem.store[STORAGE_KEY_V1] = rawV1

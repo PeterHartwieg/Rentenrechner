@@ -977,3 +977,56 @@ details[open] .inv-layer3-summary::before {
     grid-template-columns: 1fr;
   }
 }
+
+/* Two-step onboarding. Existing card/field styles above remain shared by
+   InstanceCard, product editors and CombineIncomePanel. */
+.rw-modal-slot:has(.onboarding-modal) { align-items: center; }
+.onboarding-modal { width: min(640px, 100%); }
+.onboarding-modal .rw-modal-slot__title { font-size: clamp(1.4rem, 3vw, 1.9rem); line-height: 1.2; }
+.onboarding-modal .rw-modal-slot__header { padding: 24px; }
+.onboarding-modal .inventory-body { padding: 24px; outline: none; }
+.onboarding-modal .inventory-step-content > form { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.onboarding-step, .onboarding-disclosure__body { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.onboarding-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.onboarding-field { min-width: 0; }
+.onboarding-field[aria-invalid="true"] .unknown-number-field__input { border-color: var(--rw-accent); }
+.onboarding-field .inventory-field-error { margin-top: 8px; }
+.onboarding-hint { margin: 0; font-size: 0.875rem; line-height: 1.5; color: var(--rw-ink-soft); }
+.onboarding-field > .onboarding-hint { margin-top: 8px; }
+.onboarding-select { display: flex; flex-direction: column; gap: 8px; min-width: 0; font-size: 0.9rem; font-weight: 600; }
+.onboarding-select select { width: 100%; min-width: 0; min-height: 44px; box-sizing: border-box; padding: 10px 8px; border: 1px solid var(--rw-rule); border-radius: 0; background: var(--rw-bg-paper); color: var(--rw-ink); font: inherit; }
+.onboarding-disclosure { border-top: 1px solid var(--rw-rule-soft); min-width: 0; }
+.onboarding-disclosure > summary { padding: 14px 0; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+.onboarding-disclosure__body { padding: 4px 0 12px; }
+.onboarding-disclosure__body > p { margin: 0; line-height: 1.55; }
+.onboarding-methods { margin: 0; padding: 0; border: 0; min-width: 0; }
+.onboarding-methods legend { padding: 0 0 8px; font-size: 0.9rem; font-weight: 600; }
+.onboarding-choice { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 0.95rem; cursor: pointer; }
+.onboarding-choice input { width: 18px; height: 18px; flex-shrink: 0; margin: 0; accent-color: var(--rw-accent); }
+.onboarding-text-button { border: 0; background: transparent; padding: 10px 0; min-height: 44px; width: fit-content; color: var(--rw-ink); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: left; }
+.onboarding-modal a { color: var(--rw-ink); text-underline-offset: 3px; }
+.onboarding-modal :is(select, summary, input, a, button):focus-visible { outline: 2px solid var(--rw-accent); outline-offset: 3px; }
+.onboarding-estimate { padding: 16px; background: var(--rw-bg-paper-soft); border: 1px solid var(--rw-rule-soft); }
+.onboarding-estimate dl { margin: 0; display: grid; gap: 12px; }
+.onboarding-estimate dl > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.onboarding-estimate dt { font-size: 0.85rem; color: var(--rw-ink-soft); }
+.onboarding-estimate dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.onboarding-estimate > p { font-size: 0.9rem; line-height: 1.5; }
+.onboarding-modal .inventory-footer { flex-direction: column; align-items: stretch; gap: 12px; padding: 16px 24px; border-top-width: 1px; }
+.onboarding-modal .inventory-footer-actions { justify-content: space-between; flex-wrap: wrap; }
+.onboarding-modal .inventory-footer-actions button { min-height: 44px; white-space: normal; }
+.onboarding-modal .inventory-validation-errors { display: block; padding: 16px; }
+.onboarding-modal .inventory-validation-errors p { margin: 0; font-weight: 600; }
+.onboarding-modal .inventory-validation-errors ul { margin: 8px 0 0; padding-left: 20px; }
+.onboarding-modal .inventory-validation-errors:focus { outline: 2px solid var(--rw-accent); outline-offset: 3px; }
+@media (max-width: 639px) {
+  .rw-modal-slot:has(.onboarding-modal) { align-items: stretch; }
+  .onboarding-modal { width: 100%; height: 100%; padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; }
+  .onboarding-modal .rw-modal-slot__header { padding: 16px; }
+  .onboarding-modal .inventory-body { padding: 20px 16px; }
+  .onboarding-grid { grid-template-columns: minmax(0, 1fr); }
+  .onboarding-modal .inventory-footer { padding: 12px 16px; }
+  .onboarding-modal .inventory-footer-actions { flex-direction: column-reverse; align-items: stretch; gap: 8px; }
+  .onboarding-modal .inventory-footer-actions button { justify-content: center; width: 100%; }
+  .onboarding-modal .rw-modal-slot__body { min-height: 0; }
+}

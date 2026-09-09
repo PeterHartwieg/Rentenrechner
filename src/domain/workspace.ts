@@ -8,6 +8,7 @@ import type { RiesterFundingResult } from './products/riester'
 import type { ProductId } from './products/common'
 import type { ContributionInput } from './results'
 import type { MonteCarloAssumptions } from './monteCarlo'
+import type { InputStatusMap } from './inputStatus'
 import type {
   BavInstance,
   EtfInstance,
@@ -47,6 +48,15 @@ export interface WorkspaceAssumptionsV2 {
    */
   contributionInput?: ContributionInput
   visibleInstanceIds?: string[]
+  /**
+   * Scenario-level input status for profile and statutory-pension fields,
+   * keyed with the reserved `profile.<field>` / `statutoryPension.<field>`
+   * namespaces from `src/domain/inputStatus.ts`. Per-contract statuses live on
+   * each instance (`InstanceCommon.inputStatus`).
+   *
+   * Optional and additive; absent resolves to `'assumed'`.
+   */
+  inputStatus?: InputStatusMap
 }
 
 export interface Scenario {

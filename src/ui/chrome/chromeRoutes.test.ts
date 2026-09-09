@@ -22,3 +22,24 @@ describe('routeToNavId — PR 2 /eingaben/produkte mapping', () => {
     expect(routeToNavId(ROUTES.eingabenProdukte)).toBe('angaben')
   })
 })
+
+describe('routeToNavId — simplification 2D plan/compare split', () => {
+  it('sends /vergleich and its drill-in to the compare tab', () => {
+    expect(routeToNavId(ROUTES.vergleich)).toBe('compare')
+    expect(routeToNavId(ROUTES.vergleichDetail)).toBe('compare')
+  })
+
+  it('sends every plan surface to the plan tab', () => {
+    // `/` cannot be disambiguated from the URL alone, so it stays 'home'
+    // here and is resolved by `activeChromeNavId` with the saved appView.
+    expect(routeToNavId(ROUTES.vorsorgeNeu)).toBe('plan')
+    expect(routeToNavId(ROUTES.vertrag('etf-1'))).toBe('plan')
+    expect(routeToNavId(ROUTES.vertragBearbeiten('etf-1'))).toBe('plan')
+    expect(routeToNavId(ROUTES.kapital)).toBe('plan')
+    expect(routeToNavId(ROUTES.alternativen)).toBe('plan')
+  })
+
+  it('never maps a plan route and a comparison route to the same tab', () => {
+    expect(routeToNavId(ROUTES.vertrag('etf-1'))).not.toBe(routeToNavId(ROUTES.vergleich))
+  })
+})

@@ -510,13 +510,11 @@ describe('ContractDecisionCards — per-card QA targets (issue 17)', () => {
 // ---------------------------------------------------------------------------
 
 import { InventoryWizard } from '../../inventory/InventoryWizard'
+import { createFreshOnboardingScenario } from '../../inventory/onboardingDraft'
 
 const WIZARD_PROPS = {
-  grossSalaryYear: 60_000,
-  childBirthYears: [] as readonly number[],
-  age: 40,
-  retirementAge: 67,
-  publicHealthInsurance: true,
+  scenario: createFreshOnboardingScenario(),
+  mode: 'onboarding' as const,
   onComplete: vi.fn(),
   onDismiss: vi.fn(),
 }
@@ -557,18 +555,18 @@ describe('InventoryWizard — dialog and step QA targets (issue 17)', () => {
     expect(cta?.tagName.toLowerCase()).toBe('button')
   })
 
-  it('product rows in step 1 carry data-qa-target per product id', () => {
+  it('step 1 container and CTA carry the step1 QA targets', () => {
     /**
-     * The "Weiter zu deinen Verträgen" button has `data-qa-target` when QA mode is
-     * on, so the QA overlay's capture-phase click handler would intercept it and
-     * call stopPropagation(), preventing the button's own onClick from firing.
+     * The "Weiter" button has `data-qa-target` when QA mode is on, so the QA
+     * overlay's capture-phase click handler would intercept it and call
+     * stopPropagation(), preventing the button's own onClick from firing.
      *
      * Strategy:
      * 1. Render with QA mode OFF (no ?qa=1 URL) so the "Weiter" button has no
      *    data-qa-target and no capture-phase interception happens.
      * 2. Navigate to step 1 by clicking the button (works without interception).
      * 3. Programmatically enable QA mode via the context's `activate` function.
-     * 4. Assert product rows carry data-qa-target.
+     * 4. Assert the second onboarding step carries its own targets.
      */
     window.history.replaceState(null, '', '/')  // QA mode OFF during navigation
 
@@ -587,18 +585,17 @@ describe('InventoryWizard — dialog and step QA targets (issue 17)', () => {
     )
 
     // Navigate to step 1 (no QA interception since QA mode is off).
-    const nextBtn = screen.getByText('Weiter zu deinen Verträgen')
-    fireEvent.click(nextBtn)
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }))
 
-    // Enable QA mode so product rows now render with data-qa-target.
+    // Enable QA mode so the step now renders with data-qa-target.
     act(() => { activateQa?.() })
 
-    // Each product row should carry its own data-qa-target.
-    const grvRow = container.querySelector('[data-qa-target="inventory.wizard.productRow.grv"]')
-    expect(grvRow).not.toBeNull()
+    const step = container.querySelector('[data-qa-target="inventory.wizard.step1"]')
+    expect(step).not.toBeNull()
+    expect(step?.getAttribute('data-qa-section')).toBe('true')
 
-    const etfRow = container.querySelector('[data-qa-target="inventory.wizard.productRow.etf"]')
-    expect(etfRow).not.toBeNull()
+    const cta = container.querySelector('[data-qa-target="inventory.wizard.step1.primaryCta"]')
+    expect(cta?.tagName.toLowerCase()).toBe('button')
   })
 
   it('wizard targets are absent when QA mode is off', () => {

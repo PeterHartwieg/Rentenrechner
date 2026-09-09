@@ -106,14 +106,67 @@ export function runCombineSimulation(
 }
 
 /**
+ * A bundle plus the caught simulation error, if any.
+ *
+ * The bundle fields stay at the top level so existing consumers
+ * (`bundle.combinedByScenarioId`, `bundle.perInstance`, …) are unchanged.
+ * `error` is `null` on the happy path.
+ */
+export type CombineSimulationState = CombineSimulationBundle & { error: unknown | null }
+
+/**
+ * Empty bundle returned when `runCombineSimulation` throws.
+ *
+ * `portfolioFunding` is cast rather than fully constructed: `salaryForOtherFunding`
+ * is a whole `SalaryResult` and inventing a zeroed payroll run here would be a
+ * second, silently wrong source of truth. Consumers must gate on `error` (or on
+ * `selectResultReadiness`, which returns `'error'`) before reading it; the
+ * empty maps and zeroed statutory projection keep a stray read from throwing.
+ */
+function emptyBundle(): CombineSimulationBundle {
+  return {
+    perInstance: {},
+    portfolioFunding: {
+      bavByInstanceId: {},
+      basisrenteByInstanceId: {},
+      altersvorsorgedepotByInstanceId: {},
+      altersvorsorgedepotYearlyByInstanceId: {},
+      riesterByInstanceId: {},
+      riesterYearlyByInstanceId: {},
+      notes: [],
+    } as unknown as CombineSimulationBundle['portfolioFunding'],
+    combinedByScenarioId: {},
+    statutoryPension: {
+      grossMonthlyPension: 0,
+      netMonthlyPension: 0,
+      taxMonthly: 0,
+      kvPvMonthly: 0,
+      projectedEntgeltpunkte: 0,
+      grvReductionApplied: 0,
+    },
+  }
+}
+
+/**
  * Run the portfolio adapter and combine pipeline for a v2 Workspace.
  *
  * `rules` is configurable for tests; production callers should pass
  * `de2026Rules`. The default is wired so non-test callers can omit it.
+ *
+ * A throw inside `simulatePortfolio` / `combinePortfolio` used to reach the
+ * renderer. It is now caught here and surfaced as `error`, so
+ * `selectResultReadiness` can return `'error'` and the UI can say so instead of
+ * crashing or, worse, showing a plausible zero (state contract §10.10).
  */
 export function useCombineSimulation(
   workspace: Workspace,
   rules: GermanRules = de2026Rules,
-): CombineSimulationBundle {
-  return useMemo(() => runCombineSimulation(workspace, rules), [workspace, rules])
+): CombineSimulationState {
+  return useMemo(() => {
+    try {
+      return { ...runCombineSimulation(workspace, rules), error: null }
+    } catch (error) {
+      return { ...emptyBundle(), error }
+    }
+  }, [workspace, rules])
 }

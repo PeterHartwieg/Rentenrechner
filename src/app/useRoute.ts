@@ -42,8 +42,28 @@ export type Route =
   | { kind: 'rente-netto-berechnen' }
   | { kind: 'altersvorsorgeprodukte-vergleichen' }
   | { kind: 'vertrag'; instanceId: string }
+  // Contract editor for an existing instance (`/vertrag/:instanceId/bearbeiten`).
+  // Dynamic, not prerendered — same class as `vertrag`.
+  | { kind: 'vertrag-bearbeiten'; instanceId: string }
   | { kind: 'kapital' }
+  // Independent comparison journey (`/vergleich`). Public + prerendered.
+  // Distinct destination from `/` (the personal plan) — neither surface
+  // overwrites the other's data.
+  | { kind: 'vergleich' }
   | { kind: 'vergleich-detail' }
+  // Contract picker for a *new* instance (`/vorsorge/neu`). The optional
+  // `?produkt=<ProductId>` query param is read by the page container, not
+  // carried in the tagged variant (the URL stays the source of truth and the
+  // union stays narrow — same convention as `?scenario=` on
+  // `/vergleich/details`).
+  | { kind: 'vorsorge-neu' }
+  // Saved alternatives ("Was wäre wenn") for the plan (`/alternativen`). The
+  // optional `?id=<whatIfId>` query param selects one saved what-if and is
+  // read by the page container, not carried in the tagged variant — same
+  // convention as `?produkt=` on `/vorsorge/neu`. Dynamic (depends on
+  // workspace state), so it is NOT registered in `publicRouteRegistry` and
+  // not prerendered.
+  | { kind: 'alternativen' }
   | { kind: 'not-found' }
 
 export type RouteKind = Route['kind']
@@ -73,8 +93,12 @@ export const ROUTES = {
   renteNettoBerechnen: { kind: 'rente-netto-berechnen' } as Route,
   altersvorsorgeprodukteVergleichen: { kind: 'altersvorsorgeprodukte-vergleichen' } as Route,
   vertrag: (instanceId: string): Route => ({ kind: 'vertrag', instanceId }),
+  vertragBearbeiten: (instanceId: string): Route => ({ kind: 'vertrag-bearbeiten', instanceId }),
   kapital: { kind: 'kapital' } as Route,
+  vergleich: { kind: 'vergleich' } as Route,
   vergleichDetail: { kind: 'vergleich-detail' } as Route,
+  vorsorgeNeu: { kind: 'vorsorge-neu' } as Route,
+  alternativen: { kind: 'alternativen' } as Route,
   notFound: { kind: 'not-found' } as Route,
 } as const
 
@@ -103,8 +127,12 @@ export function routeToPath(route: Route): string {
     case 'rente-netto-berechnen': return '/rente-netto-berechnen'
     case 'altersvorsorgeprodukte-vergleichen': return '/altersvorsorgeprodukte-vergleichen'
     case 'vertrag': return `/vertrag/${encodeURIComponent(route.instanceId)}`
+    case 'vertrag-bearbeiten': return `/vertrag/${encodeURIComponent(route.instanceId)}/bearbeiten`
     case 'kapital': return '/kapital'
+    case 'vergleich': return '/vergleich'
     case 'vergleich-detail': return '/vergleich/details'
+    case 'vorsorge-neu': return '/vorsorge/neu'
+    case 'alternativen': return '/alternativen'
     case 'not-found': return '/404'
     default: {
       const _exhaustive: never = route
@@ -135,6 +163,18 @@ export function pathToRoute(pathname: string): Route {
   // listener before the 404 fallback could fire. The empty state is the
   // correct surface for an unparseable id, same as for a well-formed id
   // that simply does not exist in the workspace.
+  // `/vertrag/:instanceId/bearbeiten` must be tested BEFORE the bare
+  // `/vertrag/:instanceId` pattern — the latter's `(.+)` is greedy and would
+  // otherwise swallow `<id>/bearbeiten` into the instance id.
+  const vertragEditMatch = trimmed.match(/^\/vertrag\/(.+)\/bearbeiten$/)
+  if (vertragEditMatch) {
+    try {
+      return { kind: 'vertrag-bearbeiten', instanceId: decodeURIComponent(vertragEditMatch[1]) }
+    } catch {
+      return ROUTES.notFound
+    }
+  }
+
   const vertragMatch = trimmed.match(/^\/vertrag\/(.+)$/)
   if (vertragMatch) {
     try {
@@ -163,7 +203,10 @@ export function pathToRoute(pathname: string): Route {
     case '/rente-netto-berechnen': return ROUTES.renteNettoBerechnen
     case '/altersvorsorgeprodukte-vergleichen': return ROUTES.altersvorsorgeprodukteVergleichen
     case '/kapital': return ROUTES.kapital
+    case '/vergleich': return ROUTES.vergleich
     case '/vergleich/details': return ROUTES.vergleichDetail
+    case '/vorsorge/neu': return ROUTES.vorsorgeNeu
+    case '/alternativen': return ROUTES.alternativen
     case '/404': return ROUTES.notFound
     default: return ROUTES.notFound
   }

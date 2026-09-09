@@ -11,6 +11,8 @@ import type {
 } from './domain/instances'
 import { defaultAssumptions, defaultProfile, DEFAULT_EQUAL_INPUT_AMOUNT_EUR } from './data/defaultScenario'
 import { validateState, validateWorkspace } from './utils/scenarioSchema'
+import { sanitizeInputStatusMap, sanitizePensionEntryMethod } from './domain/inputStatus'
+import { safeSetItem } from './utils/safeStorage'
 import { singletonViewOfWorkspace } from './engine/portfolioProjection'
 import { STORAGE_KEY_V1, STORAGE_KEY_V2 } from './storageKeys'
 
@@ -58,6 +60,18 @@ const CURRENT_VERSION_V2 = 2
 // visibleProducts or childBirthYears). Arrays that genuinely require a non-empty
 // fallback — currently only returnScenarios — are normalized in
 // applyPreMergeMigrations before mergeDeep runs.
+//
+// Key iteration walks the **union** of saved and default keys (state contract
+// §2.4 / §10.1). Keys present in the defaults keep the type-checked merge above;
+// saved-only keys are copied verbatim. Before this change the loop walked only
+// the default keys, so every persisted field absent from the defaults object was
+// silently dropped on load — which is why `Scenario.lastEditedAt`,
+// `visibleInstanceIds` and (until its bespoke rescue) `contributionInput`
+// disappeared on every round-trip. Additive optional schema fields such as
+// `inputStatus` and `pensionEntryMethod` now survive without a bespoke rescue.
+//
+// Validation is unchanged and still runs after the merge, so a saved-only key
+// carrying nonsense is rejected or sanitised there — not here.
 function mergeDeep<T>(saved: unknown, defaults: T): T {
   if (Array.isArray(defaults)) {
     return (Array.isArray(saved) ? saved : defaults) as T
@@ -65,10 +79,17 @@ function mergeDeep<T>(saved: unknown, defaults: T): T {
   if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return defaults
   const result = { ...(defaults as object) } as Record<string, unknown>
   const savedObj = saved as Record<string, unknown>
-  for (const key of Object.keys(defaults as object)) {
+  const defaultsObj = defaults as Record<string, unknown>
+  const keys = new Set([...Object.keys(defaultsObj), ...Object.keys(savedObj)])
+  for (const key of keys) {
     const savedVal = savedObj[key]
     if (savedVal === undefined || savedVal === null) continue
-    const defaultVal = (defaults as Record<string, unknown>)[key]
+    if (!(key in defaultsObj)) {
+      // Saved-only key: no default to type-check against, so copy verbatim.
+      result[key] = savedVal
+      continue
+    }
+    const defaultVal = defaultsObj[key]
     if (defaultVal !== null && typeof defaultVal === 'object' && !Array.isArray(defaultVal)) {
       result[key] = mergeDeep(savedVal, defaultVal)
     } else if (typeof savedVal === typeof defaultVal) {
@@ -165,9 +186,14 @@ function applyPostMergeMigrations(
   const contributionInput = readContributionInput(rawAssumptions)
   if (contributionInput !== undefined) {
     merged.contributionInput = contributionInput
-    // Anything else (unknown kind, malformed payload) falls through to net mode
+  } else {
+    // Anything else (unknown kind, malformed payload) falls back to net mode
     // rather than failing the whole load — a corrupt input mode should not cost
-    // the user their saved scenario.
+    // the user their saved scenario. The explicit delete matters since the
+    // union-key `mergeDeep` now carries saved-only keys through verbatim, so a
+    // malformed payload would otherwise reach the strict validator and take
+    // the whole scenario down with it.
+    delete merged.contributionInput
   }
 
   const savedBav = rawAssumptions.bav as Record<string, unknown> | undefined
@@ -238,6 +264,10 @@ function mergeWorkspaceWithDefaults(rawWorkspace: Record<string, unknown>): Work
   const contributionInput = readContributionInput(rawBaseline.assumptions)
   if (contributionInput !== undefined) {
     merged.baseline.assumptions.contributionInput = contributionInput
+  } else {
+    // Same reasoning as `applyPostMergeMigrations`: drop a malformed mode
+    // instead of letting it fail `validateWorkspace` and wipe the workspace.
+    delete merged.baseline.assumptions.contributionInput
   }
   return merged
 }
@@ -429,6 +459,26 @@ export function migrateV1ToV2(
     // New state uses equalInputAmountEUR as the single public Netto-Belastung anchor.
     compareSubMode: merged.compareSubMode ?? 'equal_cash',
     equalInputAmountEUR: merged.equalInputAmountEUR ?? DEFAULT_EQUAL_INPUT_AMOUNT_EUR,
+  }
+
+  // Additive input-status metadata (state contract §2.5): carry the scenario
+  // level map and the pension entry method onto the migrated baseline. Both are
+  // sanitised here so a corrupt v1 payload cannot inject unknown status bytes.
+  const migratedInputStatus = sanitizeInputStatusMap(assumptionsCopy.inputStatus, {
+    restrictToReservedKeys: true,
+  })
+  if (migratedInputStatus !== undefined) {
+    assumptionsV2.inputStatus = migratedInputStatus
+  }
+  const rawStatutory = assumptionsCopy.statutoryPension
+  const migratedEntryMethod = isPlainRecord(rawStatutory)
+    ? sanitizePensionEntryMethod(rawStatutory.pensionEntryMethod)
+    : undefined
+  if (migratedEntryMethod !== undefined) {
+    assumptionsV2.statutoryPension = {
+      ...assumptionsV2.statutoryPension,
+      pensionEntryMethod: migratedEntryMethod,
+    }
   }
 
   const baseline: Scenario = {
@@ -757,39 +807,38 @@ export function buildStateJson(
  * Load the saved state from localStorage as a singleton { profile, assumptions }
  * pair for use by the compare-mode engine path (simulateRetirementComparison).
  *
- * A valid combine-mode workspace owns the state. In compare-mode, prefer the
- * validated V1 save, which is where useCalculatorState and useAngabenState
- * write edits. A V2 compare workspace is only a fallback for missing/invalid
- * V1 data; otherwise its older snapshot would undo edits on every navigation.
- * V2 reads use parseWorkspaceJson and singleton projection; V1 reads use
- * parseStateFromJson (including migrateAndValidateState).
+ * **The V1 save always wins when it is valid**, in either mode. It is the only
+ * key compare-mode writes (`useCalculatorState`, `useAngabenState`), and the
+ * comparison journey at `/vergleich` must never silently inherit the personal
+ * plan: seeding a plan into the comparison is the explicit "Angaben aus meinem
+ * Plan verwenden" action (`seedCompareFromWorkspace`), not a load-path side
+ * effect. Deriving the singleton from a combine workspace is therefore only the
+ * fallback for a missing or invalid V1 save — which is also what gives a user
+ * with a plan but no comparison history a sensible first `/vergleich` setup.
  *
- * If the v2 key is present but invalid (malformed JSON, failed validation,
- * future schemaVersion), falls through to the v1 key rather than returning
- * null immediately — so a corrupt v2 write does not wipe the user's v1 data.
+ * V2 reads use parseWorkspaceJson and singleton projection; V1 reads use
+ * parseStateFromJson (including migrateAndValidateState). A corrupt key on
+ * either side falls through to the other rather than returning null, so no
+ * single bad write wipes the user's data.
  */
 export function loadSavedState(): { profile: PersonalProfile; assumptions: ScenarioAssumptions } | null {
   try {
-    // V2 determines the mode, but compare-mode edits live in V1.
+    // Compare-mode edits live in V1, in both modes.
+    const rawV1 = localStorage.getItem(STORAGE_KEY_V1)
+    const comparison = rawV1 ? parseStateFromJson(rawV1) : null
+    if (comparison) return comparison
+
+    // No usable comparison state — project the workspace, if there is one.
     const rawV2 = localStorage.getItem(STORAGE_KEY_V2)
     if (rawV2) {
       const workspace = parseWorkspaceJson(rawV2)
       if (workspace) {
-        if (workspace.mode === 'compare') {
-          const rawV1 = localStorage.getItem(STORAGE_KEY_V1)
-          const comparison = rawV1 ? parseStateFromJson(rawV1) : null
-          if (comparison) return comparison
-        }
         const singleton = workspaceToSingletonAssumptions(workspace)
         const profile = mergeDeep(workspace.baseline.profile, defaultProfile)
         return validateState(profile, singleton)
       }
     }
-
-    // Fall back to v1 key with migration.
-    const rawV1 = localStorage.getItem(STORAGE_KEY_V1)
-    if (!rawV1) return null
-    return parseStateFromJson(rawV1)
+    return null
   } catch {
     return null
   }
@@ -851,11 +900,12 @@ export function loadSavedWorkspace(): Workspace | null {
  * Called by portfolioState (combine-mode). The compare-mode write path
  * (useCalculatorState) intentionally writes v1-shaped JSON to STORAGE_KEY_V1 —
  * dual-key coexistence is the stable, shipped architecture.
+ *
+ * Returns `false` when the write failed (quota exhausted, private-browsing
+ * SecurityError, no `localStorage`). The failure is no longer swallowed
+ * silently so the shell can warn the user that their plan was not saved; the
+ * compare-mode write path already returns the same boolean via `safeSetItem`.
  */
-export function saveWorkspace(workspace: Workspace): void {
-  try {
-    localStorage.setItem(STORAGE_KEY_V2, buildWorkspaceJson(workspace))
-  } catch {
-    // ignore storage failures
-  }
+export function saveWorkspace(workspace: Workspace): boolean {
+  return safeSetItem(STORAGE_KEY_V2, buildWorkspaceJson(workspace))
 }

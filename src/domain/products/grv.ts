@@ -1,3 +1,5 @@
+import type { PensionEntryMethod } from '../inputStatus'
+
 // ---------------------------------------------------------------------------
 // Statutory pension (Versorgungswerk + Beamtenpension)
 // ---------------------------------------------------------------------------
@@ -79,6 +81,16 @@ export interface StatutoryPensionAssumptions {
    * is half-rate vs full-rate Freibetrag, not whether the income is in the base at all.)
    */
   retirementHealthStatus?: 'kvdr' | 'freiwillig_gkv' | 'pkv'
+  /**
+   * How the user supplied the statutory-pension figure (document, career
+   * estimate, direct years, direct points, projected gross, or skipped).
+   *
+   * Purely explanatory metadata — the engine reads `manualMonthlyGross` /
+   * `currentEntgeltpunkte` as before. Travels with the engine input it
+   * explains, so it survives both the v1 and the v2 payload and the singleton
+   * projection. Optional and additive; absent means "not recorded".
+   */
+  pensionEntryMethod?: PensionEntryMethod
 }
 
 export interface StatutoryPensionResult {

@@ -1166,7 +1166,14 @@ describe('useAngabenState — no-op setters must not bump lastEditedAt (CodeRabb
    *  prove a no-op setter did not advance it. */
   function buildCombineWorkspaceWithFixedTs(): Workspace {
     let ws = cloneWorkspace()
-    ws = {
+    // Add a bAV instance so the singleton-view bAV slot has somewhere to
+    // round-trip from — mirrors what a real combine-mode user produces via
+    // the inventory wizard.
+    ws = addInstanceToWorkspace(ws, 'bav')
+    // Stamped *after* the add: `addInstanceToWorkspace` sets `lastEditedAt` to
+    // `Date.now()` itself, which would otherwise leave the fixture's "old"
+    // timestamp indistinguishable from the edit under test.
+    return {
       ...ws,
       mode: 'combine',
       baseline: {
@@ -1174,11 +1181,6 @@ describe('useAngabenState — no-op setters must not bump lastEditedAt (CodeRabb
         lastEditedAt: 1_700_000_000_000, // 2023-11-14, far below Date.now()
       },
     }
-    // Add a bAV instance so the singleton-view bAV slot has somewhere to
-    // round-trip from — mirrors what a real combine-mode user produces via
-    // the inventory wizard.
-    ws = addInstanceToWorkspace(ws, 'bav')
-    return ws
   }
 
   it('combine-mode setAssumptions(prev => prev) does NOT advance baseline.lastEditedAt', () => {

@@ -5,7 +5,7 @@ import {
   type InstanceTaxModes,
 } from '../engine/exportProjection'
 import type { CombinedResult } from '../engine/portfolioCombine'
-import { formatEvidenceStateForExport } from '../features/results/provenanceHelpers'
+import { formatExportProvenance } from '../features/results/provenanceHelpers'
 
 // Re-export so existing call-sites (`useDerivedViews.ts`, `combineCsvWiring.ts`)
 // keep working without a sweeping import-path change. Canonical home is
@@ -114,7 +114,7 @@ export function buildExportCsv(opts: ExportOptions): string {
       n(row.netMonthlyPayout),
       n(row.totalFees),
       row.valueMultipleOnUserCost === null ? '' : row.valueMultipleOnUserCost.toFixed(2),
-      formatEvidenceStateForExport(row.inputConfidence),
+      formatExportProvenance(undefined, row.inputConfidence),
     ))
   }
 
@@ -200,6 +200,25 @@ export interface CombinePortfolioCsvOptions {
   profile?: PersonalProfile
   /** Active modeled inflation assumption for export disclosure. */
   inflationRate?: number
+  /**
+   * Set by the caller when `selectResultReadiness` says the household total may
+   * not be shown (`canShowHouseholdTotal === false`). The Netto-Einkommen cell
+   * is then emitted **blank** — never 0, never a placeholder — and one Hinweis
+   * line names the missing inputs (lead decision §10.3).
+   *
+   * `reasonLabels` are the German blocking-reason labels; pass
+   * `householdTotalBlockedLabels(readiness)` from `app/resultReadiness.ts`.
+   */
+  householdTotalBlocked?: { reasonLabels: string[] }
+}
+
+/**
+ * The Hinweis line emitted when a blocked household total is suppressed.
+ * Exported so the print mirror and the tests share one string.
+ */
+export function householdTotalSuppressedNotice(reasonLabels: string[]): string {
+  const labels = reasonLabels.length > 0 ? reasonLabels.join('; ') : 'unvollständige Angaben'
+  return `Netto-Gesamtrente nicht berechnet – fehlende Angaben: ${labels}`
 }
 
 export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): string {
@@ -212,16 +231,22 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
   for (const text of DISCLAIMER_LINES) {
     lines.push(csvCell(text))
   }
+  const blocked = opts.householdTotalBlocked
+  if (blocked) {
+    lines.push(csvCell(householdTotalSuppressedNotice(blocked.reasonLabels)))
+  }
   lines.push('')
   addActiveAssumptions(lines, opts.inflationRate)
 
-  // Section 1: Combined retirement income per scenario.
+  // Section 1: Combined retirement income per scenario. When the readiness
+  // selector blocks the household total, the Netto-Einkommen cell stays blank
+  // rather than exporting a number that would read as reliable.
   lines.push('Kombiniertes Renteneinkommen')
   lines.push(csvRow('Szenario', 'Netto-Einkommen mtl. (EUR)', 'Gesetzl. Rente netto mtl. (EUR)'))
   for (const [scenarioId, combined] of Object.entries(combinedByScenarioId)) {
     lines.push(csvRow(
       scenarioLabels[scenarioId] ?? scenarioId,
-      n(combined.monthlyNetIncome),
+      blocked ? '' : n(combined.monthlyNetIncome),
       n(combined.statutoryPensionMonthlyNet),
     ))
   }
@@ -250,7 +275,7 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
       n(row.grossMonthlyPayout),
       n(row.netMonthlyPayout),
       n(row.totalFees),
-      formatEvidenceStateForExport(row.inputConfidence),
+      formatExportProvenance(undefined, row.inputConfidence),
     ))
   }
 

@@ -1,12 +1,18 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import App from './App'
 import { addInstanceToWorkspace } from './features/inventory/inventoryHelpers'
 import { buildStateJson, defaultWorkspace, STORAGE_KEY_V1, STORAGE_KEY_V2 } from './storage'
 import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
 import type { Workspace } from './domain/workspace'
+
+// The first render in this file pays the one-shot `React.lazy` chunk
+// resolution for `Calculator`; the polls below allow 8s for it, which is above
+// vitest's 5s default test timeout. Raise the timeout rather than shortening
+// the poll — under full-suite load the wait is real, not a hung assertion.
+vi.setConfig({ testTimeout: 20_000 })
 
 afterEach(() => {
   cleanup()
@@ -56,8 +62,11 @@ describe('App — Mein Plan combine-mode chrome', () => {
     const { container } = render(<App />)
     await waitForCalculator()
 
+    // The plan surface owns its own H1 ("Deine Rente im Überblick" once the
+    // plan has been started, "Dein Plan beginnt hier." before that). Either is
+    // the plan; neither is comparison copy.
     const h1 = container.querySelector('h1')
-    expect(h1?.textContent).toContain('Mein Plan')
+    expect(h1?.textContent).toMatch(/Deine Rente im Überblick|Dein Plan beginnt hier/)
     expect(h1?.textContent).not.toContain('vergleichen')
   })
 

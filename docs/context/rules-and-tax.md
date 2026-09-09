@@ -33,8 +33,21 @@ For each legal / rule area: the source file, the rule file, and the research doc
 | ETF Vorabpauschale (InvStG §18, §19) | `src/engine/accumulation.ts`, `src/engine/etfPayout.ts` | `projectAccumulation` (`etfVorabpauschale` param), `etfPayoutSchedule` |
 | RIY / Effektivkosten | `src/engine/fees.ts` | `computeRIY` |
 | GRV EP estimate | `src/engine/grv.ts` | `projectStatutoryPension` |
+| GRV EP wizard estimate (UI seed) | `src/features/inventory/inventoryHelpers.ts` | `estimateEpFromYears`, `estimateCareerPension` |
 | AVD allowances (§10a + AVD Reform 2026) | `src/engine/altersvorsorgedepot.ts`, `src/rules/de2026.ts` | `calculateAvdFunding` |
 | Riester allowances (§84–§86 EStG) | `src/engine/riester.ts`, `src/rules/de2026.ts` | `calculateRiesterFunding` |
+
+## Corrected values
+
+**GRV wizard EP estimate (2026-09).** `estimateEpFromYears` in
+`src/features/inventory/inventoryHelpers.ts` hardcoded `durchschnittsentgelt = 47_079`
+while the active rule value is `de2026.ts` `socialSecurity.durchschnittsentgelt = 51_944`.
+The helper now reads the rule set — the same denominator `projectStatutoryPension`
+divides by — so the wizard no longer seeds `currentEntgeltpunkte` ~10.3 % too high.
+New estimates therefore come out **9.37 % lower** (e.g. 50 000 EUR/yr over 40 years:
+42.4818 EP → 38.5030 EP, about −169 EUR/month gross at `aktuellerRentenwert = 42.52`).
+Already-persisted `currentEntgeltpunkte` values are **not** migrated; only new estimates
+use the corrected helper. No oracle snapshot was affected — the engine was always correct.
 
 ## Research and source references
 

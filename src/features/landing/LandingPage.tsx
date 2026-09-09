@@ -55,7 +55,7 @@ interface Props {
 const PROCESS_STEPS: ReadonlyArray<{ n: string; headingKey: string; bodyKey: string }> = [
   { n: 'I.', headingKey: 'landing.step.beschreiben.heading', bodyKey: 'landing.step.beschreiben.body' },
   { n: 'II.', headingKey: 'landing.step.rechnen.heading', bodyKey: 'landing.step.rechnen.body' },
-  { n: 'III.', headingKey: 'landing.step.entscheiden.heading', bodyKey: 'landing.step.entscheiden.body' },
+  { n: '+', headingKey: 'landing.step.entscheiden.heading', bodyKey: 'landing.step.entscheiden.body' },
 ]
 
 // Runtime language pilot (Slice 6): the UI language is derived from the URL
@@ -76,24 +76,18 @@ function subscribeLang(onChange: () => void): () => void {
 const getLangSnapshot = (): CopyLang => resolveLang(window.location.search)
 const getServerLangSnapshot = (): CopyLang => DEFAULT_LANG
 
+function subscribeSavedMode(onChange: () => void): () => void {
+  window.addEventListener('storage', onChange)
+  return () => window.removeEventListener('storage', onChange)
+}
+
+const getSavedSnapshot = () => detectSavedMode() !== null
+const getServerSavedSnapshot = () => false
+
 /**
- * Two-CTA landing page in editorial mode (PR 2).
- *
- * Layout — left column owns the editorial hero (kicker + serif H1 with the
- * italic oxblood "wirklich" accent + subline + two CTAs + 3-step row); right
- * column ("aside") carries the "Empfohlene Artikel" feature list (sourced
- * from `resolveFeaturedArticles()` so labels never drift from
- * [[hubClusters]]) and the truthful "Wer steht hinter RentenWiki" panel.
- * Beneath the two columns the "Alles im Überblick" hub (issue #03) keeps
- * its existing 5-cluster / 10-link structure so the topic-page entry points
- * remain in sitemap reach.
- *
- * Two CTAs are kept (not the mock's single "Berechnung starten" call):
- *   - Mein Plan (combine-mode, primary) opens the InventoryWizard. The
- *     wizard handles both "I have contracts" and "I'm starting fresh" via its
- *     "Weiter ohne Verträge" finish button.
- *   - Produkte vergleichen (compare-mode, secondary) takes users straight to
- *     the compare dashboard.
+ * Editorial hero with start/resume and compare actions beside a static example.
+ * Two short onboarding steps and optional contracts precede articles, about,
+ * and the topic hub. The example never consumes or modifies personal state.
  *
  * Topic preselection (issue #13): on mount the page reads `?topic=<slug>`
  * from `window.location.search`. If the slug matches a registered route's
@@ -116,6 +110,10 @@ export function LandingPage({ onChoice, navigate }: Props) {
   // fallback for untranslated keys.
   const lang = useSyncExternalStore(subscribeLang, getLangSnapshot, getServerLangSnapshot)
   const t = (key: string) => copy.text(key, lang)
+  const hasSavedPlan = useSyncExternalStore(subscribeSavedMode, getSavedSnapshot, getServerSavedSnapshot)
+  const exampleCurrency = new Intl.NumberFormat(lang === 'en' ? 'en-GB' : 'de-DE', {
+    style: 'currency', currency: 'EUR', maximumFractionDigits: 0,
+  })
 
   function switchLang(next: CopyLang) {
     if (typeof window === 'undefined') return
@@ -156,19 +154,12 @@ export function LandingPage({ onChoice, navigate }: Props) {
   return (
     <div className="landing-shell landing-shell--editorial">
       <main className="landing-main">
-        {/* Top section: editorial hero (left) + aside panels (right) */}
+        {/* Hero and a clearly labelled, static result example. */}
         <section className="landing-top">
           <div className="landing-hero">
             <div className="landing-kicker">{t('landing.hero.kicker')}</div>
-            <h1 className="landing-headline">
-              Was bekommst du <em className="landing-headline-accent">wirklich</em> an Rente?
-            </h1>
-            <p className="landing-subline">
-              Trage deine Verträge ein. Wir rechnen aus, wie viel pro Monat im Alter
-              auf deinem Konto landet, in heutiger Kaufkraft und in Euro {RULES_YEAR + 39}.
-              Ohne Werbung, ohne Provisionen. Der Quellcode ist offen, jede Annahme
-              ist erklärt.
-            </p>
+            <h1 className="landing-headline">{t('landing.hero.heading')}</h1>
+            <p className="landing-subline">{t('landing.hero.lead')}</p>
 
             <div className="landing-cta-row">
               <button
@@ -176,7 +167,7 @@ export function LandingPage({ onChoice, navigate }: Props) {
                 className="landing-btn landing-btn--primary"
                 onClick={() => onChoice({ kind: 'combine' })}
               >
-                <span>{t('landing.cta.combine')}</span>
+                <span>{t(hasSavedPlan ? 'landing.cta.resume' : 'landing.cta.combine')}</span>
                 <span aria-hidden="true">→</span>
               </button>
               <button
@@ -184,63 +175,81 @@ export function LandingPage({ onChoice, navigate }: Props) {
                 className="landing-btn landing-btn--secondary"
                 onClick={() => onChoice({ kind: 'compare' })}
               >
-                {t('landing.cta.compare')}
+                <span>{t('landing.cta.compare')}</span>
+                <span aria-hidden="true">→</span>
               </button>
             </div>
 
-            <ol className="landing-steps" aria-label={t('landing.steps.aria')}>
-              {PROCESS_STEPS.map((step) => (
-                <li key={step.n} className="landing-step">
-                  <div className="landing-step-num">{step.n}</div>
-                  <div className="landing-step-h">{t(step.headingKey)}</div>
-                  <div className="landing-step-p">{t(step.bodyKey)}</div>
-                </li>
-              ))}
-            </ol>
+            <p className="landing-microcopy">{t('landing.hero.microcopy')}</p>
           </div>
 
-          <aside className="landing-aside" aria-label={t('landing.aside.aria')}>
-            <div className="landing-aside-card landing-aside-card--featured">
-              <div className="landing-aside-kicker">{t('landing.featured.kicker')}</div>
-              <ul className="landing-featured-list">
-                {featured.map((a) => (
-                  <li key={a.href} className="landing-featured-item">
-                    <a href={a.href} className="landing-featured-link">
-                      <span className="landing-featured-title">{a.label}</span>
-                      <span className="landing-featured-meta">{a.cluster}</span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-              <a
-                href="/artikel"
-                className="landing-featured-all"
-                onClick={(event) => {
-                  if (!navigate) return
-                  if (!shouldUseSpaNavigation(event)) return
-                  event.preventDefault()
-                  navigate(ROUTES.artikel)
-                }}
-              >
-                Alle {hubArticleCount} Themen ansehen →
-              </a>
-            </div>
-
-            <div className="landing-aside-card landing-aside-card--about">
-              <div className="landing-aside-kicker">{t('landing.about.kicker')}</div>
-              <p className="landing-about-body">
-                RentenWiki.de ist ein Einzelprojekt von Peter Hartwieg.
-                Keine Werbung, keine Provisionen. Spenden über GitHub Sponsors decken die Hosting-Kosten.
-              </p>
-              <p className="landing-about-license">
-                Der Quellcode steht unter{' '}
-                <span className="landing-about-license-name">PolyForm Noncommercial 1.0.0</span>
-                {' '}offen. Versicherungs­makler, Anlageberater und Arbeitgeber
-                brauchen eine separate kommerzielle Lizenz.
-              </p>
-            </div>
+          <aside className="landing-example" aria-label={t('landing.example.aria')}>
+            <h2 className="landing-aside-kicker">{t('landing.example.heading')}</h2>
+            <div className="landing-example-total">{t('landing.example.total')}</div>
+            <p className="landing-example-label">
+              {t('landing.example.label')}<br />
+              <span>{t('landing.example.basis')}</span>
+            </p>
+            <dl className="landing-example-rows">
+              <div><dt>{t('landing.example.pension')}</dt><dd>{exampleCurrency.format(1900)}</dd></div>
+              <div><dt>{t('landing.example.etf')}</dt><dd>{exampleCurrency.format(350)}</dd></div>
+              <div><dt>{t('landing.example.bav')}</dt><dd>{exampleCurrency.format(200)}</dd></div>
+            </dl>
+            <p className="landing-example-note">{t('landing.example.note')}</p>
           </aside>
         </section>
+
+        <ol className="landing-steps" aria-label={t('landing.steps.aria')}>
+          {PROCESS_STEPS.map((step) => (
+            <li key={step.n} className="landing-step">
+              <div className="landing-step-num" aria-hidden="true">{step.n}</div>
+              <div className="landing-step-h">{t(step.headingKey)}</div>
+              <div className="landing-step-p">{t(step.bodyKey)}</div>
+            </li>
+          ))}
+        </ol>
+
+        <aside className="landing-aside" aria-label={t('landing.aside.aria')}>
+          <div className="landing-aside-card landing-aside-card--featured">
+            <div className="landing-aside-kicker">{t('landing.featured.kicker')}</div>
+            <ul className="landing-featured-list">
+              {featured.map((a) => (
+                <li key={a.href} className="landing-featured-item">
+                  <a href={a.href} className="landing-featured-link">
+                    <span className="landing-featured-title">{a.label}</span>
+                    <span className="landing-featured-meta">{a.cluster}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <a
+              href="/artikel"
+              className="landing-featured-all"
+              onClick={(event) => {
+                if (!navigate) return
+                if (!shouldUseSpaNavigation(event)) return
+                event.preventDefault()
+                navigate(ROUTES.artikel)
+              }}
+            >
+              Alle {hubArticleCount} Themen ansehen →
+            </a>
+          </div>
+
+          <div className="landing-aside-card landing-aside-card--about">
+            <div className="landing-aside-kicker">{t('landing.about.kicker')}</div>
+            <p className="landing-about-body">
+              RentenWiki.de ist ein Einzelprojekt von Peter Hartwieg.
+              Keine Werbung, keine Provisionen. Spenden über GitHub Sponsors decken die Hosting-Kosten.
+            </p>
+            <p className="landing-about-license">
+              Der Quellcode steht unter{' '}
+              <span className="landing-about-license-name">PolyForm Noncommercial 1.0.0</span>
+              {' '}offen. Versicherungs­makler, Anlageberater und Arbeitgeber
+              brauchen eine separate kommerzielle Lizenz.
+            </p>
+          </div>
+        </aside>
 
         {/* Topic-page hub — issue #03. Sectioned `Alles im Überblick` block
             below the hero. Five clusters, 10 anchors. */}

@@ -47,6 +47,11 @@ naming code, tests, issues, and ADRs.
 | **Paid-up (beitragsfrei)** | Phase-2 contract state: contributions stop, capital continues to grow under (usually elevated) paid-up fees. Per-product paid-up funding helpers live in `portfolioFunding.ts`. |
 | **Evidence state** | Per-instance per-field confidence flag: `'user_confirmed' \| 'model_estimate' \| 'statement'`. Domain type in `src/domain/instances.ts`. Display mapping via `evidenceStateToProvKind` in `src/features/results/provenanceHelpers.ts`. |
 | **Provenance kind** | Display-layer confidence label (`'user' \| 'confirmed' \| 'model' \| 'default'`) used by `ProvLabel` / `FieldWithProv` in `src/features/results/provenance.tsx`. |
+| **Input status** | Per-field answer state independent of evidence: `'unknown' \| 'assumed' \| 'entered' \| 'document'` (`src/domain/inputStatus.ts`). Carried in an `InputStatusMap` on instances, workspace assumptions and scenario assumptions. Absent means `assumed`; `unknown` means the user explicitly said so and **never** writes a value (a typed `0` is an entered zero). |
+| **Readiness** | Whether a result may be shown, and why not: `'available' \| 'estimated' \| 'incomplete' \| 'error'` plus blocking reasons with route targets (`selectResultReadiness` in `src/app/resultReadiness.ts`). A blocked household total is suppressed everywhere — UI, CSV and PDF — never approximated. |
+| **Plan summary** | One scoped household result for the plan surface: total on both money bases, per-source rows with duration descriptors, the target gap and the readiness verdict. Built by `selectPlanSummary` in `src/app/planSummary.ts`. |
+| **Alternative** | User-facing name for a what-if on the plan surface (`/alternativen`). **Apply** writes the what-if's diff onto the current baseline (`applyWhatIf`, refused when stale or shape-drifted); **undo** restores the whole workspace from the handle the mutation returned. |
+| **Undo handle** | `WorkspaceUndo` — a whole-workspace snapshot plus a German label, returned by every recording mutation. One level, in memory, module-level (so it survives a route change), never persisted; superseded by the next mutation and cleared once consumed. |
 | **Recommendation atom** | Smallest unit of recommender output: `{ id, priority, context }`. Pure rules in `src/app/recommendations.ts`; German copy templates in `src/content/recommendationCopy.ts`. |
 | **Combine context** | Statutory pension + tax + KV/PV routing decisions shared by combine simulation and the recommender. Built by `buildCombineContext` in `src/engine/combineContext.ts`. |
 | **Funding headroom** | Authoritative combine-mode snapshot of requested, accepted, and remaining statutory funding budgets. Built with per-instance funding by `buildPortfolioFunding`; simulation, recommendation atoms, candidate sizing, and contract warnings consume the same snapshot. |
@@ -109,7 +114,12 @@ tests.
 | Recommender orchestrator (candidate selection, ranking, what-if materialisation) | `src/app/recommender.ts` |
 | Per-product candidate generation (registry pattern) | `src/app/recommenderCandidates/` |
 | Recommendation rules (pure, atoms in/out) | `src/app/recommendations.ts` |
-| Routing (tagged-union `Route` + `ROUTES` constructors + `pathToRoute` / `routeToPath` translators; dynamic segment for `/vertrag/:instanceId`) | `src/app/useRoute.ts` |
+| Input-status metadata (types + sanitisers, React-free) | `src/domain/inputStatus.ts` |
+| Result readiness (status, blocking reasons, export suppression labels) | `src/app/resultReadiness.ts` |
+| Plan summary (household total, source rows, durations, target gap) | `src/app/planSummary.ts` |
+| Explicit compare seeding from a saved plan (`/vergleich` only) | `src/app/compareSeed.ts` |
+| What-if preview construction + labels (pure) | `src/app/whatIfPreview.ts` |
+| Routing (tagged-union `Route` + `ROUTES` constructors + `pathToRoute` / `routeToPath` translators; dynamic segments for `/vertrag/:instanceId` and `/vertrag/:instanceId/bearbeiten`, plus `/vergleich`, `/vorsorge/neu`, `/alternativen`) | `src/app/useRoute.ts` |
 
 ### Content (no React)
 
@@ -130,6 +140,14 @@ tests.
 | Provenance primitives (`ProvLabel`, `FieldWithProv`) | `src/features/results/provenance.tsx` |
 | Evidence ↔ provenance + export-label mapping | `src/features/results/provenanceHelpers.ts` |
 | Legal pages (Impressum, Datenschutz, footer) | `src/features/legal/` |
+| Plan overview — the default plan surface (household total, source rows, target gap, undo notification) and the separate duration view | `src/features/mein-plan/PlanOverview.tsx`, `PlanDurationSummary.tsx` (selected by `MeinPlanPage` when a `summary` prop is supplied) |
+| Independent comparison journey at `/vergleich` (setup + result, compare-mode singleton only, own `PrintReport` mirror) | `src/features/vergleich/VergleichJourneyPage.tsx`, `VergleichJourneyView.tsx`, `VergleichResultCard.tsx` |
+| Contract picker + new-contract editor (`/vorsorge/neu`) | `src/features/vorsorge/{VorsorgeNeuPage,ContractPicker}.tsx` |
+| Contract editor for an existing instance (`/vertrag/:id/bearbeiten`) | `src/features/vertrag-detail/{VertragBearbeitenPage,ContractEditorHost,ContractEditor,ContractEditorField}.tsx` |
+| Contract draft model + hook (spec-driven fields, unknown handling, draft→instance patch) | `src/features/inventory/{contractDraft.ts,useContractDraft.ts}` |
+| Two-step onboarding / profile + pension editing (`scenario`, `mode`, `initialStep`) | `src/features/inventory/{InventoryWizard,onboardingDraft,useOnboardingDraft}.tsx` |
+| Alternatives (what-if before/after, apply, rebase, remove, undo) | `src/features/alternativen/{AlternativenPage,useAlternativenFlow}.ts(x)` |
+| Numeric input with an explicit "Weiß ich nicht" (unknown ≠ 0) | `src/ui/UnknownNumberField.tsx` |
 | Combine-mode "Mein Plan" Sober D surface (lead + headline + § 1 Zusammensetzung + § 2 Sensitivität + right-rail "Deine Angaben" receipt) | `src/features/mein-plan/MeinPlanPage.tsx` |
 | Sensitivity-row perturbation selectors (Rendite konservativ / Renteneintritt 70 / Inflation 3 % / ETF-Beitrag +100 €) — pure, framework-agnostic, re-run `runCombineSimulation` over a cloned workspace | `src/features/mein-plan/sensitivitySelectors.ts` |
 | Policy-default constants for the sensitivity rows (target scenario id, age cap, inflation rate, ETF-bump amount) | `src/features/mein-plan/sensitivityConfig.ts` |

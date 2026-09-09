@@ -196,6 +196,14 @@
   color: #b45309;
 }
 
+.pec-prov--unknown {
+  color: var(--rw-ink-soft);
+  border: 1px dashed var(--rw-rule);
+  padding: 3px 5px;
+  width: fit-content;
+  line-height: 1.3;
+}
+
 .pec-prov--confirmed {
   color: #047857;
 }

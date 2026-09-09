@@ -1,0 +1,57 @@
+.unknown-number-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  color: var(--rw-ink);
+  font: 0.9rem/1.4 var(--rw-font-sans);
+  overflow-wrap: anywhere;
+}
+
+.unknown-number-field > label:first-child { font-weight: 600; }
+.unknown-number-field__input {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid var(--rw-rule);
+  background: var(--rw-bg-paper);
+}
+.unknown-number-field__input input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.unknown-number-field__input > span {
+  padding: 0 10px;
+  max-width: 45%;
+  color: var(--rw-ink-soft);
+}
+.unknown-number-field__unknown {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  width: fit-content;
+  cursor: pointer;
+}
+.unknown-number-field__unknown input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--rw-accent);
+}
+.unknown-number-field input:focus-visible {
+  outline: 2px solid var(--rw-accent);
+  outline-offset: 2px;
+}
+.unknown-number-field__input:focus-within { outline: 2px solid var(--rw-accent); }
+.unknown-number-field__hint { color: var(--rw-ink-soft); }
+.unknown-number-field__range { color: var(--rw-accent); }
+.unknown-number-field input:disabled { opacity: 0.6; cursor: not-allowed; }

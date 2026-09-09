@@ -7,10 +7,8 @@ interface MobileNavProps {
   route: Route
   navigate: (target: Route, search?: string) => void
   /**
-   * Resolved in-app view for route `/`. Drives the "Vergleich" / "Mein Plan"
-   * label swap and active-tab disambiguation on `/`. Optional so existing
-   * tests / SSR that don't yet thread it through still render — defaults
-   * to the "Vergleich" label and the Startseite-highlighted baseline.
+   * Resolved in-app view for route `/`. Distinguishes the plan from landing;
+   * landing and secondary routes leave both primary tabs inactive.
    */
   appView?: AppView | null
 }
@@ -23,30 +21,23 @@ interface NavEntry {
   search?: string
 }
 
-// 'home' (Start) carries `?view=landing` so the label keeps its promise:
-// tapping Start always opens the landing/mode-picker, even for returning
-// users with a saved compare/combine workspace. The 'compare' entry stays
-// an inert placeholder on phone — the bottom-tab Vergleich tab does not yet
-// ship as a functional control (desktop AppHeader's Vergleich is the live
-// path). Its label still flips between "Vergleich" / "Mein Plan" based on
-// saved mode so the chrome reads coherently.
+// Secondary destinations live in MobileSheet. These two tabs always keep
+// their labels and routes, regardless of the saved mode.
 const ITEMS: readonly NavEntry[] = [
-  { id: 'home', target: ROUTES.home, search: '?view=landing' },
-  { id: 'angaben', target: ROUTES.eingaben },
-  { id: 'compare', target: null },
-  { id: 'artikel', target: ROUTES.artikel },
-  { id: 'method', target: ROUTES.methode },
+  { id: 'plan', target: ROUTES.home },
+  { id: 'compare', target: ROUTES.vergleich },
 ]
 
 /**
- * Render-time label for a mobile bottom-tab id. The `compare` tab swaps
- * between "Vergleich" (compare-mode) and "Mein Plan" (combine-mode)
- * mirroring the desktop AppHeader. Other labels are static.
+ * Render-time label for a mobile bottom-tab id. All labels are static and
+ * mirror the desktop AppHeader; "Start" is the phone-length form of
+ * "Startseite".
  */
-function navItemLabel(id: ChromeNavId, appView: AppView | null | undefined): string {
+function navItemLabel(id: ChromeNavId): string {
   if (id === 'home') return 'Start'
   if (id === 'angaben') return 'Angaben'
-  if (id === 'compare') return appView === 'combine' ? 'Mein Plan' : 'Vergleich'
+  if (id === 'plan') return 'Mein Plan'
+  if (id === 'compare') return 'Vergleich'
   if (id === 'artikel') return 'Artikel'
   return 'Methode'
 }
@@ -74,7 +65,7 @@ export function MobileNav({ route, navigate, appView }: MobileNavProps) {
       {ITEMS.map((item) => {
         const isActive = item.id === active
         const className = `rw-mobile-nav__tab${isActive ? ' rw-mobile-nav__tab--active' : ''}`
-        const label = navItemLabel(item.id, appView)
+        const label = navItemLabel(item.id)
         if (item.target) {
           const target = item.target
           const search = item.search

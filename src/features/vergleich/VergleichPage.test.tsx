@@ -1,29 +1,6 @@
 // @vitest-environment jsdom
 
-/**
- * VergleichPage tests (R1 rewrite — issue #319, R1 review fixes).
- *
- * Coverage:
- *   - Renders kicker, H1, lead paragraph (with live Beitrag / Laufzeit /
- *     Renteneintritt values from the LOCAL all-6 simulation, independent
- *     of `assumptions.visibleProducts` — Codex R1 P2 fix)
- *   - Renders rendite chip strip with terse rate-only labels (bracket-style
- *     active chip per Decision C)
- *   - Does NOT render the ComparisonPicker (R1 removed it from /vergleich;
- *     the page now shows all 6 products always)
- *   - Renders ONE section heading only — § 1 above the pro/contra grid; the
- *     comparison table has no section number / heading above it
- *   - Renders the "Wohin geht das Geld" drill-in link with the EFFECTIVE
- *     scenario id as the `?scenario=<id>` query string (CodeRabbit R1 Major
- *     fix — `effectiveScenarioId`, not `selectedScenarioId`)
- *   - Even when `assumptions.visibleProducts` is empty, the table still
- *     renders 6 product rows (R1 contract: "shows all 6 products always")
- *   - Table rows are sorted by netMonthlyPayout desc, ties broken by
- *     PRODUCT_REGISTRY order
- *   - Column header for "Kapital mit N" uses dynamic profile.retirementAge
- *     (never hardcoded 67)
- *   - Page renders without throwing across phone / tablet / desktop
- */
+// Selected-product composition plus retained navigation and export contracts.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render } from '@testing-library/react'
@@ -113,10 +90,10 @@ describe('VergleichPage — R1 layout', () => {
         />,
       ),
     )
-    expect(getByRole('heading', { level: 1 }).textContent).toBe('Sechs Wege, fürs Alter zu sparen')
+    expect(getByRole('heading', { level: 1 }).textContent).toBe('Sparformen im Vergleich')
   })
 
-  it('lead paragraph cites live Beitrag, Laufzeit, Renteneintritt', () => {
+  it('lead and note cite the budget, retirement age and nominal money basis', () => {
     const result = buildResult(defaultAssumptions)
     const { container } = render(
       inShell(
@@ -133,10 +110,10 @@ describe('VergleichPage — R1 layout', () => {
     const lead = container.querySelector('.vergleich-lead')
     expect(lead).not.toBeNull()
     const text = lead!.textContent ?? ''
-    // Runtime years = retirementAge − age = 67 − 30 = 37 by default.
-    const years = defaultProfile.retirementAge - defaultProfile.age
-    expect(text).toContain(`${years} Jahre`)
-    expect(text).toContain(String(defaultProfile.retirementAge))
+    expect(text).toContain('aus deinem eigenen Geld im Monat')
+    const note = container.querySelector('.vergleich-result-note')!.textContent
+    expect(note).toContain(`ab ${defaultProfile.retirementAge}, keine Gesamtrente`)
+    expect(note).toContain('Beträge zum Rentenbeginn (nominal).')
     // Beitrag should appear with the Euro currency sign.
     expect(text).toMatch(/€/)
   })
@@ -156,8 +133,8 @@ describe('VergleichPage — R1 layout', () => {
         />,
       ),
     )
-    const lead = container.querySelector('.vergleich-lead')
-    expect(lead!.textContent).toContain('63')
+    const note = container.querySelector('.vergleich-result-note')
+    expect(note!.textContent).toContain('63')
   })
 
   it('does NOT render the ComparisonPicker on /vergleich (R1)', () => {
@@ -178,7 +155,7 @@ describe('VergleichPage — R1 layout', () => {
     expect(container.textContent ?? '').not.toContain('Weitere Produkte')
   })
 
-  it('renders ONE section heading only — § 1 above the pro/contra grid', () => {
+  it('keeps deeper content in three secondary disclosures', () => {
     const result = buildResult(defaultAssumptions)
     const { container } = render(
       inShell(
@@ -192,9 +169,9 @@ describe('VergleichPage — R1 layout', () => {
         />,
       ),
     )
-    const sectionNums = container.querySelectorAll('.vergleich-section-num')
-    expect(sectionNums.length).toBe(1)
-    expect(sectionNums[0].textContent).toBe('§ 1')
+    const disclosures = container.querySelectorAll('details.vergleich-secondary')
+    expect(disclosures.length).toBe(3)
+    expect([...disclosures].every((details) => !details.hasAttribute('open'))).toBe(true)
     const text = container.textContent ?? ''
     expect(text).toContain('Wofür welche Sparform spricht')
     // The legacy "Sechs Sparformen im Überblick" heading is gone in R1 — the
@@ -333,10 +310,8 @@ describe('VergleichPage — R1 layout', () => {
     expect(navigate).not.toHaveBeenCalled()
   })
 
-  it('renders all 6 product rows even when assumptions.visibleProducts is empty (R1 contract: shows all 6 always)', () => {
-    // R1 Codex P2: the page runs its own simulation with visibleProducts
-    // forced to the full PRODUCT_REGISTRY list, so the user's `/eingaben`
-    // selection cannot suppress rows here. This is the new contract.
+  it('renders an empty state when no products are selected', () => {
+    // Empty selection is intentional, even when the simulation has all products.
     const assumptions: ScenarioAssumptions = {
       ...defaultAssumptions,
       visibleProducts: [] as ProductId[],
@@ -354,19 +329,13 @@ describe('VergleichPage — R1 layout', () => {
         />,
       ),
     )
-    // No empty-state panel — that branch is gone.
-    expect(container.querySelector('.rw-error-state.rw-error-state--empty')).toBeNull()
-    // Pro/contra grid still rendered.
-    expect(container.querySelector('.vergleich-pro-contra-grid')).not.toBeNull()
-    // Comparison table renders 6 rows on desktop (one per product in
-    // PRODUCT_REGISTRY), regardless of the empty `visibleProducts`.
-    const table = container.querySelector('.vergleich-comparison-table')
-    expect(table).not.toBeNull()
-    const rows = table!.querySelectorAll('tbody tr')
-    expect(rows.length).toBe(6)
+    expect(container.textContent).toContain('Noch keine Sparform ausgewählt')
+    expect(container.querySelector('.vergleich-pro-contra-grid')).toBeNull()
+    expect(container.querySelector('.vergleich-comparison-table')).toBeNull()
+    expect(container.querySelector('.vergleich-result-card')).toBeNull()
   })
 
-  it('renders all 6 products in the comparison table (iterates PRODUCT_REGISTRY, not a hardcoded list)', () => {
+  it('renders the selected products in the comparison table', () => {
     const result = buildResult(defaultAssumptions)
     const { container } = render(
       inShell(
@@ -383,9 +352,8 @@ describe('VergleichPage — R1 layout', () => {
     const table = container.querySelector('.vergleich-comparison-table')
     expect(table).not.toBeNull()
     const rows = table!.querySelectorAll('tbody tr')
-    // R1 contract: always shows all 6 products from PRODUCT_REGISTRY, never
-    // a hardcoded list or a `visibleProducts`-filtered subset.
-    expect(rows.length).toBe(6)
+    // The table and cards follow the same visibleProducts selection.
+    expect(rows.length).toBe(defaultAssumptions.visibleProducts.length)
   })
 })
 
@@ -524,9 +492,8 @@ describe('VergleichPage — allProductsSimulation prop (PR 332 R2 — Codex P2)'
   })
 
   it('falls back to a local simulation when allProductsSimulation is omitted (backwards compat)', () => {
-    // Without the prop, the page still renders all 6 rows via its internal
-    // useMemo (the R1 contract). Standalone callers + existing tests keep
-    // working unchanged.
+    // Standalone callers use the local fair-comparison simulation, then
+    // apply the same selection filter as callers with a supplied simulation.
     const result = buildResult(defaultAssumptions)
     const { container } = render(
       inShell(
@@ -543,7 +510,7 @@ describe('VergleichPage — allProductsSimulation prop (PR 332 R2 — Codex P2)'
     const table = container.querySelector('.vergleich-comparison-table')
     expect(table).not.toBeNull()
     const rows = table!.querySelectorAll('tbody tr')
-    expect(rows.length).toBe(6)
+    expect(rows.length).toBe(defaultAssumptions.visibleProducts.length)
   })
 })
 

@@ -50,8 +50,10 @@
 
 .pr-confidence-default {
   font-size: 0.75em;
-  color: var(--rw-ink-faint);
+  color: var(--rw-ink-soft);
   font-weight: 500;
+  border: 0.5pt dashed currentColor;
+  padding: 1pt 3pt;
 }
 
 /* ───── Print container ──────────────────────────────────────────────── */

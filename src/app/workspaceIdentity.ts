@@ -22,9 +22,39 @@
 import type { Workspace, WorkspaceAssumptionsV2 } from '../domain/workspace'
 import type {
   AltersvorsorgedepotInstance,
+  InstanceCommon,
   RiesterInstance,
 } from '../domain/instances'
 import { INVENTORY_PRODUCT_REGISTRY } from '../features/inventory/inventoryProductRegistry'
+
+/** Every per-product instance-array key on `WorkspaceAssumptionsV2`. */
+const INSTANCE_ARRAY_KEYS = Object.values(INVENTORY_PRODUCT_REGISTRY).map(
+  (entry) => entry.wsKey,
+) as readonly (keyof WorkspaceAssumptionsV2)[]
+
+/** Walk every instance in a workspace-assumptions object. */
+function eachInstanceArray(
+  wsa: WorkspaceAssumptionsV2,
+): { key: keyof WorkspaceAssumptionsV2; instances: InstanceCommon[] }[] {
+  return INSTANCE_ARRAY_KEYS.map((key) => ({
+    key,
+    instances: (Array.isArray(wsa[key]) ? wsa[key] : []) as unknown as InstanceCommon[],
+  }))
+}
+
+/** `true` when any instance in the scenario carries the given id. */
+function scenarioReferencesInstance(wsa: WorkspaceAssumptionsV2, instanceId: string): boolean {
+  return eachInstanceArray(wsa).some(({ instances }) =>
+    instances.some(
+      (instance) =>
+        instance.instanceId === instanceId ||
+        (instance.transferEvents ?? []).some(
+          (event) =>
+            event.sourceInstanceId === instanceId || event.targetInstanceId === instanceId,
+        ),
+    ),
+  )
+}
 
 // ---------------------------------------------------------------------------
 // ID generation
@@ -126,7 +156,7 @@ export function addInstanceToWorkspace(
 
   return {
     ...workspace,
-    baseline: { ...workspace.baseline, assumptions: updated },
+    baseline: { ...workspace.baseline, assumptions: updated, lastEditedAt: Date.now() },
   }
 }
 
@@ -135,7 +165,18 @@ export function addInstanceToWorkspace(
  * new workspace without mutating the original.  A no-op if the id is not
  * found.
  *
- * Pinned comparison ids that referenced the removed instance are cleaned up.
+ * Reference cleanup happens in this one transaction (state contract §5):
+ *
+ *  1. the instance leaves its product array;
+ *  2. `transferEvents` on **every other** instance that named the removed id as
+ *     source or target are dropped — otherwise they dangle until the next
+ *     reload sweeps them via `isUsableTransferEvent`, and a re-added id could
+ *     silently reactivate a transfer the user never asked for;
+ *  3. `pinnedComparisonIds` and `visibleInstanceIds` lose the id;
+ *  4. what-ifs that referenced the id are **marked stale, never deleted** — the
+ *     `frozenAt` marker is cleared so the existing "Baseline hat sich geändert"
+ *     badge fires and the user reviews before applying;
+ *  5. `baseline.lastEditedAt` is stamped.
  *
  * The workspace array key is resolved via `INVENTORY_PRODUCT_REGISTRY` (issue 09)
  * so the product switch is eliminated here too.
@@ -148,17 +189,36 @@ export function removeInstanceFromWorkspace(
   const wsa = workspace.baseline.assumptions
   const entry = INVENTORY_PRODUCT_REGISTRY[productId]
   const wsKey = entry.wsKey as keyof WorkspaceAssumptionsV2
-  const currentArray = wsa[wsKey] as Array<{ instanceId: string }>
-  const filtered = currentArray.filter((i) => i.instanceId !== instanceId)
 
-  const updated: WorkspaceAssumptionsV2 = {
-    ...wsa,
-    [wsKey]: filtered,
+  const updated: WorkspaceAssumptionsV2 = { ...wsa }
+  for (const { key, instances } of eachInstanceArray(wsa)) {
+    const kept = key === wsKey ? instances.filter((i) => i.instanceId !== instanceId) : instances
+    const cleaned = kept.map((instance) => {
+      const events = instance.transferEvents
+      if (!events || events.length === 0) return instance
+      const remaining = events.filter(
+        (event) =>
+          event.sourceInstanceId !== instanceId && event.targetInstanceId !== instanceId,
+      )
+      return remaining.length === events.length ? instance : { ...instance, transferEvents: remaining }
+    })
+    ;(updated as unknown as Record<string, unknown>)[key as string] = cleaned
+  }
+
+  if (wsa.visibleInstanceIds) {
+    updated.visibleInstanceIds = wsa.visibleInstanceIds.filter((id) => id !== instanceId)
   }
 
   return {
     ...workspace,
-    baseline: { ...workspace.baseline, assumptions: updated },
+    baseline: { ...workspace.baseline, assumptions: updated, lastEditedAt: Date.now() },
+    whatIfs: workspace.whatIfs.map((whatIf) =>
+      whatIf.frozenAt !== undefined &&
+      (scenarioReferencesInstance(whatIf.assumptions, instanceId) ||
+        scenarioReferencesInstance(whatIf.derivedFromBaselineSnapshot.assumptions, instanceId))
+        ? { ...whatIf, frozenAt: undefined }
+        : whatIf,
+    ),
     pinnedComparisonIds: workspace.pinnedComparisonIds.filter((id) => id !== instanceId),
   }
 }

@@ -22,13 +22,18 @@ import { computeBavMinimumEntitlement } from './engine/bavWarnings'
 import { deriveCombinePerInstanceTaxModes } from './app/combineCsvWiring'
 import { de2026Rules } from './rules/de2026'
 import { buildAllProductsSimulation } from './app/buildAllProductsSimulation'
-import { buildExportCsv, downloadCsv } from './utils/csvExport'
+import { buildCombinePortfolioCsv, buildExportCsv, downloadCsv } from './utils/csvExport'
+import { hasShareStateInUrl } from './utils/urlShareDetect'
+import { householdTotalBlockedLabels, selectResultReadiness } from './app/resultReadiness'
+import { selectPlanSummary } from './app/planSummary'
+import type { PlanSourceRow } from './app/planSummary'
 import { useCalculatorState } from './app/useCalculatorState'
 import { useDerivedViews } from './app/useDerivedViews'
 import { useSimulationResult } from './app/useSimulationResult'
 import type { WorkspaceUiState } from './app/useWorkspaceUiState'
-import { usePortfolioState } from './app/portfolioState'
+import { hasStartedPlan, usePortfolioState } from './app/portfolioState'
 import type { Route } from './app/useRoute'
+import { ROUTES } from './app/useRoute'
 import { CalculationWarnings } from './features/results/CalculationWarnings'
 import { CombineDetailView } from './features/results/CombineDetailView'
 import { PrintReport } from './features/results/PrintReport'
@@ -37,6 +42,7 @@ import { AssumptionsPanel } from './features/assumptions/AssumptionsPanel'
 import { ScenarioToolbar } from './features/workspace/ScenarioToolbar'
 import type { LandingChoice } from './features/landing/LandingPage'
 import { InventoryWizard } from './features/inventory/InventoryWizard'
+import { createFreshOnboardingScenario } from './features/inventory/onboardingDraft'
 import { useCombineSimulation } from './app/useCombineSimulation'
 import { LueckeSchliessenModal } from './features/dashboard/LueckeSchliessenModal'
 import { buildWhatIfFromCandidate } from './app/recommender'
@@ -90,6 +96,10 @@ interface CalculatorProps {
 
 function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspaceUi: ui }: CalculatorProps) {
   const [showInventoryWizard, setShowInventoryWizard] = useState(false)
+  // Which onboarding step the wizard should open on when it is used as the
+  // profile / pension editor from the plan.
+  const [wizardInitialStep, setWizardInitialStep] = useState<'profile' | 'pension' | null>(null)
+  const [freshOnboardingScenario] = useState(createFreshOnboardingScenario)
   const [showLueckeModal, setShowLueckeModal] = useState(false)
   // PR 6: combine-mode Mein-Plan pane switcher removed — the Sober D
   // `MeinPlanPage` renders all sections inline. PR 9: compare-mode Vergleich
@@ -126,7 +136,11 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
   useEffect(() => {
     if (!pendingChoice) return
     if (pendingChoice.kind === 'compare') {
-      portfolioState.setMode('compare')
+      // The comparison lives at `/vergleich` now and App navigates there, so
+      // this branch is only reached by a caller that mounts Calculator with a
+      // compare choice directly. Seed `visibleProducts` but do NOT flip the
+      // workspace mode — `/` is the plan, and the comparison must never
+      // rewrite the plan's mode.
       if (pendingChoice.visibleProducts) {
         const seed = [...pendingChoice.visibleProducts]
         setAssumptions((current) => ({ ...current, visibleProducts: seed }))
@@ -180,7 +194,21 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
   // `workspaceUi` prop so `selectedScenarioId` survives SPA navigation to
   // `/vergleich/details` (PR 290 Codex P1).
   const result = useSimulationResult(profile, assumptions, ui.selectedScenarioId)
-  const isCombineMode = portfolioState.mode === 'combine'
+
+  // Which surface `/` renders.
+  //
+  //   `?s=` share link  → the compare journey, exactly as before (a share URL
+  //                       carries singleton compare state and nothing else).
+  //   otherwise         → the personal plan, for every saved mode.
+  //
+  // A user whose saved mode is still `'compare'` (legacy v1 key, or v2 with
+  // `mode: 'compare'`) therefore lands on the plan's not-started state rather
+  // than on the comparison — the comparison stays reachable at `/vergleich`.
+  // Nothing here writes `workspace.mode`; the wizard's `onComplete` is the
+  // only place that promotes the workspace to `'combine'`.
+  const [isShareView] = useState(() => hasShareStateInUrl())
+  const isCombineMode = !isShareView
+  const planNotStarted = !hasStartedPlan(portfolioState.workspace)
   const combineProfile = portfolioState.workspace.baseline.profile
   // In combine mode, resolve the effective scenario id against workspace
   // assumptions (not singleton) so custom scenarios added via the toolbar pill
@@ -269,7 +297,6 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
   })
   const { simulation } = result
   const {
-    handleExportCsv,
     handleCopyLink,
     linkCopied,
   } = views
@@ -283,8 +310,8 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
   // here against `compareAllProductsSimulation` so the file matches the
   // page byte-for-byte (all 6 rows in registry/payout order).
   //
-  // Combine-mode keeps `handleExportCsv` (it has its own per-instance +
-  // combined branch in useDerivedViews); compare-mode swaps in this
+  // Combine-mode uses `handleExportCsvCombine` above (same per-instance +
+  // combined CSV, plus the blocked-total labels); compare-mode swaps in this
   // handler for VergleichPage's action bar.
   function handleExportCsvAllProducts(): void {
     if (!compareAllProductsSimulation) return
@@ -358,6 +385,87 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
     portfolioState.workspace.baseline.assumptions.returnScenarios.find(
       (s) => s.id === combineBasisScenarioId,
     )?.label ?? 'Basis'
+
+  // ---------------------------------------------------------------------------
+  // Plan readiness + summary (simplification phase 2D wiring).
+  //
+  // `selectResultReadiness` decides whether the household total may be shown
+  // at all; `householdTotalBlockedLabels` turns a blocking verdict into the
+  // German labels the CSV/PDF print instead of a number. Passing them into the
+  // export options is what *arms* the suppression delivered in Phase 1 — until
+  // this call site existed, exports behaved exactly as before.
+  // ---------------------------------------------------------------------------
+  const readiness = useMemo(
+    () =>
+      selectResultReadiness(
+        portfolioState.workspace,
+        combineSimulation,
+        combineSimulation.error,
+      ),
+    [portfolioState.workspace, combineSimulation],
+  )
+  const planSummary = useMemo(
+    () =>
+      selectPlanSummary(portfolioState.workspace, combineSimulation, combineBasisScenarioId, {
+        simulationError: combineSimulation.error,
+        rules: de2026Rules,
+      }),
+    [portfolioState.workspace, combineSimulation, combineBasisScenarioId],
+  )
+  const householdTotalBlocked = useMemo(() => {
+    if (readiness.canShowHouseholdTotal) return undefined
+    return { reasonLabels: householdTotalBlockedLabels(readiness) }
+  }, [readiness])
+
+  // One-level undo, surfaced on the plan. `portfolioState.lastUndo` is a
+  // module-level handle, so a contract removed on `/vertrag/:id/bearbeiten`
+  // still offers "Rückgängig" here after the redirect back to `/`. Consuming
+  // or superseding it clears the handle in `portfolioState`, so the banner
+  // disappears on its own.
+  const { lastUndo, undo: undoWorkspace } = portfolioState
+  const planNotification = useMemo(() => {
+    if (!lastUndo) return undefined
+    return { message: lastUndo.label, onUndo: () => undoWorkspace(lastUndo) }
+  }, [lastUndo, undoWorkspace])
+
+  // Plan navigation callbacks handed to MeinPlanPage.
+  function handleAddContract(): void {
+    navigate(ROUTES.vorsorgeNeu)
+  }
+  function handleEditSource(row: PlanSourceRow): void {
+    if (row.target) {
+      navigate(row.target)
+      return
+    }
+    if (row.instanceId) {
+      navigate(ROUTES.vertragBearbeiten(row.instanceId))
+    }
+  }
+  function handleEditProfile(): void {
+    setWizardInitialStep('profile')
+    setShowInventoryWizard(true)
+  }
+  function handleEditPension(): void {
+    setWizardInitialStep('pension')
+    setShowInventoryWizard(true)
+  }
+
+  // Combine-mode CSV. Built here rather than through `useDerivedViews` so the
+  // blocked-total labels can ride along — `CombineExportBundle` has no slot for
+  // them and widening it would touch a file this phase does not own.
+  function handleExportCsvCombine(): void {
+    if (!combineExportBundle) return
+    const csv = buildCombinePortfolioCsv({
+      ...combineExportBundle,
+      rules: de2026Rules,
+      profile: combineProfile,
+      inflationRate:
+        combineExportBundle.inflationRate ??
+        portfolioState.workspace.baseline.assumptions.inflationRate,
+      householdTotalBlocked,
+    })
+    downloadCsv('rentenwiki-export.csv', csv)
+  }
   // PR 9: compare-mode no longer renders a BreakEvenChart inline — the
   // lifecycle chart now lives on `/kapital` (PR 8), driven from its own
   // GRV-contribution timeline. The legacy `compareGrvContributionTimeline`
@@ -369,19 +477,14 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
   // (combine) moved to `/eingaben` § 5; the old `angebot` tab + workspace
   // tab strip are gone, along with the per-tab scroll-on-change effect
   // (chrome nav's `navigate()` already scrolls).
+
   const vergleichView = (
     <section
       className="workspace-view workspace-view--vergleich"
       {...vergleichSectionProps}
     >
-      {portfolioState.mode === 'combine' && (
+      {isCombineMode && (
         <div className="mein-plan-host">
-          {/* Scenario toolbar stays above the Sober D page surface so the
-              user can still switch scenarios and toggle Monte-Carlo without
-              leaving Mein Plan. The pre-PR-6 `MeinPlanSidebar` + pane switcher
-              is gone — every section now renders linearly inside MeinPlanPage. */}
-          {toolbar}
-
           <MeinPlanPage
             workspace={portfolioState.workspace}
             perInstance={combineSimulation.perInstance}
@@ -390,24 +493,52 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
             combinedForScenario={combineBasisResult}
             rules={de2026Rules}
             navigate={navigate}
+            summary={planSummary}
+            readiness={readiness}
+            planNotStarted={planNotStarted}
+            notification={planNotification}
+            onAddContract={handleAddContract}
+            onEditSource={handleEditSource}
+            onEditProfile={handleEditProfile}
+            onEditPension={handleEditPension}
+            onSetTarget={(value) => portfolioState.patchBaseline({
+              profile: { ...portfolioState.baseline.profile, desiredNetMonthlyPension: value },
+            })}
           />
 
-          {/* "Wo geht mein nächster Euro hin?" CTA. The previous
-              "Optimiere deine Vorsorge" portfolio-audit modal was replaced
-              in PR 7 by the per-instance `/vertrag/:instanceId` drill-in
-              reached via the Mein Plan § 1 Zusammensetzung row links; the
-              modal entry point is gone here. */}
-          {combineBasisResult && (
-            <div className="mein-plan-cta-row" role="group" aria-label="Plan anpassen">
-              <button
-                type="button"
-                className="mein-plan-cta"
-                onClick={() => setShowLueckeModal(true)}
-              >
-                Beiträge anpassen
-              </button>
-            </div>
-          )}
+          <div className="rw-plan-secondary">
+            <details className="rw-plan-disclosure">
+              <summary>Annahmen &amp; Risiko</summary>
+              <div className="rw-plan-disclosure__body">
+                {toolbar}
+                <AssumptionsPanel
+                  show={ui.showAssumptions}
+                  onToggle={() => ui.setShowAssumptions((v) => !v)}
+                  rules={de2026Rules}
+                  bavMinAnnual={bavMinAnnual}
+                  bavMinMonthly={bavMinMonthly}
+                />
+                <CalculationWarnings />
+              </div>
+            </details>
+
+            <details className="rw-plan-disclosure">
+              <summary>Empfehlung: Wo geht mein nächster Euro hin?</summary>
+              <div className="rw-plan-disclosure__body">
+                {combineBasisResult && (
+                  <div className="mein-plan-cta-row" role="group" aria-label="Plan anpassen">
+                    <button
+                      type="button"
+                      className="mein-plan-cta"
+                      onClick={() => setShowLueckeModal(true)}
+                    >
+                      Beiträge anpassen
+                    </button>
+                  </div>
+                )}
+              </div>
+            </details>
+          </div>
 
           {showLueckeModal && combineBasisResult && (
             <LueckeSchliessenModal
@@ -462,32 +593,23 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
   const detailsView = isCombineMode ? (
     <section
       id="details"
-      className="workspace-view workspace-view--details"
+      className="workspace-view workspace-view--details rw-plan-secondary"
       {...detailsSectionProps}
     >
-      {/* Combine-mode (Group G issue 11): the singleton compare detail panels
-          (sensitivity, fairness, comparison table tied to visibleProducts) do
-          not apply to a portfolio of actual contracts. Render the same
-          export/print/assumption affordances driven from portfolio data. */}
-      <CalculationWarnings />
-
-      <CombineDetailView
-        workspace={portfolioState.workspace}
-        perInstance={combineSimulation.perInstance}
-        selectedScenarioId={combineBasisScenarioId}
-        selectedScenarioLabel={combineBasisLabel}
-        combinedForScenario={combineSimulation.combinedByScenarioId[combineBasisScenarioId]}
-        onExportCsv={handleExportCsv}
-        onPrint={() => window.print()}
-      />
-
-      <AssumptionsPanel
-        show={ui.showAssumptions}
-        onToggle={() => ui.setShowAssumptions((v) => !v)}
-        rules={de2026Rules}
-        bavMinAnnual={bavMinAnnual}
-        bavMinMonthly={bavMinMonthly}
-      />
+      <details className="rw-plan-disclosure">
+        <summary>Details &amp; Export</summary>
+        <div className="rw-plan-disclosure__body">
+          <CombineDetailView
+            workspace={portfolioState.workspace}
+            perInstance={combineSimulation.perInstance}
+            selectedScenarioId={combineBasisScenarioId}
+            selectedScenarioLabel={combineBasisLabel}
+            combinedForScenario={combineSimulation.combinedByScenarioId[combineBasisScenarioId]}
+            onExportCsv={handleExportCsvCombine}
+            onPrint={() => window.print()}
+          />
+        </div>
+      </details>
     </section>
   ) : null
 
@@ -499,46 +621,42 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
     <>
       {showInventoryWizard && (
         <InventoryWizard
-          grossSalaryYear={profile.grossSalaryYear}
-          childBirthYears={profile.childBirthYears}
-          age={profile.age}
-          retirementAge={profile.retirementAge}
-          publicHealthInsurance={profile.publicHealthInsurance}
-          initialEnabledProducts={wizardInitialProducts}
-          onComplete={(workspaceFromWizard) => {
-            // #09: write the wizard's workspace into portfolioState BEFORE
-            // setMode so the first combine-mode render sees the new data, not
-            // stale defaults (replaceWorkspace is atomic; setMode would
-            // otherwise overwrite with the old in-memory workspace).
-            portfolioState.replaceWorkspace(workspaceFromWizard)
-            // Mirror the personal details into the singleton profile +
-            // statutoryPension so a later switch to compare-mode (or a
-            // returning user clicking "Vergleich starten") sees the same
-            // baseline rather than the engine defaults.
+          scenario={hasStartedPlan(portfolioState.workspace) ? portfolioState.baseline : freshOnboardingScenario}
+          initialStep={wizardInitialStep ?? 'profile'}
+          mode={hasStartedPlan(portfolioState.workspace) ? 'edit' : 'onboarding'}
+          onComplete={(scenario) => {
+            portfolioState.replaceWorkspace({
+              ...portfolioState.workspace,
+              mode: 'combine',
+              baseline: scenario,
+            })
+            // Keep the compare singleton's existing profile/pension mirror.
             setProfile((current) => ({
               ...current,
-              age: workspaceFromWizard.baseline.profile.age,
-              retirementAge: workspaceFromWizard.baseline.profile.retirementAge,
-              grossSalaryYear: workspaceFromWizard.baseline.profile.grossSalaryYear,
-              publicHealthInsurance: workspaceFromWizard.baseline.profile.publicHealthInsurance,
-              childBirthYears: [...workspaceFromWizard.baseline.profile.childBirthYears],
+              age: scenario.profile.age,
+              retirementAge: scenario.profile.retirementAge,
+              grossSalaryYear: scenario.profile.grossSalaryYear,
+              publicHealthInsurance: scenario.profile.publicHealthInsurance,
+              childBirthYears: [...scenario.profile.childBirthYears],
             }))
             setAssumptions((current) => ({
               ...current,
               statutoryPension: {
                 ...current.statutoryPension,
-                pensionBaselineType: workspaceFromWizard.baseline.assumptions.statutoryPension.pensionBaselineType,
-                currentEntgeltpunkte: workspaceFromWizard.baseline.assumptions.statutoryPension.currentEntgeltpunkte,
-                manualMonthlyGross: workspaceFromWizard.baseline.assumptions.statutoryPension.manualMonthlyGross,
+                ...scenario.assumptions.statutoryPension,
               },
             }))
+            const firstProduct = wizardInitialProducts?.[0]
             setShowInventoryWizard(false)
             setWizardInitialProducts(undefined)
+            setWizardInitialStep(null)
             portfolioState.setMode('combine')
+            if (firstProduct) navigate(ROUTES.vorsorgeNeu, `?produkt=${encodeURIComponent(firstProduct)}`)
           }}
           onDismiss={() => {
             setShowInventoryWizard(false)
             setWizardInitialProducts(undefined)
+            setWizardInitialStep(null)
           }}
         />
       )}
@@ -553,6 +671,14 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
         LegalFooter remain siblings of the body so the printable A4 report
         stays available regardless of route.
       */}
+      {portfolioState.storageError && (
+        <ErrorStatePanel
+          tone="error"
+          message="Speichern nicht möglich. Deine Änderungen sind noch nicht dauerhaft gesichert."
+          className="rw-error-state--banner"
+        />
+      )}
+
       {invalidLink && (
         <ErrorStatePanel
           tone="error"
@@ -583,6 +709,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
         }
         combineWorkspace={isCombineMode ? portfolioState.workspace : undefined}
         combineSensitivityRows={printSensitivityRows}
+        combineHouseholdTotalBlocked={isCombineMode ? householdTotalBlocked : undefined}
         selectedScenarioId={!isCombineMode ? result.effectiveScenarioId : undefined}
       />
 

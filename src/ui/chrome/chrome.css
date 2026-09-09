@@ -142,6 +142,7 @@
 
 .rw-app-header__top {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   gap: 24px;
@@ -168,6 +169,7 @@
 
 .rw-app-header__title {
   margin: 0;
+  overflow-wrap: anywhere;
   font-size: 32px;
   font-weight: 600;
   letter-spacing: -0.4px;
@@ -193,13 +195,18 @@
 
 .rw-app-header__nav {
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
   gap: 0;
   font-family: var(--rw-font-sans);
   font-size: 13px;
-  flex-shrink: 0;
 }
 
 .rw-app-header__nav-item {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   padding: 4px 14px;
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
@@ -210,6 +217,13 @@
 
 .rw-app-header--editorial .rw-app-header__nav-item {
   color: var(--rw-ink-editorial-soft);
+}
+
+.rw-app-header .rw-app-header__nav-item--primary {
+  color: var(--rw-ink);
+  background: var(--rw-bg-paper-soft);
+  font-weight: 600;
+  font-size: 15px;
 }
 
 .rw-app-header__nav-item--active {
@@ -234,6 +248,8 @@
 /* ───── AppHeader — phone variant ───────────────────────────────────────── */
 
 .rw-app-header--phone {
+  box-sizing: border-box;
+  min-width: 0;
   display: flex;
   align-items: center;
   padding: 11px 16px 9px;
@@ -245,6 +261,8 @@
 }
 
 .rw-app-header__brand {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-family: var(--rw-font-sans);
   font-size: 17px;
   font-weight: 600;
@@ -259,6 +277,7 @@
 }
 
 .rw-app-header__menu-btn {
+  flex-shrink: 0;
   margin-left: auto;
   background: transparent;
   border: 0;
@@ -303,6 +322,7 @@
 /* ───── MobileNav (phone bottom tab bar) ────────────────────────────────── */
 
 .rw-mobile-nav {
+  box-sizing: border-box;
   position: fixed;
   left: 0;
   right: 0;
@@ -316,11 +336,14 @@
 }
 
 .rw-mobile-nav__tab {
-  flex: 1;
+  box-sizing: border-box;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
   text-align: center;
   font-family: var(--rw-font-sans);
-  font-size: 10.5px;
-  font-weight: 400;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--rw-ink-soft);
   text-decoration: none;
   padding: 6px 4px;
@@ -331,6 +354,14 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+}
+
+.rw-app-header__nav-item:focus-visible,
+.rw-app-header__menu-btn:focus-visible,
+.rw-mobile-sheet__item:focus-visible,
+.rw-mobile-nav__tab:focus-visible {
+  outline: 2px solid var(--rw-accent);
+  outline-offset: -4px;
 }
 
 .rw-mobile-nav__tab--active {
@@ -389,6 +420,8 @@
 }
 
 .rw-mobile-sheet__item {
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
   display: block;
   width: 100%;
   text-align: left;
@@ -569,6 +602,60 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+/* Optional plan controls follow the overview with matching gutters. Native
+   disclosures keep content mounted and preserve input state while closed. */
+.rw-plan-secondary,
+.workspace-view--details.rw-plan-secondary {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 960px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 0 40px;
+  background: transparent;
+}
+
+.workspace-view--details.rw-plan-secondary { padding-bottom: 32px; }
+
+.rw-plan-disclosure {
+  min-width: 0;
+  border-top: 1px solid var(--rw-rule);
+  color: var(--rw-ink);
+  overflow-wrap: anywhere;
+}
+
+.rw-plan-disclosure > summary {
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 14px 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rw-plan-disclosure > summary:focus-visible {
+  outline: 2px solid var(--rw-accent);
+  outline-offset: 2px;
+}
+
+.rw-plan-disclosure__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 4px 0 20px;
+}
+
+.rw-plan-disclosure__body .export-btn,
+.rw-plan-disclosure__body .mein-plan-cta { min-height: 44px; }
+
+.rw-plan-disclosure__body .mein-plan-cta-row { padding: 0; }
+.rw-plan-disclosure__body .mein-plan-cta { flex: 0 1 auto; max-width: 100%; }
+
+@media (max-width: 639px) {
+  .rw-plan-secondary,
+  .workspace-view--details.rw-plan-secondary { padding-inline: 16px; }
 }
 
 @media print {

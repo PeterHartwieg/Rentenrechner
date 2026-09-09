@@ -589,3 +589,221 @@
     width: 140px;
   }
 }
+
+/* Package 2C: setup and the selected-product journey. */
+.vergleich-journey,
+.vergleich-shell,
+.vergleich-main,
+.vergleich-body {
+  min-width: 0;
+}
+
+.vergleich-shell {
+  overflow-wrap: anywhere;
+}
+
+.vergleich-setup-form {
+  display: grid;
+  gap: 28px;
+}
+
+.vergleich-choice-fieldset,
+.vergleich-health {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.vergleich-choice-fieldset > legend,
+.vergleich-health > legend {
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.vergleich-choice-grid,
+.vergleich-result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.vergleich-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--vergleich-rule);
+  background: var(--vergleich-paper);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.vergleich-choice:has(input:checked) {
+  border-color: var(--vergleich-ink);
+  box-shadow: inset 0 0 0 1px var(--vergleich-ink);
+}
+
+.vergleich-choice small {
+  display: block;
+  margin-top: 6px;
+  color: var(--vergleich-ink-soft);
+  line-height: 1.5;
+}
+
+.vergleich-shell input[type='checkbox'],
+.vergleich-shell input[type='radio'] {
+  accent-color: var(--vergleich-ink);
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.vergleich-muted {
+  color: var(--vergleich-ink-soft);
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.vergleich-budget {
+  max-width: 620px;
+  display: grid;
+  gap: 10px;
+}
+
+.vergleich-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 16px;
+}
+
+.vergleich-shell .input-shell,
+.vergleich-shell .field,
+.vergleich-shell .input-shell input {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.vergleich-health label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.vergleich-profile-seed {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+
+.vergleich-primary {
+  justify-self: start;
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 12px 22px;
+  border: 1px solid var(--vergleich-ink);
+  border-radius: 3px;
+  background: var(--vergleich-ink);
+  color: var(--rw-bg-cream);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  max-width: 100%;
+}
+
+.vergleich-shell :is(button, input, summary, a):focus-visible {
+  outline: 2px solid var(--vergleich-ink);
+  outline-offset: 4px;
+}
+
+.vergleich-result-card {
+  min-width: 0;
+  padding: 24px;
+  background: var(--vergleich-paper);
+  border: 1px solid var(--vergleich-rule);
+  border-radius: 4px;
+}
+
+.vergleich-result-card h2 {
+  font-family: Newsreader, Georgia, serif;
+  font-weight: 400;
+  font-size: 24px;
+  margin: 0 0 18px;
+}
+
+.vergleich-result-number {
+  font-family: var(--rw-font-sans);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(30px, 4vw, 44px);
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+
+.vergleich-result-duration {
+  line-height: 1.6;
+  margin: 22px 0;
+}
+
+.vergleich-result-duration small {
+  color: var(--vergleich-ink-soft);
+}
+
+.vergleich-disclosure {
+  min-width: 0;
+  border-top: 1px solid var(--vergleich-rule-soft);
+}
+
+.vergleich-disclosure > summary {
+  cursor: pointer;
+  padding: 14px 0;
+  min-height: 44px;
+  box-sizing: border-box;
+  font-weight: 600;
+}
+
+.vergleich-assumptions {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.vergleich-assumptions > div {
+  padding: 8px 0;
+}
+
+.vergleich-assumptions dt {
+  color: var(--vergleich-ink-soft);
+}
+
+.vergleich-assumptions dd {
+  margin: 2px 0 0;
+}
+
+@media (max-width: 650px) {
+  .vergleich-choice-grid,
+  .vergleich-result-grid,
+  .vergleich-profile-grid,
+  .vergleich-pro-contra-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .vergleich-result-card { padding: 18px; }
+  .vergleich-product-card__head { flex-wrap: wrap; }
+  .vergleich-product-card__grid { grid-template-columns: minmax(0, 1fr); }
+  .vergleich-primary { width: 100%; }
+}
+
+/* Phase 4a: `/vergleich` mounts its own `PrintReport` mirror. The chrome only
+   hides `.rw-dashboard-body` for print (Calculator's host), so the journey's
+   own screen body has to opt out here — otherwise "Drucken" would emit the
+   web page followed by the report. */
+@media print {
+  .vergleich-journey {
+    display: none !important;
+  }
+}

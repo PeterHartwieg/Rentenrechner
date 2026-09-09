@@ -780,3 +780,68 @@ describe('buildCombinePortfolioCsv — gh#59 byInstance net regression', () => {
     expect(nettoRente).toBeCloseTo(BAV_PER_INSTANCE_NET, 1)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Blocked household total (simplification project, lead decision §10.3):
+// the Netto-Einkommen cell is blank — never 0, never a placeholder — and one
+// Hinweis line names the missing inputs.
+// ---------------------------------------------------------------------------
+
+describe('buildCombinePortfolioCsv — suppressed household total', () => {
+  const baseOpts = {
+    perInstance: { 'bav-1': [FIXTURE_BAV_INSTANCE_RESULT] },
+    combinedByScenarioId: { basis: FIXTURE_COMBINED },
+    scenarioLabels: { basis: 'Basis' },
+  }
+
+  function incomeRow(csv: string): string[] {
+    const lines = csv.split('\n')
+    const idx = lines.findIndex((l) => l === 'Kombiniertes Renteneinkommen')
+    expect(idx).toBeGreaterThanOrEqual(0)
+    return lines[idx + 2].split(',')
+  }
+
+  it('emits the aggregated net when nothing blocks', () => {
+    const cols = incomeRow(buildCombinePortfolioCsv(baseOpts))
+    expect(cols[1]).toBe('2345.67')
+  })
+
+  it('emits an empty cell — not 0 — when the total is blocked', () => {
+    const cols = incomeRow(
+      buildCombinePortfolioCsv({
+        ...baseOpts,
+        householdTotalBlocked: { reasonLabels: ['Aktueller Wert von „ETF" ist unbekannt.'] },
+      }),
+    )
+    expect(cols[1]).toBe('')
+    expect(cols[1]).not.toBe('0.00')
+    // The statutory column is untouched — only the household total is suppressed.
+    expect(cols[2]).toBe('1100.00')
+  })
+
+  it('names the missing inputs in the Hinweis block', () => {
+    const csv = buildCombinePortfolioCsv({
+      ...baseOpts,
+      householdTotalBlocked: { reasonLabels: ['Gesetzliche Rente unbekannt.'] },
+    })
+    const lines = csv.split('\n')
+    expect(lines[0]).toBe('Hinweis')
+    expect(csv).toContain(
+      'Netto-Gesamtrente nicht berechnet – fehlende Angaben: Gesetzliche Rente unbekannt.',
+    )
+  })
+
+  it('exports "Keine Angabe" for a row without any evidence metadata', () => {
+    const csv = buildCombinePortfolioCsv({
+      ...baseOpts,
+      perInstance: {
+        'bav-1': [{ ...FIXTURE_BAV_INSTANCE_RESULT, inputConfidence: undefined }],
+      },
+    })
+    const lines = csv.split('\n')
+    const idx = lines.findIndex((l) => l === 'Mein Plan — Detail je Instanz')
+    const row = lines.slice(idx + 2).find((l) => l.startsWith('bav-1,'))
+    expect(row).toBeDefined()
+    expect(row!.split(',')[9]).toBe('Keine Angabe')
+  })
+})

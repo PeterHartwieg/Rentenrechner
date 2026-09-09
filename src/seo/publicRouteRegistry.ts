@@ -586,6 +586,42 @@ export const publicRouteRegistry = {
   // C6, Q4); the demo seeds `visibleProducts` with the three primary products
   // (ETF + bAV + private Rente) so crawlers index a real, populated grid.
   // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Simplification 2C — `/vergleich`, the independent comparison journey.
+  // Setup and result on one page. Public and prerendered: it is the surface a
+  // "ETF oder bAV?" search should land on, and it works without any saved
+  // state (the page falls back to model defaults). `/` stays the personal
+  // plan; neither route writes the other's data.
+  // ---------------------------------------------------------------------------
+  '/vergleich': {
+    canonical: '/vergleich',
+    title: 'Sparformen vergleichen 2026 | RentenWiki.de',
+    metaDescription:
+      'Sparformen für die Altersvorsorge direkt vergleichen: ETF, bAV, Riester, ' +
+      'Basisrente, Altersvorsorgedepot und private Rente bei gleichem Eigenanteil. ' +
+      'Lokal im Browser, kein Account, Werte 2026.',
+    h1: 'Sparformen vergleichen',
+    summary:
+      'Vergleicht die gewählten Sparformen bei gleichem eigenem Monatsbeitrag und zeigt ' +
+      'für jede, was nach Kosten, Steuern und Krankenversicherung im Alter übrig bleibt. ' +
+      'Der Vergleich ist eigenständig — dein persönlicher Plan bleibt unverändert.',
+    dateModified: '2026-09-09',
+    datePublished: '2026-09-09',
+    robots: 'index,follow',
+    inSitemap: true,
+    jsonLdType: 'WebApplication',
+    relatedRoutes: [
+      '/',
+      '/vergleich/details',
+      '/altersvorsorgeprodukte-vergleichen',
+      '/etf-vs-bav',
+      '/methode',
+    ],
+    calculatorCta: {
+      label: 'Vergleich öffnen',
+      href: '/vergleich',
+    },
+  },
   '/vergleich/details': {
     canonical: '/vergleich/details',
     title: 'Wohin geht das Geld? Vergleich im Detail | RentenWiki.de',

@@ -9,6 +9,10 @@ import type {
 import type { Workspace, WhatIfScenario, WorkspaceAssumptionsV2, Scenario } from '../domain/workspace'
 import type { InstanceCommon } from '../domain/instances'
 import { inRange, isFiniteNumber, isInt } from '../domain/validation/primitives'
+import {
+  sanitizeInputStatusMap,
+  sanitizePensionEntryMethod,
+} from '../domain/inputStatus'
 import { PRODUCT_IDS, PRODUCT_REGISTRY } from '../engine/productRegistry'
 import type { ProductId } from '../engine/productRegistry'
 import { validateBav } from '../engine/products/bav.validation'
@@ -92,6 +96,22 @@ function validateStatutoryPension(sp: StatutoryPensionAssumptions): boolean {
   return true
 }
 
+/**
+ * Sanitise-not-reject for the additive input-status metadata on a statutory
+ * pension block. A malformed `pensionEntryMethod` degrades to `undefined`
+ * instead of discarding the user's whole scenario (transfer-event precedent).
+ */
+function sanitizeStatutoryPension(
+  sp: StatutoryPensionAssumptions,
+): StatutoryPensionAssumptions {
+  const entryMethod = sanitizePensionEntryMethod(sp.pensionEntryMethod)
+  if (entryMethod === undefined && sp.pensionEntryMethod === undefined) return sp
+  const next = { ...sp }
+  if (entryMethod === undefined) delete next.pensionEntryMethod
+  else next.pensionEntryMethod = entryMethod
+  return next
+}
+
 export function validateAssumptions(input: unknown): ScenarioAssumptions | null {
   if (!input || typeof input !== 'object') return null
   const a = input as ScenarioAssumptions
@@ -111,7 +131,13 @@ export function validateAssumptions(input: unknown): ScenarioAssumptions | null 
     if (!PRODUCT_IDS.includes(pid)) return null
   }
   if (!validateContributionInput(a.contributionInput)) return null
-  return a
+  // Additive metadata: sanitise, never reject (state contract §2.4).
+  const inputStatus = sanitizeInputStatusMap(a.inputStatus, { restrictToReservedKeys: true })
+  const statutoryPension = sanitizeStatutoryPension(a.statutoryPension)
+  const sanitized: ScenarioAssumptions = { ...a, statutoryPension }
+  if (inputStatus === undefined) delete sanitized.inputStatus
+  else sanitized.inputStatus = inputStatus
+  return sanitized
 }
 
 /**
@@ -244,6 +270,12 @@ function validateInstanceCommon(inst: unknown): inst is InstanceCommon {
   for (const v of Object.values(i.evidenceMap as Record<string, unknown>)) {
     if (!VALID_EVIDENCE_STATES.includes(v as typeof VALID_EVIDENCE_STATES[number])) return false
   }
+  // Optional inputStatus — never rejected here; `sanitizeInstances` below
+  // drops unusable entries so a bad status byte cannot discard the workspace.
+  if (
+    i.inputStatus !== undefined &&
+    (typeof i.inputStatus !== 'object' || i.inputStatus === null || Array.isArray(i.inputStatus))
+  ) return false
   // Optional currentValueEUR
   if (i.currentValueEUR !== undefined && (!isFiniteNumber(i.currentValueEUR as unknown) || (i.currentValueEUR as number) < 0)) return false
   // Optional ownedBy
@@ -403,18 +435,34 @@ export function validateWorkspaceAssumptions(input: unknown): WorkspaceAssumptio
   const bavById = new Map(a.bav.map((inst) => [inst.instanceId, inst]))
   const sanitizeInstances = <T extends InstanceCommon>(instances: T[]): T[] => {
     return instances.map((instance) => {
-      if (!instance.transferEvents) return instance
-      const transferEvents = instance.transferEvents.filter((event) =>
+      // Additive input-status metadata: drop unusable entries, keep the instance.
+      const inputStatus = sanitizeInputStatusMap(instance.inputStatus)
+      const statusChanged =
+        instance.inputStatus !== undefined &&
+        (inputStatus === undefined ||
+          Object.keys(inputStatus).length !== Object.keys(instance.inputStatus).length)
+      let next = instance
+      if (statusChanged) {
+        next = { ...instance }
+        if (inputStatus === undefined) delete next.inputStatus
+        else next.inputStatus = inputStatus
+      }
+      if (!next.transferEvents) return next
+      const transferEvents = next.transferEvents.filter((event) =>
         isUsableTransferEvent(event, allInstanceIds, bavById),
       )
-      return transferEvents.length === instance.transferEvents.length
-        ? instance
-        : { ...instance, transferEvents }
+      return transferEvents.length === next.transferEvents.length
+        ? next
+        : { ...next, transferEvents }
     })
   }
 
-  return {
+  const workspaceInputStatus = sanitizeInputStatusMap(a.inputStatus, {
+    restrictToReservedKeys: true,
+  })
+  const sanitizedWorkspaceAssumptions: WorkspaceAssumptionsV2 = {
     ...a,
+    statutoryPension: sanitizeStatutoryPension(a.statutoryPension),
     bav: sanitizeInstances(a.bav),
     etf: sanitizeInstances(a.etf),
     insurance: sanitizeInstances(a.insurance),
@@ -422,6 +470,9 @@ export function validateWorkspaceAssumptions(input: unknown): WorkspaceAssumptio
     altersvorsorgedepot: sanitizeInstances(a.altersvorsorgedepot),
     riester: sanitizeInstances(a.riester),
   }
+  if (workspaceInputStatus === undefined) delete sanitizedWorkspaceAssumptions.inputStatus
+  else sanitizedWorkspaceAssumptions.inputStatus = workspaceInputStatus
+  return sanitizedWorkspaceAssumptions
 }
 
 /**

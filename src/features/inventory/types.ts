@@ -98,9 +98,14 @@ export type AnyProductDraft =
 
 /**
  * Mandatory pension baseline that this user belongs to. Mirrors the engine's
- * `PensionBaselineType` minus 'none' (always one of three for the wizard).
+ * `PensionBaselineType` one-to-one, including `'none'`.
+ *
+ * `'none'` ("keine Pflichtversorgung", e.g. a permanently exempt self-employed
+ * person) is an explicit, complete answer — not the same as an unanswered
+ * pension step. `selectResultReadiness` treats it as complete and never raises
+ * a reason for it, while a skipped step blocks the household total.
  */
-export type PensionBaseline = 'grv' | 'beamtenpension' | 'versorgungswerk'
+export type PensionBaseline = 'grv' | 'beamtenpension' | 'versorgungswerk' | 'none'
 
 /**
  * Personal details collected in wizard step 0 before the product checklist.

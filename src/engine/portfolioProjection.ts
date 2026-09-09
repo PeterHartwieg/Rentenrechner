@@ -567,6 +567,10 @@ export function singletonViewOfWorkspace(
     // every field here, so a new field that is not listed silently disappears
     // on projection.
     contributionInput: wsa.contributionInput,
+    // Scenario-level input-status metadata (state contract §2.5). Carried by
+    // name like every field here; `statutoryPension` below carries
+    // `pensionEntryMethod` wholesale because the whole block is copied.
+    inputStatus: wsa.inputStatus,
     statutoryPension: wsa.statutoryPension,
     bav: defaultsForEmptySlots.bav,
     etf: defaultsForEmptySlots.etf,

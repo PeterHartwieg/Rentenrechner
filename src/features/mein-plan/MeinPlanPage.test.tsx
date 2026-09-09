@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createElement, type ReactElement } from 'react'
 import { AppShell } from '../../ui/chrome/AppShell'
 import { pathToRoute, ROUTES } from '../../app/useRoute'
 import { MeinPlanPage } from './MeinPlanPage'
+import { selectPlanSummary } from '../../app/planSummary'
+import { formatCurrency } from '../../utils/format'
 import { defaultWorkspace, STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../../storage'
 import { addInstanceToWorkspace } from '../inventory/inventoryHelpers'
 import { runCombineSimulation } from '../../app/useCombineSimulation'
@@ -17,10 +19,12 @@ import * as sensitivitySelectors from './sensitivitySelectors'
 beforeEach(() => {
   localStorage.clear()
   window.history.pushState(null, '', '/')
+  HTMLElement.prototype.scrollIntoView = vi.fn()
 })
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   mockViewport('desktop')
 })
 
@@ -467,5 +471,166 @@ describe('MeinPlanPage — Sober D combine-mode surface', () => {
     // The sublabel <div> must be absent entirely for the 'none' case.
     const subEl = rows[0].querySelector('.mein-plan-zusammen-sub')
     expect(subEl).toBeNull()
+  })
+})
+
+function buildOverviewProps(workspace = buildCombineWorkspace()) {
+  workspace = { ...workspace, baseline: { ...workspace.baseline,
+    assumptions: { ...workspace.baseline.assumptions, inflationRate: 0.02 } } }
+  const props = buildProps(workspace)
+  const summary = selectPlanSummary(workspace, runCombineSimulation(workspace, de2026Rules), props.selectedScenarioId)
+  return { ...props, summary, readiness: summary.readiness, planNotStarted: false }
+}
+
+describe('MeinPlanPage — default overview', () => {
+  it('mounts the overview in real euros without the legacy headline or receipt', () => {
+    const props = buildOverviewProps()
+    const spy = vi.spyOn(sensitivitySelectors, 'sensitivityIfReturnScenario')
+    const { container } = render(<MeinPlanPage {...props} />)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Deine Rente im Überblick')
+    expect(container.querySelector('.plan-overview__number')).toHaveTextContent(formatCurrency(props.summary.netMonthlyTotalReal).replace(/\u00a0/g, ' '))
+    expect(screen.getByRole('list', { name: 'Deine Rentenquellen' })).toBeVisible()
+    expect(container.querySelector('.mein-plan-headline')).toBeNull()
+    expect(container.querySelector('.rw-right-rail')).toBeNull()
+    expect(screen.getByText('Weitere Auswertungen').closest('details')).not.toHaveAttribute('open')
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+
+  it('renders the not-started screen and only opens onboarding on demand', () => {
+    const onEditProfile = vi.fn()
+    render(<MeinPlanPage {...buildOverviewProps(defaultWorkspace)} planNotStarted onEditProfile={onEditProfile} />)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Dein Plan beginnt hier.')
+    expect(screen.queryByText('Weitere Auswertungen')).not.toBeInTheDocument()
+    expect(onEditProfile).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Meine Rente einschätzen' }))
+    expect(onEditProfile).toHaveBeenCalledOnce()
+  })
+
+  it('opens the duration view, routes the shared horizon and returns to the plan', () => {
+    const navigate = vi.fn()
+    render(<MeinPlanPage {...buildOverviewProps()} navigate={navigate} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Dauer ansehen →' }))
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Wie lange kommt welches Geld?')
+    expect(screen.queryByText('Deine Rente im Überblick')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Gemeinsame Entnahmedauer ändern' }))
+    expect(navigate).toHaveBeenCalledWith(ROUTES.eingaben, undefined, '#renteneintritt')
+    fireEvent.click(screen.getByRole('button', { name: 'Kapital im Verlauf ansehen →' }))
+    expect(navigate).toHaveBeenLastCalledWith(ROUTES.kapital)
+    fireEvent.click(screen.getByRole('button', { name: '← Zurück zum Plan' }))
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Deine Rente im Überblick')
+  })
+
+  it.each([2400, 0])('saves an explicitly entered target of %s euros', (value) => {
+    const onSetTarget = vi.fn()
+    render(<MeinPlanPage {...buildOverviewProps()} onSetTarget={onSetTarget} />)
+    fireEvent.click(screen.getByRole('button', { name: /^(Wunschrente|Wunschrente ergänzen)/ }))
+    expect(onSetTarget).not.toHaveBeenCalled()
+    const input = screen.getByRole('spinbutton', { name: 'Deine Wunschrente (€)' })
+    expect(input).toHaveFocus()
+    fireEvent.change(input, { target: { value: String(value) } })
+    fireEvent.click(screen.getByRole('button', { name: 'Wunsch übernehmen' }))
+    expect(onSetTarget).toHaveBeenCalledWith(value)
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
+  })
+
+  it('removes a target as undefined and cancels edits without a write', () => {
+    const onSetTarget = vi.fn()
+    render(<MeinPlanPage {...buildOverviewProps()} onSetTarget={onSetTarget} />)
+    fireEvent.click(screen.getByRole('button', { name: /^(Wunschrente|Wunschrente ergänzen)/ }))
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '2500' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }))
+    expect(onSetTarget).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: /^(Wunschrente|Wunschrente ergänzen)/ }))
+    fireEvent.click(screen.getByText('Ich weiß noch keinen Betrag'))
+    expect(screen.getByText(/Deine heutigen monatlichen Ausgaben/)).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Ohne Wunschrente fortfahren' }))
+    expect(onSetTarget).toHaveBeenCalledWith(undefined)
+  })
+
+  it('does not silently save blank or negative target drafts', () => {
+    const onSetTarget = vi.fn()
+    render(<MeinPlanPage {...buildOverviewProps()} onSetTarget={onSetTarget} />)
+    fireEvent.click(screen.getByRole('button', { name: /^(Wunschrente|Wunschrente ergänzen)/ }))
+    for (const value of ['', '-1']) {
+      fireEvent.change(screen.getByRole('spinbutton'), { target: { value } })
+      expect(screen.getByRole('button', { name: 'Wunsch übernehmen' })).toBeDisabled()
+    }
+    expect(onSetTarget).not.toHaveBeenCalled()
+  })
+
+  it('opens and scrolls the sensitivity disclosure for the existing deep link', () => {
+    window.history.replaceState(null, '', '/#mein-plan-sensitivitaet')
+    render(<MeinPlanPage {...buildOverviewProps()} />)
+    expect(screen.getByText('Weitere Auswertungen').closest('details')).toHaveAttribute('open')
+    expect(document.getElementById('mein-plan-sensitivitaet')).toBeVisible()
+    expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalled()
+    expect(document.querySelectorAll('.mein-plan-sens-row').length).toBeGreaterThan(0)
+  })
+
+  it('calculates sensitivity only when the disclosure opens', async () => {
+    const spy = vi.spyOn(sensitivitySelectors, 'sensitivityIfReturnScenario')
+    render(<MeinPlanPage {...buildOverviewProps()} />)
+    expect(spy).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('Weitere Auswertungen'))
+    await waitFor(() => expect(document.querySelectorAll('.mein-plan-sens-row').length).toBeGreaterThan(0))
+    expect(spy).toHaveBeenCalledOnce()
+    spy.mockRestore()
+  })
+
+  it('renders the host-supplied undo notification', () => {
+    // Phase 4a: removal happens on `/vertrag/:id/bearbeiten` and redirects
+    // here, so the plan is where "Rückgängig" has to appear.
+    const onUndo = vi.fn()
+    const props = buildOverviewProps(buildCombineWorkspace())
+    render(<MeinPlanPage {...props} notification={{ message: 'Vertrag entfernt', onUndo }} />)
+    expect(screen.getByRole('status')).toHaveTextContent('Vertrag entfernt')
+    fireEvent.click(screen.getByRole('button', { name: 'Rückgängig' }))
+    expect(onUndo).toHaveBeenCalledOnce()
+  })
+
+  it('routes edits and alternative actions and preserves the money basis across duration views', () => {
+    const props = buildOverviewProps({ ...buildCombineWorkspace(), whatIfs: [{ id: 'whatif-test' } as Workspace['whatIfs'][number]] })
+    const navigate = vi.fn()
+    const onEditSource = vi.fn()
+    const onAddContract = vi.fn()
+    const onEditProfile = vi.fn()
+    const onEditPension = vi.fn()
+    render(<MeinPlanPage {...props} {...{ navigate, onEditSource, onAddContract, onEditProfile, onEditPension }} />)
+    fireEvent.click(screen.getByRole('button', { name: /Gesetzliche Rente/ }))
+    expect(onEditSource).toHaveBeenCalledWith(props.summary.rows[0])
+    for (const [name, callback] of [
+      ['Vorsorge ergänzen', onAddContract], ['Persönliche Angaben', onEditProfile], ['Rentenangabe', onEditPension],
+    ] as const) {
+      fireEvent.click(screen.getByRole('button', { name }))
+      expect(callback).toHaveBeenCalledOnce()
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Änderung ausprobieren' }))
+    expect(navigate).toHaveBeenLastCalledWith(ROUTES.alternativen)
+    fireEvent.click(screen.getByRole('button', { name: 'Gespeicherte Alternativen (1)' }))
+    expect(navigate).toHaveBeenLastCalledWith(ROUTES.alternativen)
+    fireEvent.click(screen.getByText('Angaben & Annahmen prüfen'))
+    fireEvent.click(screen.getByRole('button', { name: 'Weitere Annahmen & Rechenweg' }))
+    expect(navigate).toHaveBeenLastCalledWith(ROUTES.methode)
+    fireEvent.click(screen.getByRole('button', { name: 'Alle Eingaben' }))
+    expect(navigate).toHaveBeenLastCalledWith(ROUTES.eingaben)
+    fireEvent.click(screen.getByRole('button', { name: 'Beträge zum Rentenbeginn (nominal) anzeigen' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Dauer ansehen →' }))
+    fireEvent.click(screen.getByRole('button', { name: '← Zurück zum Plan' }))
+    expect(document.querySelector('.plan-overview__number')).toHaveTextContent(formatCurrency(props.summary.netMonthlyTotalNominal).replace(/\u00a0/g, ' '))
+  })
+
+  it('honours blocking readiness and routes reasons with their anchor', () => {
+    const props = buildOverviewProps()
+    const navigate = vi.fn()
+    const reason = { code: 'pension-entry-skipped' as const, severity: 'blocking' as const,
+      label: 'Rentenangabe fehlt', target: { route: ROUTES.eingaben, anchor: 'renteneintritt' } }
+    render(<MeinPlanPage {...props} navigate={navigate} readiness={{ status: 'incomplete', canShowHouseholdTotal: false,
+      reasons: [reason], blocking: [reason], assumptions: [] }} />)
+    expect(screen.getByText('Noch offen')).toBeVisible()
+    expect(document.querySelector('.plan-overview__number')).toBeNull()
+    expect(document.querySelectorAll('.mein-plan-sens-row')).toHaveLength(0)
+    fireEvent.click(screen.getByRole('button', { name: reason.label }))
+    expect(navigate).toHaveBeenCalledWith(ROUTES.eingaben, undefined, '#renteneintritt')
   })
 })

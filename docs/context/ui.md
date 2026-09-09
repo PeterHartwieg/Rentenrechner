@@ -12,16 +12,29 @@ and a dynamic contract-detail route:
 
 ```text
 App.tsx  (route detector + lazy boundaries)
-├── /                         → LandingPage or Calculator
-├── /eingaben[/produkte]      → two-step input flow
+├── /                         → LandingPage (fresh) or Calculator → the plan
+├── /vergleich                → VergleichJourneyPage (public, prerendered)
 ├── /vergleich/details        → VergleichDetailPage
-├── /kapital                  → KapitalPage
+├── /eingaben[/produkte]      → two-step input flow
+├── /vorsorge/neu             → VorsorgeNeuPage (contract picker; ?produkt=<id>
+│                               opens the editor for a new instance)
 ├── /vertrag/:instanceId      → VertragDetailPage (dynamic, not prerendered)
+├── /vertrag/:id/bearbeiten   → VertragBearbeitenPage (contract editor)
+├── /alternativen             → AlternativenPage (?id=<whatIfId>)
+├── /kapital                  → KapitalPage
 ├── /artikel, /methode        → editorial hub / methodology
 ├── calculator/topic routes   → prerendered pages from publicRouteRegistry
 ├── /impressum, /datenschutz  → legal pages
 └── unknown path              → PageNotFound
 ```
+
+`/` is always the personal plan for a returning user (a `?s=` share link still
+renders the comparison inside `Calculator`); the independent comparison lives at
+`/vergleich` and reads the compare-mode singleton only. `pathToRoute` matches
+`/vertrag/:id/bearbeiten` **before** the bare `/vertrag/:id` pattern, whose
+`(.+)` is greedy. Of the new routes only `/vergleich` is public and prerendered;
+`/vorsorge/neu`, `/vertrag/:id/bearbeiten` and `/alternativen` depend on
+workspace state and stay dynamic.
 
 Routing is implemented by [`useRoute.ts`](../../src/app/useRoute.ts) as a typed
 tagged union with `pathToRoute`, `routeToPath`, and `ROUTES` constructors (no
@@ -37,10 +50,13 @@ Calculator
 ├── compare mode
 │   └── VergleichPage           (linear six-product comparison + actions)
 ├── combine mode
-│   ├── ScenarioToolbar
-│   ├── MeinPlanPage            (linear portfolio view)
-│   ├── contribution recommender modal
-│   └── CombineDetailView + assumptions
+│   ├── MeinPlanPage            (PlanOverview when a `summary` prop is passed,
+│   │                            otherwise the legacy linear portfolio view)
+│   └── three closed disclosures below it:
+│       ├── Annahmen & Risiko   (ScenarioToolbar, AssumptionsPanel, warnings)
+│       ├── Empfehlung          (contribution recommender modal trigger)
+│       └── Details & Export    (CombineDetailView: CSV + Drucken, no copy-link —
+│                                the share URL encodes compare inputs only)
 ├── InventoryWizard             (fixed overlay when starting a portfolio)
 ├── PrintReport                 (display:none on screen; first child = disclaimer block)
 ├── LegalFooter                 (Impressum / Datenschutzerklärung / Lizenz)
@@ -159,6 +175,40 @@ but `App.tsx` consumes the three hooks directly.
 | `simulationSelectors.ts` | Pure framework-agnostic selectors (`deriveSelectedResults`, `buildCapitalChartData`, `buildPensionBars`, `deriveTaxModes`, `makeRowAfterTaxBalance`, …) consumed by the three hooks above. Unit-testable without React. |
 | `useSimulationViewModel.ts` | Back-compat facade that calls the three hooks above and returns a single object. New code should consume the focused hooks; this file exists so the migration was non-breaking. |
 | `productPresentation.ts` | `BAV_FEE_PRESETS`, `PAV_FEE_PRESETS`, `CALCULATION_WARNINGS`, `GRV_COLOR`. Re-exports `getProductMeta`, `PRODUCT_MANIFEST` from `productManifest.ts`. |
+
+## Simplification surfaces (plan, wizard, contract editors)
+
+| Surface | File | Notes |
+|---------|------|-------|
+| Plan overview | `src/features/mein-plan/PlanOverview.tsx` | Default plan surface. Selected by `MeinPlanPage` whenever a `summary` prop is supplied; callers without one keep the legacy layout. Owns the household total, source rows, the target gap, and a `notification` slot (`role="status"`) for the one-level undo. |
+| Plan duration view | `src/features/mein-plan/PlanDurationSummary.tsx` | Separate view with its own H1, reached from the overview; also exports `PlanDurationText` for overview rows. |
+| Onboarding / profile edit | `src/features/inventory/InventoryWizard.tsx` | Two steps only (`profile`, `pension`). Props: `scenario`, `mode: 'onboarding' \| 'edit'`, optional `initialStep`, `onComplete(scenario)`, `onDismiss`. The old contract-checklist step is gone — contracts are added from the plan via `/vorsorge/neu`. Profile/pension editing reuses the same component with `mode: 'edit'` and an initial step. |
+| Contract picker | `src/features/vorsorge/ContractPicker.tsx` (host `VorsorgeNeuPage.tsx`) | Registry-ordered product list; a chosen product mounts the editor. The host resets the draft whenever the selection changes, because `'etf'` doubles as the placeholder product while nothing is picked. |
+| Contract editor | `src/features/vertrag-detail/ContractEditor{,Field,Host}.tsx` | Draft state is component-local (`useContractDraft`); cancel discards. Saving goes through `addPopulatedInstance` / `updateInstance` only. |
+| Alternatives | `src/features/alternativen/AlternativenPage.tsx` | What-if before/after flow; the plan's "Änderung ausprobieren" and "Gespeicherte Alternativen (n)" both navigate here. |
+
+`UnknownNumberField` (`src/ui/UnknownNumberField.tsx`) is the numeric input for
+every field that can be explicitly unknown: `value: number | null` plus an
+`InputStatus`, and `onChange(next, 'entered' | 'unknown')`. Ticking "Weiß ich
+nicht" emits `(null, 'unknown')` — the host keeps the previous number and passes
+it back, so unchecking restores it. A typed `0` is a real entered zero, never an
+unknown. Use it instead of `NumberField` wherever an unknown must not be
+mistaken for a zero.
+
+## Input status and readiness
+
+| File | Role |
+|------|------|
+| `src/domain/inputStatus.ts` | `InputStatus` (`unknown` / `assumed` / `entered` / `document`), `InputStatusMap`, `PensionEntryMethod`, sanitisers. Carried on `InstanceCommon.inputStatus`, `WorkspaceAssumptionsV2.inputStatus` and `ScenarioAssumptions.inputStatus`. Absent → `assumed` (legacy-conservative). |
+| `src/app/resultReadiness.ts` | `selectResultReadiness(workspace, simulation, error)` → `available` / `estimated` / `incomplete` / `error` plus blocking reasons with route targets. `householdTotalBlockedLabels` turns a blocked verdict into the labels the CSV/PDF print instead of a number. |
+| `src/app/planSummary.ts` | `selectPlanSummary` — the household total, per-source rows, duration descriptors and the target gap in one scoped object, on both money bases. |
+| `src/features/results/provenanceHelpers.ts` | Mapping between `InputStatus`, `EvidenceState` and the display `ProvKind` / German export labels. |
+
+A blocked total is never approximated: the UI shows "Noch offen" with the
+blocking reasons as buttons, and both export paths emit an empty cell plus a
+Hinweis line. `employment` has no domain field today and is reconstructed from
+`pensionBaselineType`; provenance for `retirementHealthStatus` and
+Versorgungswerk contributions is not carried (they are not reserved keys).
 
 ## Adding a UI input for a new product
 
