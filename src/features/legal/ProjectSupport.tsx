@@ -22,7 +22,7 @@ export function ProjectSupport() {
         >
           Projekt unterstützen ↗
         </a>
-        <span>Einmalig · Betrag frei wählen · über Stripe</span>
+        <span>Einmalig · Betrag frei wählen · über PayPal</span>
       </div>
     </section>
   )
