@@ -46,3 +46,7 @@ Report: `docs/redesign/simplification/reviews/final-surface-recheck.md` (HEAD `d
 ## Phantom instances from the v1 fallback (found during the lead's final check)
 
 `migrateV1ToV2` synthesises `*-singleton` instances for a compare-only (v1) visitor. They were hidden at render time but still lived in the store, so the first real contract was persisted next to them. `loadInitialWorkspace` now strips migration-derived instances when the source is v1 (`src/app/portfolioState.v1Fallback.test.tsx`).
+
+## Final verification state
+
+HEAD `2e33ba4`, `npm run verify` green (238 test files, 4293 tests). Lead's final browser pass on the dev server: compare-only visitor lands on the not-started plan; onboarding with a v1 key present yields empty instance arrays; adding an ETF yields one instance with a generated id; `/methode` and the contract detail fit at 320 px; charts mount without the Recharts warning; footer no longer names a DRV-Renteninformation. One "Should have a queue" React error was seen once in a long-lived tab that had received many Vite hot updates; it did not recur after a fresh load across plan, alternatives, picker and editor, and the isolated Astra re-check recorded zero console errors. Recommended: one hosting smoke test on the deployed Worker (article body links and share links) before announcing.
