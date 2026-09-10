@@ -527,6 +527,8 @@ export interface PrintVertragProvenanceRow {
 
 /** Per-contract printed block (one per instance in combine-mode). */
 export interface PrintVertragBlock {
+  /** Contract override or the selected scenario market rate, before AVD blending. */
+  readonly marketReturnAssumption?: number
   readonly instanceId: string
   readonly expectedReturn?: number
   /** Display name (instance.label fallback to product meta). */
@@ -630,6 +632,7 @@ export function buildPrintVertragBlocks({
       blocks.push({
         instanceId: inst.instanceId,
         expectedReturn: inst.expectedReturn,
+        marketReturnAssumption: inst.expectedReturn ?? wsa.returnScenarios.find(s => s.id === scenarioId)?.annualReturn,
         title,
         productLabel,
         statusLabel,

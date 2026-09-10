@@ -94,6 +94,9 @@ export function VertragScenarioTable({
     })
   }, [workspace, instance, productId, rules, scenarioId, combinedForScenario, cache])
 
+  const marketReturnAssumption = instance.expectedReturn ??
+    workspace.baseline.assumptions.returnScenarios.find(s => s.id === scenarioId)?.annualReturn
+
   return (
     <section className="vertrag-section" aria-labelledby="vertrag-section-was-waere">
       <div className="vertrag-section-head">
@@ -103,9 +106,9 @@ export function VertragScenarioTable({
         </h2>
       </div>
 
-      {instance.expectedReturn !== undefined && (
+      {marketReturnAssumption !== undefined && (
         <p className="vertrag-scenario-detail">
-          Rendite {formatPercent(instance.expectedReturn, 1)} p. a. (vertragsspezifisch)
+          Rendite {formatPercent(marketReturnAssumption, 1)} p. a. ({instance.expectedReturn !== undefined ? 'vertragsspezifisch' : 'Szenario'})
         </p>
       )}
       {rows.length > 0 ? (

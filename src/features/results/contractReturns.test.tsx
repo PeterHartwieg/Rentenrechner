@@ -38,3 +38,27 @@ it('discloses fixed contract returns in the print assumptions, contract block an
     .not.toContain('Alle Produkte rechnen je Szenario mit derselben Marktrendite')
   expect(container.querySelector('#print-report')?.firstElementChild).toHaveClass('pr-disclaimer-top')
 })
+
+it.each([0.07, undefined])('discloses the AVD market assumption %s instead of its blend in print and contract details', (expectedReturn) => {
+  const workspace = migrateV1ToV2(
+    defaultProfile as unknown as Record<string, unknown>,
+    { ...defaultAssumptions, visibleProducts: ['altersvorsorgedepot'] } as unknown as Record<string, unknown>,
+  )
+  const instance = workspace.baseline.assumptions.altersvorsorgedepot[0]
+  Object.assign(instance, { label: 'Mein Garantie-AVD', subtype: 'guarantee_80', expectedReturn, riskAllocationPct: 0.8, lowRiskAnnualReturn: 0.02 })
+  workspace.baseline.assumptions.returnScenarios = [{ id: 'basis', label: 'Basis', annualReturn: 0.05 }]
+  const bundle = runCombineSimulation(workspace, de2026Rules)
+  const { container } = render(<>
+    <PrintReport profile={defaultProfile} assumptions={defaultAssumptions}
+      simulation={simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)}
+      combineMode combineWorkspace={workspace}
+      combineReturnScenarios={workspace.baseline.assumptions.returnScenarios}
+      portfolio={{ ...bundle, scenarioLabels: { basis: 'Basis' } }} />
+    <VertragScenarioTable workspace={workspace} instance={instance} productId="altersvorsorgedepot"
+      rules={de2026Rules} scenarioId="basis" combinedForScenario={bundle.combinedByScenarioId.basis} />
+  </>)
+  const caption = `Rendite ${formatPercent(expectedReturn ?? 0.05, 1)} p. a. (${expectedReturn === undefined ? 'Szenario' : 'vertragsspezifisch'})`
+  const block = Array.from(container.querySelectorAll('.pr-vertrag-block')).find(el => el.textContent?.startsWith('Mein Garantie-AVD'))
+  expect(block?.textContent).toContain(caption)
+  expect(container.querySelector('.vertrag-section')?.textContent).toContain(caption)
+})

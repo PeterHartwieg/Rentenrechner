@@ -12,6 +12,7 @@ import type {
   ProductResult,
   ScenarioAssumptions,
 } from '../domain'
+import type { WorkspaceAssumptionsV2 } from '../domain/workspace'
 import type { CombinedResult } from '../engine/portfolioCombine'
 import { de2026Rules } from '../rules/de2026'
 import { buildCombinePortfolioCsv, buildExportCsv, downloadCsv } from '../utils/csvExport'
@@ -59,6 +60,7 @@ export interface DerivedViews {
  * when this is omitted (Group G issue 11).
  */
 export interface CombineExportBundle {
+  assumptions?: WorkspaceAssumptionsV2
   perInstance: Record<string, ProductResult[]>
   combinedByScenarioId: Record<string, CombinedResult>
   scenarioLabels: Record<string, string>

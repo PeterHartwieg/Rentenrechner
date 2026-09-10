@@ -1470,8 +1470,8 @@ function VertragBlockView({ block }: { block: PrintVertragBlock }) {
           {block.anbieter ? ` · ${block.anbieter}` : ''}
         </span>
       </div>
-      {block.expectedReturn !== undefined && (
-        <p className="pr-note">Rendite {formatPercent(block.expectedReturn, 1)} p. a. (vertragsspezifisch)</p>
+      {block.marketReturnAssumption !== undefined && (
+        <p className="pr-note">Rendite {formatPercent(block.marketReturnAssumption, 1)} p. a. ({block.expectedReturn !== undefined ? 'vertragsspezifisch' : 'Szenario'})</p>
       )}
       <table className="pr-table pr-vertrag-kpi-table">
         <thead>

@@ -11,9 +11,13 @@
 import { describe, it, expect } from 'vitest'
 import { buildCombinePortfolioCsv, buildExportCsv, type InstanceTaxModes } from './csvExport'
 import { de2026Rules } from '../rules/de2026'
-import { defaultProfile } from '../data/defaultScenario'
+import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import type { EtfProductResult, ProductResult, YearlyProjection } from '../domain'
 import type { CombinedResult } from '../engine/portfolioCombine'
+
+import { migrateV1ToV2 } from '../storage'
+import { simulatePortfolio } from '../engine/portfolioAdapter'
+import { buildCombineExportProjection } from '../engine/exportProjection'
 
 // Minimal ProductResult fixture — only the fields csvExport reads.
 const FIXTURE_PRODUCT: ProductResult = {
@@ -910,20 +914,58 @@ describe('buildCombinePortfolioCsv — suppressed household total', () => {
 })
 
 
-it('exports each contract effective return in both combine sheets', () => {
-  const csv = buildCombinePortfolioCsv({
-    ...TWO_INSTANCE_OPTS,
-    perInstance: {
-      'bav-1': [{ ...FIXTURE_BAV_WITH_ROWS, annualReturn: 0.02 }],
-      'etf-1': [{ ...FIXTURE_ETF_INSTANCE_RESULT, annualReturn: 0.07 }],
-    },
+describe.each(['guarantee_80', 'standarddepot', 'etf'] as const)('%s market-return disclosure', (product) => {
+  it.each([0.07, undefined, 0])('exports the contract assumption %s in both combine sheets', (expectedReturn) => {
+    const workspace = migrateV1ToV2(
+      defaultProfile as unknown as Record<string, unknown>,
+      { ...defaultAssumptions, visibleProducts: ['altersvorsorgedepot', 'etf'] } as unknown as Record<string, unknown>,
+    )
+    const assumptions = workspace.baseline.assumptions
+    assumptions.returnScenarios = [
+      { id: 'basis', label: 'Basis', annualReturn: 0.05 },
+      { id: 'optimistisch', label: 'Optimistisch', annualReturn: 0.08 },
+    ]
+    const instance = product === 'etf' ? assumptions.etf[0] : assumptions.altersvorsorgedepot[0]
+    instance.expectedReturn = expectedReturn
+    if (product !== 'etf') {
+      Object.assign(instance, { subtype: product, riskAllocationPct: 0.8, lowRiskAnnualReturn: 0.02 })
+    }
+    const { perInstance } = simulatePortfolio(workspace, de2026Rules)
+    const opts = {
+      assumptions,
+      perInstance: { [instance.instanceId]: perInstance[instance.instanceId] },
+      combinedByScenarioId: {},
+      scenarioLabels: Object.fromEntries(assumptions.returnScenarios.map(s => [s.id, s.label])),
+    }
+    if (product === 'guarantee_80' && expectedReturn === 0.07) {
+      expect(perInstance[instance.instanceId][0].annualReturn).toBeCloseTo(0.06, 12)
+    }
+    const projection = buildCombineExportProjection(opts)
+    for (const row of [...projection.summary, ...projection.yearly]) {
+      const scenario = assumptions.returnScenarios.find(s => s.id === row.scenarioId)!
+      expect(row.marketReturnAssumption).toBe(expectedReturn ?? scenario.annualReturn)
+    }
+    if (product === 'guarantee_80' && expectedReturn === 0.07) {
+      expect(projection.summary[0].annualReturn).toBeCloseTo(0.06, 12)
+    }
+    const lines = buildCombinePortfolioCsv(opts).split('\n')
+    for (const [section, projectedRows] of [
+      ['Mein Plan — Detail je Instanz', projection.summary],
+      ['Jahres-Cashflows je Instanz', projection.yearly],
+    ] as const) {
+      const start = lines.indexOf(section)
+      // The return disclosure is the final column in both sheets.
+      const rows = lines.slice(start + 2).slice(0, projectedRows.length).map(line => line.split(','))
+      expect(rows.length).toBeGreaterThan(0)
+      for (const scenario of assumptions.returnScenarios) {
+        const scenarioRows = rows.filter(row => row[2] === scenario.label)
+        expect(scenarioRows.length).toBeGreaterThan(0)
+        for (const row of scenarioRows) {
+          expect(row.at(-1)).toBe(`${((expectedReturn ?? scenario.annualReturn) * 100).toFixed(2)} %`)
+          expect(row.at(-1)).not.toBe('6.00 %')
+        }
+      }
+      expect(lines[start + 1].split(',').at(-1)).toBe('Marktrendite p. a. (Annahme)')
+    }
   })
-  const lines = csv.split('\n')
-  for (const section of ['Mein Plan — Detail je Instanz', 'Jahres-Cashflows je Instanz']) {
-    const start = lines.indexOf(section)
-    const column = lines[start + 1].split(',').indexOf('Rendite p. a.')
-    expect(column).toBeGreaterThanOrEqual(0)
-    expect(lines[start + 2].split(',')[column]).toBe('2.00 %')
-    expect(lines[start + 3].split(',')[column]).toBe('7.00 %')
-  }
 })
