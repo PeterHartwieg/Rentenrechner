@@ -11,7 +11,7 @@
  *   E. Legacy v1 migration path: v1 localStorage data migrates to v2 and loads.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defaultAssumptions, defaultProfile } from './data/defaultScenario'
 import {
   buildWorkspaceJson,
@@ -24,6 +24,8 @@ import {
   STORAGE_KEY_V2,
   transferEventKey,
 } from './storage'
+import { applyWhatIfToBaseline, forkBaselineScenario } from './app/portfolioState'
+import { whatIfStatus } from './app/whatIfPreview'
 import type { Workspace } from './domain/workspace'
 
 // ---------------------------------------------------------------------------
@@ -643,5 +645,134 @@ describe('F — transferEventKey export (shared with portfolio transfer collecti
     const key1 = transferEventKey({ ...base, amountEUR: 10000 })
     const key2 = transferEventKey({ ...base, amountEUR: 20000 })
     expect(key1).not.toEqual(key2)
+  })
+})
+
+describe('legacy offered bAV conversion (issue 349)', () => {
+  it('normalises an offered bAV conversion in a v1 payload after migration', () => {
+    const assumptions = {
+      ...defaultAssumptions,
+      bav: { ...defaultAssumptions.bav, status: 'offered', monthlyGrossConversion: 200 },
+    }
+    const loaded = parseWorkspaceJson(makeV1Json(defaultProfile, assumptions))
+    expect(loaded).not.toBeNull()
+    expect(loaded!.baseline.assumptions.bav).toHaveLength(1)
+    expect(loaded!.baseline.assumptions.bav[0]).toMatchObject({
+      status: 'offered', monthlyGrossConversion: 0,
+    })
+  })
+
+  it.each(['local storage', 'JSON'] as const)(
+    'drops legacy recommender activations before offer normalisation via %s',
+    (loadPath) => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        const workspace = makeValidV2Workspace()
+        Object.assign(workspace.baseline.assumptions.bav[0], {
+          status: 'offered', monthlyGrossConversion: 200,
+        })
+        const manual = forkBaselineScenario(workspace.baseline, 'Manuelle Alternative', 'manual')
+        Object.assign(manual.assumptions.bav[0], {
+          status: 'active', monthlyGrossConversion: 400,
+        })
+        const legacy = [400, 100].map((conversion) => {
+          const whatIf = forkBaselineScenario(workspace.baseline, `bAV-Angebot ${conversion}`, 'recommender')
+          Object.assign(whatIf.assumptions.bav[0], {
+            status: 'active', monthlyGrossConversion: conversion,
+          })
+          return whatIf
+        })
+        workspace.whatIfs = [...legacy, manual]
+        workspace.pinnedComparisonIds = [workspace.baseline.id, ...workspace.whatIfs.map(wi => wi.id)]
+        saveWorkspace(workspace)
+        const loaded = loadPath === 'local storage'
+          ? loadSavedWorkspace()!
+          : parseWorkspaceJson(buildWorkspaceJson(workspace))!
+        expect(loaded).not.toBeNull()
+        expect(loaded.whatIfs.map(wi => wi.id)).toEqual([manual.id])
+        expect(loaded.pinnedComparisonIds).toEqual([workspace.baseline.id, manual.id])
+        expect(loaded.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(0)
+        expect(warn).toHaveBeenCalledTimes(1)
+        for (const whatIf of legacy) expect(warn.mock.calls[0][0]).toContain(whatIf.label)
+
+        // The same shape is intentional for manual alternatives and remains applicable.
+        expect(whatIfStatus(loaded.whatIfs[0], loaded)).toBe('current')
+        expect(applyWhatIfToBaseline(loaded.whatIfs[0], loaded.baseline).assumptions.bav[0])
+          .toMatchObject({ status: 'active', monthlyGrossConversion: 400 })
+        expect(loaded.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(0)
+        expect(parseWorkspaceJson(buildWorkspaceJson(loaded))).toEqual(loaded)
+        expect(warn).toHaveBeenCalledTimes(1)
+      } finally {
+        warn.mockRestore()
+      }
+    },
+  )
+
+  it.each(['zero-snapshot', 'active-snapshot', 'paid-up', 'different-instance'] as const)(
+    'preserves stored recommender conversions across snapshot and instance variants: %s',
+    (condition) => {
+      const workspace = makeValidV2Workspace()
+      Object.assign(workspace.baseline.assumptions.bav[0], {
+        status: 'offered', monthlyGrossConversion: 200,
+      })
+      const whatIf = forkBaselineScenario(workspace.baseline, 'bAV-Angebot nutzen', 'recommender')
+      const snapshot = whatIf.derivedFromBaselineSnapshot.assumptions.bav[0]
+      const instance = whatIf.assumptions.bav[0]
+      instance.status = 'active'
+      instance.monthlyGrossConversion = 400
+      if (condition === 'zero-snapshot') snapshot.monthlyGrossConversion = 0
+      if (condition === 'active-snapshot') snapshot.status = 'active'
+      if (condition === 'paid-up') instance.status = 'paid_up'
+      if (condition === 'different-instance') instance.instanceId = 'bav-different'
+      workspace.whatIfs = [whatIf]
+      const loaded = parseWorkspaceJson(buildWorkspaceJson(workspace))!
+      expect(loaded.whatIfs[0].assumptions.bav[0].monthlyGrossConversion).toBe(instance.monthlyGrossConversion)
+    },
+  )
+
+  it('v2 load repair removes entered provenance for the discarded €200 conversion', () => {
+    const workspace = makeValidV2Workspace()
+    Object.assign(workspace.baseline.assumptions.bav[0], {
+      status: 'offered', monthlyGrossConversion: 200,
+      inputStatus: { monthlyGrossConversion: 'entered', currentValueEUR: 'document' },
+      evidenceMap: { monthlyGrossConversion: 'user_confirmed', currentValueEUR: 'statement' },
+    })
+    workspace.whatIfs = [forkBaselineScenario(workspace.baseline, 'Alternative')]
+    saveWorkspace(workspace)
+    const loaded = loadSavedWorkspace()!
+    expect(loaded).not.toBeNull()
+    for (const scenario of [loaded.baseline, loaded.whatIfs[0], loaded.whatIfs[0].derivedFromBaselineSnapshot]) {
+      const offer = scenario.assumptions.bav[0]
+      expect(offer.monthlyGrossConversion).toBe(0)
+      expect(offer.inputStatus).toEqual({ currentValueEUR: 'document' })
+      expect(offer.evidenceMap).toEqual({ currentValueEUR: 'statement' })
+    }
+    expect(parseWorkspaceJson(buildWorkspaceJson(loaded))).toEqual(loaded)
+    expect(workspace.baseline.assumptions.bav[0].inputStatus?.monthlyGrossConversion).toBe('entered')
+  })
+
+  it('loads an offered bAV at zero while preserving active conversions', () => {
+    const workspace = makeValidV2Workspace()
+    const active = workspace.baseline.assumptions.bav[0]
+    active.monthlyGrossConversion = 200
+    workspace.baseline.assumptions.bav.push({ ...active, instanceId: 'bav-offer001', status: 'offered' })
+    saveWorkspace(workspace)
+    const loaded = loadSavedWorkspace()!
+    expect(loaded.baseline.assumptions.bav).toHaveLength(2)
+    expect(loaded.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(200)
+    expect(loaded.baseline.assumptions.bav[1]).toMatchObject({ status: 'offered', monthlyGrossConversion: 0 })
+    expect(workspace.baseline.assumptions.bav[1].monthlyGrossConversion).toBe(200)
+  })
+
+  it('repairs offered bAVs in saved what-ifs and their baseline snapshots', () => {
+    const workspace = makeValidV2Workspace()
+    workspace.baseline.assumptions.bav[0].status = 'offered'
+    workspace.baseline.assumptions.bav[0].monthlyGrossConversion = 200
+    workspace.whatIfs = [forkBaselineScenario(workspace.baseline, 'Alternative')]
+    const loaded = parseWorkspaceJson(buildWorkspaceJson(workspace))!
+    expect(loaded.whatIfs).toHaveLength(1)
+    expect(loaded.whatIfs[0].assumptions.bav[0].monthlyGrossConversion).toBe(0)
+    expect(loaded.whatIfs[0].derivedFromBaselineSnapshot.assumptions.bav[0].monthlyGrossConversion).toBe(0)
+    expect(parseWorkspaceJson(buildWorkspaceJson(loaded))).toEqual(loaded)
   })
 })

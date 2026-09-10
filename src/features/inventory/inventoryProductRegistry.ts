@@ -45,6 +45,7 @@ import type {
   EtfDraft,
   AnyProductDraft,
 } from './types'
+import { normaliseOfferedBav } from '../../domain/normaliseOfferedBav'
 import { defaultAssumptions } from '../../data/defaultScenario'
 
 // ---------------------------------------------------------------------------
@@ -165,7 +166,7 @@ const bavEntry: InventoryProductEntry<'bav', BavInstance, BavDraft> = {
     zeitrenteYears: defaultAssumptions.bav.zeitrenteYears,
     annualContributionGrowthRate: 0,
   }),
-  draftToInstance: (d, makeId) => ({
+  draftToInstance: (d, makeId) => normaliseOfferedBav({
     instanceId: makeId('bav'),
     label: d.anbieter ? `bAV – ${d.anbieter}` : 'bAV',
     anbieter: d.anbieter,

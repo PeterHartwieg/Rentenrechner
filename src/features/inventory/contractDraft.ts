@@ -41,6 +41,7 @@ import type { InputStatus, InputStatusMap } from '../../domain/inputStatus'
 import type { Workspace } from '../../domain/workspace'
 import { resolveInputStatus, inputStatusToEvidenceState } from '../results/provenanceHelpers'
 import { CONTRIBUTION_FIELD_BY_PRODUCT } from '../../app/resultReadiness'
+import { normaliseOfferedBav } from '../../domain/normaliseOfferedBav'
 import { defaultInstanceLabel, newInstanceId } from '../../app/workspaceIdentity'
 import {
   INVENTORY_PRODUCT_REGISTRY,
@@ -1378,7 +1379,17 @@ export function draftToInstancePatch(draft: ContractDraft): ContractDraftPatch {
     if (evidence) evidenceMap[feeKey] = evidence
   }
 
-  return { patch, inputStatus, evidenceMap }
+  if (draft.productId !== 'bav') return { patch, inputStatus, evidenceMap }
+  // Normalise the value and its metadata together. Status may be omitted for
+  // an unanswered field; use the persisted base.
+  const {
+    inputStatus: normalisedStatus,
+    evidenceMap: normalisedEvidence,
+    ...normalisedPatch
+  } = normaliseOfferedBav({
+    ...patch, status: patch.status ?? draft.base.status, inputStatus, evidenceMap,
+  })
+  return { patch: normalisedPatch, inputStatus: normalisedStatus, evidenceMap: normalisedEvidence }
 }
 
 /**
@@ -1401,7 +1412,7 @@ export function draftToNewInstance(
       ? labelValue
       : defaultInstanceLabel(draft.productId, 1, anbieter)
 
-  return {
+  const instance = {
     ...draft.base,
     ...patch,
     instanceId,
@@ -1410,6 +1421,7 @@ export function draftToNewInstance(
     evidenceMap,
     inputStatus,
   }
+  return draft.productId === 'bav' ? normaliseOfferedBav(instance) : instance
 }
 
 /**

@@ -28,6 +28,8 @@ import { simulateRetirementComparison } from '../../engine/simulate'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { INVENTORY_PRODUCT_REGISTRY } from '../inventory/inventoryProductRegistry'
 import { defaultWorkspace } from '../../storage'
+import { selectResultReadiness } from '../../app/resultReadiness'
+import { runCombineSimulation } from '../../app/useCombineSimulation'
 import { addInstanceToWorkspace, estimateEpFromYears } from '../inventory/inventoryHelpers'
 import { ProdukteEingabenPanel, type ProdukteEingabenPanelProps } from './ProdukteEingabenPanel'
 
@@ -872,6 +874,40 @@ describe('ProdukteEingabenPanel — § 2 combine-mode contract rows', () => {
     )
     expect(patched).toBeDefined()
     expect(patched!.monthlyGrossConversion).toBe(321)
+  })
+
+  it('records an inline zero conversion as entered and keeps an employer-only bAV displayable', () => {
+    let workspace = addInstanceToWorkspace(structuredClone(defaultWorkspace), 'bav')
+    workspace.mode = 'combine'
+    const instance = workspace.baseline.assumptions.bav[0]!
+    instance.status = 'active'
+    instance.monthlyGrossConversion = 200
+    instance.contractualFixedMonthly = 100
+    instance.inputStatus = { rentenfaktor: 'document' }
+    instance.evidenceMap = { rentenfaktor: 'statement' }
+    const onPatchBaseline = vi.fn((patch: Partial<Scenario>) => {
+      workspace = { ...workspace, baseline: { ...workspace.baseline, ...patch } }
+    })
+    const { getByRole, getByLabelText } = render(
+      <ProdukteEingabenPanel {...makeCombineProps({
+        baseline: workspace.baseline,
+        onPatchBaseline,
+      })} />,
+    )
+    fireEvent.click(getByRole('button', { name: 'Bearbeiten' }))
+    const input = getByLabelText('Brutto-Umwandlung (EUR/Monat)')
+    fireEvent.change(input, { target: { value: '0' } })
+    fireEvent.blur(input)
+
+    expect(onPatchBaseline).toHaveBeenCalled()
+    const updated = workspace.baseline.assumptions.bav[0]!
+    expect(updated.monthlyGrossConversion).toBe(0)
+    expect(updated.contractualFixedMonthly).toBe(100)
+    expect(updated.inputStatus).toEqual({ rentenfaktor: 'document', monthlyGrossConversion: 'entered' })
+    expect(updated.evidenceMap).toEqual({ rentenfaktor: 'statement', monthlyGrossConversion: 'user_confirmed' })
+    const readiness = selectResultReadiness(workspace, runCombineSimulation(workspace, activeRules))
+    expect(readiness.blocking).toEqual([])
+    expect(readiness.canShowHouseholdTotal).toBe(true)
   })
 
   it('clicking "Entfernen" calls removeInstance(productId, instanceId)', () => {

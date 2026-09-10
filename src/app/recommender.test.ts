@@ -13,8 +13,10 @@
 import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
-import { migrateV1ToV2 } from '../storage'
+import { buildWorkspaceJson, migrateV1ToV2, parseWorkspaceJson } from '../storage'
 import { runCombineSimulation } from './useCombineSimulation'
+import { selectResultReadiness } from './resultReadiness'
+import { resolveInputStatus } from '../features/results/provenanceHelpers'
 import {
   recommendNextEuro,
   buildWhatIfFromCandidate,
@@ -682,7 +684,10 @@ describe('recommendNextEuro - bAV offers in Mein Plan', () => {
       contractStartYear: de2026Rules.year,
       currentValueEUR: 0,
       evidenceMap: {},
-      monthlyGrossConversion: 0,
+      // Issue 349: the €200 default from the § 3 tile's registry draft. The
+      // field is hidden for offered contracts, so this stale value must not
+      // be added on top when the offer candidate is applied.
+      monthlyGrossConversion: 200,
       contractualMatchPercent: matchPct,
       contractualFixedMonthly: 0,
     }
@@ -701,6 +706,24 @@ describe('recommendNextEuro - bAV offers in Mein Plan', () => {
     expect(bav!.targetInstanceId).toBe('bav-offer-test')
   })
 
+  it.each([false, true])('recommender activation assigns the candidate amount without discarded provenance (load repair: %s)', repair => {
+    let ws = buildWorkspaceWithBavOffer(0.5)
+    const offer = ws.baseline.assumptions.bav[0]
+    offer.inputStatus = { monthlyGrossConversion: 'document', currentValueEUR: 'document' }
+    offer.evidenceMap = { monthlyGrossConversion: 'statement', currentValueEUR: 'statement' }
+    if (repair) ws = parseWorkspaceJson(buildWorkspaceJson(ws))!
+    const candidate = recommendNextEuro(buildInput(ws, 200)).find(c => c.productId === 'bav')
+    expect(candidate).toBeDefined()
+    const whatIf = buildWhatIfFromCandidate(ws.baseline, candidate!)
+    const activated = whatIf.assumptions.bav[0]
+    expect(activated.status).toBe('active')
+    expect(activated.monthlyGrossConversion).toBeCloseTo(candidate!.grossMonthlyEUR, 1)
+    expect(activated.inputStatus).toEqual({ currentValueEUR: 'document' })
+    expect(activated.evidenceMap).toEqual({ currentValueEUR: 'statement' })
+    expect(offer.monthlyGrossConversion).toBe(200)
+    expect(offer.inputStatus.monthlyGrossConversion).toBe('document')
+  })
+
   it('saving an offer candidate activates the offered bAV in the what-if', () => {
     const ws = buildWorkspaceWithBavOffer(0.5)
     const bav = recommendNextEuro(buildInput(ws, 200)).find((c) => c.productId === 'bav')
@@ -711,6 +734,69 @@ describe('recommendNextEuro - bAV offers in Mein Plan', () => {
     expect(activated?.status).toBe('active')
     expect(activated?.monthlyGrossConversion).toBeCloseTo(bav!.grossMonthlyEUR, 1)
     expect(activated?.contractualMatchPercent).toBe(0.5)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue 349 — offered bAV must not double-count a stored conversion
+//
+// Pairs the combine-mode offer cases above with the compare-mode singleton
+// path: workspaces migrated from the v1 ScenarioAssumptions shape carry the
+// singleton bAV as an active instance, and the apply path must keep adding
+// the candidate on top of its stored conversion.
+// ---------------------------------------------------------------------------
+
+describe('recommendNextEuro — compare-mode singleton path (issue 349 pairing)', () => {
+  it('migrated singleton bAV: candidate still adds on top of the stored conversion', () => {
+    const v1 = {
+      ...defaultAssumptions,
+      visibleProducts: ['bav', 'etf'],
+      bav: { ...defaultAssumptions.bav, monthlyGrossConversion: 200 },
+    }
+    const ws = migrateV1ToV2(
+      defaultProfile as unknown as Record<string, unknown>,
+      v1 as unknown as Record<string, unknown>,
+    )
+    const singleton = ws.baseline.assumptions.bav[0]
+    expect(singleton.instanceId).toBe('bav-singleton')
+    expect(singleton.status).toBe('active')
+
+    const candidates = recommendNextEuro(buildInput(ws, 100))
+    const cand = candidates.find((c) => c.productId === 'bav' && !c.isNewInstance)
+    if (!cand) return
+    const whatIf = buildWhatIfFromCandidate(ws.baseline, cand)
+    const after = whatIf.assumptions.bav.find(
+      (b) => b.instanceId === cand.targetInstanceId,
+    )?.monthlyGrossConversion ?? 0
+    expect(after - singleton.monthlyGrossConversion).toBeCloseTo(cand.grossMonthlyEUR, 1)
+  })
+
+  it('offered bAV carried through the v1 migration: apply yields the candidate amount, not candidate + stored', () => {
+    // A v1 ScenarioAssumptions payload never has a status field; seeding one
+    // here mirrors a workspace persisted before the status-patch zeroing
+    // shipped, where the stored €200 default survived on an offered contract.
+    const v1 = {
+      ...defaultAssumptions,
+      visibleProducts: ['bav', 'etf'],
+      bav: {
+        ...defaultAssumptions.bav,
+        monthlyGrossConversion: 200,
+        status: 'offered',
+      },
+    }
+    const ws = migrateV1ToV2(
+      defaultProfile as unknown as Record<string, unknown>,
+      v1 as unknown as Record<string, unknown>,
+    )
+    expect(ws.baseline.assumptions.bav[0].status).toBe('offered')
+
+    const candidates = recommendNextEuro(buildInput(ws, 200))
+    const cand = candidates.find((c) => c.productId === 'bav')
+    expect(cand).toBeDefined()
+    const whatIf = buildWhatIfFromCandidate(ws.baseline, cand!)
+    const activated = whatIf.assumptions.bav.find((b) => b.instanceId === 'bav-singleton')
+    expect(activated?.status).toBe('active')
+    expect(activated?.monthlyGrossConversion).toBeCloseTo(cand!.grossMonthlyEUR, 1)
   })
 })
 
@@ -940,6 +1026,42 @@ describe('recommendNextEuro — bAV + insurance offers in same flow (issue 66)',
     expect(insurance!.targetInstanceId).toBe('versicherung-offer-test')
   })
 
+  it.each(['document', 'unknown'] as const)(
+    'insurance activation discards %s provenance belonging to the replaced offer amount',
+    (status) => {
+      const workspace = buildAnnaWorkspace()
+      workspace.baseline.assumptions.insurance = [{
+        ...defaultAssumptions.insurance,
+        instanceId: 'versicherung-offer-test',
+        label: 'Private RV',
+        status: 'offered',
+        contractStartYear: de2026Rules.year,
+        monthlyContribution: 200,
+        inputStatus: { monthlyContribution: status, rentenfaktor: 'document' },
+        evidenceMap: { monthlyContribution: 'statement', rentenfaktor: 'statement' },
+      }]
+      const original = structuredClone(workspace.baseline)
+      const candidate = fixtureCandidate('insurance-offer', {
+        productId: 'versicherung',
+        targetInstanceId: 'versicherung-offer-test',
+        grossMonthlyEUR: 250,
+      })
+      const whatIf = buildWhatIfFromCandidate(workspace.baseline, candidate)
+      const activated = whatIf.assumptions.insurance[0]
+      expect(activated.status).toBe('active')
+      expect(activated.monthlyContribution).toBe(250)
+      expect(activated.inputStatus).toEqual({ rentenfaktor: 'document' })
+      expect(activated.evidenceMap).toEqual({ rentenfaktor: 'statement' })
+      expect(resolveInputStatus(activated.inputStatus, activated.evidenceMap.monthlyContribution, 'monthlyContribution'))
+        .toBe('assumed')
+      const preview = { ...workspace, baseline: whatIf }
+      const readiness = selectResultReadiness(preview, runCombineSimulation(preview, de2026Rules))
+      expect(readiness.blocking).toEqual([])
+      expect(readiness.canShowHouseholdTotal).toBe(true)
+      expect(workspace.baseline).toEqual(original)
+    },
+  )
+
   it('insurance offer activates the offered status when saved as a plan', () => {
     const ws = buildAnnaWorkspace()
     ws.baseline.assumptions.insurance = [
@@ -950,7 +1072,9 @@ describe('recommendNextEuro — bAV + insurance offers in same flow (issue 66)',
         status: 'offered',
         contractStartYear: de2026Rules.year,
         evidenceMap: {},
-        monthlyContribution: 0,
+        // Issue 349 sibling: a stale stored contribution on an offered
+        // contract must not be added on top of the candidate amount.
+        monthlyContribution: 200,
       },
     ]
     const candidates = recommendNextEuro(buildInput(ws, 200))

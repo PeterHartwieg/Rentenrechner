@@ -60,6 +60,8 @@
  *   score / rank candidates → materialise what-ifs.
  */
 
+import { bavOfferPatchForSavedPlan } from './recommenderCandidates/bavOffer'
+import { normaliseOfferedBav } from '../domain/normaliseOfferedBav'
 import type {
   GermanRules,
   ProductId,
@@ -95,7 +97,6 @@ import {
   MAX_LIFETIME_YEARS,
   MC_PATHS,
   MAX_CANDIDATES,
-  monthlyEmployerContributionForOffer,
 } from './recommenderCandidates'
 
 // Re-export for consumers that import BavEmployerOfferInput / ResolvedBavOffer
@@ -1004,12 +1005,15 @@ function applyCandidateToAssumptions(
     if (candidate.productId === 'bav') {
       const idx = wsa.bav.findIndex((b) => b.instanceId === candidate.targetInstanceId)
       if (idx >= 0) {
-        const current = wsa.bav[idx]
-        const offerPatch = bavOfferPatchForSavedPlan(candidate, current.monthlyGrossConversion + candidate.grossMonthlyEUR)
+        // Repair legacy offers before activation so neither their stored
+        // conversion nor its provenance carries into the generated amount.
+        const current = normaliseOfferedBav(wsa.bav[idx])
+        const storedConversion = current.monthlyGrossConversion ?? 0
+        const offerPatch = bavOfferPatchForSavedPlan(candidate.bavOffer, storedConversion + candidate.grossMonthlyEUR)
         wsa.bav[idx] = {
           ...current,
           status: current.status === 'offered' ? 'active' : current.status,
-          monthlyGrossConversion: (current.monthlyGrossConversion ?? 0) + candidate.grossMonthlyEUR,
+          monthlyGrossConversion: storedConversion + candidate.grossMonthlyEUR,
           ...offerPatch,
         }
       }
@@ -1035,14 +1039,28 @@ function applyCandidateToAssumptions(
       // Issue 66: insurance candidate top-up. Activates an offered contract
       // and bumps the per-instance monthlyContribution that combine-mode
       // honors via `BuildContextOverrides.insuranceMonthlyUserCostOverride`.
+      // Issue 349: same zero-base rule as the bAV branch — an offered
+      // contract's stored contribution is stale and must not stack.
       const idx = wsa.insurance.findIndex((i) => i.instanceId === candidate.targetInstanceId)
       if (idx >= 0) {
-        const current = wsa.insurance[idx]
+        const current = { ...wsa.insurance[idx] }
+        if (current.status === 'offered') {
+          // The generated amount replaces the offer amount, so it cannot
+          // inherit that discarded amount's answer status or evidence.
+          if (current.inputStatus) {
+            current.inputStatus = { ...current.inputStatus }
+            delete current.inputStatus.monthlyContribution
+          }
+          current.evidenceMap = { ...current.evidenceMap }
+          delete current.evidenceMap.monthlyContribution
+        }
+        const storedContribution = current.status === 'offered'
+          ? 0
+          : (current.monthlyContribution ?? 0)
         wsa.insurance[idx] = {
           ...current,
           status: current.status === 'offered' ? 'active' : current.status,
-          monthlyContribution:
-            (current.monthlyContribution ?? 0) + candidate.grossMonthlyEUR,
+          monthlyContribution: storedContribution + candidate.grossMonthlyEUR,
         }
       }
     }
@@ -1076,7 +1094,7 @@ function applyCandidateToAssumptions(
       monthlyOwnContribution: candidate.grossMonthlyEUR,
     } as AltersvorsorgedepotInstance)
   } else if (candidate.productId === 'bav') {
-    const offerPatch = bavOfferPatchForSavedPlan(candidate, candidate.grossMonthlyEUR)
+    const offerPatch = bavOfferPatchForSavedPlan(candidate.bavOffer, candidate.grossMonthlyEUR)
     wsa.bav.push({
       instanceId: newInstanceId('bav'),
       label: candidate.label,
@@ -1087,37 +1105,5 @@ function applyCandidateToAssumptions(
       ...offerPatch,
       monthlyGrossConversion: candidate.grossMonthlyEUR,
     } as BavInstance)
-  }
-}
-
-function bavOfferPatchForSavedPlan(
-  candidate: RecommendedCandidate,
-  totalMonthlyGrossConversion: number,
-): Partial<BavInstance> {
-  const offer = candidate.bavOffer
-  if (!offer) return {}
-  const cappedEmployerMonthly = monthlyEmployerContributionForOffer(
-    totalMonthlyGrossConversion,
-    offer,
-  )
-  const capWouldBind =
-    offer.monthlyCapEUR !== undefined &&
-    totalMonthlyGrossConversion * offer.employerMatchPercent + offer.fixedMonthlyEUR > offer.monthlyCapEUR
-  return {
-    statutoryMinimumSubsidyEnabled: false,
-    contractualMatchPercent: capWouldBind ? 0 : offer.employerMatchPercent,
-    contractualFixedMonthly: capWouldBind ? cappedEmployerMonthly : offer.fixedMonthlyEUR,
-    durchfuehrungsweg: offer.durchfuehrungsweg,
-    payoutMode: offer.payoutMode,
-    rentenfaktor: offer.rentenfaktor,
-    rentenfaktorConfirmed: offer.hasOffer,
-    fees: {
-      ...defaultAssumptions.bav.fees,
-      wrapperAssetFee: offer.effectiveCostAnnual,
-      fundAssetFee: 0,
-      contributionFee: 0,
-      fixedMonthlyFee: 0,
-      acquisitionCostPct: 0,
-    },
   }
 }

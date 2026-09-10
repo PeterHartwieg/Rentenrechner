@@ -76,6 +76,8 @@ export type AnyWorkspaceInstance = InstanceCommon &
   Partial<{
     monthlyContribution: number
     monthlyGrossConversion: number
+    contractualFixedMonthly: number
+    contractualMatchPercent: number
     monthlyGrossContribution: number
     monthlyOwnContribution: number
     payoutMode: string
@@ -270,7 +272,15 @@ export function selectResultReadiness(
       })
     }
     const contributionField = CONTRIBUTION_FIELD_BY_PRODUCT[productId]
-    if (instance.status !== 'paid_up' && statusOf(instance, contributionField) === 'unknown') {
+    const contributionStatus = statusOf(instance, contributionField)
+    // An activated bAV offer retains a model zero until its contribution is
+    // answered. A typed/documented zero remains a valid answer.
+    // Contractual employer funding also makes zero conversion valid. The
+    // statutory subsidy flag alone does not: it is true even on registry defaults.
+    const missingBavConversion = productId === 'bav'
+      && instance.monthlyGrossConversion === 0 && contributionStatus === 'assumed'
+      && !((instance.contractualFixedMonthly ?? 0) > 0 || (instance.contractualMatchPercent ?? 0) > 0)
+    if (instance.status !== 'paid_up' && (contributionStatus === 'unknown' || missingBavConversion)) {
       reasons.push({
         code: 'instance-contribution-unknown',
         severity: 'blocking',

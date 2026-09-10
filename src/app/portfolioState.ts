@@ -14,6 +14,7 @@
  *   - `useCalculatorState`: compare-mode keeps the singleton API.
  */
 
+import { normaliseOfferedBav } from '../domain/normaliseOfferedBav'
 import { useCallback, useSyncExternalStore } from 'react'
 import type {
   Scenario,
@@ -897,16 +898,17 @@ export function usePortfolioState(): UsePortfolioStateApi {
       const withStatus: AnyInstance = status
         ? { ...labelled, inputStatus: { ...(labelled.inputStatus ?? {}), ...status } }
         : labelled
+      const normalised = productId === 'bav' ? normaliseOfferedBav(withStatus) : withStatus
       // Never persist an instance the load path would reject: a single invalid
       // instance is dropped on the next load, so writing one silently discards
       // what the user just typed. Callers surface the refusal instead.
-      if (!INSTANCE_VALIDATOR_BY_PRODUCT[productId](withStatus)) {
+      if (!INSTANCE_VALIDATOR_BY_PRODUCT[productId](normalised)) {
         warnRejectedInstance(productId, instanceId)
         return null
       }
       const updated: WorkspaceAssumptionsV2 = {
         ...wsa,
-        [wsKey]: [...currentArray, withStatus],
+        [wsKey]: [...currentArray, normalised],
       }
       const undo = commit('Vertrag hinzugefügt', {
         ...w,
@@ -934,10 +936,15 @@ export function usePortfolioState(): UsePortfolioStateApi {
         // `instanceId` is identity, never patchable — a patch that carried a
         // different one would silently orphan every transfer event and pin
         // pointing at this contract.
-        const merged = { ...existing, ...patch, instanceId } as AnyInstance
-        return status
-          ? { ...merged, inputStatus: { ...(existing.inputStatus ?? {}), ...status } }
+        const merged = {
+          ...existing,
+          ...patch,
+          instanceId,
+        } as AnyInstance
+        const withStatus = status
+          ? { ...merged, inputStatus: { ...(merged.inputStatus ?? {}), ...status } }
           : merged
+        return productId === 'bav' ? normaliseOfferedBav(withStatus) : withStatus
       })
       const patched = nextArray.find((i) => i.instanceId === instanceId)
       // Same persisted-schema gate as `addPopulatedInstance`.

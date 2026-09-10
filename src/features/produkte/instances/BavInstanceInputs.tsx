@@ -59,7 +59,11 @@ export function BavInstanceInputs({ instance, patchInstance }: Props) {
           max={5000}
           step={10}
           disabled={instance.status === 'paid_up'}
-          onCommit={(v) => patchInstance({ monthlyGrossConversion: v })}
+          onCommit={(v) => patchInstance({
+            monthlyGrossConversion: v,
+            inputStatus: { ...instance.inputStatus, monthlyGrossConversion: 'entered' },
+            evidenceMap: { ...instance.evidenceMap, monthlyGrossConversion: 'user_confirmed' },
+          })}
         />
       )}
       <DraftNumberInput

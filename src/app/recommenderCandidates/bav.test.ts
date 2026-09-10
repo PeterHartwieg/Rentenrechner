@@ -293,7 +293,10 @@ describe('makeBavCandidate — materialized what-if effects', () => {
         contractStartYear: de2026Rules.year,
         currentValueEUR: 0,
         evidenceMap: {},
-        monthlyGrossConversion: 0,
+        // Issue 349: stale €200 default from the § 3 tile's registry draft.
+        // The generator sizes offered targets from a zero base, so the what-if
+        // must carry exactly grossMonthlyEUR — not gross + 200.
+        monthlyGrossConversion: 200,
         contractualMatchPercent: 0.5,
         contractualFixedMonthly: 0,
       }
