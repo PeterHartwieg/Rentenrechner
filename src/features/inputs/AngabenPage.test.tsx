@@ -205,8 +205,11 @@ describe('AngabenPage — /eingaben route content', () => {
     expect(text).toContain('Steuerklasse')
     expect(text).toContain('§ 39b EStG')
     expect(text).not.toContain('§ 32a Abs. 5')
-    // "MSCI-World-Renditen" (hyphenated compound) in the right-rail body.
-    expect(text).toMatch(/MSCI[‐‑–—\- ]?World/)
+    // #408: the right rail no longer names MSCI World — no dataset behind
+    // the rates is recorded (docs/validation.md), so the orientation copy
+    // stays generic.
+    expect(text).toContain('langfristigen Aktienmarktrenditen')
+    expect(text).not.toMatch(/MSCI/)
     expect(text).toContain('nominale Modellannahme vor Inflation')
     expect(text).not.toContain('realer Median')
   })
