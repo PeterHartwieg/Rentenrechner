@@ -1379,13 +1379,17 @@ export function draftToInstancePatch(draft: ContractDraft): ContractDraftPatch {
     if (evidence) evidenceMap[feeKey] = evidence
   }
 
-  // Status may be omitted for an unanswered field; use the persisted base.
-  const bavPatch = { ...patch, status: patch.status ?? draft.base.status }
-  return {
-    patch: draft.productId === 'bav' ? normaliseOfferedBav(bavPatch) : patch,
-    inputStatus,
-    evidenceMap,
-  }
+  if (draft.productId !== 'bav') return { patch, inputStatus, evidenceMap }
+  // Normalise the value and its metadata together. Status may be omitted for
+  // an unanswered field; use the persisted base.
+  const {
+    inputStatus: normalisedStatus,
+    evidenceMap: normalisedEvidence,
+    ...normalisedPatch
+  } = normaliseOfferedBav({
+    ...patch, status: patch.status ?? draft.base.status, inputStatus, evidenceMap,
+  })
+  return { patch: normalisedPatch, inputStatus: normalisedStatus, evidenceMap: normalisedEvidence }
 }
 
 /**

@@ -270,7 +270,12 @@ export function selectResultReadiness(
       })
     }
     const contributionField = CONTRIBUTION_FIELD_BY_PRODUCT[productId]
-    if (instance.status !== 'paid_up' && statusOf(instance, contributionField) === 'unknown') {
+    const contributionStatus = statusOf(instance, contributionField)
+    // An activated bAV offer retains a model zero until its contribution is
+    // answered. A typed/documented zero remains a valid answer.
+    const missingBavConversion = productId === 'bav'
+      && instance.monthlyGrossConversion === 0 && contributionStatus === 'assumed'
+    if (instance.status !== 'paid_up' && (contributionStatus === 'unknown' || missingBavConversion)) {
       reasons.push({
         code: 'instance-contribution-unknown',
         severity: 'blocking',

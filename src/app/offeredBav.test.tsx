@@ -12,6 +12,10 @@ import {
   newDraft,
   patchDraftField,
 } from '../features/inventory/contractDraft'
+import { de2026Rules } from '../rules/de2026'
+import { resolveInputStatus } from '../features/results/provenanceHelpers'
+import { selectResultReadiness } from './resultReadiness'
+import { runCombineSimulation } from './useCombineSimulation'
 import { resetPortfolioStore, usePortfolioState } from './portfolioState'
 
 const offeredDraft: BavDraft = {
@@ -32,6 +36,41 @@ beforeEach(() => {
 })
 
 describe('offered bAV write invariant (issue 349)', () => {
+  it('manual status-only activation keeps zero unlabelled and flags the missing contribution', () => {
+    const instance = {
+      ...rawOffer(),
+      inputStatus: { monthlyGrossConversion: 'document' as const },
+      evidenceMap: { monthlyGrossConversion: 'statement' as const },
+    }
+    const { result } = renderHook(() => usePortfolioState())
+    act(() => { expect(result.current.addPopulatedInstance('bav', instance, instance.inputStatus)).not.toBeNull() })
+    act(() => { expect(result.current.updateInstance('bav', makeId(), { status: 'active' })).toBe(true) })
+    const workspace = result.current.workspace
+    const activated = workspace.baseline.assumptions.bav[0]
+    expect(activated).toMatchObject({ status: 'active', monthlyGrossConversion: 0 })
+    expect(activated.inputStatus).not.toHaveProperty('monthlyGrossConversion')
+    expect(activated.evidenceMap).not.toHaveProperty('monthlyGrossConversion')
+    expect(resolveInputStatus(activated.inputStatus, activated.evidenceMap.monthlyGrossConversion, 'monthlyGrossConversion')).toBe('assumed')
+    const readiness = selectResultReadiness(workspace, runCombineSimulation(workspace, de2026Rules))
+    expect(readiness.blocking).toContainEqual(expect.objectContaining({
+      code: 'instance-contribution-unknown', instanceId: makeId(),
+    }))
+    expect(readiness.canShowHouseholdTotal).toBe(false)
+  })
+
+  it('offered updates discard contribution metadata supplied alongside the numeric patch', () => {
+    const { result } = renderHook(() => usePortfolioState())
+    act(() => { result.current.addPopulatedInstance('bav', { ...rawOffer(), status: 'active' }) })
+    act(() => { expect(result.current.updateInstance('bav', makeId(), {
+      status: 'offered', monthlyGrossConversion: 200,
+      evidenceMap: { monthlyGrossConversion: 'statement', currentValueEUR: 'statement' },
+    }, { monthlyGrossConversion: 'document', currentValueEUR: 'document' })).toBe(true) })
+    const offer = result.current.workspace.baseline.assumptions.bav[0]
+    expect(offer.monthlyGrossConversion).toBe(0)
+    expect(offer.inputStatus).toEqual({ currentValueEUR: 'document' })
+    expect(offer.evidenceMap).toEqual({ currentValueEUR: 'statement' })
+  })
+
   const routes = {
     registry: () => INVENTORY_PRODUCT_REGISTRY.bav.draftToInstance(offeredDraft, makeId),
     onboarding: () => buildWorkspaceFromDraft({

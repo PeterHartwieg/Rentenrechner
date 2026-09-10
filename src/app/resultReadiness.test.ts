@@ -67,6 +67,22 @@ function enteredEtfInstance(): EtfInstance {
 }
 
 describe('selectResultReadiness', () => {
+  it.each([undefined, 'assumed', 'entered', 'document'] as const)(
+    'active bAV zero with status %s blocks only when its contribution is assumed', (status) => {
+      const ws = makeWorkspace()
+      const bav = ws.baseline.assumptions.bav[0]
+      bav.monthlyGrossConversion = 0
+      bav.inputStatus = status ? { monthlyGrossConversion: status } : undefined
+      bav.evidenceMap = {}
+      const readiness = selectResultReadiness(ws, bundleFor(ws))
+      expect(readiness.blocking.some(r => r.code === 'instance-contribution-unknown' && r.instanceId === bav.instanceId))
+        .toBe(status === undefined || status === 'assumed')
+      bav.status = 'paid_up'
+      expect(selectResultReadiness(ws, bundleFor(ws)).blocking.some(r => r.code === 'instance-contribution-unknown'))
+        .toBe(false)
+    },
+  )
+
   it('reports estimated (not available) for a workspace whose contract costs are model values', () => {
     const ws = makeWorkspace()
     const readiness = selectResultReadiness(ws, bundleFor(ws))

@@ -890,25 +890,25 @@ export function usePortfolioState(): UsePortfolioStateApi {
         instance.instanceId && instance.instanceId !== ''
           ? instance.instanceId
           : newInstanceId(productId)
-      const normalised = productId === 'bav' ? normaliseOfferedBav(instance) : instance
       const labelled = applyDisambiguatingLabel(
         productId,
-        { ...normalised, instanceId },
+        { ...instance, instanceId },
         currentArray.length + 1,
       )
       const withStatus: AnyInstance = status
         ? { ...labelled, inputStatus: { ...(labelled.inputStatus ?? {}), ...status } }
         : labelled
+      const normalised = productId === 'bav' ? normaliseOfferedBav(withStatus) : withStatus
       // Never persist an instance the load path would reject: a single invalid
       // instance is dropped on the next load, so writing one silently discards
       // what the user just typed. Callers surface the refusal instead.
-      if (!INSTANCE_VALIDATOR_BY_PRODUCT[productId](withStatus)) {
+      if (!INSTANCE_VALIDATOR_BY_PRODUCT[productId](normalised)) {
         warnRejectedInstance(productId, instanceId)
         return null
       }
       const updated: WorkspaceAssumptionsV2 = {
         ...wsa,
-        [wsKey]: [...currentArray, withStatus],
+        [wsKey]: [...currentArray, normalised],
       }
       const undo = commit('Vertrag hinzugefügt', {
         ...w,
@@ -941,10 +941,10 @@ export function usePortfolioState(): UsePortfolioStateApi {
           ...patch,
           instanceId,
         } as AnyInstance
-        const normalised = productId === 'bav' ? normaliseOfferedBav(merged) : merged
-        return status
-          ? { ...normalised, inputStatus: { ...(existing.inputStatus ?? {}), ...status } }
-          : normalised
+        const withStatus = status
+          ? { ...merged, inputStatus: { ...(merged.inputStatus ?? {}), ...status } }
+          : merged
+        return productId === 'bav' ? normaliseOfferedBav(withStatus) : withStatus
       })
       const patched = nextArray.find((i) => i.instanceId === instanceId)
       // Same persisted-schema gate as `addPopulatedInstance`.

@@ -13,7 +13,7 @@
 import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
-import { migrateV1ToV2 } from '../storage'
+import { buildWorkspaceJson, migrateV1ToV2, parseWorkspaceJson } from '../storage'
 import { runCombineSimulation } from './useCombineSimulation'
 import {
   recommendNextEuro,
@@ -702,6 +702,24 @@ describe('recommendNextEuro - bAV offers in Mein Plan', () => {
     expect(bav!.id).toBe('activate_bav-offer-test')
     expect(bav!.label).toContain('bAV-Angebot')
     expect(bav!.targetInstanceId).toBe('bav-offer-test')
+  })
+
+  it.each([false, true])('recommender activation assigns the candidate amount without discarded provenance (load repair: %s)', repair => {
+    let ws = buildWorkspaceWithBavOffer(0.5)
+    const offer = ws.baseline.assumptions.bav[0]
+    offer.inputStatus = { monthlyGrossConversion: 'document', currentValueEUR: 'document' }
+    offer.evidenceMap = { monthlyGrossConversion: 'statement', currentValueEUR: 'statement' }
+    if (repair) ws = parseWorkspaceJson(buildWorkspaceJson(ws))!
+    const candidate = recommendNextEuro(buildInput(ws, 200)).find(c => c.productId === 'bav')
+    expect(candidate).toBeDefined()
+    const whatIf = buildWhatIfFromCandidate(ws.baseline, candidate!)
+    const activated = whatIf.assumptions.bav[0]
+    expect(activated.status).toBe('active')
+    expect(activated.monthlyGrossConversion).toBeCloseTo(candidate!.grossMonthlyEUR, 1)
+    expect(activated.inputStatus).toEqual({ currentValueEUR: 'document' })
+    expect(activated.evidenceMap).toEqual({ currentValueEUR: 'statement' })
+    expect(offer.monthlyGrossConversion).toBe(200)
+    expect(offer.inputStatus.monthlyGrossConversion).toBe('document')
   })
 
   it('saving an offer candidate activates the offered bAV in the what-if', () => {

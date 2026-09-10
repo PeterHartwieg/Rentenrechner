@@ -60,6 +60,7 @@
  *   score / rank candidates → materialise what-ifs.
  */
 
+import { normaliseOfferedBav } from '../domain/normaliseOfferedBav'
 import type {
   GermanRules,
   ProductId,
@@ -1004,14 +1005,10 @@ function applyCandidateToAssumptions(
     if (candidate.productId === 'bav') {
       const idx = wsa.bav.findIndex((b) => b.instanceId === candidate.targetInstanceId)
       if (idx >= 0) {
-        const current = wsa.bav[idx]
-        // Issue 349: the generator sizes offered targets from a zero base, so
-        // a stale stored conversion (the § 3 tile's €200 default on a
-        // workspace persisted before the status-patch zeroing shipped) must
-        // not be added on top of the candidate amount.
-        const storedConversion = current.status === 'offered'
-          ? 0
-          : (current.monthlyGrossConversion ?? 0)
+        // Repair legacy offers before activation so neither their stored
+        // conversion nor its provenance carries into the generated amount.
+        const current = normaliseOfferedBav(wsa.bav[idx])
+        const storedConversion = current.monthlyGrossConversion ?? 0
         const offerPatch = bavOfferPatchForSavedPlan(candidate, storedConversion + candidate.grossMonthlyEUR)
         wsa.bav[idx] = {
           ...current,

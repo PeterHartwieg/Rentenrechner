@@ -427,3 +427,24 @@ describe('compare-mode singleton path is untouched', () => {
     expect(defaultWorkspace.baseline.assumptions.etf).toHaveLength(0)
   })
 })
+
+
+describe('offered bAV contribution provenance (issue 349)', () => {
+  it('draft creation discards document provenance for the zeroed €200 conversion', () => {
+    let draft = patchDraftField(newDraft('bav'), 'status', 'offered')
+    draft = patchDraftField(draft, 'monthlyGrossConversion', 200, 'document')
+    draft = patchDraftField(draft, 'currentValueEUR', 4200, 'document')
+
+    const { patch, inputStatus, evidenceMap } = draftToInstancePatch(draft)
+    expect(patch.monthlyGrossConversion).toBe(0)
+    expect(inputStatus).not.toHaveProperty('monthlyGrossConversion')
+    expect(evidenceMap).not.toHaveProperty('monthlyGrossConversion')
+    const instance = draftToNewInstance(draft, () => 'bav-offer001')
+    expect(instance.monthlyGrossConversion).toBe(0)
+    expect(instance.inputStatus).not.toHaveProperty('monthlyGrossConversion')
+    expect(instance.evidenceMap).not.toHaveProperty('monthlyGrossConversion')
+    expect(instance.inputStatus).toHaveProperty('currentValueEUR', 'document')
+    expect(instance.evidenceMap).toHaveProperty('currentValueEUR', 'statement')
+    expect(draft.fields.monthlyGrossConversion).toMatchObject({ value: 200, status: 'document' })
+  })
+})

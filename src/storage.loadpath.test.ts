@@ -648,6 +648,27 @@ describe('F — transferEventKey export (shared with portfolio transfer collecti
 })
 
 describe('legacy offered bAV conversion (issue 349)', () => {
+  it('v2 load repair removes entered provenance for the discarded €200 conversion', () => {
+    const workspace = makeValidV2Workspace()
+    Object.assign(workspace.baseline.assumptions.bav[0], {
+      status: 'offered', monthlyGrossConversion: 200,
+      inputStatus: { monthlyGrossConversion: 'entered', currentValueEUR: 'document' },
+      evidenceMap: { monthlyGrossConversion: 'user_confirmed', currentValueEUR: 'statement' },
+    })
+    workspace.whatIfs = [forkBaselineScenario(workspace.baseline, 'Alternative')]
+    saveWorkspace(workspace)
+    const loaded = loadSavedWorkspace()!
+    expect(loaded).not.toBeNull()
+    for (const scenario of [loaded.baseline, loaded.whatIfs[0], loaded.whatIfs[0].derivedFromBaselineSnapshot]) {
+      const offer = scenario.assumptions.bav[0]
+      expect(offer.monthlyGrossConversion).toBe(0)
+      expect(offer.inputStatus).toEqual({ currentValueEUR: 'document' })
+      expect(offer.evidenceMap).toEqual({ currentValueEUR: 'statement' })
+    }
+    expect(parseWorkspaceJson(buildWorkspaceJson(loaded))).toEqual(loaded)
+    expect(workspace.baseline.assumptions.bav[0].inputStatus?.monthlyGrossConversion).toBe('entered')
+  })
+
   it('loads an offered bAV at zero while preserving active conversions', () => {
     const workspace = makeValidV2Workspace()
     const active = workspace.baseline.assumptions.bav[0]
