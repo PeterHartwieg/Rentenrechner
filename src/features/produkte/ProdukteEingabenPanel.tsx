@@ -43,6 +43,7 @@ import {
 import { GRVInputs } from '../inputs/GRVInputs'
 import { detectLegacyEpSeed } from '../inventory/inventoryHelpers'
 import { useWorkspaceUndoNotice } from '../../app/portfolioState'
+import { bavOfferedTransitionPatch } from '../../app/workspaceIdentity'
 import {
   PRODUCT_UI_REGISTRY,
   type ProductInputsContext,
@@ -474,8 +475,17 @@ function CombinePanel({
   ) => (patch: Partial<WorkspaceInstance>) => {
     if (!onPatchBaseline) return
     const arr = getInstanceArrayForProduct(assumptions, productId)
+    // Issue 349: flipping a bAV to `offered` also zeroes the stored
+    // conversion — the field is hidden in that state, so a stale value would
+    // be invisible and double-counted by the recommender.
+    const current = arr.find((inst) => inst.instanceId === instanceId)
+    const offeredPatch = current
+      ? bavOfferedTransitionPatch(productId, current.status, patch.status)
+      : null
     const nextArr = arr.map((inst) =>
-      inst.instanceId === instanceId ? { ...inst, ...patch } : inst,
+      inst.instanceId === instanceId
+        ? { ...inst, ...patch, ...(offeredPatch ?? {}) }
+        : inst,
     )
     // The workspace baseline assumptions slot for this product receives the
     // mapped array. Spreading existing assumptions then overwriting the

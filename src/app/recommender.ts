@@ -1005,11 +1005,18 @@ function applyCandidateToAssumptions(
       const idx = wsa.bav.findIndex((b) => b.instanceId === candidate.targetInstanceId)
       if (idx >= 0) {
         const current = wsa.bav[idx]
-        const offerPatch = bavOfferPatchForSavedPlan(candidate, current.monthlyGrossConversion + candidate.grossMonthlyEUR)
+        // Issue 349: the generator sizes offered targets from a zero base, so
+        // a stale stored conversion (the § 3 tile's €200 default on a
+        // workspace persisted before the status-patch zeroing shipped) must
+        // not be added on top of the candidate amount.
+        const storedConversion = current.status === 'offered'
+          ? 0
+          : (current.monthlyGrossConversion ?? 0)
+        const offerPatch = bavOfferPatchForSavedPlan(candidate, storedConversion + candidate.grossMonthlyEUR)
         wsa.bav[idx] = {
           ...current,
           status: current.status === 'offered' ? 'active' : current.status,
-          monthlyGrossConversion: (current.monthlyGrossConversion ?? 0) + candidate.grossMonthlyEUR,
+          monthlyGrossConversion: storedConversion + candidate.grossMonthlyEUR,
           ...offerPatch,
         }
       }
@@ -1035,14 +1042,18 @@ function applyCandidateToAssumptions(
       // Issue 66: insurance candidate top-up. Activates an offered contract
       // and bumps the per-instance monthlyContribution that combine-mode
       // honors via `BuildContextOverrides.insuranceMonthlyUserCostOverride`.
+      // Issue 349: same zero-base rule as the bAV branch — an offered
+      // contract's stored contribution is stale and must not stack.
       const idx = wsa.insurance.findIndex((i) => i.instanceId === candidate.targetInstanceId)
       if (idx >= 0) {
         const current = wsa.insurance[idx]
+        const storedContribution = current.status === 'offered'
+          ? 0
+          : (current.monthlyContribution ?? 0)
         wsa.insurance[idx] = {
           ...current,
           status: current.status === 'offered' ? 'active' : current.status,
-          monthlyContribution:
-            (current.monthlyContribution ?? 0) + candidate.grossMonthlyEUR,
+          monthlyContribution: storedContribution + candidate.grossMonthlyEUR,
         }
       }
     }
