@@ -158,10 +158,12 @@ Sec. 10a EStG allows qualifying Riester contributions plus the related allowance
 2. Compare that tax effect with the allowance entitlement.
 3. If the deduction is more favorable, the saver gets the excess tax reduction; the allowance itself is already paid into the contract.
 
-Tool formula:
+Eligibility gate before the formula: directly eligible savers retain the Sec. 10a deduction without a minimum own contribution. For the indirect spouse, 60 EUR/year is constitutive for eligibility under Sec. 79 sentence 2 no. 4 EStG in the version applicable through 2026, preserved for legacy contracts by Sec. 52(50a). Sec. 10a(3) includes that spouse's contributions only if the spouse is eligible under Sec. 79 sentence 2. Below 60 EUR/year, the indirect spouse therefore has a zero special-expense base and no Guenstigerpruefung benefit; a saver with neither eligibility also has a zero base.
+
+Tool formula (after applying that gate):
 
 ```text
-specialExpenseBase = min(annualOwnContribution + actualAllowance, 2100)
+specialExpenseBase = eligible ? min(annualOwnContribution + actualAllowance, 2100) : 0
 taxSaving = tax(zvE) - tax(zvE - specialExpenseBase)
 extraTaxRefund = max(0, taxSaving - actualAllowance)
 monthlyNetCost = monthlyOwnContribution - extraTaxRefund / 12

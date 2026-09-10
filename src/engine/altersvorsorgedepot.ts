@@ -35,7 +35,11 @@ import {
   afterTaxCertifiedPensionLumpSum,
   netCertifiedPensionPayout,
 } from './certifiedPensionPayout'
-import { calculateAllowanceExcessBenefit, calculateSalaryPhaseTaxDelta } from './salaryPhaseFunding'
+import {
+  calculateAllowanceExcessBenefit,
+  calculateSalaryPhaseTaxDelta,
+  isSection10aEligible,
+} from './salaryPhaseFunding'
 import type { RetirementHealthStatus } from './retirementPayout'
 import { childBirthYearsUnder25InYear } from './childEligibility'
 
@@ -283,14 +287,30 @@ export function calculateAvdFunding(
   // 3. §10a EStG special-expense deductible base.
   //    = min(ownContribution, 1 800) + allowanceEntitlement
   //    Contributions above 1 800 EUR increase neither allowance nor §10a.
+  //    Step 0: the deduction requires the begünstigter Personenkreis
+  //    (§10a / §79 EStG) — a saver who is neither directly nor mittelbar
+  //    eligible gets no Sonderausgabenabzug at all. Indirect eligibility
+  //    requires the minimum own contribution (§79 Satz 2 Nr. 4).
   // -------------------------------------------------------------------------
-  const specialExpenseBaseAnnual =
-    Math.min(annualOwnContribution, avdRules.specialExpenseOwnContributionCap) + totalAllowanceAnnual
+  const specialExpenseBaseAnnual = isSection10aEligible(
+    effectiveEligibility,
+    annualOwnContribution,
+    avdRules.minimumOwnContributionAnnual,
+  )
+    ? Math.min(annualOwnContribution, avdRules.specialExpenseOwnContributionCap) + totalAllowanceAnnual
+    : 0
 
   // -------------------------------------------------------------------------
   // 4. Günstigerprüfung: compare the income-tax saving from §10a deduction
   //    against the allowance value. Only the excess above the allowance is
   //    an additional tax refund (the allowance itself already funds the contract).
+  //
+  //    Mittelbar limitation: the §10a deduction belongs to the directly
+  //    eligible spouse on the joint return. We use only the user's solo
+  //    zvE here, so for a mittelbar saver with zero/low salary the §10a
+  //    saving will read as 0 and `guenstigerpruefungBenefitAnnual` will
+  //    under-report the real household benefit. Full joint
+  //    Günstigerprüfung is a separate workstream (see riester.ts).
   // -------------------------------------------------------------------------
   const { taxSavingAnnual: totalTaxSavingAnnual } = calculateSalaryPhaseTaxDelta(
     rules,

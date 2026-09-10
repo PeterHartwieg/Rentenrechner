@@ -505,6 +505,66 @@ describe('calculateRiesterFunding — mittelbare Zulageberechtigung (§79 Satz 2
 })
 
 // ---------------------------------------------------------------------------
+// §10a eligibility gate (#363) — the Sonderausgabenabzug requires the saver to
+// belong to the begünstigter Personenkreis (§10a / §79 EStG). The §86
+// Mindesteigenbeitrag gates only the Zulage for directly eligible savers;
+// indirect eligibility itself requires the own-contribution minimum (§79 Satz 2 Nr. 4).
+// ---------------------------------------------------------------------------
+
+describe('calculateRiesterFunding — §10a eligibility gate (#363)', () => {
+  const riester = {
+    ...defaultRiesterAssumptions,
+    monthlyOwnContribution: 150, // 1 800 EUR/year
+    eligibility: {
+      directlyEligible: false,
+      ageAtContractStart: 30,
+      careerStarterBonusUsed: true,
+    },
+  }
+
+  it('grants no §10a deduction or Günstigerprüfung refund outside the begünstigter Personenkreis', () => {
+    const result = calculateRiesterFunding(rules, calculateSalaryResult(defaultProfile, rules), riester, defaultProfile)
+    expect(result.totalAllowanceAnnual).toBe(0)
+    expect(result.specialExpenseDeductibleAnnual).toBe(0)
+    expect(result.guenstigerpruefungBenefitAnnual).toBe(0)
+    expect(result.monthlyNetCost).toBe(riester.monthlyOwnContribution)
+  })
+
+  it.each([
+    { annualOwnContribution: 2.5 * 12, eligible: false },
+    { annualOwnContribution: rules.riester.sockelbetrag - 0.01, eligible: false },
+    { annualOwnContribution: rules.riester.sockelbetrag, eligible: true },
+  ])('gates mittelbar §10a at the own-contribution minimum: $annualOwnContribution/year', ({ annualOwnContribution, eligible }) => {
+    const contribution = {
+      ...riester,
+      monthlyOwnContribution: annualOwnContribution / 12,
+      eligibility: { ...riester.eligibility, indirectSpouseEligible: true },
+    }
+    const result = calculateRiesterFunding(rules, calculateSalaryResult(defaultProfile, rules), contribution, defaultProfile)
+    if (eligible) {
+      expect(result.specialExpenseDeductibleAnnual).toBeCloseTo(annualOwnContribution + result.totalAllowanceAnnual, 8)
+      expect(result.totalAllowanceAnnual).toBeGreaterThan(0)
+    } else {
+      expect(result.specialExpenseDeductibleAnnual).toBe(0)
+      expect(result.guenstigerpruefungBenefitAnnual).toBe(0)
+      expect(result.totalAllowanceAnnual).toBe(0)
+      expect(result.monthlyNetCost).toBe(contribution.monthlyOwnContribution)
+    }
+  })
+
+  it('keeps the mittelbar spouse inside the gate (§79 Satz 2)', () => {
+    const mittelbar = {
+      ...riester,
+      eligibility: { ...riester.eligibility, indirectSpouseEligible: true },
+    }
+    const result = calculateRiesterFunding(rules, calculateSalaryResult(defaultProfile, rules), mittelbar, defaultProfile)
+    // base = min(1 800 + 175 Grundzulage, 2 100) = 1 975
+    expect(result.specialExpenseDeductibleAnnual).toBeCloseTo(1_975, 4)
+    expect(result.guenstigerpruefungBenefitAnnual).toBeGreaterThan(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // netRiesterPayout — §22 Nr. 5 EStG
 // ---------------------------------------------------------------------------
 
