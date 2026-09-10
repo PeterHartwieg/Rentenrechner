@@ -935,6 +935,8 @@ export function usePortfolioState(): UsePortfolioStateApi {
         // different one would silently orphan every transfer event and pin
         // pointing at this contract.
         const merged = { ...existing, ...patch, instanceId } as AnyInstance
+        // Undefined clears the optional contract return in a shallow editor patch.
+        if (merged.expectedReturn === undefined) delete merged.expectedReturn
         return status
           ? { ...merged, inputStatus: { ...(existing.inputStatus ?? {}), ...status } }
           : merged

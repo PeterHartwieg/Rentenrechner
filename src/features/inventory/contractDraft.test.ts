@@ -96,7 +96,7 @@ describe('CONTRACT_FIELD_SPECS', () => {
   it('never offers an unknown control for a field that cannot be unknown', () => {
     for (const specs of Object.values(CONTRACT_FIELD_SPECS)) {
       for (const spec of specs) {
-        expect(spec.supportsUnknown).toBe(spec.unknownMode !== 'none')
+        expect(spec.supportsUnknown || spec.clearOnUnknown === true).toBe(spec.unknownMode !== 'none')
       }
     }
   })
@@ -149,7 +149,7 @@ describe('draftFromInstance', () => {
     const draft = draftFromInstance('bav', instance)
 
     for (const spec of fieldSpecs('bav')) {
-      expect(draftFieldState(draft, spec.id), spec.id).toBe('assumed')
+      expect(draftFieldState(draft, spec.id), spec.id).toBe(spec.clearOnUnknown ? 'unknown' : 'assumed')
     }
     expect(draftFieldValue(draft, 'monthlyGrossConversion')).toBe(250)
     expect(draftFieldValue(draft, 'currentValueEUR')).toBe(4200)
