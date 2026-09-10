@@ -299,7 +299,7 @@ export function MethodePage({ navigate }: Props) {
               </table>
               <p className="methode-section-lead">
                 Die Szenariorendite ist die angenommene Rendite des risikobehafteten
-                Markts und gilt je Szenario für alle Produkte gleichermaßen.
+                Markts und gilt im Vergleich bewusst je Szenario für alle Produkte gleichermaßen.
                 Unterschiede im Ergebnis entstehen durch Kosten, Beitragsgarantien,
                 Steuern in Anspar- und Auszahlungsphase, Zulagen und Arbeitgeberzuschüsse
                 sowie die Auszahlungsform und beim Altersvorsorgedepot zusätzlich durch
@@ -311,6 +311,11 @@ export function MethodePage({ navigate }: Props) {
                 Vertragsobergrenze begrenzt.
                 So siehst du innerhalb dieser Grenzen, welcher Mantel bei gleichem
                 Nettoaufwand und gleichem Markt im Modell mehr übrig lässt.
+                In Mein Plan kannst du in den Vertragsdetails unter „Erwartete Rendite“
+                eine eigene Vertragsrendite festlegen, die den Szenariowert für diesen
+                Vertrag in allen drei Szenarien ersetzt.
+                Diese vertragsspezifische Rendite wird in den Vertragsdetails, im
+                Druckbericht und im CSV-Export ausgewiesen.
               </p>
 
               {/* Live Monte-Carlo panel (relocated from Vergleich pane dispatcher

@@ -21,6 +21,8 @@ Mein Plan contracts can now set an optional expected return between −50% and 5
 
 ## Review round 1
 
+Round 1b: Clarified `/methode` that comparison deliberately shares each scenario's market return, while Mein Plan's “Erwartete Rendite” replaces it per contract in all three scenarios and is disclosed in contract details, print reports and CSV exports; updated the page copy test.
+
 Existing ETF, bAV, private-insurance and Riester candidates now resolve the target's absolute `expectedReturn` through one shared helper. bAV and insurance offer activation use the same rule, and the recommender's P10 calculation uses the resolved candidate return. New bAV, AVD and Basisrente candidates retain the shared scenario rate.
 
 Added tests first: deterministic projection and seeded P10 parity for all four existing-contract paths and both supported offer activations, a new-instance control, and the fixed-return ETF counterexample (age 37, retirement 67, 0% contract return, 0.2% fee, 7% shared scenario, €100/month top-up). Its recommendation delta matches the materialized what-if within the existing 3% ETF tolerance. The 13 affected checks failed before the fix; all 141 recommender tests now pass. Full `npm run verify` passed with the refreshed counts above; no oracle or baseline updates.
