@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   calculateAllowanceExcessBenefit,
   calculateSalaryPhaseTaxDelta,
+  isSection10aEligible,
 } from './salaryPhaseFunding'
 import { de2026Rules } from '../rules/de2026'
 import { calculateIncomeTax2026, calculateSolidarityTax } from './tax'
@@ -84,5 +85,24 @@ describe('calculateAllowanceExcessBenefit', () => {
 
   it('returns 0 when both inputs are zero', () => {
     expect(calculateAllowanceExcessBenefit(0, 0)).toBe(0)
+  })
+})
+
+describe('isSection10aEligible (#363)', () => {
+  it('accepts a directly eligible saver', () => {
+    expect(isSection10aEligible({ directlyEligible: true, indirectSpouseEligible: false })).toBe(true)
+  })
+
+  it('accepts the mittelbar spouse (§79 Satz 2 EStG)', () => {
+    expect(isSection10aEligible({ directlyEligible: false, indirectSpouseEligible: true })).toBe(true)
+  })
+
+  it('rejects a saver outside the begünstigter Personenkreis', () => {
+    expect(isSection10aEligible({ directlyEligible: false, indirectSpouseEligible: false })).toBe(false)
+  })
+
+  it('treats an omitted indirectSpouseEligible as false (Riester stored state)', () => {
+    expect(isSection10aEligible({ directlyEligible: false })).toBe(false)
+    expect(isSection10aEligible({ directlyEligible: false, indirectSpouseEligible: undefined })).toBe(false)
   })
 })

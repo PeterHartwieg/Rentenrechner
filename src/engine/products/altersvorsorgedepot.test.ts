@@ -309,6 +309,52 @@ describe('calculateAvdFunding', () => {
   })
 })
 
+describe('calculateAvdFunding — §10a eligibility gate (#363)', () => {
+  const avdBase: Parameters<typeof calculateAvdFunding>[2] = {
+    ...defaultAssumptions.altersvorsorgedepot,
+    monthlyOwnContribution: 150, // 1 800 EUR/year
+    eligibility: {
+      directlyEligible: false,
+      indirectSpouseEligible: false,
+      eligibleChildren: 0,
+      ageAtContractStart: 30,
+      careerStarterBonusUsed: true,
+    },
+  }
+  // zvE 60 000, single — the measurement setup from the issue.
+  const salary = { taxableIncome: 60_000, deductionFilingStatus: 'single' } as never
+
+  it('grants no §10a deduction or Günstigerprüfung refund outside the begünstigter Personenkreis', () => {
+    const result = calculateAvdFunding(rules, salary, avdBase)
+    expect(result.totalAllowanceAnnual).toBe(0)
+    expect(result.specialExpenseBaseAnnual).toBe(0)
+    expect(result.guenstigerpruefungBenefitAnnual).toBe(0)
+    expect(result.monthlyNetCost).toBe(avdBase.monthlyOwnContribution)
+  })
+
+  it('keeps the mittelbar spouse inside the gate (§79 Satz 2)', () => {
+    const result = calculateAvdFunding(rules, salary, {
+      ...avdBase,
+      eligibility: { ...avdBase.eligibility, indirectSpouseEligible: true },
+    })
+    // base = min(1 800, 1 800) + 175 Grundzulage über Ehegatte = 1 975
+    expect(result.specialExpenseBaseAnnual).toBeCloseTo(1_975, 4)
+    expect(result.guenstigerpruefungBenefitAnnual).toBeGreaterThan(0)
+  })
+
+  it('keeps the §10a deduction for an eligible saver below the 120 EUR minimum contribution', () => {
+    // The Mindesteigenbeitrag gates the Zulage only, never the Sonderausgabenabzug.
+    const result = calculateAvdFunding(rules, salary, {
+      ...avdBase,
+      monthlyOwnContribution: 5, // 60 EUR/year — below minimumOwnContributionAnnual
+      eligibility: { ...avdBase.eligibility, directlyEligible: true },
+    })
+    expect(result.totalAllowanceAnnual).toBe(0)
+    expect(result.specialExpenseBaseAnnual).toBeCloseTo(60, 4)
+    expect(result.guenstigerpruefungBenefitAnnual).toBeCloseTo(23, 0)
+  })
+})
+
 describe('resolveAvdEligibility', () => {
   it('preserves claimsChildAllowance while resolving profile child years (#371)', () => {
     const resolved = resolveAvdEligibility(
