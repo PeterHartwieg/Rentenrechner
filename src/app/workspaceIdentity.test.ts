@@ -17,6 +17,7 @@ import {
   deepCloneScenario,
   addInstanceToWorkspace,
   removeInstanceFromWorkspace,
+  bavOfferedTransitionPatch,
 } from './workspaceIdentity'
 
 // ---------------------------------------------------------------------------
@@ -244,5 +245,38 @@ describe('removeInstanceFromWorkspace', () => {
     const id = ws1.baseline.assumptions.etf[0].instanceId
     const ws2 = removeInstanceFromWorkspace(ws1, 'etf', id)
     expect(ws2.baseline.assumptions.etf).toHaveLength(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// bavOfferedTransitionPatch (issue 349)
+// ---------------------------------------------------------------------------
+
+describe('bavOfferedTransitionPatch', () => {
+  it('returns a zeroing patch when an active bAV flips to offered', () => {
+    expect(bavOfferedTransitionPatch('bav', 'active', 'offered')).toEqual({
+      monthlyGrossConversion: 0,
+    })
+  })
+
+  it('returns a zeroing patch when the transition starts from paid_up', () => {
+    expect(bavOfferedTransitionPatch('bav', 'paid_up', 'offered')).toEqual({
+      monthlyGrossConversion: 0,
+    })
+  })
+
+  it('returns null when the patch does not target offered', () => {
+    expect(bavOfferedTransitionPatch('bav', 'active', 'active')).toBeNull()
+    expect(bavOfferedTransitionPatch('bav', 'offered', 'active')).toBeNull()
+    expect(bavOfferedTransitionPatch('bav', 'active', undefined)).toBeNull()
+  })
+
+  it('returns null when the instance is already offered (no transition)', () => {
+    expect(bavOfferedTransitionPatch('bav', 'offered', 'offered')).toBeNull()
+  })
+
+  it('returns null for non-bAV products', () => {
+    expect(bavOfferedTransitionPatch('etf', 'active', 'offered')).toBeNull()
+    expect(bavOfferedTransitionPatch('versicherung', 'active', 'offered')).toBeNull()
   })
 })

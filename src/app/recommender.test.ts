@@ -682,7 +682,10 @@ describe('recommendNextEuro - bAV offers in Mein Plan', () => {
       contractStartYear: de2026Rules.year,
       currentValueEUR: 0,
       evidenceMap: {},
-      monthlyGrossConversion: 0,
+      // Issue 349: the €200 default from the § 3 tile's registry draft. The
+      // field is hidden for offered contracts, so this stale value must not
+      // be added on top when the offer candidate is applied.
+      monthlyGrossConversion: 200,
       contractualMatchPercent: matchPct,
       contractualFixedMonthly: 0,
     }
@@ -711,6 +714,69 @@ describe('recommendNextEuro - bAV offers in Mein Plan', () => {
     expect(activated?.status).toBe('active')
     expect(activated?.monthlyGrossConversion).toBeCloseTo(bav!.grossMonthlyEUR, 1)
     expect(activated?.contractualMatchPercent).toBe(0.5)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Issue 349 — offered bAV must not double-count a stored conversion
+//
+// Pairs the combine-mode offer cases above with the compare-mode singleton
+// path: workspaces migrated from the v1 ScenarioAssumptions shape carry the
+// singleton bAV as an active instance, and the apply path must keep adding
+// the candidate on top of its stored conversion.
+// ---------------------------------------------------------------------------
+
+describe('recommendNextEuro — compare-mode singleton path (issue 349 pairing)', () => {
+  it('migrated singleton bAV: candidate still adds on top of the stored conversion', () => {
+    const v1 = {
+      ...defaultAssumptions,
+      visibleProducts: ['bav', 'etf'],
+      bav: { ...defaultAssumptions.bav, monthlyGrossConversion: 200 },
+    }
+    const ws = migrateV1ToV2(
+      defaultProfile as unknown as Record<string, unknown>,
+      v1 as unknown as Record<string, unknown>,
+    )
+    const singleton = ws.baseline.assumptions.bav[0]
+    expect(singleton.instanceId).toBe('bav-singleton')
+    expect(singleton.status).toBe('active')
+
+    const candidates = recommendNextEuro(buildInput(ws, 100))
+    const cand = candidates.find((c) => c.productId === 'bav' && !c.isNewInstance)
+    if (!cand) return
+    const whatIf = buildWhatIfFromCandidate(ws.baseline, cand)
+    const after = whatIf.assumptions.bav.find(
+      (b) => b.instanceId === cand.targetInstanceId,
+    )?.monthlyGrossConversion ?? 0
+    expect(after - singleton.monthlyGrossConversion).toBeCloseTo(cand.grossMonthlyEUR, 1)
+  })
+
+  it('offered bAV carried through the v1 migration: apply yields the candidate amount, not candidate + stored', () => {
+    // A v1 ScenarioAssumptions payload never has a status field; seeding one
+    // here mirrors a workspace persisted before the status-patch zeroing
+    // shipped, where the stored €200 default survived on an offered contract.
+    const v1 = {
+      ...defaultAssumptions,
+      visibleProducts: ['bav', 'etf'],
+      bav: {
+        ...defaultAssumptions.bav,
+        monthlyGrossConversion: 200,
+        status: 'offered',
+      },
+    }
+    const ws = migrateV1ToV2(
+      defaultProfile as unknown as Record<string, unknown>,
+      v1 as unknown as Record<string, unknown>,
+    )
+    expect(ws.baseline.assumptions.bav[0].status).toBe('offered')
+
+    const candidates = recommendNextEuro(buildInput(ws, 200))
+    const cand = candidates.find((c) => c.productId === 'bav')
+    expect(cand).toBeDefined()
+    const whatIf = buildWhatIfFromCandidate(ws.baseline, cand!)
+    const activated = whatIf.assumptions.bav.find((b) => b.instanceId === 'bav-singleton')
+    expect(activated?.status).toBe('active')
+    expect(activated?.monthlyGrossConversion).toBeCloseTo(cand!.grossMonthlyEUR, 1)
   })
 })
 
@@ -950,7 +1016,9 @@ describe('recommendNextEuro — bAV + insurance offers in same flow (issue 66)',
         status: 'offered',
         contractStartYear: de2026Rules.year,
         evidenceMap: {},
-        monthlyContribution: 0,
+        // Issue 349 sibling: a stale stored contribution on an offered
+        // contract must not be added on top of the candidate amount.
+        monthlyContribution: 200,
       },
     ]
     const candidates = recommendNextEuro(buildInput(ws, 200))
