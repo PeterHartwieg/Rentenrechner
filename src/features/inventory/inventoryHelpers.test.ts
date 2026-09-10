@@ -43,6 +43,12 @@ describe('detectLegacyEpSeed', () => {
     expect(detect(oldSeed, method, { manualMonthlyGross: 1500 })).toEqual({ legacy: false })
   })
 
+  it.each(methods)('ignores a seed behind an explicit zero manual gross for $kind', (method) => {
+    // Manual mode keys off `!== null`, not `> 0` — selecting "Manuell
+    // eingegeben" stores 0, so the projection still ignores Entgeltpunkte.
+    expect(detect(oldSeed, method, { manualMonthlyGross: 0 })).toEqual({ legacy: false })
+  })
+
   it.each(methods)('ignores a fresh seed for $kind', (method) => {
     expect(detect(freshEstimate, method)).toEqual({ legacy: false })
   })
@@ -147,6 +153,10 @@ describe('detectLegacyEpSeed', () => {
       // Same guard as the recorded-method branch: the manual figure wins in
       // the projection, so the stored seed cannot influence any shown number.
       expect(detectAbsent(50_000, { manualMonthlyGross: 1500 })).toEqual({ legacy: false })
+    })
+
+    it('ignores a seed behind an explicit zero manual gross even without a recorded method', () => {
+      expect(detectAbsent(50_000, { manualMonthlyGross: 0 })).toEqual({ legacy: false })
     })
 
     it('recovers the year count for salaries above the legacy cap', () => {

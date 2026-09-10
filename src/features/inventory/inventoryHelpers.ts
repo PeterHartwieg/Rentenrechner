@@ -126,7 +126,7 @@ const EP_INPUT_STATUS_KEY = 'statutoryPension.currentEntgeltpunkte'
  *    absent means `assumed`, never user-owned).
  *
  * A manual gross-pension override suppresses detection in both shapes: while
- * `manualMonthlyGross` is set, the projection ignores `currentEntgeltpunkte`
+ * `manualMonthlyGross` is non-null (including zero), the projection ignores `currentEntgeltpunkte`
  * entirely, so a stored seed behind an override cannot influence any number
  * the user sees and a re-estimate would do nothing.
  */
@@ -146,12 +146,9 @@ export function detectLegacyEpSeed({
   const stored = statutoryPension.currentEntgeltpunkte
   const tolerance = 0.005
 
-  // The manual figure wins in the projection — never offer a re-estimate
-  // that has no effect on the shown numbers.
-  if (
-    statutoryPension.manualMonthlyGross !== null &&
-    statutoryPension.manualMonthlyGross > 0
-  ) {
+  // Any non-null manual figure, including zero, wins in the projection —
+  // never offer a re-estimate that has no effect on the shown numbers.
+  if (statutoryPension.manualMonthlyGross !== null) {
     return { legacy: false }
   }
 
