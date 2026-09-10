@@ -5,7 +5,10 @@ import { clampNumber } from '../../../ui/formatting'
 import { formatPercent } from '../../../utils/format'
 import { NettoBelastungControl } from './NettoBelastungControl'
 import { ScenariosPanel } from '../ScenariosPanel'
-import { DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR } from '../../../data/defaultScenario'
+import {
+  DEFAULT_EXPERT_INFLATION_RATE,
+  DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR,
+} from '../../../data/defaultScenario'
 import type { useScenarioLibrary } from '../../../app/useScenarioLibrary'
 
 /**
@@ -175,7 +178,11 @@ export function AngabenAnnahmenSection(props: AngabenAnnahmenSectionProps) {
               onChange={(e) =>
                 setAssumptions((a) => ({
                   ...a,
-                  inflationRate: e.target.checked ? 0.02 : 0,
+                  // Prefill from the documented default (docs/validation.md
+                  // "Return Scenarios") — keep the hint copy below in sync.
+                  inflationRate: e.target.checked
+                    ? DEFAULT_EXPERT_INFLATION_RATE
+                    : 0,
                 }))
               }
             />
