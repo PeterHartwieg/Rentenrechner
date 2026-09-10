@@ -765,6 +765,13 @@ describe('MeinPlanPage — default overview', () => {
 
 
 describe('MeinPlanPage — Kapital scenario drill-in', () => {
+  it('carries the selected scenario from the drawdown-horizon readiness chip', () => {
+    const navigate = vi.fn()
+    render(<MeinPlanPage {...buildOverviewProps()} selectedScenarioId="konservativ" navigate={navigate} />)
+    fireEvent.click(screen.getByRole('button', { name: /Entnahmen laufen bis zum gemeinsam angenommenen Alter/ }))
+    expect(navigate).toHaveBeenCalledWith(ROUTES.kapital, '?scenario=konservativ', undefined)
+  })
+
   it('carries the selected scenario in the legacy href and SPA navigation', () => {
     const props = buildProps()
     const navigate = vi.fn()
