@@ -1043,7 +1043,17 @@ function applyCandidateToAssumptions(
       // contract's stored contribution is stale and must not stack.
       const idx = wsa.insurance.findIndex((i) => i.instanceId === candidate.targetInstanceId)
       if (idx >= 0) {
-        const current = wsa.insurance[idx]
+        const current = { ...wsa.insurance[idx] }
+        if (current.status === 'offered') {
+          // The generated amount replaces the offer amount, so it cannot
+          // inherit that discarded amount's answer status or evidence.
+          if (current.inputStatus) {
+            current.inputStatus = { ...current.inputStatus }
+            delete current.inputStatus.monthlyContribution
+          }
+          current.evidenceMap = { ...current.evidenceMap }
+          delete current.evidenceMap.monthlyContribution
+        }
         const storedContribution = current.status === 'offered'
           ? 0
           : (current.monthlyContribution ?? 0)

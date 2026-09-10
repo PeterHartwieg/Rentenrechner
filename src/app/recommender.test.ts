@@ -15,6 +15,8 @@ import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
 import { buildWorkspaceJson, migrateV1ToV2, parseWorkspaceJson } from '../storage'
 import { runCombineSimulation } from './useCombineSimulation'
+import { selectResultReadiness } from './resultReadiness'
+import { resolveInputStatus } from '../features/results/provenanceHelpers'
 import {
   recommendNextEuro,
   buildWhatIfFromCandidate,
@@ -1023,6 +1025,42 @@ describe('recommendNextEuro — bAV + insurance offers in same flow (issue 66)',
     expect(insurance!.label).toContain('Versicherungsangebot nutzen')
     expect(insurance!.targetInstanceId).toBe('versicherung-offer-test')
   })
+
+  it.each(['document', 'unknown'] as const)(
+    'insurance activation discards %s provenance belonging to the replaced offer amount',
+    (status) => {
+      const workspace = buildAnnaWorkspace()
+      workspace.baseline.assumptions.insurance = [{
+        ...defaultAssumptions.insurance,
+        instanceId: 'versicherung-offer-test',
+        label: 'Private RV',
+        status: 'offered',
+        contractStartYear: de2026Rules.year,
+        monthlyContribution: 200,
+        inputStatus: { monthlyContribution: status, rentenfaktor: 'document' },
+        evidenceMap: { monthlyContribution: 'statement', rentenfaktor: 'statement' },
+      }]
+      const original = structuredClone(workspace.baseline)
+      const candidate = fixtureCandidate('insurance-offer', {
+        productId: 'versicherung',
+        targetInstanceId: 'versicherung-offer-test',
+        grossMonthlyEUR: 250,
+      })
+      const whatIf = buildWhatIfFromCandidate(workspace.baseline, candidate)
+      const activated = whatIf.assumptions.insurance[0]
+      expect(activated.status).toBe('active')
+      expect(activated.monthlyContribution).toBe(250)
+      expect(activated.inputStatus).toEqual({ rentenfaktor: 'document' })
+      expect(activated.evidenceMap).toEqual({ rentenfaktor: 'statement' })
+      expect(resolveInputStatus(activated.inputStatus, activated.evidenceMap.monthlyContribution, 'monthlyContribution'))
+        .toBe('assumed')
+      const preview = { ...workspace, baseline: whatIf }
+      const readiness = selectResultReadiness(preview, runCombineSimulation(preview, de2026Rules))
+      expect(readiness.blocking).toEqual([])
+      expect(readiness.canShowHouseholdTotal).toBe(true)
+      expect(workspace.baseline).toEqual(original)
+    },
+  )
 
   it('insurance offer activates the offered status when saved as a plan', () => {
     const ws = buildAnnaWorkspace()
