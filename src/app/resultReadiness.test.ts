@@ -14,6 +14,8 @@ import { de2026Rules } from '../rules/de2026'
 import { migrateV1ToV2 } from '../storage'
 import type { EtfInstance } from '../domain/instances'
 import type { Workspace } from '../domain/workspace'
+import { normaliseOfferedBav } from '../domain/normaliseOfferedBav'
+import { INVENTORY_PRODUCT_REGISTRY } from '../features/inventory/inventoryProductRegistry'
 import { runCombineSimulation, type CombineSimulationBundle } from './useCombineSimulation'
 import { householdTotalBlockedLabels, selectResultReadiness } from './resultReadiness'
 import { ROUTES } from './useRoute'
@@ -82,6 +84,42 @@ describe('selectResultReadiness', () => {
         .toBe(false)
     },
   )
+
+  it.each([
+    { contractualFixedMonthly: 100, contractualMatchPercent: 0 },
+    { contractualFixedMonthly: 0, contractualMatchPercent: 0.2 },
+  ])('allows a migrated employer-funded bAV with zero conversion and no status metadata (%j)', (funding) => {
+    const ws = migrateV1ToV2(
+      defaultProfile as unknown as Record<string, unknown>,
+      {
+        ...defaultAssumptions,
+        bav: { ...defaultAssumptions.bav, monthlyGrossConversion: 0, ...funding },
+      } as unknown as Record<string, unknown>,
+    )
+    const bav = ws.baseline.assumptions.bav[0]
+    expect(bav.status).toBe('active')
+    expect(bav.inputStatus).toBeUndefined()
+    expect(bav.evidenceMap).toEqual({})
+    const readiness = selectResultReadiness(ws, bundleFor(ws))
+    expect(readiness.blocking).toHaveLength(0)
+    expect(readiness.canShowHouseholdTotal).toBe(true)
+  })
+
+  it('blocks a freshly activated registry offer despite the default statutory subsidy flag', () => {
+    const ws = makeWorkspace()
+    const offer = normaliseOfferedBav({
+      ...INVENTORY_PRODUCT_REGISTRY.bav.createDefault(new Date().getFullYear(), 1, () => 'bav-offer'),
+      status: 'offered' as const,
+    })
+    ws.baseline.assumptions.bav = [{ ...offer, status: 'active' }]
+    expect(offer.monthlyGrossConversion).toBe(0)
+    expect(offer.statutoryMinimumSubsidyEnabled).toBe(true)
+    const readiness = selectResultReadiness(ws, bundleFor(ws))
+    expect(readiness.blocking).toContainEqual(expect.objectContaining({
+      code: 'instance-contribution-unknown', instanceId: offer.instanceId,
+    }))
+    expect(readiness.canShowHouseholdTotal).toBe(false)
+  })
 
   it('reports estimated (not available) for a workspace whose contract costs are model values', () => {
     const ws = makeWorkspace()
