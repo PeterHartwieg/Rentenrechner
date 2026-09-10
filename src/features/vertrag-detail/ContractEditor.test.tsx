@@ -258,3 +258,19 @@ it('removing through the real container keeps an undo action after the instance 
   expect(loadSavedWorkspace()!.baseline.assumptions.etf).toEqual(workspace.baseline.assumptions.etf)
   expect(screen.getByRole('button', { name: 'Änderungen übernehmen' })).toBeInTheDocument()
 })
+
+
+it('saves a contract return as a ratio and clearing it restores the scenario value', () => {
+  const onSave = vi.fn()
+  render(<Harness onSave={onSave} />)
+  type(capital(), '10000')
+  type(monthly(), '100')
+  const input = screen.getByRole('spinbutton', { name: 'Erwartete Rendite (optional) (%)' })
+  expect(input).toHaveValue(null)
+  type(input, '2.5')
+  submit()
+  expect(onSave.mock.lastCall![0].patch.expectedReturn).toBe(0.025)
+  type(input, '')
+  submit()
+  expect(onSave.mock.lastCall![0].patch).toHaveProperty('expectedReturn', undefined)
+})
