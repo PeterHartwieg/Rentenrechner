@@ -52,10 +52,18 @@ There is no persisted invalidation marker that requires regeneration. Timestamp 
 
 The replacement regression failed on both JSON and local-storage load paths before the fix. It now checks removal of both €400 and smaller €100 activations from a legacy €200 offer, a baseline remaining at zero, pin cleanup, one warning, and an idempotent reload. A manual alternative with the same €400 shape stays current and applicable. Recommender alternatives with zero or active snapshots, paid-up targets, or different instance IDs remain preserved.
 
+## Review round 7
+
+Readiness now permits an active bAV with assumed zero conversion when either contractual employer funding field is positive. This covers v1-migrated employer-funded contracts with no input-status metadata and an empty evidence map. The statutory-minimum subsidy flag alone is not an exemption: the inventory registry defaults it to true, including for a freshly activated offer whose zero remains an unanswered model placeholder.
+
+The v1 branch of `parseWorkspaceJson` now also maps `normaliseOfferedBav` over the migrated, validated baseline's bAV array. Offered contracts therefore load with zero conversion on both parser branches.
+
+Regressions first reproduced three failures: fixed employer funding of €100/month and contractual matching both incorrectly blocked the household total, and a v1 offer retained €200 conversion. They now pass, alongside an explicit registry-offer activation test that still blocks with the default statutory subsidy flag.
+
 ## Validation
 
-- Round-6 `npm run verify`: lint clean (`--max-warnings=0`); 276 frontend test files, 5208 passed + 1 skipped (31.03 s); both Worker typechecks passed; Worker suites passed (26 + 11 tests); production build and prerender succeeded.
-- All 121 tests across storage load paths, the recommender, and bAV candidate generation pass.
+- Round-7 `npm run verify`: lint clean (`--max-warnings=0`); 276 frontend test files, 5212 passed + 1 skipped (36.81 s); both Worker typechecks passed; Worker suites passed (26 + 11 tests); production build and prerender succeeded.
+- All 73 focused tests across result readiness and storage load paths pass.
 - No oracle or baseline updates. Generated `public/og/` output discarded. No GitHub access or push.
 
 ## Not done
