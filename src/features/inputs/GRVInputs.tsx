@@ -1,9 +1,14 @@
 import '../../ui/forms.css'
 import type React from 'react'
-import type { PensionBaselineType, ScenarioAssumptions, StatutoryPensionAssumptions } from '../../domain';
+import type {
+  PensionBaselineType,
+  ScenarioAssumptions,
+  StatutoryPensionAssumptions,
+} from '../../domain';
 import { NumberField } from '../../ui/NumberField';
 import { formatCurrency, formatNumber } from '../../utils/format';
 import { useFeedbackTarget } from '../qa-feedback';
+import { applyPensionPoints } from '../inventory/pensionPoints';
 
 type Props = {
   assumptions: ScenarioAssumptions;
@@ -36,7 +41,10 @@ function patchSp(
   current: ScenarioAssumptions,
   patch: Partial<StatutoryPensionAssumptions>,
 ): ScenarioAssumptions {
-  return { ...current, statutoryPension: { ...current.statutoryPension, ...patch } }
+  return {
+    ...current,
+    statutoryPension: { ...current.statutoryPension, ...patch },
+  }
 }
 
 export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionResult }: Props) {
@@ -174,7 +182,7 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
                 suffix="EP"
                 onChange={(value) =>
                   onAssumptionsChange((current) =>
-                    patchSp(current, { currentEntgeltpunkte: Math.max(0, Number(value)) }),
+                    applyPensionPoints(current, Math.max(0, Number(value))),
                   )
                 }
               />
