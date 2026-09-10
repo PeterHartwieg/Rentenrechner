@@ -40,7 +40,11 @@ import {
   netCertifiedPensionPayout,
 } from './certifiedPensionPayout'
 import type { RetirementHealthStatus } from './retirementPayout'
-import { calculateAllowanceExcessBenefit, calculateSalaryPhaseTaxDelta } from './salaryPhaseFunding'
+import {
+  calculateAllowanceExcessBenefit,
+  calculateSalaryPhaseTaxDelta,
+  isSection10aEligible,
+} from './salaryPhaseFunding'
 import { childBirthYearsUnder25InYear } from './childEligibility'
 
 // ---------------------------------------------------------------------------
@@ -242,11 +246,16 @@ export function calculateRiesterFunding(
 
   // -------------------------------------------------------------------------
   // 4. §10a EStG Sonderausgabenabzug: capped at 2,100 EUR including allowances.
+  //    Step 0: the deduction requires the begünstigter Personenkreis
+  //    (§10a / §79 EStG) — a saver who is neither directly nor mittelbar
+  //    eligible gets no Sonderausgabenabzug at all.
   // -------------------------------------------------------------------------
-  const specialExpenseDeductibleAnnual = Math.min(
-    annualOwnContribution + totalAllowanceAnnual,
-    r.annualCapInclAllowances,
-  )
+  const specialExpenseDeductibleAnnual = isSection10aEligible(riester.eligibility)
+    ? Math.min(
+        annualOwnContribution + totalAllowanceAnnual,
+        r.annualCapInclAllowances,
+      )
+    : 0
 
   // -------------------------------------------------------------------------
   // 5. Günstigerprüfung: compare income-tax saving from §10a deduction against

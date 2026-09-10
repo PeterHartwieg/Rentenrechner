@@ -75,3 +75,19 @@ export function calculateAllowanceExcessBenefit(
 ): number {
   return Math.max(0, taxSavingAnnual - allowanceAnnual)
 }
+
+/**
+ * §10a / §79 EStG begünstigter Personenkreis: the Sonderausgabenabzug — and
+ * therefore the Günstigerprüfung — is only available to directly eligible
+ * savers or to the spouse of one (mittelbare Zulageberechtigung, §79 Satz 2).
+ *
+ * The structural parameter type fits both eligibility shapes: AVD declares
+ * `indirectSpouseEligible` as required boolean, Riester as optional. `=== true`
+ * treats an omitted Riester flag (legacy stored state) as not eligible.
+ */
+export function isSection10aEligible(e: {
+  directlyEligible: boolean
+  indirectSpouseEligible?: boolean
+}): boolean {
+  return e.directlyEligible || e.indirectSpouseEligible === true
+}
