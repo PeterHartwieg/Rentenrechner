@@ -174,7 +174,7 @@ function OverviewMeinPlanPage(props: MeinPlanPageProps & { summary: PlanSummary 
 
   const editProfile = () => props.onEditProfile ? props.onEditProfile() : navigate?.(ROUTES.eingaben)
   const editPension = () => props.onEditPension ? props.onEditPension() : navigate?.(ROUTES.eingabenProdukte)
-  const openKapital = () => navigate?.(ROUTES.kapital)
+  const openKapital = () => navigate?.(ROUTES.kapital, `?scenario=${encodeURIComponent(props.selectedScenarioId)}`)
   const openAlternatives = () => navigate?.(ROUTES.alternativen)
   const saveTarget = (value: number | undefined) => {
     onSetTarget?.(value)
@@ -461,12 +461,12 @@ function LegacyMeinPlanPage({
                 {' '}
                 <a
                   className="mein-plan-headline-aside-link"
-                  href={routeToPath(ROUTES.kapital)}
+                  href={`${routeToPath(ROUTES.kapital)}?scenario=${encodeURIComponent(selectedScenarioId)}`}
                   onClick={(event) => {
                     if (!navigate) return
                     if (!shouldUseSpaNavigation(event)) return
                     event.preventDefault()
-                    navigate(ROUTES.kapital)
+                    navigate(ROUTES.kapital, `?scenario=${encodeURIComponent(selectedScenarioId)}`)
                   }}
                 >
                   Kapital im Verlauf →

@@ -65,57 +65,6 @@
   font-weight: 600;
 }
 
-/* ---- Rendite strip (R1: terse, rate-only) ----------------------------- */
-
-.vergleich-rendite-strip {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px 14px;
-  background: var(--vergleich-paper);
-  border: 1px solid var(--vergleich-rule-soft);
-}
-
-.vergleich-rendite-chip {
-  /* Mono is the design's signal that the chip is a numeric filter, not a
-     label. Tabular nums keep the bracket-wrapped variant from jumping width
-     when the active chip toggles. */
-  font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-variant-numeric: tabular-nums;
-  font-size: 13px;
-  font-weight: 500;
-  padding: 10px 14px;
-  border: 1px solid var(--vergleich-rule-soft);
-  background: transparent;
-  color: var(--vergleich-ink-soft);
-  cursor: pointer;
-  /* 44 px minimum tap target on every viewport — design plan §4 / §7. */
-  min-height: 44px;
-  min-width: 44px;
-  border-radius: 2px;
-  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
-}
-
-.vergleich-rendite-chip:hover {
-  border-color: var(--vergleich-rule);
-  color: var(--vergleich-ink);
-}
-
-.vergleich-rendite-chip:focus-visible {
-  outline: 2px solid var(--vergleich-ink);
-  outline-offset: 2px;
-}
-
-.vergleich-rendite-chip--active {
-  /* Selected chip: brackets around the rate, bold weight, ink colour. The
-     bracket glyphs come from the rendered text — CSS only handles weight
-     and colour. */
-  color: var(--vergleich-ink);
-  border-color: var(--vergleich-rule);
-  font-weight: 700;
-  background: transparent;
-}
 
 /* ---- Comparison table -------------------------------------------------- */
 
@@ -535,15 +484,6 @@
   }
   .vergleich-lead {
     font-size: 14px;
-  }
-  .vergleich-rendite-strip {
-    gap: 6px;
-    padding: 8px 12px;
-  }
-  .vergleich-rendite-chip {
-    font-size: 12px;
-    padding: 10px 12px;
-    min-height: 44px;
   }
   .vergleich-pro-contra-grid {
     grid-template-columns: 1fr;
