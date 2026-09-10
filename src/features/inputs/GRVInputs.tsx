@@ -1,6 +1,12 @@
 import '../../ui/forms.css'
 import type React from 'react'
-import type { PensionBaselineType, ScenarioAssumptions, StatutoryPensionAssumptions } from '../../domain';
+import type {
+  InputStatusMap,
+  PensionBaselineType,
+  ScenarioAssumptions,
+  StatutoryPensionAssumptions,
+  StatutoryPensionInputStatusKey,
+} from '../../domain';
 import { NumberField } from '../../ui/NumberField';
 import { formatCurrency, formatNumber } from '../../utils/format';
 import { useFeedbackTarget } from '../qa-feedback';
@@ -32,11 +38,21 @@ const SECTION_TITLES: Record<PensionBaselineType, string> = {
   none: 'Kein Pflichtrentenversicherungssystem',
 }
 
+/** Reserved scenario-level input-status key for the Entgeltpunkte (`domain/inputStatus.ts`). */
+const EP_INPUT_STATUS_KEY: StatutoryPensionInputStatusKey = 'statutoryPension.currentEntgeltpunkte'
+
 function patchSp(
   current: ScenarioAssumptions,
   patch: Partial<StatutoryPensionAssumptions>,
+  statusPatch?: InputStatusMap,
 ): ScenarioAssumptions {
-  return { ...current, statutoryPension: { ...current.statutoryPension, ...patch } }
+  return {
+    ...current,
+    statutoryPension: { ...current.statutoryPension, ...patch },
+    inputStatus: statusPatch
+      ? { ...current.inputStatus, ...statusPatch }
+      : current.inputStatus,
+  }
 }
 
 export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionResult }: Props) {
@@ -174,7 +190,14 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
                 suffix="EP"
                 onChange={(value) =>
                   onAssumptionsChange((current) =>
-                    patchSp(current, { currentEntgeltpunkte: Math.max(0, Number(value)) }),
+                    patchSp(
+                      current,
+                      { currentEntgeltpunkte: Math.max(0, Number(value)) },
+                      // A typed value is user-owned (0 included), so the
+                      // legacy-EP-seed detector's user-owned guard applies
+                      // here like it does on the onboarding flow.
+                      { [EP_INPUT_STATUS_KEY]: 'entered' },
+                    ),
                   )
                 }
               />

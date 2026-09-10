@@ -124,6 +124,11 @@ const EP_INPUT_STATUS_KEY = 'statutoryPension.currentEntgeltpunkte'
  *    both `'entered'` (typed) and `'document'` (read off a Renteninformation)
  *    suppress it (`inputStatus`, resolved like `onboardingDraft.ts` does —
  *    absent means `assumed`, never user-owned).
+ *
+ * A manual gross-pension override suppresses detection in both shapes: while
+ * `manualMonthlyGross` is set, the projection ignores `currentEntgeltpunkte`
+ * entirely, so a stored seed behind an override cannot influence any number
+ * the user sees and a re-estimate would do nothing.
  */
 export function detectLegacyEpSeed({
   statutoryPension,
@@ -140,6 +145,15 @@ export function detectLegacyEpSeed({
   const method = statutoryPension.pensionEntryMethod
   const stored = statutoryPension.currentEntgeltpunkte
   const tolerance = 0.005
+
+  // The manual figure wins in the projection — never offer a re-estimate
+  // that has no effect on the shown numbers.
+  if (
+    statutoryPension.manualMonthlyGross !== null &&
+    statutoryPension.manualMonthlyGross > 0
+  ) {
+    return { legacy: false }
+  }
 
   // 'entered' and 'document' both mean the user owns the value (typed, or read
   // off a Renteninformation) — neither can be a wizard seed, in either branch.

@@ -605,19 +605,25 @@ function CombinePanel({
                 // combine-mode stores everything on the workspace baseline. We
                 // translate the singleton update back into a workspace patch
                 // here: only the statutoryPension sub-object is editable from
-                // this surface.
+                // this surface, plus the scenario-level inputStatus metadata
+                // GRVInputs may stamp (e.g. a typed Entgeltpunkte value marks
+                // itself 'entered' so the legacy-EP-seed detector stays quiet).
                 const prevSingleton = toSingletonAssumptionsForGrvOverride(assumptions)
                 const next =
                   typeof updater === 'function'
                     ? (updater as (prev: ScenarioAssumptions) => ScenarioAssumptions)(prevSingleton)
                     : updater
-                if (next.statutoryPension === prevSingleton.statutoryPension) {
+                if (
+                  next.statutoryPension === prevSingleton.statutoryPension &&
+                  next.inputStatus === prevSingleton.inputStatus
+                ) {
                   return
                 }
                 onPatchBaseline({
                   assumptions: {
                     ...assumptions,
                     statutoryPension: next.statutoryPension,
+                    inputStatus: next.inputStatus,
                   },
                 })
               }}
@@ -1176,9 +1182,10 @@ function statusLabel(status: 'active' | 'paid_up' | 'surrendered' | 'offered'): 
 /**
  * Map the combine-mode workspace `WorkspaceAssumptionsV2` onto the singleton
  * `ScenarioAssumptions` shape that `<GRVInputs>` expects, so we can reuse the
- * same input component in both modes. Only the `statutoryPension` slot is
- * read by GRVInputs; the other slots come from `INVENTORY_PRODUCT_REGISTRY`
- * defaults (the panel never relies on them in this code path).
+ * same input component in both modes. Only the `statutoryPension` and
+ * `inputStatus` slots are read (and possibly stamped) by GRVInputs; the other
+ * slots come from `INVENTORY_PRODUCT_REGISTRY` defaults (the panel never
+ * relies on them in this code path).
  */
 function toSingletonAssumptionsForGrvOverride(
   assumptions: WorkspaceAssumptionsV2,
@@ -1226,6 +1233,7 @@ function toSingletonAssumptionsForGrvOverride(
     altersvorsorgedepot: assumptions.altersvorsorgedepot[0] ?? avdEntry,
     riester: assumptions.riester[0] ?? riesterEntry,
     statutoryPension: assumptions.statutoryPension,
+    inputStatus: assumptions.inputStatus,
     inflationRate: assumptions.inflationRate,
     retirementEndAge: assumptions.retirementEndAge,
     returnScenarios: assumptions.returnScenarios,
