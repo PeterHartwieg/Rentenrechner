@@ -649,6 +649,19 @@ describe('F — transferEventKey export (shared with portfolio transfer collecti
 })
 
 describe('legacy offered bAV conversion (issue 349)', () => {
+  it('normalises an offered bAV conversion in a v1 payload after migration', () => {
+    const assumptions = {
+      ...defaultAssumptions,
+      bav: { ...defaultAssumptions.bav, status: 'offered', monthlyGrossConversion: 200 },
+    }
+    const loaded = parseWorkspaceJson(makeV1Json(defaultProfile, assumptions))
+    expect(loaded).not.toBeNull()
+    expect(loaded!.baseline.assumptions.bav).toHaveLength(1)
+    expect(loaded!.baseline.assumptions.bav[0]).toMatchObject({
+      status: 'offered', monthlyGrossConversion: 0,
+    })
+  })
+
   it.each(['local storage', 'JSON'] as const)(
     'drops legacy recommender activations before offer normalisation via %s',
     (loadPath) => {

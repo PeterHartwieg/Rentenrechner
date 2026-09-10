@@ -766,6 +766,7 @@ export function parseWorkspaceJson(raw: string): Workspace | null {
   if (!v1migrated) return null
   const v1validated = validateWorkspace(v1migrated)
   if (!v1validated) return null
+  v1validated.baseline.assumptions.bav = v1validated.baseline.assumptions.bav.map(normaliseOfferedBav)
   backfillWorkspaceTransferEvents(v1validated)
   return v1validated
 }
