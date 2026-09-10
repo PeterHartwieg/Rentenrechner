@@ -684,8 +684,9 @@ export function buildWorkspaceJson(workspace: Workspace): string {
  *   3. validateWorkspace (full structural + invariant check, including every
  *      what-if and its derivedFromBaselineSnapshot — the backfill step below
  *      dereferences both, so they must be validated first)
- *   4. normalise offered bAV conversions across all scenarios and snapshots
- *   5. backfillWorkspaceTransferEvents (repairs single-sided legacy events)
+ *   4. drop legacy recommender alternatives that activated a nonzero bAV offer
+ *   5. normalise offered bAV conversions across all scenarios and snapshots
+ *   6. backfillWorkspaceTransferEvents (repairs single-sided legacy events)
  *   → returns null if any step fails
  *
  * Policy:
@@ -718,9 +719,25 @@ export function parseWorkspaceJson(raw: string): Workspace | null {
     if (merged.schemaVersion !== 2) return null
     const validated = validateWorkspace(merged)
     if (validated === null) return null
-    // Legacy recommender what-ifs keep their stored terms: the candidate's
-    // employer cap and modal offer terms were not persisted, so repair is lossy.
-    // Users can regenerate them by applying the recommendation again.
+    // Detect before normalisation erases the legacy offer amount. The original
+    // employer cap and candidate terms were not persisted, so repair is lossy.
+    // There is no persistent invalidation marker: timestamp staleness can be
+    // cleared by rebasing, which preserves the unsafe conversion delta. Drop
+    // these regenerable alternatives instead of letting them restore that delta.
+    const dropped = validated.whatIfs.filter(wi => wi.origin === 'recommender'
+      && wi.derivedFromBaselineSnapshot.assumptions.bav.some(offer =>
+        offer.status === 'offered' && offer.monthlyGrossConversion > 0
+        && wi.assumptions.bav.some(instance =>
+          instance.instanceId === offer.instanceId && instance.status === 'active',
+        ),
+      ),
+    )
+    if (dropped.length > 0) {
+      const droppedIds = new Set(dropped.map(wi => wi.id))
+      validated.whatIfs = validated.whatIfs.filter(wi => !droppedIds.has(wi.id))
+      validated.pinnedComparisonIds = validated.pinnedComparisonIds.filter(id => !droppedIds.has(id))
+      console.warn(`[storage] Dropped legacy bAV recommender alternatives; regenerate them: ${dropped.map(wi => wi.label).join(', ')}`)
+    }
     const assumptions = [
       validated.baseline.assumptions,
       ...validated.whatIfs.flatMap(wi => [wi.assumptions, wi.derivedFromBaselineSnapshot.assumptions]),

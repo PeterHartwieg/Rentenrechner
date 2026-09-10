@@ -30,7 +30,7 @@ Inline entry now records answer metadata, and insurance activation clears proven
 
 - The inline Brutto-Umwandlung callback now stamps `inputStatus.monthlyGrossConversion: 'entered'` and matching user-confirmed evidence, preserving neighbouring metadata. The panel passes this through its existing patch path. Entering zero on an active bAV with €100/month fixed employer funding keeps the household result displayable; the round-2 blocker for an assumed active zero remains unchanged.
 - Activating an offered insurance contract removes only `monthlyContribution` from `inputStatus` and `evidenceMap` before assigning the generated amount. Both prior `document` and `unknown` statuses now resolve to truthful `assumed` provenance without blocking the what-if total.
-- `buildWhatIfFromCandidate` persists `origin: 'recommender'`. Legacy alternatives keep their stored conversion; offered bAVs are still normalised across baseline, what-ifs, and snapshots.
+- `buildWhatIfFromCandidate` persists `origin: 'recommender'`. Offered bAVs are normalised across baseline, retained what-ifs, and snapshots; round 6 below drops unsafe legacy recommender alternatives.
 
 ## Review round 4
 
@@ -40,19 +40,27 @@ The offer resolver, employer-contribution helper, and saved-plan patch share the
 
 Removed the legacy recommender what-if repair entirely. The original candidate's employer cap (`monthlyCapEUR`) and modal offer terms were never persisted, so reconstructing them from a snapshot is lossy. For example, an €80 cap that still binds after correcting the conversion cannot be recovered. A repair could silently change employer funding, fees, payout mode, or Rentenfaktor.
 
-Old recommender alternatives stay as saved. Users regenerate them by applying the recommendation again on the repaired baseline; the fixed apply path handles this correctly. Storage retains offered-bAV normalisation across baseline, what-ifs, and snapshots, and no longer imports the shared recommender offer helper.
+Round 5 left old recommender alternatives as saved; round 6 below closes the resulting unsafe apply path. Users regenerate them by applying the recommendation again on the repaired baseline; the fixed recommendation path handles this correctly. Storage retains offered-bAV normalisation across baseline, what-ifs, and snapshots, and no longer imports the shared recommender offer helper.
 
-Removed the load-path assertions for conversion subtraction, employer-field re-derivation, and repair idempotence. The new regression first failed with €200 instead of €400; it now pins that an activated recommender bAV loads unchanged at €400 while its snapshot's offered bAV is normalised to zero. Existing offer-normalisation tests remain.
+Removed the load-path assertions for conversion subtraction, employer-field re-derivation, and repair idempotence. The round-5 regression pinned that an activated recommender bAV loaded unchanged at €400 while its snapshot's offered bAV was normalised to zero; round 6 replaces that expectation with removal. Existing offer-normalisation tests remain.
+
+## Review round 6
+
+Normalising both baseline and snapshot erased the evidence of the legacy offer amount while leaving the activated conversion applicable as an intentional 0-to-400 delta. The loader now detects recommender alternatives whose snapshot contains an offered bAV with a positive conversion and whose own assumptions activate that same instance, before normalisation. It drops those alternatives and their comparison pins, with one `console.warn` naming all dropped labels.
+
+There is no persisted invalidation marker that requires regeneration. Timestamp staleness can be cleared by rebasing, which preserves the unsafe delta, so it cannot safely quarantine these alternatives. No candidate terms are reconstructed and no schema field is added.
+
+The replacement regression failed on both JSON and local-storage load paths before the fix. It now checks removal of both €400 and smaller €100 activations from a legacy €200 offer, a baseline remaining at zero, pin cleanup, one warning, and an idempotent reload. A manual alternative with the same €400 shape stays current and applicable. Recommender alternatives with zero or active snapshots, paid-up targets, or different instance IDs remain preserved.
 
 ## Validation
 
-- `npm run verify`: lint clean (`--max-warnings=0`); 276 frontend test files, 5208 passed + 1 skipped; both Worker typechecks passed; Worker suites passed (26 + 11 tests); production build and prerender succeeded.
+- Round-6 `npm run verify`: lint clean (`--max-warnings=0`); 276 frontend test files, 5208 passed + 1 skipped (31.03 s); both Worker typechecks passed; Worker suites passed (26 + 11 tests); production build and prerender succeeded.
 - All 121 tests across storage load paths, the recommender, and bAV candidate generation pass.
 - No oracle or baseline updates. Generated `public/og/` output discarded. No GitHub access or push.
 
 ## Not done
 
-- Legacy recommender what-ifs saved between PR #347 and this fix keep their stored conversion. The original employer cap and modal offer terms were not persisted, so automatic repair would be lossy; users regenerate the alternative by applying the recommendation again on the repaired baseline.
+- Legacy recommender alternatives are not repaired: the original employer cap and modal offer terms were not persisted, so reconstruction would be lossy. Alternatives identified by a positive offered-bAV snapshot and activation of the same instance are made non-applicable by dropping them on load; users regenerate them from the repaired baseline.
 - The dedicated “Angebot erfassen” UX remains deferred.
 
 Activation does not restore a previous conversion: the user enters the real amount. Engine calculations, statutory rules, and rounding are unchanged.
