@@ -19,6 +19,7 @@ import {
   resolveAvdEligibility,
   validateAvdPayoutAge,
 } from '../../engine/altersvorsorgedepot'
+import { isSection10aEligible } from '../../engine/salaryPhaseFunding'
 import { avdMaxMonthlyOwn } from '../../utils/syncContributions'
 import { buildAvdBeitragsstufen } from './avdBeitragsstufen'
 import { useFeedbackTarget } from '../qa-feedback'
@@ -125,7 +126,15 @@ export function AltersvorsorgedepotInputs({
       positive: true,
     })
   }
-  if (avdFunding.totalAllowanceAnnual === 0 && avdFunding.annualOwnContribution > 0) {
+  if (!isSection10aEligible(effectiveEligibility)) {
+    // #363: neither directly nor mittelbar eligible — no Zulage and no §10a
+    // deduction. The engine gates the base; this row explains the resulting
+    // zeros instead of the (now wrong) minimum-contribution hint.
+    ledgerRows.push({
+      key: 'Nicht förderberechtigt',
+      value: 'keine Zulage, kein Steuervorteil (§10a)',
+    })
+  } else if (avdFunding.totalAllowanceAnnual === 0 && avdFunding.annualOwnContribution > 0) {
     ledgerRows.push({
       key: 'Keine Zulage',
       value: `unter ${formatCurrency(rules.altersvorsorgedepot.minimumOwnContributionAnnual, 0)}/Jahr Eigenbeitrag`,
