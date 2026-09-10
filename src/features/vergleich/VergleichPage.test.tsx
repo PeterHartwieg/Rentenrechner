@@ -248,11 +248,11 @@ describe('VergleichPage — R1 layout', () => {
     expect(links[0].textContent ?? '').toContain('Wohin geht das Geld')
     // The /kapital drill-in names its origin so the dual-source page renders
     // the comparison rather than the saved plan (F2).
-    expect(links[1].getAttribute('href')).toBe('/kapital?quelle=vergleich')
+    expect(links[1].getAttribute('href')).toBe('/kapital?quelle=vergleich&scenario=basis')
     expect(links[1].textContent ?? '').toContain('Kapital im Verlauf')
   })
 
-  it('"Kapital im Verlauf" link triggers SPA navigation via navigate(ROUTES.kapital) and preventDefault on plain click', () => {
+  it.each([['konservativ', 'konservativ'], ['unknown', 'basis']])('"Kapital im Verlauf" link triggers SPA navigation via navigate(ROUTES.kapital) and preventDefault on plain click', (selectedId, expectedId) => {
     const navigate = vi.fn()
     const result = buildResult(defaultAssumptions)
     const { container } = render(
@@ -262,7 +262,7 @@ describe('VergleichPage — R1 layout', () => {
           assumptions={defaultAssumptions}
           result={result}
           onAssumptionsChange={NOOP}
-          selectedScenarioId="basis"
+          selectedScenarioId={selectedId}
           onSelectScenario={NOOP}
           navigate={navigate}
         />,
@@ -270,7 +270,7 @@ describe('VergleichPage — R1 layout', () => {
     )
     const links = container.querySelectorAll<HTMLAnchorElement>('.vergleich-drilldown__link')
     const kapitalLink = links[1]
-    expect(kapitalLink.getAttribute('href')).toBe('/kapital?quelle=vergleich')
+    expect(kapitalLink.getAttribute('href')).toBe(`/kapital?quelle=vergleich&scenario=${expectedId}`)
 
     // Plain click → shouldUseSpaNavigation returns true → SPA intercept fires.
     // `cancelable: true` so we can inspect defaultPrevented after the click.
@@ -279,7 +279,7 @@ describe('VergleichPage — R1 layout', () => {
     expect(fired).toBe(false)
 
     expect(navigate).toHaveBeenCalledTimes(1)
-    expect(navigate).toHaveBeenCalledWith({ kind: 'kapital' }, '?quelle=vergleich')
+    expect(navigate).toHaveBeenCalledWith({ kind: 'kapital' }, `?quelle=vergleich&scenario=${expectedId}`)
   })
 
   it('"Kapital im Verlauf" link with metaKey-click falls through to native navigation (no SPA intercept)', () => {
