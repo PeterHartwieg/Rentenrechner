@@ -40,17 +40,23 @@ describe('MethodePage — /methode route content', () => {
     expect(lead!.textContent).toBe(publicRouteRegistry['/methode'].summary)
   })
 
-  it('explains the shared market return directly below the return assumptions table', () => {
+  it('explains the shared comparison return and per-contract plan overrides below the return assumptions table', () => {
     const { getByRole } = render(<MethodePage />)
     const table = getByRole('table', { name: 'Renditeannahmen je Szenario' })
     expect(table.nextElementSibling?.textContent).toContain(
-      'Die Szenariorendite ist die angenommene Rendite des risikobehafteten Markts und gilt je Szenario für alle Produkte gleichermaßen.',
+      'Die Szenariorendite ist die angenommene Rendite des risikobehafteten Markts und gilt im Vergleich bewusst je Szenario für alle Produkte gleichermaßen.',
     )
     expect(table.nextElementSibling?.textContent).toContain(
       'beim Altersvorsorgedepot zusätzlich durch die eigene Aufteilung zwischen Risiko- und Sicherheitsanteil',
     )
     expect(table.nextElementSibling?.textContent).toContain(
       'Rendite des Sicherheitsanteils und den gesetzlichen Glidepath',
+    )
+    expect(table.nextElementSibling?.textContent).toContain(
+      'In Mein Plan kannst du in den Vertragsdetails unter „Erwartete Rendite“ eine eigene Vertragsrendite festlegen, die den Szenariowert für diesen Vertrag in allen drei Szenarien ersetzt.',
+    )
+    expect(table.nextElementSibling?.textContent).toContain(
+      'Diese vertragsspezifische Rendite wird in den Vertragsdetails, im Druckbericht und im CSV-Export ausgewiesen.',
     )
   })
 

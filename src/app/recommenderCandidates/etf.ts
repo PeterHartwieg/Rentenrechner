@@ -18,6 +18,7 @@ import { MAX_LIFETIME_YEARS } from './constants'
 import {
   type CandidateDraft,
   type GeneratorContext,
+  candidateAnnualReturn,
   projectMonthlyContributionFV,
   synthesizeProductResult,
 } from './types'
@@ -28,7 +29,8 @@ export function makeEtfCandidate(g: GeneratorContext): CandidateDraft | null {
   if (!target) return null
   const gross = g.marginalMonthlyEUR
   const annualFee = target.annualAssetFee ?? defaultAssumptions.etf.annualAssetFee
-  const netReturn = Math.max(-0.5, g.basis.annualReturn - annualFee)
+  const annualReturn = candidateAnnualReturn(g.basis, target)
+  const netReturn = Math.max(-0.5, annualReturn - annualFee)
   const capital = projectMonthlyContributionFV(gross, netReturn, g.yearsToRetirement)
   const totalContributions = gross * 12 * g.yearsToRetirement
   const payoutYears = Math.max(
@@ -54,7 +56,7 @@ export function makeEtfCandidate(g: GeneratorContext): CandidateDraft | null {
     instanceId: target.instanceId,
     scenarioId: g.basis.scenarioId,
     scenarioLabel: 'Basis',
-    annualReturn: g.basis.annualReturn,
+    annualReturn,
     grossMonthlyPayout: grossPayout,
     netMonthlyPayoutForEtf: netPayout,
     capitalAtRetirement: capital,

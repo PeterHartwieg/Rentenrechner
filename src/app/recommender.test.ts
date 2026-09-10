@@ -528,6 +528,25 @@ describe('B4 — synth-layer parity vs. full simulatePortfolio', () => {
   const TOLERANCE_EUR = 5
   const TOLERANCE_PCT = 0.03
 
+  it('fixed-return ETF top-up delta matches the materialized what-if within the ETF tolerance', () => {
+    const ws = buildAnnaWorkspace()
+    ws.baseline.profile.age = 37
+    ws.baseline.profile.retirementAge = 67
+    ws.baseline.assumptions.etf[0].expectedReturn = 0
+    ws.baseline.assumptions.etf[0].annualAssetFee = 0.002
+    ws.baseline.assumptions.returnScenarios = ws.baseline.assumptions.returnScenarios
+      .map((scenario) => ({ ...scenario, annualReturn: 0.07 }))
+    const input = buildInput(ws, 100)
+    const candidate = recommendNextEuro(input).find((c) => c.productId === 'etf')
+    expect(candidate).toBeDefined()
+    const applied = withCandidateApplied(ws, candidate!)
+    expect(applied.baseline.assumptions.etf[0].expectedReturn).toBe(0)
+    const simulatedDelta = runFullPath(applied) - input.baselineCombined.monthlyNetIncome
+    const recommendedDelta = candidate!.medianNettoRente - input.baselineCombined.monthlyNetIncome
+    expect(simulatedDelta).toBeGreaterThan(0)
+    expect(Math.abs(recommendedDelta - simulatedDelta) / simulatedDelta).toBeLessThan(TOLERANCE_PCT)
+  })
+
   function withCandidateApplied(
     ws: ReturnType<typeof buildBerndWorkspace>,
     cand: ReturnType<typeof recommendNextEuro>[number],

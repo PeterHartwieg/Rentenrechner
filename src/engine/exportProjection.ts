@@ -36,6 +36,7 @@ import type {
   ProductResult,
   YearlyProjection,
 } from '../domain'
+import type { WorkspaceAssumptionsV2 } from '../domain/workspace'
 import { afterTaxBavLumpSum } from './bavPayout'
 import { afterTaxCertifiedPensionLumpSum } from './certifiedPensionPayout'
 import { afterTaxInvestmentCapital } from './etfPayout'
@@ -54,6 +55,7 @@ import type { CombinedResult } from './portfolioCombine'
  * Carries full-precision floats; CSV / PDF surfaces format on output.
  */
 export interface ExportSummaryRow {
+  readonly annualReturn: number
   /** Combine-mode: source instance id. Compare-mode: undefined. */
   readonly instanceId?: string
   readonly productId: ProductId
@@ -86,6 +88,7 @@ export interface ExportSummaryRow {
  * or per instance × scenario × year in combine.
  */
 export interface ExportYearlyRow {
+  readonly annualReturn: number
   /** Combine-mode: source instance id. Compare-mode: undefined. */
   readonly instanceId?: string
   readonly productId: ProductId
@@ -206,6 +209,7 @@ export function buildCompareExportProjection(
 
   for (const r of opts.products) {
     summary.push({
+      annualReturn: r.annualReturn,
       productId: r.productId,
       label: r.label,
       scenarioId: r.scenarioId,
@@ -229,6 +233,7 @@ export function buildCompareExportProjection(
           ? afterTax * (row.realBalance / row.balance)
           : null
       yearly.push({
+        annualReturn: r.annualReturn,
         productId: r.productId,
         label: r.label,
         scenarioId: r.scenarioId,
@@ -262,6 +267,8 @@ export function buildCompareExportProjection(
 // ---------------------------------------------------------------------------
 
 export interface BuildCombineProjectionOptions {
+  /** Contract and scenario inputs for market-return disclosure; absent inputs emit null. */
+  readonly assumptions?: WorkspaceAssumptionsV2
   /** Per-instance ProductResults keyed by instanceId, all scenarios. */
   readonly perInstance: Record<string, ProductResult[]>
   /** CombinedResult per scenario id. */
@@ -280,17 +287,22 @@ export interface BuildCombineProjectionOptions {
   readonly profile?: PersonalProfile
 }
 
+interface MarketReturnDisclosure {
+  /** Nominal risky-market input, before AVD allocation/glidepath blending. Null if unavailable. */
+  readonly marketReturnAssumption: number | null
+}
+
 export interface CombineExportProjection {
-  readonly summary: ReadonlyArray<ExportSummaryRow>
-  readonly yearly: ReadonlyArray<ExportYearlyRow>
+  readonly summary: ReadonlyArray<ExportSummaryRow & MarketReturnDisclosure>
+  readonly yearly: ReadonlyArray<ExportYearlyRow & MarketReturnDisclosure>
   readonly etfPayouts: ReadonlyArray<ExportEtfPayoutRow>
 }
 
 export function buildCombineExportProjection(
   opts: BuildCombineProjectionOptions,
 ): CombineExportProjection {
-  const summary: ExportSummaryRow[] = []
-  const yearly: ExportYearlyRow[] = []
+  const summary: Array<ExportSummaryRow & MarketReturnDisclosure> = []
+  const yearly: Array<ExportYearlyRow & MarketReturnDisclosure> = []
   const etfPayouts: ExportEtfPayoutRow[] = []
 
   // Sort by instanceId for stable output (matches buildCombinePortfolioCsv).
@@ -301,6 +313,10 @@ export function buildCombineExportProjection(
     const taxModes = opts.perInstanceTaxModes?.[instanceId]
 
     for (const r of results) {
+      const slot = r.productId === 'versicherung' ? 'insurance' : r.productId
+      const instance = opts.assumptions?.[slot].find(inst => inst.instanceId === instanceId)
+      const scenario = opts.assumptions?.returnScenarios.find(s => s.id === r.scenarioId)
+      const marketReturnAssumption = instance?.expectedReturn ?? scenario?.annualReturn ?? null
       // Use the back-allocated monthlyNet from the aggregate progressive
       // tax + KV/PV pipeline (byInstance) so this column matches the
       // CombineDetailView for multi-product households. Falls back to the
@@ -311,6 +327,8 @@ export function buildCombineExportProjection(
         r.netMonthlyPayout
 
       summary.push({
+        annualReturn: r.annualReturn,
+        marketReturnAssumption,
         instanceId,
         productId: r.productId,
         label: r.label,
@@ -340,6 +358,8 @@ export function buildCombineExportProjection(
             ? afterTax * (row.realBalance / row.balance)
             : null
         yearly.push({
+          annualReturn: r.annualReturn,
+          marketReturnAssumption,
           instanceId,
           productId: r.productId,
           label: r.label,

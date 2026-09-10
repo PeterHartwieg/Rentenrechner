@@ -258,3 +258,38 @@ it('removing through the real container keeps an undo action after the instance 
   expect(loadSavedWorkspace()!.baseline.assumptions.etf).toEqual(workspace.baseline.assumptions.etf)
   expect(screen.getByRole('button', { name: 'Änderungen übernehmen' })).toBeInTheDocument()
 })
+
+
+it('saves a contract return as a ratio and clearing it restores the scenario value', () => {
+  const onSave = vi.fn()
+  render(<Harness onSave={onSave} />)
+  type(capital(), '10000')
+  type(monthly(), '100')
+  const input = screen.getByRole('spinbutton', { name: 'Erwartete Rendite (optional) (%)' })
+  expect(input).toHaveValue(null)
+  type(input, '2.5')
+  submit()
+  expect(onSave.mock.lastCall![0].patch.expectedReturn).toBe(0.025)
+  type(input, '')
+  submit()
+  expect(onSave.mock.lastCall![0].patch).toHaveProperty('expectedReturn', undefined)
+})
+
+
+it('clears an existing return through the saved plan and keeps its neighbour unchanged', () => {
+  const workspace = structuredClone(defaultWorkspace)
+  const base = INVENTORY_PRODUCT_REGISTRY.etf.createDefault(2026, 1, () => 'etf-return')
+  workspace.baseline.assumptions.etf = [
+    { ...base, expectedReturn: 0.025 },
+    { ...base, instanceId: 'etf-neighbour', expectedReturn: 0.07 },
+  ]
+  saveWorkspace(workspace)
+  render(<VertragBearbeitenPage instanceId="etf-return" navigate={vi.fn()} />)
+  const input = screen.getByRole('spinbutton', { name: 'Erwartete Rendite (optional) (%)' })
+  expect(input).toHaveValue(2.5)
+  type(input, '')
+  fireEvent.click(screen.getByRole('button', { name: 'Änderungen übernehmen' }))
+  const saved = loadSavedWorkspace()!.baseline.assumptions.etf
+  expect(saved[0]).not.toHaveProperty('expectedReturn')
+  expect(saved[1]).toEqual(workspace.baseline.assumptions.etf[1])
+})

@@ -376,7 +376,6 @@ function makeAvdInstance(overrides: Partial<AltersvorsorgedepotInstance> = {}): 
       careerStarterBonusUsed: false,
     },
     riskAllocationPct: 0.8,
-    riskAnnualReturn: 0.05,
     lowRiskAnnualReturn: 0.02,
     fees: NEUTRALISED_FEES,
     payoutMode: 'certified_payout_plan',

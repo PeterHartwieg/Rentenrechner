@@ -31,6 +31,8 @@ export interface InstanceCommon {
   anbieter?: string
   status: 'active' | 'paid_up' | 'surrendered' | 'offered'
   contractStartYear: number
+  /** Combine-only nominal market return before costs; replaces every scenario rate. */
+  expectedReturn?: number
   currentValueEUR?: number
   evidenceMap: Record<string, EvidenceState>
   /**

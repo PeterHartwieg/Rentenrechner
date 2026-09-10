@@ -97,7 +97,8 @@ export function ContractEditorField({ draft, spec, patchField, setFieldUnknown, 
               aria-describedby={description} aria-invalid={Boolean(error)} data-qa-sensitive="true"
               onChange={(event) => {
                 setEditingText(event.target.value)
-                patchField(spec.id, event.target.value.trim() === '' ? Number.NaN : Number(event.target.value) / scale)
+                if (spec.clearOnUnknown && event.target.value.trim() === '') setFieldUnknown(spec.id)
+                else patchField(spec.id, event.target.value.trim() === '' ? Number.NaN : Number(event.target.value) / scale)
               }} onBlur={() => setEditingText(null)} />
           ) : (
             <input id={id} type="text" value={String(value ?? '')} aria-describedby={description}

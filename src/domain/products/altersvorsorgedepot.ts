@@ -61,8 +61,6 @@ export interface AltersvorsorgedepotAssumptions {
   // Allocation and returns for Standarddepot / no-guarantee subtypes.
   /** Fraction of capital in the high-risk sleeve (SRI 3–5), before glidepath clamps. */
   riskAllocationPct: number
-  /** Expected annual return of the high-risk fund sleeve. */
-  riskAnnualReturn: number
   /** Expected annual return of the low-risk fund sleeve (SRI 1–2). */
   lowRiskAnnualReturn: number
   fees: FeeModel

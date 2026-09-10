@@ -21,7 +21,7 @@ import {
   type ContractDecision,
 } from '../../app/contractDecisions'
 import { createDecisionSimulationCache } from '../../app/optimiereVorsorge'
-import { formatCurrency } from '../../utils/format'
+import { formatCurrency, formatPercent } from '../../utils/format'
 
 interface Props {
   workspace: Workspace
@@ -94,6 +94,9 @@ export function VertragScenarioTable({
     })
   }, [workspace, instance, productId, rules, scenarioId, combinedForScenario, cache])
 
+  const marketReturnAssumption = instance.expectedReturn ??
+    workspace.baseline.assumptions.returnScenarios.find(s => s.id === scenarioId)?.annualReturn
+
   return (
     <section className="vertrag-section" aria-labelledby="vertrag-section-was-waere">
       <div className="vertrag-section-head">
@@ -103,6 +106,11 @@ export function VertragScenarioTable({
         </h2>
       </div>
 
+      {marketReturnAssumption !== undefined && (
+        <p className="vertrag-scenario-detail">
+          Rendite {formatPercent(marketReturnAssumption, 1)} p. a. ({instance.expectedReturn !== undefined ? 'vertragsspezifisch' : 'Szenario'})
+        </p>
+      )}
       {rows.length > 0 ? (
         <div className="vertrag-table-scroll" role="region" aria-label="Vertragsszenarien" tabIndex={0}>
           <table className="vertrag-scenario-table">

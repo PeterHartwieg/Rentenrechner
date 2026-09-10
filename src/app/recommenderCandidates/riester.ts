@@ -19,6 +19,7 @@ import { calculateRiesterFunding, solveRiesterOwnFromNet } from '../../engine/ri
 import {
   type CandidateDraft,
   type GeneratorContext,
+  candidateAnnualReturn,
   projectMonthlyContributionFV,
   synthesizeProductResult,
 } from './types'
@@ -53,7 +54,8 @@ export function makeRiesterTopUpCandidate(g: GeneratorContext): CandidateDraft |
 
   const totalMonthly = own + fundingForOwn.totalAllowanceAnnual / 12
   const fees = (target.fees?.wrapperAssetFee ?? 0) + (target.fees?.fundAssetFee ?? 0)
-  const netReturn = Math.max(-0.5, g.basis.annualReturn - fees)
+  const annualReturn = candidateAnnualReturn(g.basis, target)
+  const netReturn = Math.max(-0.5, annualReturn - fees)
   const capital = projectMonthlyContributionFV(totalMonthly, netReturn, g.yearsToRetirement)
   const totalContributions = totalMonthly * 12 * g.yearsToRetirement
   const grossPayout = (capital / 10_000) * (target.rentenfaktor ?? 28)
@@ -68,7 +70,7 @@ export function makeRiesterTopUpCandidate(g: GeneratorContext): CandidateDraft |
     instanceId: target.instanceId,
     scenarioId: g.basis.scenarioId,
     scenarioLabel: 'Basis',
-    annualReturn: g.basis.annualReturn,
+    annualReturn,
     grossMonthlyPayout: grossPayout,
     capitalAtRetirement: capital,
     totalProductContributions: totalContributions,

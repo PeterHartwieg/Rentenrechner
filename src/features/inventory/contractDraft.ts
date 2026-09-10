@@ -66,6 +66,7 @@ import {
   CONTRACTUAL_MATCH_PERCENT_BOUNDS,
   CONTRIBUTION_GROWTH_BOUNDS,
   ELIGIBLE_CHILDREN_BOUNDS,
+  EXPECTED_RETURN_BOUNDS,
   PAYOUT_PLAN_END_AGE_BOUNDS,
   RENTENFAKTOR_BOUNDS,
   SURRENDER_HAIRCUT_BOUNDS,
@@ -149,6 +150,8 @@ export interface ContractFieldSpec {
   readonly options?: readonly { readonly value: string; readonly label: string }[]
   /** `true` when the UI must offer a "Weiß ich nicht" control. */
   readonly supportsUnknown: boolean
+  /** Clearing this optional field removes its stored override. */
+  readonly clearOnUnknown?: boolean
   readonly unknownMode: ContractUnknownMode
   /**
    * A core field: the contract is not answerable without it. An `empty` core
@@ -452,6 +455,23 @@ function zeitrenteYearsSpec(visibleWhen: (draft: ContractDraft) => boolean): Con
   }
 }
 
+const expectedReturnSpec: ContractFieldSpec = {
+  id: 'expectedReturn',
+  path: 'expectedReturn',
+  labelKey: 'contract.expectedReturn',
+  label: 'Erwartete Rendite (optional)',
+  hint: 'leer = Szenariowert',
+  kind: 'number',
+  unit: 'ratio',
+  section: 'details',
+  min: EXPECTED_RETURN_BOUNDS.min,
+  max: EXPECTED_RETURN_BOUNDS.max,
+  step: 0.001,
+  supportsUnknown: false,
+  unknownMode: 'explicit-unknown',
+  clearOnUnknown: true,
+}
+
 const contributionGrowthSpec: ContractFieldSpec = {
   id: 'annualContributionGrowthRate',
   path: 'annualContributionGrowthRate',
@@ -561,6 +581,7 @@ function eligibilitySpecs(withChildren: boolean): readonly ContractFieldSpec[] {
  * is bounded only by the editor (the validator accepts anything finite for it).
  */
 export const SHARED_FIELD_BOUNDS: Readonly<Record<string, NumericBound>> = {
+  expectedReturn: EXPECTED_RETURN_BOUNDS,
   contractStartYear: CONTRACT_START_YEAR_BOUNDS,
   rentenfaktor: RENTENFAKTOR_BOUNDS,
   zeitrenteYears: ZEITRENTE_YEARS_BOUNDS,
@@ -576,6 +597,7 @@ export const SHARED_FIELD_BOUNDS: Readonly<Record<string, NumericBound>> = {
 // --- per-product tables ----------------------------------------------------
 
 const BAV_SPECS: readonly ContractFieldSpec[] = [
+  expectedReturnSpec,
   labelSpec,
   anbieterSpec,
   statusSpec,
@@ -669,6 +691,7 @@ const BAV_SPECS: readonly ContractFieldSpec[] = [
 ]
 
 const VERSICHERUNG_SPECS: readonly ContractFieldSpec[] = [
+  expectedReturnSpec,
   labelSpec,
   anbieterSpec,
   statusSpec,
@@ -724,6 +747,7 @@ const VERSICHERUNG_SPECS: readonly ContractFieldSpec[] = [
 ]
 
 const BASISRENTE_SPECS: readonly ContractFieldSpec[] = [
+  expectedReturnSpec,
   labelSpec,
   anbieterSpec,
   statusSpec,
@@ -751,6 +775,7 @@ const BASISRENTE_SPECS: readonly ContractFieldSpec[] = [
 ]
 
 const RIESTER_SPECS: readonly ContractFieldSpec[] = [
+  expectedReturnSpec,
   labelSpec,
   anbieterSpec,
   statusSpec,
@@ -782,6 +807,7 @@ const RIESTER_SPECS: readonly ContractFieldSpec[] = [
 ]
 
 const AVD_SPECS: readonly ContractFieldSpec[] = [
+  expectedReturnSpec,
   labelSpec,
   anbieterSpec,
   statusSpec,
@@ -838,6 +864,7 @@ const AVD_SPECS: readonly ContractFieldSpec[] = [
 ]
 
 const ETF_SPECS: readonly ContractFieldSpec[] = [
+  expectedReturnSpec,
   labelSpec,
   anbieterSpec,
   statusSpec,
@@ -1018,7 +1045,7 @@ export function draftFromInstance(
     const raw = getAtPath(instance, spec.path)
     const value = isFieldValue(raw) ? raw : fallbackFor(spec)
     const status = resolveInputStatus(inputStatus, evidenceMap[spec.id], spec.id)
-    fields[spec.id] = fieldFromStatus(value, status)
+    fields[spec.id] = fieldFromStatus(value, spec.clearOnUnknown && raw === undefined ? 'unknown' : status)
   }
 
   return {
@@ -1072,7 +1099,8 @@ export function newDraft(
   const pending: string[] = []
   for (const spec of CONTRACT_FIELD_SPECS[productId]) {
     const raw = getAtPath(base, spec.path)
-    fields[spec.id] = assumed(isFieldValue(raw) ? raw : fallbackFor(spec))
+    fields[spec.id] = fieldFromStatus(isFieldValue(raw) ? raw : fallbackFor(spec),
+      spec.clearOnUnknown && raw === undefined ? 'unknown' : 'assumed')
     if (spec.core) pending.push(spec.id)
   }
 
@@ -1316,7 +1344,8 @@ export interface ContractDraftPatch {
  *    instance holds (the existing value, or the registry default for a new
  *    contract) and the status map records `'unknown'`. The evidence key is
  *    *deleted*, because `EvidenceState` has no unknown variant and a stale
- *    `model_estimate` would misreport the answer.
+ *    `model_estimate` would misreport the answer. Optional `clearOnUnknown`
+ *    fields instead emit undefined to remove their override when applied.
  *  - **A typed 0 is a real answer.** It writes 0 with status `'entered'`.
  *  - **Neighbours are untouched.** Only the fields in the spec table are
  *    written; every other status key on the instance survives.
@@ -1355,6 +1384,7 @@ export function draftToInstancePatch(draft: ContractDraft): ContractDraftPatch {
     if (field.status === 'unknown') {
       inputStatus[spec.id] = 'unknown'
       delete evidenceMap[spec.id]
+      if (spec.clearOnUnknown) setAtPath(patch, spec.path, undefined)
       continue
     }
 
@@ -1401,7 +1431,7 @@ export function draftToNewInstance(
       ? labelValue
       : defaultInstanceLabel(draft.productId, 1, anbieter)
 
-  return {
+  const instance: Record<string, unknown> = {
     ...draft.base,
     ...patch,
     instanceId,
@@ -1410,6 +1440,10 @@ export function draftToNewInstance(
     evidenceMap,
     inputStatus,
   }
+  for (const spec of CONTRACT_FIELD_SPECS[draft.productId]) {
+    if (spec.clearOnUnknown && instance[spec.path] === undefined) delete instance[spec.path]
+  }
+  return instance
 }
 
 /**

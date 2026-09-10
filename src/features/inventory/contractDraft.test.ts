@@ -33,6 +33,7 @@ import {
   validateDraft,
   visibleFieldSpecs,
 } from './contractDraft'
+import { INSTANCE_VALIDATOR_BY_PRODUCT } from '../../utils/scenarioSchema'
 import { INVENTORY_PRODUCT_REGISTRY } from './inventoryProductRegistry'
 
 function bavInstance(overrides: Partial<BavInstance> = {}): BavInstance {
@@ -95,7 +96,7 @@ describe('CONTRACT_FIELD_SPECS', () => {
   it('never offers an unknown control for a field that cannot be unknown', () => {
     for (const specs of Object.values(CONTRACT_FIELD_SPECS)) {
       for (const spec of specs) {
-        expect(spec.supportsUnknown).toBe(spec.unknownMode !== 'none')
+        expect(spec.supportsUnknown || spec.clearOnUnknown === true).toBe(spec.unknownMode !== 'none')
       }
     }
   })
@@ -148,7 +149,7 @@ describe('draftFromInstance', () => {
     const draft = draftFromInstance('bav', instance)
 
     for (const spec of fieldSpecs('bav')) {
-      expect(draftFieldState(draft, spec.id), spec.id).toBe('assumed')
+      expect(draftFieldState(draft, spec.id), spec.id).toBe(spec.clearOnUnknown ? 'unknown' : 'assumed')
     }
     expect(draftFieldValue(draft, 'monthlyGrossConversion')).toBe(250)
     expect(draftFieldValue(draft, 'currentValueEUR')).toBe(4200)
@@ -426,4 +427,31 @@ describe('compare-mode singleton path is untouched', () => {
     expect(Object.keys(patch)).not.toContain('visibleProducts')
     expect(defaultWorkspace.baseline.assumptions.etf).toHaveLength(0)
   })
+})
+
+
+describe('optional contract expected return', () => {
+  it.each(Object.keys(INVENTORY_PRODUCT_REGISTRY) as (keyof typeof INVENTORY_PRODUCT_REGISTRY)[])(
+    '%s defaults to the scenario, saves zero, clears a previous override, and validates bounds', (productId) => {
+      const base = INVENTORY_PRODUCT_REGISTRY[productId].createDefault(2026, 1, () => `${productId}-return`)
+      const draft = draftFromInstance(productId, base)
+      expect(draftFieldValue(draft, 'expectedReturn')).toBeNull()
+      expect(draftToNewInstance(newDraft(productId))).not.toHaveProperty('expectedReturn')
+      const typed = patchDraftField(draft, 'expectedReturn', 0)
+      expect(draftToInstancePatch(typed).patch.expectedReturn).toBe(0)
+      const pinned = draftFromInstance(productId, { ...base, expectedReturn: 0.02 })
+      const cleared = setDraftFieldUnknown(pinned, 'expectedReturn')
+      expect(draftToInstancePatch(cleared).patch).toHaveProperty('expectedReturn', undefined)
+      expect(draftToNewInstance(cleared)).not.toHaveProperty('expectedReturn')
+      expect(base).not.toHaveProperty('expectedReturn')
+      for (const rate of [-0.5, 0, 0.5]) {
+        expect(validateDraft(patchDraftField(draft, 'expectedReturn', rate)).expectedReturn).toBeUndefined()
+        expect(INSTANCE_VALIDATOR_BY_PRODUCT[productId]({ ...base, expectedReturn: rate })).toBe(true)
+      }
+      for (const rate of [-0.501, 0.501, NaN, Infinity]) {
+        expect(validateDraft(patchDraftField(draft, 'expectedReturn', rate)).expectedReturn).toBeDefined()
+        expect(INSTANCE_VALIDATOR_BY_PRODUCT[productId]({ ...base, expectedReturn: rate })).toBe(false)
+      }
+    },
+  )
 })
