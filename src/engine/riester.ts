@@ -86,12 +86,17 @@ export function computeRiesterChildAllowance(
  *  - directlyEligible (§79 Satz 1 EStG): Grundzulage + Kinderzulage + Berufseinsteiger-Bonus.
  *  - indirectSpouseEligible only (§79 Satz 2 EStG): Grundzulage. Kinderzulage is granted
  *    when `profile.childBirthYears` is populated, on the assumption that attribution
- *    has been transferred to this contract via §85 Abs. 2 Satz 2 EStG (the default
- *    attribution under Satz 1 is to the mother; Satz 2 allows transfer by joint
- *    application). The ZfA Riester-Rechner makes the same assumption: kids entered on
+ *    follows the Kindergeld entitlement or spouses have assigned it to the other
+ *    parent on joint application (§85 Abs. 2 EStG).
+ *    The ZfA Riester-Rechner makes the same assumption: kids entered on
  *    the indirect spouse's input form are paid out to that contract. No Berufseinsteiger-
  *    Bonus (§84 Satz 2 limits it to "unmittelbar Zulageberechtigte").
  *  - Neither: zero.
+ *
+ * §85 Abs. 2 EStG one-parent rule: `eligibility.claimsChildAllowance === false`
+ * suppresses the Kinderzulage on this contract (another person holds the claim).
+ * The §86 Mindesteigenbeitrag is derived from the reduced allowance total below,
+ * so it rises by exactly the removed Zulage — no separate subtraction.
  */
 function computeFullRiesterAllowances(
   riester: RiesterAssumptions,
@@ -111,7 +116,9 @@ function computeFullRiesterAllowances(
 
   const grundzulage = e.directlyEligible || indirectOnly ? r.grundzulage : 0
 
-  const childAllowance = e.directlyEligible || indirectOnly
+  const childAllowance =
+    (e.directlyEligible || indirectOnly) &&
+    e.claimsChildAllowance !== false
     ? (() => {
         const eligibleChildBirthYears = childBirthYearsUnder25InYear(
           profile.childBirthYears,

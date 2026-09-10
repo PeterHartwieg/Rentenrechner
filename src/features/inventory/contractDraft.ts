@@ -35,6 +35,7 @@
  * not wired today").
  */
 
+import { CHILD_ALLOWANCE_CLAIM_HINT } from '../../content/terms'
 import type { EvidenceState } from '../../domain/instances'
 import type { InputStatus, InputStatusMap } from '../../domain/inputStatus'
 import type { Workspace } from '../../domain/workspace'
@@ -132,6 +133,7 @@ export interface ContractFieldSpec {
   readonly labelKey: string
   /** German label. */
   readonly label: string
+  readonly hint?: string
   readonly kind: ContractFieldKind
   readonly unit: ContractFieldUnit
   readonly section: ContractFieldSection
@@ -153,6 +155,7 @@ export interface ContractFieldSpec {
    * field fails validation; the user must type a value (0 included) or decline.
    */
   readonly core?: boolean
+  readonly defaultValue?: ContractFieldValue
   /** Additional instance paths that mirror this value (Riester `existingCapital`). */
   readonly mirrorPaths?: readonly string[]
   /** Conditional visibility, evaluated against the live draft. */
@@ -515,6 +518,20 @@ function eligibilitySpecs(withChildren: boolean): readonly ContractFieldSpec[] {
       unknownMode: 'none',
     },
   ]
+  specs.push({
+    id: 'eligibility.claimsChildAllowance',
+    path: 'eligibility.claimsChildAllowance',
+    labelKey: 'contract.eligibility.claimsChildAllowance',
+    label: 'Kinderzulage in diesem Vertrag berücksichtigen',
+    hint: CHILD_ALLOWANCE_CLAIM_HINT,
+    kind: 'boolean',
+    unit: 'none',
+    section: 'details',
+    supportsUnknown: false,
+    unknownMode: 'none',
+    defaultValue: true,
+    visibleWhen: (draft) => draft.hasChildren,
+  })
   if (withChildren) {
     specs.splice(1, 0, {
       id: 'eligibility.eligibleChildren',
@@ -916,6 +933,8 @@ type InstanceLike = Record<string, unknown>
 export type ContractInstanceLike = object
 
 export interface ContractDraft {
+  /** Profile context for child allowance visibility; never persisted on the instance. */
+  readonly hasChildren: boolean
   readonly productId: MultiInstanceProductId
   /** Set when editing an existing contract; absent for a new one. */
   readonly instanceId?: string
@@ -965,6 +984,7 @@ function isFieldValue(value: unknown): value is ContractFieldValue {
 }
 
 function fallbackFor(spec: ContractFieldSpec): ContractFieldValue {
+  if (spec.defaultValue !== undefined) return spec.defaultValue
   switch (spec.kind) {
     case 'number':
       return spec.min ?? 0
@@ -987,6 +1007,7 @@ function fallbackFor(spec: ContractFieldSpec): ContractFieldValue {
 export function draftFromInstance(
   productId: MultiInstanceProductId,
   source: ContractInstanceLike,
+  hasChildren = false,
 ): ContractDraft {
   const instance = source as InstanceLike
   const evidenceMap = (instance.evidenceMap ?? {}) as Record<string, EvidenceState>
@@ -1002,6 +1023,7 @@ export function draftFromInstance(
 
   return {
     productId,
+    hasChildren,
     instanceId: typeof instance.instanceId === 'string' ? instance.instanceId : undefined,
     base: instance,
     fields,
@@ -1012,6 +1034,7 @@ export function draftFromInstance(
 }
 
 export interface NewDraftContext {
+  readonly hasChildren?: boolean
   /** Used for `contractStartYear` and the Riester / AVD career-starter age. */
   readonly currentYear?: number
   /** The saver's current age, seeded into `eligibility.ageAtContractStart`. */
@@ -1055,6 +1078,7 @@ export function newDraft(
 
   return {
     productId,
+    hasChildren: context.hasChildren ?? false,
     base: { ...base, instanceId: undefined, label: '', anbieter: undefined },
     fields,
     pending,
@@ -1069,7 +1093,11 @@ export function newDraftFromWorkspace(
   workspace: Workspace,
   currentYear?: number,
 ): ContractDraft {
-  return newDraft(productId, { currentYear, age: workspace.baseline.profile.age })
+  return newDraft(productId, {
+    currentYear,
+    age: workspace.baseline.profile.age,
+    hasChildren: workspace.baseline.profile.childBirthYears.length > 0,
+  })
 }
 
 // --- reads -----------------------------------------------------------------

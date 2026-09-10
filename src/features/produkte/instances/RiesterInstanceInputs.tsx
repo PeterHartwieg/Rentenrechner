@@ -13,6 +13,9 @@
  * on first load when the workspace was migrated from an older shape.
  */
 
+import { CHILD_ALLOWANCE_CLAIM_HINT } from '../../../content/terms'
+import { InfoTip } from '../../../ui/InfoTip'
+import type { PersonalProfile } from '../../../domain'
 import type { RiesterInstance } from '../../../domain/instances'
 import { InvSelect } from '../../inventory/fields'
 import { PAYOUT_OPTIONS_NO_KAPITAL } from '../../inventory/fieldHelpers'
@@ -26,10 +29,11 @@ import { diffInstancePatch } from './instancePatch'
 
 interface Props {
   instance: RiesterInstance
+  profile: PersonalProfile
   patchInstance: (patch: Partial<RiesterInstance>) => void
 }
 
-export function RiesterInstanceInputs({ instance, patchInstance }: Props) {
+export function RiesterInstanceInputs({ instance, patchInstance, profile }: Props) {
   const onCommonChange = (next: RiesterInstance) => {
     // Keep existingCapital in sync with currentValueEUR per the legacy
     // sidebar's behaviour (see CombineDashboardSidebar.RiesterInstanceCard
@@ -86,6 +90,27 @@ export function RiesterInstanceInputs({ instance, patchInstance }: Props) {
           bereits erhalten
         </label>
       </CombineField>
+      {profile.childBirthYears.length > 0 && (
+        <CombineField
+          label="Kinderzulage in diesem Vertrag berücksichtigen"
+          labelSuffix={<InfoTip text={CHILD_ALLOWANCE_CLAIM_HINT} />}
+        >
+          <label className="combine-checkbox-field">
+            <CombineNativeInput
+              type="checkbox"
+              checked={instance.eligibility.claimsChildAllowance ?? true}
+              onChange={(e) =>
+                patchInstance({
+                  eligibility: {
+                    ...instance.eligibility,
+                    claimsChildAllowance: (e.target as HTMLInputElement).checked,
+                  },
+                })
+              }
+            />
+          </label>
+        </CombineField>
+      )}
       <CombineField label="Auszahlungsform">
         <InvSelect
           value={instance.payoutMode}

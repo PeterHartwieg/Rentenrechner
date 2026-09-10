@@ -24,6 +24,9 @@ export function validateRiester(r: RiesterAssumptions): boolean {
   // indirectSpouseEligible is optional for backwards compatibility; reject only
   // when present and of the wrong type.
   if (e.indirectSpouseEligible !== undefined && typeof e.indirectSpouseEligible !== 'boolean') return false
+  // claimsChildAllowance is optional the same way; a truthy non-boolean ("false",
+  // 0) would silently count as claiming under the engine's `!== false` check.
+  if (e.claimsChildAllowance !== undefined && typeof e.claimsChildAllowance !== 'boolean') return false
   if (!intInRange(
       e.ageAtContractStart,
       AGE_AT_CONTRACT_START_BOUNDS.min,

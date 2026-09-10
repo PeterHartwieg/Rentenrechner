@@ -12,6 +12,8 @@
  * (no glidepath). Matches the deleted card exactly.
  */
 
+import { CHILD_ALLOWANCE_CLAIM_HINT } from '../../../content/terms'
+import { InfoTip } from '../../../ui/InfoTip'
 import type { GermanRules, PersonalProfile } from '../../../domain'
 import type { AltersvorsorgedepotInstance } from '../../../domain/instances'
 import {
@@ -111,6 +113,27 @@ export function AltersvorsorgedepotInstanceInputs({
           bereits erhalten
         </label>
       </CombineField>
+      {profile.childBirthYears.length > 0 && (
+        <CombineField
+          label="Kinderzulage in diesem Vertrag berücksichtigen"
+          labelSuffix={<InfoTip text={CHILD_ALLOWANCE_CLAIM_HINT} />}
+        >
+          <label className="combine-checkbox-field">
+            <CombineNativeInput
+              type="checkbox"
+              checked={instance.eligibility.claimsChildAllowance ?? true}
+              onChange={(e) =>
+                patchInstance({
+                  eligibility: {
+                    ...instance.eligibility,
+                    claimsChildAllowance: (e.target as HTMLInputElement).checked,
+                  },
+                })
+              }
+            />
+          </label>
+        </CombineField>
+      )}
       <CombineField label="Depottyp">
         <CombineNativeSelect
           value={instance.subtype}

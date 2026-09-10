@@ -231,6 +231,7 @@ export const PRODUCT_UI_REGISTRY: Record<ProductId, ProductUiEntry> = {
     renderInstanceInputs: (ctx) => (
       <RiesterInstanceInputs
         instance={ctx.instance as RiesterInstance}
+        profile={ctx.profile}
         patchInstance={
           ctx.patchInstance as (p: Partial<RiesterInstance>) => void
         }

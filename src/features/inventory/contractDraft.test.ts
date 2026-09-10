@@ -27,6 +27,7 @@ import {
   fieldSpecs,
   isDraftValid,
   newDraft,
+  newDraftFromWorkspace,
   patchDraftField,
   setDraftFieldUnknown,
   validateDraft,
@@ -53,6 +54,29 @@ function etfInstance(overrides: Partial<EtfInstance> = {}): EtfInstance {
 // ---------------------------------------------------------------------------
 
 describe('CONTRACT_FIELD_SPECS', () => {
+  it.each(['riester', 'altersvorsorgedepot'] as const)(
+    'shows the %s child allowance claim only for profiles with children',
+    (productId) => {
+      const id = 'eligibility.claimsChildAllowance'
+      for (const childBirthYears of [[], [2020]]) {
+        const workspace = structuredClone(defaultWorkspace)
+        workspace.baseline.profile.childBirthYears = childBirthYears
+        const draft = newDraftFromWorkspace(productId, workspace, 2026)
+        const spec = visibleFieldSpecs(draft).find((field) => field.id === id)
+        if (childBirthYears.length > 0) {
+          expect(spec).toMatchObject({
+            labelKey: 'contract.eligibility.claimsChildAllowance',
+            kind: 'boolean',
+            section: 'details',
+            supportsUnknown: false,
+          })
+        } else {
+          expect(spec).toBeUndefined()
+        }
+      }
+    },
+  )
+
   it('declares a core current value and a core contribution for every product', () => {
     for (const [productId, specs] of Object.entries(CONTRACT_FIELD_SPECS)) {
       const core = specs.filter((s) => s.core).map((s) => s.id)
@@ -103,6 +127,22 @@ describe('CONTRACT_FIELD_SPECS', () => {
 // ---------------------------------------------------------------------------
 
 describe('draftFromInstance', () => {
+  it('defaults the child allowance claim to true and preserves explicit toggles', () => {
+    const id = 'eligibility.claimsChildAllowance'
+    const instance = INVENTORY_PRODUCT_REGISTRY.altersvorsorgedepot.createDefault(
+      2026, 1, () => 'avd-test0001',
+    )
+    const draft = draftFromInstance('altersvorsorgedepot', instance)
+    expect(draftFieldValue(draft, id)).toBe(true)
+    for (const checked of [false, true]) {
+      const { patch } = draftToInstancePatch(patchDraftField(draft, id, checked))
+      expect(patch).toMatchObject({ eligibility: { claimsChildAllowance: checked } })
+      expect(draftFieldValue(draftFromInstance('altersvorsorgedepot', {
+        ...instance, ...patch,
+      }), id)).toBe(checked)
+    }
+  })
+
   it('reads a legacy instance with no metadata as entirely assumed, values intact', () => {
     const instance = bavInstance({ monthlyGrossConversion: 250, currentValueEUR: 4200 })
     const draft = draftFromInstance('bav', instance)

@@ -7,6 +7,7 @@ import {
   computeChildAllowance,
   calculateAvdFunding,
   netAvdPayout,
+  resolveAvdEligibility,
   validateAvdPayoutAge,
 } from '../altersvorsorgedepot'
 import { AVD_UI_SELECTABLE_PAYOUT_MODES } from './altersvorsorgedepot.validation'
@@ -154,6 +155,26 @@ describe('computeAvdAllowances', () => {
     expect(result.childAllowanceAnnual).toBeCloseTo(600, 4)
     expect(result.totalAllowanceAnnual).toBeCloseTo(990, 4)
   })
+
+  it('drops only the child allowance when another parent holds the claim (#371)', () => {
+    const withClaim = computeAvdAllowances(
+      1_200,
+      { ...baseEligibility, eligibleChildren: 2 },
+      rules,
+    )
+    const withoutClaim = computeAvdAllowances(
+      1_200,
+      { ...baseEligibility, eligibleChildren: 2, claimsChildAllowance: false },
+      rules,
+    )
+    expect(withoutClaim.childAllowanceAnnual).toBe(0)
+    expect(withoutClaim.basicAllowanceAnnual).toBe(withClaim.basicAllowanceAnnual)
+    expect(withoutClaim.careerStarterBonusAnnual).toBe(withClaim.careerStarterBonusAnnual)
+    expect(withoutClaim.indirectSpouseAllowanceAnnual).toBe(withClaim.indirectSpouseAllowanceAnnual)
+    expect(withoutClaim.totalAllowanceAnnual).toBe(
+      withClaim.totalAllowanceAnnual - withClaim.childAllowanceAnnual,
+    )
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -264,6 +285,46 @@ describe('calculateAvdFunding', () => {
       },
     )
     expect(result.childAllowanceAnnual).toBeCloseTo(300, 4)
+  })
+
+  it('grants no child allowance when another parent holds the claim (#371)', () => {
+    const profile = { ...defaultProfile, childBirthYears: [rules.year] }
+    const withClaim = calculateAvdFunding(
+      rules,
+      { taxableIncome: 50_000 } as never,
+      avdBase,
+      { profile },
+    )
+    const withoutClaim = calculateAvdFunding(
+      rules,
+      { taxableIncome: 50_000 } as never,
+      { ...avdBase, eligibility: { ...avdBase.eligibility, claimsChildAllowance: false } },
+      { profile },
+    )
+    expect(withClaim.childAllowanceAnnual).toBeCloseTo(avd.childAllowanceMax, 4)
+    expect(withoutClaim.childAllowanceAnnual).toBe(0)
+    expect(withoutClaim.basicAllowanceAnnual).toBe(withClaim.basicAllowanceAnnual)
+    expect(withoutClaim.careerStarterBonusAnnual).toBe(withClaim.careerStarterBonusAnnual)
+    expect(withoutClaim.totalAllowanceAnnual).toBe(withClaim.totalAllowanceAnnual - withClaim.childAllowanceAnnual)
+  })
+})
+
+describe('resolveAvdEligibility', () => {
+  it('preserves claimsChildAllowance while resolving profile child years (#371)', () => {
+    const resolved = resolveAvdEligibility(
+      {
+        directlyEligible: true,
+        indirectSpouseEligible: false,
+        eligibleChildren: 0,
+        ageAtContractStart: 30,
+        careerStarterBonusUsed: true,
+        claimsChildAllowance: false,
+      },
+      { ...defaultProfile, childBirthYears: [2018] },
+      rules.year,
+    )
+    expect(resolved.eligibleChildren).toBe(1)
+    expect(resolved.claimsChildAllowance).toBe(false)
   })
 })
 

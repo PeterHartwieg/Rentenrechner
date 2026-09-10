@@ -853,6 +853,23 @@ describe('validateWorkspaceAssumptions — strict monteCarlo / statutoryPension 
     // The user's other contracts survive the misfiled one.
     expect(result!.bav).toHaveLength(a.bav.length)
   })
+
+  // Combine-mode instance validators delegate to the product validators, so a
+  // malformed flag poisons the whole instance instead of counting as a claim.
+  it.each(['riester', 'altersvorsorgedepot'] as const)(
+    'drops a %s instance with a non-boolean claimsChildAllowance',
+    (slot) => {
+      const a = makeWorkspaceAssumptions()
+      const inst = a[slot][0] as unknown as Record<string, unknown>
+      inst.eligibility = {
+        ...(inst.eligibility as Record<string, unknown>),
+        claimsChildAllowance: 'false',
+      }
+      const result = validateWorkspaceAssumptions(a)
+      expect(result).not.toBeNull()
+      expect(result![slot]).toHaveLength(0)
+    },
+  )
 })
 
 describe('validateTransferEvent — both source and target must exist', () => {

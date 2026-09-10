@@ -28,11 +28,11 @@ export function ContractEditorField({ draft, spec, patchField, setFieldUnknown, 
       : spec.id === 'contractStartYear' ? 'Jahr des Vertragsbeginns'
         : spec.id === 'contractualFixedMonthly' ? 'Zusätzlicher fester Arbeitgeberbeitrag (€/Monat)'
           : `${spec.label}${spec.unit === 'ratio' ? ' (%)' : spec.unit === 'EUR/Monat' ? ' (€/Monat)' : spec.unit === 'years' ? ' (Jahre)' : ''}`
-  const hint = spec.id === 'monthlyGrossConversion'
+  const hint = spec.hint ?? (spec.id === 'monthlyGrossConversion'
     ? 'Deine Entgeltumwandlung vor Steuern und Sozialabgaben; ohne Arbeitgeberzuschuss.'
     : spec.id === 'contractualFixedMonthly' ? '0 bedeutet: kein zusätzlicher fester Arbeitgeberbeitrag.'
       : spec.unknownMode === 'assumed-default'
-        ? 'Wenn du es nicht weißt, bleibt die hinterlegte Art als angenommen markiert.' : undefined
+        ? 'Wenn du es nicht weißt, bleibt die hinterlegte Art als angenommen markiert.' : undefined)
   const description = `${id}-status${hint ? ` ${id}-hint` : ''}${error ? ` ${id}-error` : ''}`
   const pending = state === 'empty'
   const unknownNumber = spec.kind === 'number' && spec.supportsUnknown

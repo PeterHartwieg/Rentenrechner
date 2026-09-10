@@ -48,6 +48,10 @@ export function validateAltersvorsorgedepot(avd: AltersvorsorgedepotAssumptions)
   if (!e || typeof e !== 'object') return false
   if (typeof e.directlyEligible !== 'boolean') return false
   if (typeof e.indirectSpouseEligible !== 'boolean') return false
+  // claimsChildAllowance is optional for backwards compatibility; reject only
+  // when present and of the wrong type (a truthy non-boolean would count as
+  // claiming under the engine's `!== false` check).
+  if (e.claimsChildAllowance !== undefined && typeof e.claimsChildAllowance !== 'boolean') return false
   if (!intInRange(
       e.eligibleChildren,
       ELIGIBLE_CHILDREN_BOUNDS.min,
