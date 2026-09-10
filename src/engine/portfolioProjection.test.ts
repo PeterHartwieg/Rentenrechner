@@ -742,6 +742,6 @@ describe('scenarioForInstance — contract-specific expected return', () => {
     workspace.baseline.assumptions.etf = [instance]
     expect(projectInstanceToScenarioAssumptions(instance, workspace.baseline.assumptions).etf)
       .not.toHaveProperty('expectedReturn')
-    expect(singletonViewOfWorkspace(workspace).etf).not.toHaveProperty('expectedReturn')
+    expect(singletonViewOfWorkspace(workspace, SINGLETON_DEFAULTS).etf).not.toHaveProperty('expectedReturn')
   })
 })
