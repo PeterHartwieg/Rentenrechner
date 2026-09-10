@@ -908,3 +908,22 @@ describe('buildCombinePortfolioCsv — suppressed household total', () => {
     expect(row!.split(',')[9]).toBe('Keine Angabe')
   })
 })
+
+
+it('exports each contract effective return in both combine sheets', () => {
+  const csv = buildCombinePortfolioCsv({
+    ...TWO_INSTANCE_OPTS,
+    perInstance: {
+      'bav-1': [{ ...FIXTURE_BAV_WITH_ROWS, annualReturn: 0.02 }],
+      'etf-1': [{ ...FIXTURE_ETF_INSTANCE_RESULT, annualReturn: 0.07 }],
+    },
+  })
+  const lines = csv.split('\n')
+  for (const section of ['Mein Plan — Detail je Instanz', 'Jahres-Cashflows je Instanz']) {
+    const start = lines.indexOf(section)
+    const column = lines[start + 1].split(',').indexOf('Rendite p. a.')
+    expect(column).toBeGreaterThanOrEqual(0)
+    expect(lines[start + 2].split(',')[column]).toBe('2.00 %')
+    expect(lines[start + 3].split(',')[column]).toBe('7.00 %')
+  }
+})

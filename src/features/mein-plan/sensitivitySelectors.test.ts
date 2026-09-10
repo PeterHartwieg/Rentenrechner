@@ -309,3 +309,15 @@ describe('sensitivityIfRetirementAge — clamp-no-op regression (Codex P3)', () 
     expect(result.headlineDelta).toBe(0)
   })
 })
+
+
+it('explains fixed contract returns when the return sensitivity is flat', () => {
+  const ws = buildBaseWorkspace()
+  for (const instance of [...ws.baseline.assumptions.bav, ...ws.baseline.assumptions.etf]) {
+    instance.expectedReturn = 0.02
+  }
+  const bundle = runCombineSimulation(ws, de2026Rules)
+  const row = sensitivityIfReturnScenario(ws, bundle.combinedByScenarioId.basis, de2026Rules, 'basis', 'konservativ')
+  expect(row.headlineDelta).toBe(0)
+  expect(row.note).toBe('contract_returns_fixed')
+})
