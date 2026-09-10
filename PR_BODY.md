@@ -24,10 +24,19 @@ The review correctly identified that zeroing the numeric conversion retained con
 - Recommender activation normalises the offered target before assigning its generated amount. Regressions cover both legacy €200 offers and offers already repaired on load.
 - Readiness uses the existing `instance-contribution-unknown` blocker for an active bAV with an assumed zero. Entered/documented zero remains a valid answer; paid-up contracts remain exempt.
 
+## Review round 3
+
+The three findings reproduced as four failing tests: inline entry omitted answer metadata, insurance activation retained metadata for a replaced contribution, and v2 load repair normalised the snapshot before recovering an old recommender addition.
+
+- The inline Brutto-Umwandlung callback now stamps `inputStatus.monthlyGrossConversion: 'entered'` and matching user-confirmed evidence, preserving neighbouring metadata. The panel passes this through its existing patch path. Entering zero on an active bAV with €100/month fixed employer funding keeps the household result displayable; the round-2 blocker for an assumed active zero remains unchanged.
+- Activating an offered insurance contract removes only `monthlyContribution` from `inputStatus` and `evidenceMap` before assigning the generated amount. Both prior `document` and `unknown` statuses now resolve to truthful `assumed` provenance without blocking the what-if total.
+- `buildWhatIfFromCandidate` persists `origin: 'recommender'`; v2 load repair uses this explicit marker before normalising snapshots. For a matching active bAV whose conversion is at least the positive offered snapshot amount, it subtracts that stale amount once. The legacy €400 alternative loads at €200 and applying it yields €200; repeated loads are idempotent.
+- Manual alternatives remain untouched because their larger amount may be intentional. Controls also cover zero or active snapshots, smaller conversions, paid-up instances, and mismatched instance IDs. Recommendation-like labels alone never trigger repair.
+
 ## Validation
 
-- `npm run verify`: lint clean (`--max-warnings=0`); 276 frontend test files, 5199 passed + 1 skipped; both Worker typechecks passed; Worker suites passed (26 + 11 tests); production build and prerender succeeded.
-- Added 12 regression cases covering provenance cleanup, activation, load repair, caller/neighbor preservation, and readiness.
+- `npm run verify`: lint clean (`--max-warnings=0`); 276 frontend test files, 5209 passed + 1 skipped; both Worker typechecks passed; Worker suites passed (26 + 11 tests); production build and prerender succeeded.
+- Round 3 added 10 regression cases covering inline zero readiness, insurance provenance cleanup, saved-alternative repair/apply, idempotence, and conservative repair guards. All 165 tests in the three affected files pass.
 - No oracle or baseline updates. Generated `public/og/` output discarded. No GitHub access or push.
 
 ## Scope
