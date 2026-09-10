@@ -33,10 +33,18 @@ The three findings reproduced as four failing tests: inline entry omitted answer
 - `buildWhatIfFromCandidate` persists `origin: 'recommender'`; v2 load repair uses this explicit marker before normalising snapshots. For a matching active bAV whose conversion is at least the positive offered snapshot amount, it subtracts that stale amount once. The legacy €400 alternative loads at €200 and applying it yields €200; repeated loads are idempotent.
 - Manual alternatives remain untouched because their larger amount may be intentional. Controls also cover zero or active snapshots, smaller conversions, paid-up instances, and mismatched instance IDs. Recommendation-like labels alone never trigger repair.
 
+## Review round 4
+
+The load-path regression reproduced the remaining employer-funding error: subtracting the stale €200 conversion left the €150 fixed employer amount that the old application materialised at €400. The corrected €200 conversion should receive a 50% match (€100/month), with no fixed contribution.
+
+- Moved the existing offer resolver, employer-contribution helper, and saved-plan patch into the React-free `recommenderCandidates/bavOffer.ts`. Storage and the recommender now share the patch without importing the recommender orchestrator into storage. Both recommender call sites retain the same offer terms and total.
+- After subtracting the stale conversion, load repair resolves the snapshot's stored offer terms and reapplies every saved-plan patch field: employer match/fixed funding, statutory subsidy flag, payout terms, confirmation, and fees. The instance schema does not persist the modal employer maximum; this repair uses the available snapshot terms.
+- The exact €200 offer + €200 candidate / 50% match / €0 fixed / €150 maximum case now loads with €200 conversion, 50% match, €0 fixed, and €100 employer funding. The whole repaired instance and `buildPortfolioFunding` result equal fresh application. The regression also pins fresh application on both sides of the employer maximum, manual-what-if preservation, and repeated-load idempotence; existing conservative repair controls remain.
+
 ## Validation
 
-- `npm run verify`: lint clean (`--max-warnings=0`); 276 frontend test files, 5209 passed + 1 skipped; both Worker typechecks passed; Worker suites passed (26 + 11 tests); production build and prerender succeeded.
-- Round 3 added 10 regression cases covering inline zero readiness, insurance provenance cleanup, saved-alternative repair/apply, idempotence, and conservative repair guards. All 165 tests in the three affected files pass.
+- `npm run verify`: lint clean (`--max-warnings=0`); 276 frontend test files, 5211 passed + 1 skipped; both Worker typechecks passed; Worker suites passed (26 + 11 tests); production build and prerender succeeded.
+- Round 4 added 2 load-path regression cases. All 124 tests across storage load paths, the recommender, and bAV candidate generation pass.
 - No oracle or baseline updates. Generated `public/og/` output discarded. No GitHub access or push.
 
 ## Scope
