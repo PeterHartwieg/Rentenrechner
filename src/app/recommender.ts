@@ -60,6 +60,7 @@
  *   score / rank candidates → materialise what-ifs.
  */
 
+import { bavOfferPatchForSavedPlan } from './recommenderCandidates/bavOffer'
 import { normaliseOfferedBav } from '../domain/normaliseOfferedBav'
 import type {
   GermanRules,
@@ -96,7 +97,6 @@ import {
   MAX_LIFETIME_YEARS,
   MC_PATHS,
   MAX_CANDIDATES,
-  monthlyEmployerContributionForOffer,
 } from './recommenderCandidates'
 
 // Re-export for consumers that import BavEmployerOfferInput / ResolvedBavOffer
@@ -1009,7 +1009,7 @@ function applyCandidateToAssumptions(
         // conversion nor its provenance carries into the generated amount.
         const current = normaliseOfferedBav(wsa.bav[idx])
         const storedConversion = current.monthlyGrossConversion ?? 0
-        const offerPatch = bavOfferPatchForSavedPlan(candidate, storedConversion + candidate.grossMonthlyEUR)
+        const offerPatch = bavOfferPatchForSavedPlan(candidate.bavOffer, storedConversion + candidate.grossMonthlyEUR)
         wsa.bav[idx] = {
           ...current,
           status: current.status === 'offered' ? 'active' : current.status,
@@ -1094,7 +1094,7 @@ function applyCandidateToAssumptions(
       monthlyOwnContribution: candidate.grossMonthlyEUR,
     } as AltersvorsorgedepotInstance)
   } else if (candidate.productId === 'bav') {
-    const offerPatch = bavOfferPatchForSavedPlan(candidate, candidate.grossMonthlyEUR)
+    const offerPatch = bavOfferPatchForSavedPlan(candidate.bavOffer, candidate.grossMonthlyEUR)
     wsa.bav.push({
       instanceId: newInstanceId('bav'),
       label: candidate.label,
@@ -1105,37 +1105,5 @@ function applyCandidateToAssumptions(
       ...offerPatch,
       monthlyGrossConversion: candidate.grossMonthlyEUR,
     } as BavInstance)
-  }
-}
-
-function bavOfferPatchForSavedPlan(
-  candidate: RecommendedCandidate,
-  totalMonthlyGrossConversion: number,
-): Partial<BavInstance> {
-  const offer = candidate.bavOffer
-  if (!offer) return {}
-  const cappedEmployerMonthly = monthlyEmployerContributionForOffer(
-    totalMonthlyGrossConversion,
-    offer,
-  )
-  const capWouldBind =
-    offer.monthlyCapEUR !== undefined &&
-    totalMonthlyGrossConversion * offer.employerMatchPercent + offer.fixedMonthlyEUR > offer.monthlyCapEUR
-  return {
-    statutoryMinimumSubsidyEnabled: false,
-    contractualMatchPercent: capWouldBind ? 0 : offer.employerMatchPercent,
-    contractualFixedMonthly: capWouldBind ? cappedEmployerMonthly : offer.fixedMonthlyEUR,
-    durchfuehrungsweg: offer.durchfuehrungsweg,
-    payoutMode: offer.payoutMode,
-    rentenfaktor: offer.rentenfaktor,
-    rentenfaktorConfirmed: offer.hasOffer,
-    fees: {
-      ...defaultAssumptions.bav.fees,
-      wrapperAssetFee: offer.effectiveCostAnnual,
-      fundAssetFee: 0,
-      contributionFee: 0,
-      fixedMonthlyFee: 0,
-      acquisitionCostPct: 0,
-    },
   }
 }

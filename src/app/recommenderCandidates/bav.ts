@@ -25,6 +25,8 @@ import { buildPortfolioFunding } from '../../engine/portfolioFunding'
 import { computeGrossMonthlyPayout } from '../../engine/payoutMath'
 import { afterTaxBavLumpSum, deriveBavLumpSumTaxMode } from '../../engine/bavPayout'
 import { newInstanceId } from '../workspaceIdentity'
+import { monthlyEmployerContributionForOffer, resolveBavOfferFromInstance } from './bavOffer'
+
 import {
   type CandidateDraft,
   type GeneratorContext,
@@ -33,43 +35,11 @@ import {
   synthesizeProductResult,
 } from './types'
 
+export { monthlyEmployerContributionForOffer } from './bavOffer'
+
 // ---------------------------------------------------------------------------
 // Internal bAV helpers
 // ---------------------------------------------------------------------------
-
-function clampFinite(value: number, min: number, max: number): number {
-  if (!Number.isFinite(value)) return min
-  return Math.min(max, Math.max(min, value))
-}
-
-export function monthlyEmployerContributionForOffer(
-  monthlyGrossConversion: number,
-  offer: ResolvedBavOffer,
-): number {
-  if (monthlyGrossConversion <= 0) return 0
-  const raw =
-    monthlyGrossConversion * offer.employerMatchPercent +
-    offer.fixedMonthlyEUR
-  return offer.monthlyCapEUR !== undefined ? Math.min(raw, offer.monthlyCapEUR) : raw
-}
-
-function resolveBavOfferFromInstance(target: BavInstance): ResolvedBavOffer {
-  const fees = target.fees ?? defaultAssumptions.bav.fees
-  return {
-    hasOffer: true,
-    standardAssumption: false,
-    employerMatchPercent: clampFinite(target.contractualMatchPercent ?? 0, 0, 5),
-    fixedMonthlyEUR: clampFinite(target.contractualFixedMonthly ?? 0, 0, 100_000),
-    effectiveCostAnnual: clampFinite(
-      (fees.wrapperAssetFee ?? 0) + (fees.fundAssetFee ?? 0),
-      0,
-      0.1,
-    ),
-    durchfuehrungsweg: target.durchfuehrungsweg ?? 'direktversicherung_3_63',
-    payoutMode: target.payoutMode ?? 'leibrente',
-    rentenfaktor: target.rentenfaktor ?? 30,
-  }
-}
 
 function offerForBavTarget(
   baseTarget: BavInstance,

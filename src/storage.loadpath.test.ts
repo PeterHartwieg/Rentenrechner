@@ -26,6 +26,9 @@ import {
 } from './storage'
 import { applyWhatIfToBaseline, forkBaselineScenario } from './app/portfolioState'
 import type { Workspace } from './domain/workspace'
+import { buildWhatIfFromCandidate, type RecommendedCandidate } from './app/recommender'
+import { buildPortfolioFunding } from './engine/portfolioFunding'
+import { de2026Rules } from './rules/de2026'
 
 // ---------------------------------------------------------------------------
 // localStorage mock
@@ -648,6 +651,72 @@ describe('F — transferEventKey export (shared with portfolio transfer collecti
 })
 
 describe('legacy offered bAV conversion (issue 349)', () => {
+  it.each(['recommender', 'manual'] as const)(
+    'restores employer terms after a doubled conversion crossed the offer cap (%s origin)',
+    (origin) => {
+      const workspace = makeValidV2Workspace()
+      const offer = workspace.baseline.assumptions.bav[0]
+      Object.assign(offer, {
+        status: 'offered', monthlyGrossConversion: 200,
+        contractualMatchPercent: 0.5, contractualFixedMonthly: 0,
+      })
+      const candidate: RecommendedCandidate = {
+        id: 'bav-offer', label: 'bAV-Angebot nutzen', productId: 'bav',
+        isNewInstance: false, targetInstanceId: offer.instanceId, grossMonthlyEUR: 200,
+        bavOffer: {
+          hasOffer: true, standardAssumption: false,
+          employerMatchPercent: 0.5, fixedMonthlyEUR: 0, monthlyCapEUR: 150,
+          effectiveCostAnnual: offer.fees.wrapperAssetFee + offer.fees.fundAssetFee,
+          durchfuehrungsweg: offer.durchfuehrungsweg, payoutMode: offer.payoutMode,
+          rentenfaktor: offer.rentenfaktor,
+        },
+        netCashOutEUR: 0, medianNettoRente: 0, lifetimeCash: 0,
+        flexibilityScore: 'medium',
+        flexibilityDetails: {
+          overall: 'medium', criteria: {
+            cancel: 'restricted', switchAsset: 'restricted',
+            switchProduct: 'restricted', adjustContribution: 'restricted',
+          },
+        },
+        effort: { score: 50, level: 'medium', details: [] },
+        riskScore: 0, capitalAtRetirement: 0, netCapitalAtRetirement: 0,
+        payoutOnly: false, riskScoreP10: 0, safetyNettoRenteP10: 0, riskScoreMcPaths: 0,
+        atoms: [], wunschnettoFloorMet: true, cappedToRemaining: false,
+      }
+      const fresh = buildWhatIfFromCandidate(workspace.baseline, candidate)
+      expect(fresh.assumptions.bav[0]).toMatchObject({
+        monthlyGrossConversion: 200, contractualMatchPercent: 0.5, contractualFixedMonthly: 0,
+      })
+      // Reproduce the old application: include the offer's stale €200 when
+      // materialising the employer maximum, which binds only at €400.
+      const legacy = buildWhatIfFromCandidate({
+        ...workspace.baseline,
+        assumptions: { ...workspace.baseline.assumptions, bav: [{ ...offer, status: 'active' }] },
+      }, candidate)
+      legacy.origin = origin
+      legacy.derivedFromBaselineSnapshot = fresh.derivedFromBaselineSnapshot
+      expect(legacy.assumptions.bav[0]).toMatchObject({
+        monthlyGrossConversion: 400, contractualMatchPercent: 0, contractualFixedMonthly: 150,
+      })
+      workspace.whatIfs = [legacy]
+      saveWorkspace(workspace)
+      const loaded = loadSavedWorkspace()!
+      expect(loaded).not.toBeNull()
+      const repaired = loaded.whatIfs[0]
+      expect(repaired.assumptions.bav[0]).toEqual(
+        (origin === 'recommender' ? fresh : legacy).assumptions.bav[0],
+      )
+      const funding = buildPortfolioFunding({ ...loaded, baseline: repaired }, de2026Rules)
+      expect(funding.bavByInstanceId[offer.instanceId].monthlyEmployerContribution)
+        .toBe(origin === 'recommender' ? 100 : 150)
+      expect(funding).toEqual(buildPortfolioFunding({
+        ...workspace, baseline: origin === 'recommender' ? fresh : legacy,
+      }, de2026Rules))
+      expect(parseWorkspaceJson(buildWorkspaceJson(loaded))).toEqual(loaded)
+      expect(legacy.assumptions.bav[0].contractualFixedMonthly).toBe(150)
+    },
+  )
+
   it.each(['recommender', 'manual'] as const)(
     'repairs a saved double-count only for recommender alternatives (%s origin)',
     (origin) => {

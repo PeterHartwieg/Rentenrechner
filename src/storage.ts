@@ -1,3 +1,4 @@
+import { bavOfferPatchForSavedPlan, resolveBavOfferFromInstance } from './app/recommenderCandidates/bavOffer'
 import { normaliseOfferedBav } from './domain/normaliseOfferedBav'
 import type { ContributionInput, PersonalProfile, ScenarioAssumptions } from './domain'
 import type { Workspace, WorkspaceAssumptionsV2, Scenario } from './domain/workspace'
@@ -731,6 +732,13 @@ export function parseWorkspaceJson(raw: string): Workspace | null {
         const activated = whatIf.assumptions.bav.find(instance => instance.instanceId === offer.instanceId)
         if (activated?.status === 'active' && activated.monthlyGrossConversion >= offer.monthlyGrossConversion) {
           activated.monthlyGrossConversion -= offer.monthlyGrossConversion
+          // The old total also determined whether employer funding became a
+          // fixed capped amount. Restore all saved-plan fields from the
+          // snapshot's offer terms using the same patch as fresh application.
+          Object.assign(activated, bavOfferPatchForSavedPlan(
+            resolveBavOfferFromInstance(offer),
+            activated.monthlyGrossConversion,
+          ))
         }
       }
     }
