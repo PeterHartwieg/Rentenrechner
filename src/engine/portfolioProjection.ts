@@ -544,7 +544,6 @@ export function singletonViewOfWorkspace(
   workspace: Workspace,
   defaultsForEmptySlots: Pick<
     ScenarioAssumptions,
-  ReturnScenario,
     'bav' | 'etf' | 'insurance' | 'basisrente' | 'altersvorsorgedepot' | 'riester'
   >,
 ): ScenarioAssumptions {

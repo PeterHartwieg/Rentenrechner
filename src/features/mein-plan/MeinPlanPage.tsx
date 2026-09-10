@@ -1276,6 +1276,8 @@ function formatNote(note: SensitivityRowResult['note']): string | null {
       return 'ETF-Vertrag vorhanden, aber beitragsfrei — Aufstockung würde einen neuen aktiven Vertrag erfordern.'
     case 'retirement_age_clamped':
       return 'Renteneintritt auf das Modell-Endalter − 1 begrenzt.'
+    case 'contract_returns_fixed':
+      return 'Vertragsspezifische Renditen bleiben in allen Szenarien unverändert; nur Verträge ohne eigene Rendite folgen dem Szenariowert.'
     case 'unchanged':
       // 'unchanged' has no extra copy; the ±0 €/Mon. delta chip is
       // self-explanatory adjacent to the condition text.

@@ -21,7 +21,7 @@ import {
   type ContractDecision,
 } from '../../app/contractDecisions'
 import { createDecisionSimulationCache } from '../../app/optimiereVorsorge'
-import { formatCurrency } from '../../utils/format'
+import { formatCurrency, formatPercent } from '../../utils/format'
 
 interface Props {
   workspace: Workspace
@@ -103,6 +103,11 @@ export function VertragScenarioTable({
         </h2>
       </div>
 
+      {instance.expectedReturn !== undefined && (
+        <p className="vertrag-scenario-detail">
+          Rendite {formatPercent(instance.expectedReturn, 1)} p. a. (vertragsspezifisch)
+        </p>
+      )}
       {rows.length > 0 ? (
         <div className="vertrag-table-scroll" role="region" aria-label="Vertragsszenarien" tabIndex={0}>
           <table className="vertrag-scenario-table">

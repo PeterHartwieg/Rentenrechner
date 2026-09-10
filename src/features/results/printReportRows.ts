@@ -352,8 +352,9 @@ export const PRINT_METHODE_BULLETS: ReadonlyArray<PrintMethodeBullet> = [
     body:
       `Drei Szenarien (${PRINT_RENDITEN}) als nominale, langfristige Marktrenditen p. a. vor Inflation und Kosten; ` +
       'Inflation wird separat abgezogen. Modellannahmen, orientiert an langfristigen Aktienmarktrenditen, ' +
-      'nicht extern validiert. Alle Produkte rechnen je Szenario mit derselben Marktrendite; ' +
-      'das Altersvorsorgedepot mischt sie mit seinem Sicherheitsanteil und Gleitpfad.',
+      'nicht extern validiert. Ohne vertragsspezifische Rendite rechnen Produkte je Szenario mit derselben Marktrendite; ' +
+      'im Plan ersetzt eine eigene Vertragsrendite den Szenariowert in allen drei Szenarien. ' +
+      'Das Altersvorsorgedepot mischt die jeweilige Marktrendite mit seinem Sicherheitsanteil und Gleitpfad.',
   },
   {
     label: 'Steuermodell',
@@ -527,6 +528,7 @@ export interface PrintVertragProvenanceRow {
 /** Per-contract printed block (one per instance in combine-mode). */
 export interface PrintVertragBlock {
   readonly instanceId: string
+  readonly expectedReturn?: number
   /** Display name (instance.label fallback to product meta). */
   readonly title: string
   /** Product family label (e.g. "ETF-Depot"). */
@@ -627,6 +629,7 @@ export function buildPrintVertragBlocks({
       const statusLabel = inst.status === 'paid_up' ? 'beitragsfrei' : undefined
       blocks.push({
         instanceId: inst.instanceId,
+        expectedReturn: inst.expectedReturn,
         title,
         productLabel,
         statusLabel,
@@ -756,6 +759,7 @@ export function buildPrintWendepunkteRows({
 
 type SlotInstance = {
   instanceId: string
+  expectedReturn?: number
   label?: string
   status: InstanceCommon['status']
   contractStartYear?: number
@@ -1126,6 +1130,8 @@ function formatSensitivityNote(note: SensitivityNote | undefined): string | null
       return 'ETF-Vertrag vorhanden, aber beitragsfrei — Aufstockung würde einen neuen aktiven Vertrag erfordern.'
     case 'retirement_age_clamped':
       return 'Renteneintritt auf das Modell-Endalter − 1 begrenzt.'
+    case 'contract_returns_fixed':
+      return 'Vertragsspezifische Renditen bleiben in allen Szenarien unverändert; nur Verträge ohne eigene Rendite folgen dem Szenariowert.'
     case 'unchanged':
       return null
     default: {

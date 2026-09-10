@@ -270,7 +270,7 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
   // Section 2: Per-instance detail (one row per instance × scenario).
   lines.push('')
   lines.push('Mein Plan — Detail je Instanz')
-  lines.push(csvRow('Instanz', 'Produkt', 'Szenario', 'Nettoaufwand mtl. (EUR)', 'Beitrag mtl. (EUR)', 'Kapital (EUR)', 'Brutto-Rente mtl. (EUR)', 'Netto-Rente mtl. (EUR)', 'Kosten gesamt (EUR)', 'Datenqualität'))
+  lines.push(csvRow('Instanz', 'Produkt', 'Szenario', 'Nettoaufwand mtl. (EUR)', 'Beitrag mtl. (EUR)', 'Kapital (EUR)', 'Brutto-Rente mtl. (EUR)', 'Netto-Rente mtl. (EUR)', 'Kosten gesamt (EUR)', 'Datenqualität', 'Rendite p. a.'))
   for (const row of projection.summary) {
     lines.push(csvRow(
       row.instanceId,
@@ -283,6 +283,7 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
       blocked ? '' : n(row.netMonthlyPayout),
       n(row.totalFees),
       formatExportProvenance(undefined, row.inputConfidence),
+      `${n(row.annualReturn * 100)} %`,
     ))
   }
 
@@ -291,7 +292,7 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
   // `perInstanceTaxModes` is supplied (otherwise blank, never throws).
   lines.push('')
   lines.push('Jahres-Cashflows je Instanz')
-  lines.push(csvRow('Instanz', 'Produkt', 'Szenario', 'Alter', 'Nettoaufwand p.a. (EUR)', 'Beitrag p.a. (EUR)', 'AG-Anteil p.a. (EUR)', 'Gebühren p.a. (EUR)', 'Kum. Gebühren (EUR)', 'Kapital (EUR)', 'Kapital n. St. (EUR)', 'Reales Kapital (EUR)', 'Real n. St. (EUR)'))
+  lines.push(csvRow('Instanz', 'Produkt', 'Szenario', 'Alter', 'Nettoaufwand p.a. (EUR)', 'Beitrag p.a. (EUR)', 'AG-Anteil p.a. (EUR)', 'Gebühren p.a. (EUR)', 'Kum. Gebühren (EUR)', 'Kapital (EUR)', 'Kapital n. St. (EUR)', 'Reales Kapital (EUR)', 'Real n. St. (EUR)', 'Rendite p. a.'))
   for (const row of projection.yearly) {
     lines.push(csvRow(
       row.instanceId,
@@ -307,6 +308,7 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
       nn(row.afterTaxBalance),
       n(row.realBalance),
       nn(row.realAfterTaxBalance),
+      `${n(row.annualReturn * 100)} %`,
     ))
   }
 

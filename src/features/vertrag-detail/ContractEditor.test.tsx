@@ -274,3 +274,22 @@ it('saves a contract return as a ratio and clearing it restores the scenario val
   submit()
   expect(onSave.mock.lastCall![0].patch).toHaveProperty('expectedReturn', undefined)
 })
+
+
+it('clears an existing return through the saved plan and keeps its neighbour unchanged', () => {
+  const workspace = structuredClone(defaultWorkspace)
+  const base = INVENTORY_PRODUCT_REGISTRY.etf.createDefault(2026, 1, () => 'etf-return')
+  workspace.baseline.assumptions.etf = [
+    { ...base, expectedReturn: 0.025 },
+    { ...base, instanceId: 'etf-neighbour', expectedReturn: 0.07 },
+  ]
+  saveWorkspace(workspace)
+  render(<VertragBearbeitenPage instanceId="etf-return" navigate={vi.fn()} />)
+  const input = screen.getByRole('spinbutton', { name: 'Erwartete Rendite (optional) (%)' })
+  expect(input).toHaveValue(2.5)
+  type(input, '')
+  fireEvent.click(screen.getByRole('button', { name: 'Änderungen übernehmen' }))
+  const saved = loadSavedWorkspace()!.baseline.assumptions.etf
+  expect(saved[0]).not.toHaveProperty('expectedReturn')
+  expect(saved[1]).toEqual(workspace.baseline.assumptions.etf[1])
+})

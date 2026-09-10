@@ -54,6 +54,7 @@ import type { CombinedResult } from './portfolioCombine'
  * Carries full-precision floats; CSV / PDF surfaces format on output.
  */
 export interface ExportSummaryRow {
+  readonly annualReturn: number
   /** Combine-mode: source instance id. Compare-mode: undefined. */
   readonly instanceId?: string
   readonly productId: ProductId
@@ -86,6 +87,7 @@ export interface ExportSummaryRow {
  * or per instance × scenario × year in combine.
  */
 export interface ExportYearlyRow {
+  readonly annualReturn: number
   /** Combine-mode: source instance id. Compare-mode: undefined. */
   readonly instanceId?: string
   readonly productId: ProductId
@@ -206,6 +208,7 @@ export function buildCompareExportProjection(
 
   for (const r of opts.products) {
     summary.push({
+      annualReturn: r.annualReturn,
       productId: r.productId,
       label: r.label,
       scenarioId: r.scenarioId,
@@ -229,6 +232,7 @@ export function buildCompareExportProjection(
           ? afterTax * (row.realBalance / row.balance)
           : null
       yearly.push({
+        annualReturn: r.annualReturn,
         productId: r.productId,
         label: r.label,
         scenarioId: r.scenarioId,
@@ -311,6 +315,7 @@ export function buildCombineExportProjection(
         r.netMonthlyPayout
 
       summary.push({
+        annualReturn: r.annualReturn,
         instanceId,
         productId: r.productId,
         label: r.label,
@@ -340,6 +345,7 @@ export function buildCombineExportProjection(
             ? afterTax * (row.realBalance / row.balance)
             : null
         yearly.push({
+          annualReturn: r.annualReturn,
           instanceId,
           productId: r.productId,
           label: r.label,

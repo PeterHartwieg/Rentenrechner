@@ -1344,7 +1344,8 @@ export interface ContractDraftPatch {
  *    instance holds (the existing value, or the registry default for a new
  *    contract) and the status map records `'unknown'`. The evidence key is
  *    *deleted*, because `EvidenceState` has no unknown variant and a stale
- *    `model_estimate` would misreport the answer.
+ *    `model_estimate` would misreport the answer. Optional `clearOnUnknown`
+ *    fields instead emit undefined to remove their override when applied.
  *  - **A typed 0 is a real answer.** It writes 0 with status `'entered'`.
  *  - **Neighbours are untouched.** Only the fields in the spec table are
  *    written; every other status key on the instance survives.
