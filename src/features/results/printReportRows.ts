@@ -336,50 +336,64 @@ const PRINT_RENDITEN = ['konservativ', 'basis', 'optimistisch'].map((id) => {
 }).join(', ')
 
 /**
- * Static methodology bullets shared by compare-mode AND combine-mode print.
+ * Methodology bullets shared by compare-mode AND combine-mode print.
  * Reuses the same five themes as the web /methode page so the print is a
  * faithful sub-summary, not a paraphrase: § 1 Renditeannahmen, § 2 Steuer-
  * Modell, § 3 Sozialversicherung, § 4 Statutorische Werte, § 5 Was wir
  * bewusst nicht modellieren. Kept terse — the print must fit ≤ 1 A4 page.
  *
+ * The Renditeannahmen bullet names the three standard scenarios from
+ * `defaultAssumptions`, never the live set — the print's Rentenszenarien
+ * table already lists the live set (a user-defined `custom` scenario
+ * included). When the live set does contain a `custom` scenario, the bullet
+ * says so instead of silently describing fewer scenarios than the table
+ * shows (issue #408).
+ *
  * `RULES_YEAR` is intentionally NOT interpolated here — the print disclaimer
  * already opens with "Stand 2026" copy, and the print Methode block points
  * the user to `/methode` for the year-bearing tables.
  */
-export const PRINT_METHODE_BULLETS: ReadonlyArray<PrintMethodeBullet> = [
-  {
-    label: 'Renditeannahmen',
-    body:
-      `Drei Szenarien (${PRINT_RENDITEN}) als nominale, langfristige Marktrenditen p. a. vor Inflation und Kosten; ` +
-      'Inflation wird separat abgezogen. Modellannahmen, orientiert an langfristigen Aktienmarktrenditen, ' +
-      'nicht extern validiert. Alle Produkte rechnen je Szenario mit derselben Marktrendite; ' +
-      'das Altersvorsorgedepot mischt sie mit seinem Sicherheitsanteil und Gleitpfad.',
-  },
-  {
-    label: 'Steuermodell',
-    body:
-      'Grundtarif § 32a EStG mit Soli; Kapitalerträge nach § 20 / § 32d EStG mit Abgeltungsteuer plus Sparer-Pauschbetrag; ' +
-      'nachgelagerte Besteuerung der Renten nach § 22 EStG (Kohortenwerte).',
-  },
-  {
-    label: 'Sozialversicherung',
-    body:
-      'KVdR mit Freibetrag § 226 SGB V (Versorgungsbezüge) bzw. freiwillige GKV § 240 SGB V. ' +
-      'KV/PV-Apportionierung über die Beitragsbemessungsgrenze (modellierte Konvention).',
-  },
-  {
-    label: 'Statutorische Werte',
-    body:
-      'BBG RV/KV, Aktueller Rentenwert, Bezugsgröße, Riester-Zulagen, Basisrenten-Höchstbetrag ' +
-      'aus dem aktiven Regel-Modul (src/rules/) — jährlich nach BMF / BMAS aktualisiert.',
-  },
-  {
-    label: 'Bewusst nicht modelliert',
-    body:
-      'Garantien einzelner Versicherungsverträge vor 2005, Auslandsbezug / Erbschaften, politische Risiken, ' +
-      'individuelle Sterbetafeln. Annahmen sind Schätzungen — siehe Hinweise und Grenzen unten.',
-  },
-]
+export function buildPrintMethodeBullets(
+  liveReturnScenarios: ScenarioAssumptions['returnScenarios'],
+): ReadonlyArray<PrintMethodeBullet> {
+  const customClause = liveReturnScenarios.some((s) => s.id === 'custom')
+    ? ', ergänzt um ein eigenes Szenario'
+    : ''
+  return [
+    {
+      label: 'Renditeannahmen',
+      body:
+        `Drei Standardszenarien (${PRINT_RENDITEN})${customClause} als nominale, langfristige Marktrenditen p. a. vor Inflation und Kosten; ` +
+        'Inflation wird separat abgezogen. Modellannahmen, orientiert an langfristigen Aktienmarktrenditen, ' +
+        'nicht extern validiert. Alle Produkte rechnen je Szenario mit derselben Marktrendite; ' +
+        'das Altersvorsorgedepot mischt sie mit seinem Sicherheitsanteil und Gleitpfad.',
+    },
+    {
+      label: 'Steuermodell',
+      body:
+        'Grundtarif § 32a EStG mit Soli; Kapitalerträge nach § 20 / § 32d EStG mit Abgeltungsteuer plus Sparer-Pauschbetrag; ' +
+        'nachgelagerte Besteuerung der Renten nach § 22 EStG (Kohortenwerte).',
+    },
+    {
+      label: 'Sozialversicherung',
+      body:
+        'KVdR mit Freibetrag § 226 SGB V (Versorgungsbezüge) bzw. freiwillige GKV § 240 SGB V. ' +
+        'KV/PV-Apportionierung über die Beitragsbemessungsgrenze (modellierte Konvention).',
+    },
+    {
+      label: 'Statutorische Werte',
+      body:
+        'BBG RV/KV, Aktueller Rentenwert, Bezugsgröße, Riester-Zulagen, Basisrenten-Höchstbetrag ' +
+        'aus dem aktiven Regel-Modul (src/rules/) — jährlich nach BMF / BMAS aktualisiert.',
+    },
+    {
+      label: 'Bewusst nicht modelliert',
+      body:
+        'Garantien einzelner Versicherungsverträge vor 2005, Auslandsbezug / Erbschaften, politische Risiken, ' +
+        'individuelle Sterbetafeln. Annahmen sind Schätzungen — siehe Hinweise und Grenzen unten.',
+    },
+  ]
+}
 
 // ---------------------------------------------------------------------------
 // "Zusammensetzung & Sensitivität" — combine-mode composition table rows

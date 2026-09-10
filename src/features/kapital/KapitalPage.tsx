@@ -12,6 +12,7 @@ import { projectGrvContributionTimeline } from '../../engine/grv'
 import { BreakEvenChart } from '../results/BreakEvenChart'
 import { buildLifecycleLineSeries } from '../results/breakEvenSeries'
 import { LIFECYCLE_HORIZON_AGE } from '../results/lifecycleHorizon'
+import { VergleichRenditeStrip } from '../vergleich/VergleichRenditeStrip'
 import { KapitalFilterChips } from './KapitalFilterChips'
 import { KapitalWendepunkteTable } from './KapitalWendepunkteTable'
 import { buildWendepunkte } from './wendepunkte'
@@ -74,11 +75,27 @@ function readQuelleParam(): string | null {
   }
 }
 
+/** Read the incoming scenario only on mount; later choices are local UI state. */
+function readScenarioParam(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return new URLSearchParams(window.location.search).get('scenario')
+  } catch {
+    return null
+  }
+}
+
 export function KapitalPage({ navigate }: Props) {
   // ---- 1. Hook prelude — runs unconditionally. ----------------------------
   const portfolioState = usePortfolioState()
   const workspace = portfolioState.workspace
   const compareState = useCalculatorState()
+  const [pickedScenarioId, setPickedScenarioId] = useState(readScenarioParam)
+  // Validate independently: the comparison and plan can have different sets.
+  const compareScenarios = compareState.assumptions.returnScenarios
+  const combineScenarios = workspace.baseline.assumptions.returnScenarios
+  const compareScenarioId = resolveScenarioId(compareScenarios, pickedScenarioId)
+  const scenarioId = resolveScenarioId(combineScenarios, pickedScenarioId)
 
   // Both simulations run on every render (cheap, memoised). The unused one
   // is dropped in the render branch below.
@@ -86,10 +103,7 @@ export function KapitalPage({ navigate }: Props) {
   const compareSimulation = useSimulationResult(
     compareState.profile,
     compareState.assumptions,
-    // Compare-mode uses its own basis-pinned scenario id; we deliberately
-    // don't share `combineSimulation`'s selection because compare and
-    // combine workspaces have independent scenario sets.
-    pickBasisScenarioId(compareState.assumptions.returnScenarios),
+    compareScenarioId,
   )
 
   // Doc title — `/kapital` is not in `publicRouteRegistry` (it's a tool-
@@ -106,10 +120,15 @@ export function KapitalPage({ navigate }: Props) {
   const fromVergleich = useMemo(() => readQuelleParam() === 'vergleich', [])
   const isCombine = workspace.mode === 'combine' && !fromVergleich
 
-  const scenarioId = useMemo(() => {
-    const scenarios = workspace.baseline.assumptions.returnScenarios
-    return pickBasisScenarioId(scenarios)
-  }, [workspace.baseline.assumptions.returnScenarios])
+  const scenarios = isCombine ? combineScenarios : compareScenarios
+  const selectedScenarioId = isCombine ? scenarioId : compareScenarioId
+
+  function selectScenario(id: string) {
+    setPickedScenarioId(id)
+    const url = new URL(window.location.href)
+    url.searchParams.set('scenario', id)
+    window.history.replaceState(window.history.state, '', url)
+  }
 
   const combineChipBundle = useMemo(() => {
     if (!isCombine) return { options: [] as KapitalChipOption[] }
@@ -123,9 +142,7 @@ export function KapitalPage({ navigate }: Props) {
   const compareChipOptions = useMemo(() => {
     if (isCombine) return [] as KapitalChipOption[]
     // `simulation.products` is flat — one entry per (product × scenario).
-    // Filter to the basis scenario so the chart and Wendepunkte align with
-    // the single-scenario picker convention used elsewhere in the redesign.
-    const compareScenarioId = pickBasisScenarioId(compareState.assumptions.returnScenarios)
+    // Chart and Wendepunkte consume the same resolved scenario results.
     return buildCompareChipOptions({
       assumptions: compareState.assumptions,
       productResults: compareSimulation.simulation.products.filter(
@@ -137,6 +154,7 @@ export function KapitalPage({ navigate }: Props) {
     })
   }, [
     isCombine,
+    compareScenarioId,
     compareState.assumptions,
     compareSimulation.simulation.products,
     compareState.profile.age,
@@ -264,6 +282,12 @@ export function KapitalPage({ navigate }: Props) {
             </a>
           </div>
 
+          <VergleichRenditeStrip
+            scenarios={scenarios}
+            selectedId={selectedScenarioId}
+            onSelect={selectScenario}
+          />
+
           {chipOptions.length === 0 ? (
             // PR #344 R2 (Codex CX3): retarget to Schritt 2. The empty-state copy
             // names "Verträge oder Produkte" — the user needs the contract editor,
@@ -340,4 +364,11 @@ function pickBasisScenarioId(
   scenarios: ReadonlyArray<{ id: string }>,
 ): string {
   return scenarios.find((s) => s.id === 'basis')?.id ?? scenarios[0]?.id ?? 'basis'
+}
+
+function resolveScenarioId(
+  scenarios: ReadonlyArray<{ id: string }>,
+  pickedId: string | null,
+): string {
+  return scenarios.find((s) => s.id === pickedId)?.id ?? pickBasisScenarioId(scenarios)
 }

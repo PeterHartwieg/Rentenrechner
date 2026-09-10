@@ -644,7 +644,7 @@ describe('MeinPlanPage — default overview', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Gemeinsame Entnahmedauer ändern' }))
     expect(navigate).toHaveBeenCalledWith(ROUTES.eingaben, undefined, '#renteneintritt')
     fireEvent.click(screen.getByRole('button', { name: 'Kapital im Verlauf ansehen →' }))
-    expect(navigate).toHaveBeenLastCalledWith(ROUTES.kapital)
+    expect(navigate).toHaveBeenLastCalledWith(ROUTES.kapital, '?scenario=basis')
     fireEvent.click(screen.getByRole('button', { name: '← Zurück zum Plan' }))
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Deine Rente im Überblick')
   })
@@ -760,5 +760,35 @@ describe('MeinPlanPage — default overview', () => {
     expect(document.querySelectorAll('.mein-plan-sens-row')).toHaveLength(0)
     fireEvent.click(screen.getByRole('button', { name: reason.label }))
     expect(navigate).toHaveBeenCalledWith(ROUTES.eingaben, undefined, '#renteneintritt')
+  })
+})
+
+
+describe('MeinPlanPage — Kapital scenario drill-in', () => {
+  it('carries the selected scenario from the drawdown-horizon readiness chip', () => {
+    const navigate = vi.fn()
+    render(<MeinPlanPage {...buildOverviewProps()} selectedScenarioId="konservativ" navigate={navigate} />)
+    fireEvent.click(screen.getByRole('button', { name: /Entnahmen laufen bis zum gemeinsam angenommenen Alter/ }))
+    expect(navigate).toHaveBeenCalledWith(ROUTES.kapital, '?scenario=konservativ', undefined)
+  })
+
+  it('carries the selected scenario in the legacy href and SPA navigation', () => {
+    const props = buildProps()
+    const navigate = vi.fn()
+    render(<MeinPlanPage {...props} selectedScenarioId="konservativ" navigate={navigate} />)
+    const link = screen.getByRole('link', { name: 'Kapital im Verlauf →' })
+    expect(link).toHaveAttribute('href', '/kapital?scenario=konservativ')
+    fireEvent.click(link, { ctrlKey: true })
+    expect(navigate).not.toHaveBeenCalled()
+    fireEvent.click(link)
+    expect(navigate).toHaveBeenCalledWith(ROUTES.kapital, '?scenario=konservativ')
+  })
+
+  it('carries the selected scenario from the overview duration view', () => {
+    const navigate = vi.fn()
+    render(<MeinPlanPage {...buildOverviewProps()} selectedScenarioId="konservativ" navigate={navigate} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Dauer ansehen →' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Kapital im Verlauf ansehen →' }))
+    expect(navigate).toHaveBeenCalledWith(ROUTES.kapital, '?scenario=konservativ')
   })
 })
