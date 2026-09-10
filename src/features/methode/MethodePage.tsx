@@ -297,6 +297,21 @@ export function MethodePage({ navigate }: Props) {
                   ))}
                 </tbody>
               </table>
+              <p className="methode-section-lead">
+                Die Szenariorendite ist die angenommene Rendite des risikobehafteten
+                Markts und gilt je Szenario für alle Produkte gleichermaßen.
+                Unterschiede im Ergebnis entstehen durch Kosten, Beitragsgarantien,
+                Steuern in Anspar- und Auszahlungsphase, Zulagen und Arbeitgeberzuschüsse
+                sowie die Auszahlungsform und beim Altersvorsorgedepot zusätzlich durch
+                die eigene Aufteilung zwischen Risiko- und Sicherheitsanteil, die
+                Rendite des Sicherheitsanteils und den gesetzlichen Glidepath.
+                Im Vergleich wird für alle Produkte derselbe monatliche Nettoaufwand
+                angesetzt, soweit ihre jeweiligen Beitrags- und Fördergrenzen es zulassen;
+                beim Altersvorsorgedepot ist der Eigenbeitrag auf die im Modell hinterlegte
+                Vertragsobergrenze begrenzt.
+                So siehst du innerhalb dieser Grenzen, welcher Mantel bei gleichem
+                Nettoaufwand und gleichem Markt im Modell mehr übrig lässt.
+              </p>
 
               {/* Live Monte-Carlo panel (relocated from Vergleich pane dispatcher
                   in PR 9). Renders the user's saved compare-mode simulation
@@ -622,6 +637,8 @@ export function MethodePage({ navigate }: Props) {
                   Individuelle Versicherungsverträge mit garantierten
                   Rechnungszinsen oder Bestandstarifen vor 2005 — der Rechner
                   unterstellt die statutorischen Voreinstellungen.
+                  Klassische Tarife mit Garantiezins und Überschussbeteiligung
+                  bildet das Modell derzeit nicht ab.
                 </li>
                 <li>
                   Steuerliche Auswirkungen von Auslandsbezug, doppelter
