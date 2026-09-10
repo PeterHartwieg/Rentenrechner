@@ -1,3 +1,4 @@
+import './VergleichRenditeStrip.css'
 import type { ReturnScenario } from '../../domain'
 import { formatPercent } from '../../utils/format'
 

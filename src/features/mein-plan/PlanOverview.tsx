@@ -87,7 +87,9 @@ export function PlanOverview(props: PlanOverviewProps) {
           </ul>
         </div>}
         {!!summary?.readiness.assumptions.length && <ul className="plan-overview__assumptions" aria-label="Verwendete Annahmen">
-          {summary.readiness.assumptions.map((reason, index) => <li key={`${reason.code}-${reason.instanceId ?? index}`}>{reason.label}</li>)}
+          {summary.readiness.assumptions.map((reason, index) => <li key={`${reason.code}-${reason.instanceId ?? index}`}>
+            <button type="button" className="plan-overview__link" onClick={() => props.onNavigateReason(reason)}>{reason.label}</button>
+          </li>)}
         </ul>}
         {limited.length > 0 && <div className="plan-overview__notice">
           <p>{limited.length === 1 ? <>{limited[0].label}: <PlanDurationText duration={limited[0].duration} />.</> : <>{limited.length} Auszahlungen enden zeitlich.</>} Danach fällt dieser Teil weg.</p>
