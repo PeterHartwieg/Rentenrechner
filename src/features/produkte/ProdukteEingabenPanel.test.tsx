@@ -28,6 +28,8 @@ import { simulateRetirementComparison } from '../../engine/simulate'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { INVENTORY_PRODUCT_REGISTRY } from '../inventory/inventoryProductRegistry'
 import { defaultWorkspace } from '../../storage'
+import { selectResultReadiness } from '../../app/resultReadiness'
+import { runCombineSimulation } from '../../app/useCombineSimulation'
 import { addInstanceToWorkspace, estimateEpFromYears } from '../inventory/inventoryHelpers'
 import { ProdukteEingabenPanel, type ProdukteEingabenPanelProps } from './ProdukteEingabenPanel'
 
@@ -709,20 +711,37 @@ describe('ProdukteEingabenPanel — legacy EP seed notice', () => {
 })
 
 // ---------------------------------------------------------------------------
-// #409 — Typing Entgeltpunkte on the Produkte-row GRV disclosure stamps the
-// reserved scenario-level inputStatus key as 'entered'. The legacy-EP-seed
-// detector suppresses on that status, so the stamp must survive both mounts:
-// compare-mode writes it straight onto the assumptions, combine-mode's GRV
-// override wrapper must forward it onto the workspace patch.
+// #409 — Direct Entgeltpunkte edits select the points method and replace stale
+// unknown statuses in both mounts, restoring readiness and honest provenance.
 // ---------------------------------------------------------------------------
 
-describe('ProdukteEingabenPanel — Entgeltpunkte input stamps inputStatus (#409)', () => {
+describe('ProdukteEingabenPanel — Entgeltpunkte state transition (#409)', () => {
   const EP_STATUS_KEY = 'statutoryPension.currentEntgeltpunkte' as const
+  const GROSS_STATUS_KEY = 'statutoryPension.manualMonthlyGross' as const
 
-  it('compare: typing Entgeltpunkte stamps the reserved inputStatus key on the assumptions', () => {
+  function skippedPension() {
+    return {
+      ...structuredClone(defaultAssumptions.statutoryPension),
+      manualMonthlyGross: null,
+      pensionEntryMethod: { kind: 'skipped' as const },
+    }
+  }
+
+  const skippedStatus = {
+    [EP_STATUS_KEY]: 'unknown' as const,
+    [GROSS_STATUS_KEY]: 'unknown' as const,
+    'profile.age': 'entered' as const,
+  }
+
+  it('compare: typing Entgeltpunkte replaces skipped state with entered points', () => {
     const onAssumptionsChange = vi.fn()
+    const assumptions = {
+      ...structuredClone(defaultAssumptions),
+      statutoryPension: skippedPension(),
+      inputStatus: { ...skippedStatus },
+    }
     const { getByRole, getByLabelText } = render(
-      <ProdukteEingabenPanel {...defaultProps({ onAssumptionsChange })} />,
+      <ProdukteEingabenPanel {...comparePropsFor(assumptions, { onAssumptionsChange })} />,
     )
     fireEvent.click(getByRole('button', { name: 'Manuell überschreiben' }))
     // The NumberField suffix ("EP") is part of the label text, hence the regex.
@@ -733,20 +752,26 @@ describe('ProdukteEingabenPanel — Entgeltpunkte input stamps inputStatus (#409
     const updater = onAssumptionsChange.mock.calls[0]![0] as (
       prev: ScenarioAssumptions,
     ) => ScenarioAssumptions
-    const next = updater(defaultAssumptions)
+    const next = updater(assumptions)
     expect(next.statutoryPension.currentEntgeltpunkte).toBe(25.5)
     expect(next.inputStatus?.[EP_STATUS_KEY]).toBe('entered')
+    expect(next.statutoryPension.pensionEntryMethod).toEqual({ kind: 'points', entgeltpunkte: 25.5 })
+    expect(next.inputStatus).not.toHaveProperty(GROSS_STATUS_KEY)
+    expect(next.inputStatus?.['profile.age']).toBe('entered')
+    expect(assumptions.inputStatus).toEqual(skippedStatus)
   })
 
-  it('combine: typing Entgeltpunkte stamps the reserved inputStatus key on the workspace patch', () => {
+  it('combine: typing Entgeltpunkte replaces skipped state and unblocks household readiness', () => {
+    const ws = structuredClone(defaultWorkspace)
+    ws.baseline.assumptions.statutoryPension = skippedPension()
+    ws.baseline.assumptions.inputStatus = { ...skippedStatus }
+    const before = selectResultReadiness(ws, runCombineSimulation(ws, activeRules))
+    expect(before.blocking.map((reason) => reason.code)).toContain('pension-entry-skipped')
     const onPatchBaseline = vi.fn()
-    const statutoryPensionResult = {
-      projectedEntgeltpunkte: 50.25,
-      grossMonthlyPension: 2_100,
-    } as SimulationResult['statutoryPension']
+    const statutoryPensionResult = makeSimulation().statutoryPension
     const { getByRole, getByLabelText } = render(
       <ProdukteEingabenPanel
-        {...makeCombineProps({ onPatchBaseline, statutoryPensionResult })}
+        {...makeCombineProps({ baseline: ws.baseline, assumptions: ws.baseline.assumptions, onPatchBaseline, statutoryPensionResult })}
       />,
     )
     fireEvent.click(getByRole('button', { name: 'Manuell überschreiben' }))
@@ -759,6 +784,39 @@ describe('ProdukteEingabenPanel — Entgeltpunkte input stamps inputStatus (#409
     }
     expect(patch.assumptions?.statutoryPension?.currentEntgeltpunkte).toBe(25.5)
     expect(patch.assumptions?.inputStatus?.[EP_STATUS_KEY]).toBe('entered')
+    expect(patch.assumptions?.statutoryPension?.pensionEntryMethod).toEqual({ kind: 'points', entgeltpunkte: 25.5 })
+    expect(patch.assumptions?.inputStatus).not.toHaveProperty(GROSS_STATUS_KEY)
+    expect(patch.assumptions?.inputStatus?.['profile.age']).toBe('entered')
+    expect(ws.baseline.assumptions.inputStatus).toEqual(skippedStatus)
+    ws.baseline.assumptions = { ...ws.baseline.assumptions, ...patch.assumptions }
+    const after = selectResultReadiness(ws, runCombineSimulation(ws, activeRules))
+    expect(after.blocking).toHaveLength(0)
+    expect(after.canShowHouseholdTotal).toBe(true)
+  })
+
+  it.each(['compare', 'combine'] as const)('%s: typing EP replaces the career estimate label', (mode) => {
+    const ws = structuredClone(defaultWorkspace)
+    const assumptions = structuredClone(defaultAssumptions)
+    assumptions.statutoryPension.manualMonthlyGross = null
+    assumptions.statutoryPension.pensionEntryMethod = { kind: 'career', careerStartAge: 22, pauseYears: 0 }
+    ws.baseline.assumptions.statutoryPension = assumptions.statutoryPension
+    const onAssumptionsChange = vi.fn()
+    const onPatchBaseline = vi.fn()
+    const props = () => mode === 'compare'
+      ? comparePropsFor(assumptions, { onAssumptionsChange })
+      : makeCombineProps({ baseline: ws.baseline, assumptions: ws.baseline.assumptions, onPatchBaseline, statutoryPensionResult: makeSimulation(assumptions).statutoryPension })
+    const { container, getByRole, getByLabelText, rerender } = render(<ProdukteEingabenPanel {...props()} />)
+    expect(drvCard(container).textContent).toContain('Grob aus Berufsstart geschätzt')
+    fireEvent.click(getByRole('button', { name: 'Manuell überschreiben' }))
+    fireEvent.change(getByLabelText(/Entgeltpunkte bisher \(EP\)/), { target: { value: '25.5' } })
+    if (mode === 'compare') {
+      Object.assign(assumptions, onAssumptionsChange.mock.calls[0]![0](assumptions))
+    } else {
+      Object.assign(ws.baseline.assumptions, onPatchBaseline.mock.calls[0]![0].assumptions)
+    }
+    rerender(<ProdukteEingabenPanel {...props()} />)
+    expect(drvCard(container).textContent).toContain('Entgeltpunkte angegeben')
+    expect(drvCard(container).textContent).not.toContain('Grob aus Berufsstart geschätzt')
   })
 })
 

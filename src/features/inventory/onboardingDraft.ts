@@ -35,6 +35,7 @@ import { resolveInputStatus } from '../results/provenanceHelpers'
 import { de2026Rules } from '../../rules/de2026'
 import { defaultProfile, defaultAssumptions } from '../../data/defaultScenario'
 import { newScenarioId } from '../../app/workspaceIdentity'
+import { applyPensionPoints } from './pensionPoints'
 import {
   estimateCareerPension,
   estimateEpFromYears,
@@ -1149,12 +1150,13 @@ function applyPensionDraft(
       return next
     }
     case 'points': {
-      const ep = fieldValue(draft.entgeltpunkte)
-      next.pensionEntryMethod = { kind: 'points', entgeltpunkte: ep ?? prev.currentEntgeltpunkte }
-      next.manualMonthlyGross = null
-      if (ep !== null) next.currentEntgeltpunkte = ep
-      status[KEY_EP] = ep === null ? 'unknown' : statusOfField(draft.entgeltpunkte)
-      return next
+      const points = applyPensionPoints(
+        { statutoryPension: next, inputStatus: status },
+        fieldValue(draft.entgeltpunkte),
+        statusOfField(draft.entgeltpunkte),
+      )
+      Object.assign(status, points.inputStatus)
+      return points.statutoryPension
     }
   }
 }
