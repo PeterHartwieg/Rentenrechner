@@ -26,29 +26,35 @@ The review correctly identified that zeroing the numeric conversion retained con
 
 ## Review round 3
 
-The three findings reproduced as four failing tests: inline entry omitted answer metadata, insurance activation retained metadata for a replaced contribution, and v2 load repair normalised the snapshot before recovering an old recommender addition.
+Inline entry now records answer metadata, and insurance activation clears provenance for the replaced contribution.
 
 - The inline Brutto-Umwandlung callback now stamps `inputStatus.monthlyGrossConversion: 'entered'` and matching user-confirmed evidence, preserving neighbouring metadata. The panel passes this through its existing patch path. Entering zero on an active bAV with €100/month fixed employer funding keeps the household result displayable; the round-2 blocker for an assumed active zero remains unchanged.
 - Activating an offered insurance contract removes only `monthlyContribution` from `inputStatus` and `evidenceMap` before assigning the generated amount. Both prior `document` and `unknown` statuses now resolve to truthful `assumed` provenance without blocking the what-if total.
-- `buildWhatIfFromCandidate` persists `origin: 'recommender'`; v2 load repair uses this explicit marker before normalising snapshots. For a matching active bAV whose conversion is at least the positive offered snapshot amount, it subtracts that stale amount once. The legacy €400 alternative loads at €200 and applying it yields €200; repeated loads are idempotent.
-- Manual alternatives remain untouched because their larger amount may be intentional. Controls also cover zero or active snapshots, smaller conversions, paid-up instances, and mismatched instance IDs. Recommendation-like labels alone never trigger repair.
+- `buildWhatIfFromCandidate` persists `origin: 'recommender'`. Legacy alternatives keep their stored conversion; offered bAVs are still normalised across baseline, what-ifs, and snapshots.
 
 ## Review round 4
 
-The load-path regression reproduced the remaining employer-funding error: subtracting the stale €200 conversion left the €150 fixed employer amount that the old application materialised at €400. The corrected €200 conversion should receive a 50% match (€100/month), with no fixed contribution.
+The offer resolver, employer-contribution helper, and saved-plan patch share the React-free `recommenderCandidates/bavOffer.ts` module. Both recommender call sites retain the same offer terms and total.
 
-- Moved the existing offer resolver, employer-contribution helper, and saved-plan patch into the React-free `recommenderCandidates/bavOffer.ts`. Storage and the recommender now share the patch without importing the recommender orchestrator into storage. Both recommender call sites retain the same offer terms and total.
-- After subtracting the stale conversion, load repair resolves the snapshot's stored offer terms and reapplies every saved-plan patch field: employer match/fixed funding, statutory subsidy flag, payout terms, confirmation, and fees. The instance schema does not persist the modal employer maximum; this repair uses the available snapshot terms.
-- The exact €200 offer + €200 candidate / 50% match / €0 fixed / €150 maximum case now loads with €200 conversion, 50% match, €0 fixed, and €100 employer funding. The whole repaired instance and `buildPortfolioFunding` result equal fresh application. The regression also pins fresh application on both sides of the employer maximum, manual-what-if preservation, and repeated-load idempotence; existing conservative repair controls remain.
+## Review round 5
+
+Removed the legacy recommender what-if repair entirely. The original candidate's employer cap (`monthlyCapEUR`) and modal offer terms were never persisted, so reconstructing them from a snapshot is lossy. For example, an €80 cap that still binds after correcting the conversion cannot be recovered. A repair could silently change employer funding, fees, payout mode, or Rentenfaktor.
+
+Old recommender alternatives stay as saved. Users regenerate them by applying the recommendation again on the repaired baseline; the fixed apply path handles this correctly. Storage retains offered-bAV normalisation across baseline, what-ifs, and snapshots, and no longer imports the shared recommender offer helper.
+
+Removed the load-path assertions for conversion subtraction, employer-field re-derivation, and repair idempotence. The new regression first failed with €200 instead of €400; it now pins that an activated recommender bAV loads unchanged at €400 while its snapshot's offered bAV is normalised to zero. Existing offer-normalisation tests remain.
 
 ## Validation
 
-- `npm run verify`: lint clean (`--max-warnings=0`); 276 frontend test files, 5211 passed + 1 skipped; both Worker typechecks passed; Worker suites passed (26 + 11 tests); production build and prerender succeeded.
-- Round 4 added 2 load-path regression cases. All 124 tests across storage load paths, the recommender, and bAV candidate generation pass.
+- `npm run verify`: lint clean (`--max-warnings=0`); 276 frontend test files, 5208 passed + 1 skipped; both Worker typechecks passed; Worker suites passed (26 + 11 tests); production build and prerender succeeded.
+- All 121 tests across storage load paths, the recommender, and bAV candidate generation pass.
 - No oracle or baseline updates. Generated `public/og/` output discarded. No GitHub access or push.
 
-## Scope
+## Not done
 
-The dedicated “Angebot erfassen” UX remains deferred. Activation does not restore a previous conversion: the user enters the real amount. Engine calculations, statutory rules, and rounding are unchanged.
+- Legacy recommender what-ifs saved between PR #347 and this fix keep their stored conversion. The original employer cap and modal offer terms were not persisted, so automatic repair would be lossy; users regenerate the alternative by applying the recommendation again on the repaired baseline.
+- The dedicated “Angebot erfassen” UX remains deferred.
+
+Activation does not restore a previous conversion: the user enters the real amount. Engine calculations, statutory rules, and rounding are unchanged.
 
 Refs #349

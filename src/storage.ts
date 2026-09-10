@@ -1,4 +1,3 @@
-import { bavOfferPatchForSavedPlan, resolveBavOfferFromInstance } from './app/recommenderCandidates/bavOffer'
 import { normaliseOfferedBav } from './domain/normaliseOfferedBav'
 import type { ContributionInput, PersonalProfile, ScenarioAssumptions } from './domain'
 import type { Workspace, WorkspaceAssumptionsV2, Scenario } from './domain/workspace'
@@ -685,8 +684,7 @@ export function buildWorkspaceJson(workspace: Workspace): string {
  *   3. validateWorkspace (full structural + invariant check, including every
  *      what-if and its derivedFromBaselineSnapshot — the backfill step below
  *      dereferences both, so they must be validated first)
- *   4. repair stale recommender bAV additions, then normalise offered bAV
- *      conversions across all scenarios and snapshots
+ *   4. normalise offered bAV conversions across all scenarios and snapshots
  *   5. backfillWorkspaceTransferEvents (repairs single-sided legacy events)
  *   → returns null if any step fails
  *
@@ -720,28 +718,9 @@ export function parseWorkspaceJson(raw: string): Workspace | null {
     if (merged.schemaVersion !== 2) return null
     const validated = validateWorkspace(merged)
     if (validated === null) return null
-    // Recover legacy recommender additions before normalising the snapshots:
-    // their offered conversion is the stale amount previously added twice.
-    // Manual alternatives stay untouched: a user may have typed the larger
-    // amount deliberately. Only buildWhatIfFromCandidate's explicit origin
-    // marker authorises this repair; a recommendation-like label does not.
-    for (const whatIf of validated.whatIfs) {
-      if (whatIf.origin !== 'recommender') continue
-      for (const offer of whatIf.derivedFromBaselineSnapshot.assumptions.bav) {
-        if (offer.status !== 'offered' || !(offer.monthlyGrossConversion > 0)) continue
-        const activated = whatIf.assumptions.bav.find(instance => instance.instanceId === offer.instanceId)
-        if (activated?.status === 'active' && activated.monthlyGrossConversion >= offer.monthlyGrossConversion) {
-          activated.monthlyGrossConversion -= offer.monthlyGrossConversion
-          // The old total also determined whether employer funding became a
-          // fixed capped amount. Restore all saved-plan fields from the
-          // snapshot's offer terms using the same patch as fresh application.
-          Object.assign(activated, bavOfferPatchForSavedPlan(
-            resolveBavOfferFromInstance(offer),
-            activated.monthlyGrossConversion,
-          ))
-        }
-      }
-    }
+    // Legacy recommender what-ifs keep their stored terms: the candidate's
+    // employer cap and modal offer terms were not persisted, so repair is lossy.
+    // Users can regenerate them by applying the recommendation again.
     const assumptions = [
       validated.baseline.assumptions,
       ...validated.whatIfs.flatMap(wi => [wi.assumptions, wi.derivedFromBaselineSnapshot.assumptions]),
