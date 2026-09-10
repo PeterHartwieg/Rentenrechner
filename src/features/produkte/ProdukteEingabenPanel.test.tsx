@@ -708,6 +708,60 @@ describe('ProdukteEingabenPanel — legacy EP seed notice', () => {
   })
 })
 
+// ---------------------------------------------------------------------------
+// #409 — Typing Entgeltpunkte on the Produkte-row GRV disclosure stamps the
+// reserved scenario-level inputStatus key as 'entered'. The legacy-EP-seed
+// detector suppresses on that status, so the stamp must survive both mounts:
+// compare-mode writes it straight onto the assumptions, combine-mode's GRV
+// override wrapper must forward it onto the workspace patch.
+// ---------------------------------------------------------------------------
+
+describe('ProdukteEingabenPanel — Entgeltpunkte input stamps inputStatus (#409)', () => {
+  const EP_STATUS_KEY = 'statutoryPension.currentEntgeltpunkte' as const
+
+  it('compare: typing Entgeltpunkte stamps the reserved inputStatus key on the assumptions', () => {
+    const onAssumptionsChange = vi.fn()
+    const { getByRole, getByLabelText } = render(
+      <ProdukteEingabenPanel {...defaultProps({ onAssumptionsChange })} />,
+    )
+    fireEvent.click(getByRole('button', { name: 'Manuell überschreiben' }))
+    // The NumberField suffix ("EP") is part of the label text, hence the regex.
+    fireEvent.change(getByLabelText(/Entgeltpunkte bisher \(EP\)/), {
+      target: { value: '25.5' },
+    })
+    expect(onAssumptionsChange).toHaveBeenCalledOnce()
+    const updater = onAssumptionsChange.mock.calls[0]![0] as (
+      prev: ScenarioAssumptions,
+    ) => ScenarioAssumptions
+    const next = updater(defaultAssumptions)
+    expect(next.statutoryPension.currentEntgeltpunkte).toBe(25.5)
+    expect(next.inputStatus?.[EP_STATUS_KEY]).toBe('entered')
+  })
+
+  it('combine: typing Entgeltpunkte stamps the reserved inputStatus key on the workspace patch', () => {
+    const onPatchBaseline = vi.fn()
+    const statutoryPensionResult = {
+      projectedEntgeltpunkte: 50.25,
+      grossMonthlyPension: 2_100,
+    } as SimulationResult['statutoryPension']
+    const { getByRole, getByLabelText } = render(
+      <ProdukteEingabenPanel
+        {...makeCombineProps({ onPatchBaseline, statutoryPensionResult })}
+      />,
+    )
+    fireEvent.click(getByRole('button', { name: 'Manuell überschreiben' }))
+    fireEvent.change(getByLabelText(/Entgeltpunkte bisher \(EP\)/), {
+      target: { value: '25.5' },
+    })
+    expect(onPatchBaseline).toHaveBeenCalledOnce()
+    const patch = onPatchBaseline.mock.calls[0]![0] as {
+      assumptions?: Partial<Workspace['baseline']['assumptions']>
+    }
+    expect(patch.assumptions?.statutoryPension?.currentEntgeltpunkte).toBe(25.5)
+    expect(patch.assumptions?.inputStatus?.[EP_STATUS_KEY]).toBe('entered')
+  })
+})
+
 describe('ProdukteEingabenPanel — § 2 combine-mode contract rows', () => {
   it('renders one row per workspace instance across all multi-instance products', () => {
     const ws = buildCombineWorkspaceWithInstances()
