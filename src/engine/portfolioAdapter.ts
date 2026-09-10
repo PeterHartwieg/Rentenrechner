@@ -60,6 +60,7 @@ import {
   projectEtfInstanceToAssumptions,
   projectInstanceToScenarioAssumptions,
   singletonViewOfWorkspace,
+  scenarioForInstance,
   type AnyInstance,
 } from './portfolioProjection'
 import { buildPortfolioFunding } from './portfolioFunding'
@@ -164,7 +165,7 @@ export function simulatePortfolio(
         inst.evidenceMap ?? {},
       )
       for (const scenario of projected.returnScenarios) {
-        const r = productSimulate(ctx, scenario)
+        const r = productSimulate(ctx, scenarioForInstance(scenario, inst))
         // Tag with instanceId after the simulator returns so the simulator code
         // stays untouched. Attach inputConfidence from the instance's evidenceMap.
         results.push({ ...r, instanceId: inst.instanceId, inputConfidence })
@@ -218,7 +219,7 @@ export function simulatePortfolio(
       { productId: slotToProductId(detectProductSlot(inst)) },
       inst.evidenceMap ?? {},
     )
-    return { ...simulateEtf(ctx, scenario), instanceId: inst.instanceId, inputConfidence }
+    return { ...simulateEtf(ctx, scenarioForInstance(scenario, inst)), instanceId: inst.instanceId, inputConfidence }
   }
 
   runFor(wsa.bav, simulateBav, (inst) => ({

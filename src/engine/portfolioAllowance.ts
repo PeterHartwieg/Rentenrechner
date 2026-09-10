@@ -45,6 +45,7 @@ import type {
 import type { EtfProductResult } from '../domain/results'
 import type { WorkspaceAssumptionsV2 } from '../domain/workspace'
 import type { EtfInstance } from '../domain/instances'
+import { scenarioForInstance } from './portfolioProjection'
 
 // ---------------------------------------------------------------------------
 // Cross-instance Sparerpauschbetrag demand calculation
@@ -232,7 +233,7 @@ export function applyCrossInstanceSparerpauschbetrag(
     for (const inst of activeEtf) {
       const schedule = allowanceByInstance.get(inst.instanceId)
       if (!schedule) continue
-      const tagged = resimulateEtfInstance(inst, scenario, (yearIdx: number) =>
+      const tagged = resimulateEtfInstance(inst, scenarioForInstance(scenario, inst), (yearIdx: number) =>
         schedule[yearIdx] ?? rules.capitalGains.saverAllowance,
       )
 
