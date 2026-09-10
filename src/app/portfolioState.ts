@@ -14,6 +14,7 @@
  *   - `useCalculatorState`: compare-mode keeps the singleton API.
  */
 
+import { normaliseOfferedBav } from '../domain/normaliseOfferedBav'
 import { useCallback, useSyncExternalStore } from 'react'
 import type {
   Scenario,
@@ -44,7 +45,6 @@ import {
   deepCloneScenario,
   defaultInstanceLabel,
   isGeneratedInstanceLabel,
-  bavOfferedTransitionPatch,
 } from './workspaceIdentity'
 import { INVENTORY_PRODUCT_REGISTRY } from '../features/inventory/inventoryProductRegistry'
 import { scenarioDiff, applyDiff } from './scenarioDiff'
@@ -890,9 +890,10 @@ export function usePortfolioState(): UsePortfolioStateApi {
         instance.instanceId && instance.instanceId !== ''
           ? instance.instanceId
           : newInstanceId(productId)
+      const normalised = productId === 'bav' ? normaliseOfferedBav(instance) : instance
       const labelled = applyDisambiguatingLabel(
         productId,
-        { ...instance, instanceId },
+        { ...normalised, instanceId },
         currentArray.length + 1,
       )
       const withStatus: AnyInstance = status
@@ -932,25 +933,18 @@ export function usePortfolioState(): UsePortfolioStateApi {
       if (!currentArray.some((i) => i.instanceId === instanceId)) return false
       const nextArray = currentArray.map((existing) => {
         if (existing.instanceId !== instanceId) return existing
-        // Issue 349: a → `offered` status flip also zeroes a bAV's stored
-        // conversion, same rule as the inline editors' patch path.
-        const offeredPatch = bavOfferedTransitionPatch(
-          productId,
-          existing.status,
-          patch.status,
-        )
         // `instanceId` is identity, never patchable — a patch that carried a
         // different one would silently orphan every transfer event and pin
         // pointing at this contract.
         const merged = {
           ...existing,
           ...patch,
-          ...(offeredPatch ?? {}),
           instanceId,
         } as AnyInstance
+        const normalised = productId === 'bav' ? normaliseOfferedBav(merged) : merged
         return status
-          ? { ...merged, inputStatus: { ...(existing.inputStatus ?? {}), ...status } }
-          : merged
+          ? { ...normalised, inputStatus: { ...(existing.inputStatus ?? {}), ...status } }
+          : normalised
       })
       const patched = nextArray.find((i) => i.instanceId === instanceId)
       // Same persisted-schema gate as `addPopulatedInstance`.

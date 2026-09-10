@@ -41,6 +41,7 @@ import type { InputStatus, InputStatusMap } from '../../domain/inputStatus'
 import type { Workspace } from '../../domain/workspace'
 import { resolveInputStatus, inputStatusToEvidenceState } from '../results/provenanceHelpers'
 import { CONTRIBUTION_FIELD_BY_PRODUCT } from '../../app/resultReadiness'
+import { normaliseOfferedBav } from '../../domain/normaliseOfferedBav'
 import { defaultInstanceLabel, newInstanceId } from '../../app/workspaceIdentity'
 import {
   INVENTORY_PRODUCT_REGISTRY,
@@ -1378,7 +1379,13 @@ export function draftToInstancePatch(draft: ContractDraft): ContractDraftPatch {
     if (evidence) evidenceMap[feeKey] = evidence
   }
 
-  return { patch, inputStatus, evidenceMap }
+  // Status may be omitted for an unanswered field; use the persisted base.
+  const bavPatch = { ...patch, status: patch.status ?? draft.base.status }
+  return {
+    patch: draft.productId === 'bav' ? normaliseOfferedBav(bavPatch) : patch,
+    inputStatus,
+    evidenceMap,
+  }
 }
 
 /**
@@ -1401,7 +1408,7 @@ export function draftToNewInstance(
       ? labelValue
       : defaultInstanceLabel(draft.productId, 1, anbieter)
 
-  return {
+  const instance = {
     ...draft.base,
     ...patch,
     instanceId,
@@ -1410,6 +1417,7 @@ export function draftToNewInstance(
     evidenceMap,
     inputStatus,
   }
+  return draft.productId === 'bav' ? normaliseOfferedBav(instance) : instance
 }
 
 /**

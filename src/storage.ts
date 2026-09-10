@@ -1,3 +1,4 @@
+import { normaliseOfferedBav } from './domain/normaliseOfferedBav'
 import type { ContributionInput, PersonalProfile, ScenarioAssumptions } from './domain'
 import type { Workspace, WorkspaceAssumptionsV2, Scenario } from './domain/workspace'
 import type {
@@ -683,7 +684,8 @@ export function buildWorkspaceJson(workspace: Workspace): string {
  *   3. validateWorkspace (full structural + invariant check, including every
  *      what-if and its derivedFromBaselineSnapshot — the backfill step below
  *      dereferences both, so they must be validated first)
- *   4. backfillWorkspaceTransferEvents (repairs single-sided legacy events)
+ *   4. normalise offered bAV conversions across all scenarios and snapshots
+ *   5. backfillWorkspaceTransferEvents (repairs single-sided legacy events)
  *   → returns null if any step fails
  *
  * Policy:
@@ -716,6 +718,13 @@ export function parseWorkspaceJson(raw: string): Workspace | null {
     if (merged.schemaVersion !== 2) return null
     const validated = validateWorkspace(merged)
     if (validated === null) return null
+    const assumptions = [
+      validated.baseline.assumptions,
+      ...validated.whatIfs.flatMap(wi => [wi.assumptions, wi.derivedFromBaselineSnapshot.assumptions]),
+    ]
+    for (const scenario of assumptions) {
+      scenario.bav = scenario.bav.map(normaliseOfferedBav)
+    }
     backfillWorkspaceTransferEvents(validated)
     return validated
   }

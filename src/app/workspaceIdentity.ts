@@ -17,7 +17,6 @@
  *  - deepCloneScenario — structural clone helper
  *  - addInstanceToWorkspace    — pure workspace mutation (routes via INVENTORY_PRODUCT_REGISTRY)
  *  - removeInstanceFromWorkspace — pure workspace mutation
- *  - bavOfferedTransitionPatch — status-patch semantics for → `offered` (issue 349)
  */
 
 import type { Workspace, WorkspaceAssumptionsV2 } from '../domain/workspace'
@@ -164,38 +163,6 @@ export function deepCloneScenario<T>(v: T): T {
     return structuredClone(v)
   }
   return JSON.parse(JSON.stringify(v)) as T
-}
-
-// ---------------------------------------------------------------------------
-// Status-transition patch semantics (issue 349)
-// ---------------------------------------------------------------------------
-
-/**
- * Extra patch keys implied by a bAV contract's → `offered` status transition.
- *
- * An offered contract has no Entgeltumwandlung yet, but the § 3 tile's default
- * draft carries €200/month and the inline editor hides the conversion field
- * once the status is `offered` — so the stored value goes stale and invisible.
- * The recommender sizes activation candidates as the full conversion (offered
- * = zero base), so a stored value would double-count on acceptance. Zero it at
- * the transition; no restore on flip-back — the field reappears at 0 and the
- * user types the real amount.
- *
- * Returns `null` when nothing applies: non-bAV products, patches that do not
- * target `offered`, and instances that are already offered (re-saving an offer
- * must not clobber whatever the user last stored). Callers spread the result
- * after the user's patch. Both write paths that can flip a status route
- * through this — the inline editors in `ProdukteEingabenPanel` and the
- * contract-draft editor's `updateInstance` in `portfolioState`.
- */
-export function bavOfferedTransitionPatch(
-  productId: MultiInstanceProductId,
-  currentStatus: InstanceCommon['status'] | undefined,
-  patchStatus: InstanceCommon['status'] | undefined,
-): { monthlyGrossConversion: number } | null {
-  if (productId !== 'bav') return null
-  if (patchStatus !== 'offered' || currentStatus === 'offered') return null
-  return { monthlyGrossConversion: 0 }
 }
 
 // ---------------------------------------------------------------------------

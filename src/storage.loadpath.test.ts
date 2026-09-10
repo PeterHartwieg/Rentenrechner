@@ -24,6 +24,7 @@ import {
   STORAGE_KEY_V2,
   transferEventKey,
 } from './storage'
+import { forkBaselineScenario } from './app/portfolioState'
 import type { Workspace } from './domain/workspace'
 
 // ---------------------------------------------------------------------------
@@ -643,5 +644,32 @@ describe('F — transferEventKey export (shared with portfolio transfer collecti
     const key1 = transferEventKey({ ...base, amountEUR: 10000 })
     const key2 = transferEventKey({ ...base, amountEUR: 20000 })
     expect(key1).not.toEqual(key2)
+  })
+})
+
+describe('legacy offered bAV conversion (issue 349)', () => {
+  it('loads an offered bAV at zero while preserving active conversions', () => {
+    const workspace = makeValidV2Workspace()
+    const active = workspace.baseline.assumptions.bav[0]
+    active.monthlyGrossConversion = 200
+    workspace.baseline.assumptions.bav.push({ ...active, instanceId: 'bav-offer001', status: 'offered' })
+    saveWorkspace(workspace)
+    const loaded = loadSavedWorkspace()!
+    expect(loaded.baseline.assumptions.bav).toHaveLength(2)
+    expect(loaded.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(200)
+    expect(loaded.baseline.assumptions.bav[1]).toMatchObject({ status: 'offered', monthlyGrossConversion: 0 })
+    expect(workspace.baseline.assumptions.bav[1].monthlyGrossConversion).toBe(200)
+  })
+
+  it('repairs offered bAVs in saved what-ifs and their baseline snapshots', () => {
+    const workspace = makeValidV2Workspace()
+    workspace.baseline.assumptions.bav[0].status = 'offered'
+    workspace.baseline.assumptions.bav[0].monthlyGrossConversion = 200
+    workspace.whatIfs = [forkBaselineScenario(workspace.baseline, 'Alternative')]
+    const loaded = parseWorkspaceJson(buildWorkspaceJson(workspace))!
+    expect(loaded.whatIfs).toHaveLength(1)
+    expect(loaded.whatIfs[0].assumptions.bav[0].monthlyGrossConversion).toBe(0)
+    expect(loaded.whatIfs[0].derivedFromBaselineSnapshot.assumptions.bav[0].monthlyGrossConversion).toBe(0)
+    expect(parseWorkspaceJson(buildWorkspaceJson(loaded))).toEqual(loaded)
   })
 })
