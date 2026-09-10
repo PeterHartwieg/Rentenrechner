@@ -546,7 +546,7 @@ export function AngabenPage({ navigate }: Props) {
                 <li className="angaben-aside-list-item">
                   <span className="angaben-aside-list-key">§ Annahmen</span>
                   <span className="angaben-aside-list-val">
-                    Renditeannahmen orientieren sich an historischen MSCI-World-Renditen.
+                    Renditeannahmen orientieren sich an langfristigen Aktienmarktrenditen.
                     Das Basis-Szenario ist eine nominale Modellannahme vor Inflation.
                     Die heutige Kaufkraft wird separat mit der Inflationsrate berechnet.
                   </span>

@@ -17,10 +17,16 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react'
 import { createElement, type ReactElement } from 'react'
 import { AppShell } from '../../ui/chrome/AppShell'
 import { pathToRoute } from '../../app/useRoute'
+import { useCalculatorState } from '../../app/useCalculatorState'
+import { simulateRetirementComparison } from '../../engine/simulate'
+import { de2026Rules } from '../../rules/de2026'
+import { formatCurrency } from '../../utils/format'
+import { addInstanceToWorkspace } from '../inventory/inventoryHelpers'
+import { runCombineSimulation } from '../../app/useCombineSimulation'
 import { KapitalPage } from './KapitalPage'
 import { defaultWorkspace, STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../../storage'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
@@ -235,5 +241,71 @@ describe('KapitalPage — source selection', () => {
     const { container } = render(inShell(<KapitalPage navigate={() => {}} />))
     expect(container.querySelector('.kapital-empty')).not.toBeNull()
     expect(container.querySelector<HTMLAnchorElement>('.kapital-backlink')!.getAttribute('href')).toBe('/')
+  })
+})
+
+
+describe('KapitalPage — scenario query and picker', () => {
+  function expectRetirementCapital(container: HTMLElement, capital: number) {
+    const cell = container.querySelector('[data-row="renteneintritt"] td:nth-child(3)')
+    expect(cell?.textContent).toBe(formatCurrency(capital))
+  }
+
+  it.each([
+    ['konservativ', 'konservativ'],
+    ['unknown', 'basis'],
+    ['', 'basis'],
+  ])('resolves compare query "%s" to %s product results', (query, expectedId) => {
+    seedCompareMode()
+    window.history.replaceState(null, '', `/kapital?quelle=vergleich&scenario=${query}`)
+    const state = renderHook(() => useCalculatorState())
+    const { profile, assumptions } = state.result.current
+    const results = simulateRetirementComparison(profile, assumptions, de2026Rules).products
+    state.unmount()
+    // The default order starts with konservativ; basis must be found by ID.
+    expect(assumptions.returnScenarios[0].id).toBe('konservativ')
+    const expected = results.find((r) => r.productId === 'etf' && r.scenarioId === expectedId)!
+    const { container } = render(inShell(<KapitalPage navigate={() => {}} />))
+    fireEvent.click(screen.getByRole('button', { name: 'ETF-Depot' }))
+    expectRetirementCapital(container, expected.capitalAtRetirement)
+    const label = assumptions.returnScenarios.find((s) => s.id === expectedId)!.label
+    expect(screen.getByRole('button', { name: new RegExp(`Rendite-Annahme: ${label}`) }))
+      .toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it.each(['compare', 'combine'] as const)('updates %s results and replaces the URL when choosing a scenario', (mode) => {
+    let ws = { ...structuredClone(defaultWorkspace), mode }
+    ws = addInstanceToWorkspace(ws, 'etf')
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(ws))
+    const state = renderHook(() => useCalculatorState())
+    const { profile, assumptions } = state.result.current
+    const results = mode === 'compare'
+      ? simulateRetirementComparison(profile, assumptions, de2026Rules).products
+      : Object.values(runCombineSimulation(ws, de2026Rules).perInstance).flat()
+    state.unmount()
+    const quelle = mode === 'compare' ? 'vergleich' : 'plan'
+    window.history.replaceState({ retained: true }, '', `/kapital?quelle=${quelle}&scenario=konservativ#kapital-wendepunkte`)
+    const historyLength = window.history.length
+    const { container, unmount } = render(inShell(<KapitalPage navigate={() => {}} />))
+    fireEvent.click(screen.getByRole('button', { name: 'ETF-Depot' }))
+    const capitalFor = (id: string) => results.find((r) => r.productId === 'etf' && r.scenarioId === id)!.capitalAtRetirement
+    expectRetirementCapital(container, capitalFor('konservativ'))
+    fireEvent.click(screen.getByRole('button', { name: /Rendite-Annahme: Optimistisch/ }))
+    expectRetirementCapital(container, capitalFor('optimistisch'))
+    expect(screen.getByRole('button', { name: /Rendite-Annahme: Optimistisch/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(window.location.search).toBe(`?quelle=${quelle}&scenario=optimistisch`)
+    expect(window.location.hash).toBe('#kapital-wendepunkte')
+    expect(window.history.length).toBe(historyLength)
+    expect(window.history.state).toEqual({ retained: true })
+    unmount()
+    render(inShell(<KapitalPage navigate={() => {}} />))
+    expect(screen.getByRole('button', { name: /Rendite-Annahme: Optimistisch/ })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('falls back to basis for an unknown combine scenario', () => {
+    seedCombineMode()
+    window.history.replaceState(null, '', '/kapital?scenario=unknown')
+    render(inShell(<KapitalPage navigate={() => {}} />))
+    expect(screen.getByRole('button', { name: /Rendite-Annahme: Basis/ })).toHaveAttribute('aria-pressed', 'true')
   })
 })

@@ -89,7 +89,7 @@ export function VergleichPage({
   // `/kapital` is dual-source (compare vs. plan) and picks its source from the
   // saved workspace mode by default. A user arriving from the comparison must
   // see the comparison, so the link names its origin explicitly.
-  const kapitalQuery = '?quelle=vergleich'
+  const kapitalQuery = `?quelle=vergleich&scenario=${encodeURIComponent(effectiveScenarioId)}`
   const kapitalHref = `${routeToPath(ROUTES.kapital)}${kapitalQuery}`
 
   return (

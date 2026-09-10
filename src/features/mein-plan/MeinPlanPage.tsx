@@ -109,6 +109,10 @@ export interface MeinPlanPageProps {
   notification?: { message: string; onUndo?: () => void }
 }
 
+function kapitalSearch(selectedScenarioId: string): string {
+  return `?scenario=${encodeURIComponent(selectedScenarioId)}`
+}
+
 /** New default surface; legacy callers retain their existing layout. */
 export function MeinPlanPage(props: MeinPlanPageProps) {
   if (!props.summary) return <LegacyMeinPlanPage {...props} />
@@ -174,7 +178,7 @@ function OverviewMeinPlanPage(props: MeinPlanPageProps & { summary: PlanSummary 
 
   const editProfile = () => props.onEditProfile ? props.onEditProfile() : navigate?.(ROUTES.eingaben)
   const editPension = () => props.onEditPension ? props.onEditPension() : navigate?.(ROUTES.eingabenProdukte)
-  const openKapital = () => navigate?.(ROUTES.kapital)
+  const openKapital = () => navigate?.(ROUTES.kapital, kapitalSearch(props.selectedScenarioId))
   const openAlternatives = () => navigate?.(ROUTES.alternativen)
   const saveTarget = (value: number | undefined) => {
     onSetTarget?.(value)
@@ -253,7 +257,11 @@ function OverviewMeinPlanPage(props: MeinPlanPageProps & { summary: PlanSummary 
       onOpenEingaben={() => navigate?.(ROUTES.eingaben)}
       onTryAlternative={openAlternatives}
       onOpenSavedAlternatives={openAlternatives}
-      onNavigateReason={(reason) => navigate?.(reason.target.route, undefined, reason.target.anchor ? `#${reason.target.anchor}` : undefined)}
+      onNavigateReason={(reason) => navigate?.(
+        reason.target.route,
+        reason.target.route.kind === 'kapital' ? kapitalSearch(props.selectedScenarioId) : undefined,
+        reason.target.anchor ? `#${reason.target.anchor}` : undefined,
+      )}
       analysisOpen={analysisOpen}
       onAnalysisToggle={setAnalysisOpen}
     >
@@ -461,12 +469,12 @@ function LegacyMeinPlanPage({
                 {' '}
                 <a
                   className="mein-plan-headline-aside-link"
-                  href={routeToPath(ROUTES.kapital)}
+                  href={`${routeToPath(ROUTES.kapital)}${kapitalSearch(selectedScenarioId)}`}
                   onClick={(event) => {
                     if (!navigate) return
                     if (!shouldUseSpaNavigation(event)) return
                     event.preventDefault()
-                    navigate(ROUTES.kapital)
+                    navigate(ROUTES.kapital, kapitalSearch(selectedScenarioId))
                   }}
                 >
                   Kapital im Verlauf →
