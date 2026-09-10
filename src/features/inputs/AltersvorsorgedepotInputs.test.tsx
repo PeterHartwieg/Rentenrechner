@@ -12,6 +12,8 @@
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { calculateAvdFunding } from '../../engine/altersvorsorgedepot'
+import { calculateSalaryResult } from '../../engine/salary'
 import { AltersvorsorgedepotInputs } from './AltersvorsorgedepotInputs'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { de2026Rules } from '../../rules/de2026'
@@ -107,6 +109,32 @@ describe('AltersvorsorgedepotInputs — the Eigenbeitrag is the primary input', 
 })
 
 describe('AltersvorsorgedepotInputs — the ledger reads the engine, never recomputes', () => {
+  it.each([false, true])('suppresses the minimum hint when ineligible (indirect spouse: %s)', (indirectSpouseEligible) => {
+    const assumptions = {
+      ...defaultAssumptions,
+      altersvorsorgedepot: {
+        ...defaultAssumptions.altersvorsorgedepot,
+        monthlyOwnContribution: 5,
+        eligibility: {
+          ...defaultAssumptions.altersvorsorgedepot.eligibility,
+          directlyEligible: false,
+          indirectSpouseEligible,
+        },
+      },
+    }
+    setup({
+      assumptions,
+      avdFunding: calculateAvdFunding(
+        de2026Rules,
+        calculateSalaryResult(defaultProfile, de2026Rules),
+        assumptions.altersvorsorgedepot,
+      ),
+    })
+    expect(screen.getByText('Nicht förderberechtigt')).toBeInTheDocument()
+    expect(screen.queryByText('Keine Zulage')).not.toBeInTheDocument()
+    expect(screen.queryByText(/unter .*\/Jahr Eigenbeitrag/)).not.toBeInTheDocument()
+  })
+
   it('renders the funding figures it was handed', () => {
     setup()
     expect(screen.getByText('Grundzulage (Staat)')).toBeTruthy()

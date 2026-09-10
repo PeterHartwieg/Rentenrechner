@@ -90,19 +90,19 @@ describe('calculateAllowanceExcessBenefit', () => {
 
 describe('isSection10aEligible (#363)', () => {
   it('accepts a directly eligible saver', () => {
-    expect(isSection10aEligible({ directlyEligible: true, indirectSpouseEligible: false })).toBe(true)
+    expect(isSection10aEligible({ directlyEligible: true, indirectSpouseEligible: false }, rules.riester.sockelbetrag, rules.riester.sockelbetrag)).toBe(true)
   })
 
   it('accepts the mittelbar spouse (§79 Satz 2 EStG)', () => {
-    expect(isSection10aEligible({ directlyEligible: false, indirectSpouseEligible: true })).toBe(true)
+    expect(isSection10aEligible({ directlyEligible: false, indirectSpouseEligible: true }, rules.riester.sockelbetrag, rules.riester.sockelbetrag)).toBe(true)
   })
 
   it('rejects a saver outside the begünstigter Personenkreis', () => {
-    expect(isSection10aEligible({ directlyEligible: false, indirectSpouseEligible: false })).toBe(false)
+    expect(isSection10aEligible({ directlyEligible: false, indirectSpouseEligible: false }, rules.riester.sockelbetrag, rules.riester.sockelbetrag)).toBe(false)
   })
 
   it('treats an omitted indirectSpouseEligible as false (Riester stored state)', () => {
-    expect(isSection10aEligible({ directlyEligible: false })).toBe(false)
-    expect(isSection10aEligible({ directlyEligible: false, indirectSpouseEligible: undefined })).toBe(false)
+    expect(isSection10aEligible({ directlyEligible: false }, rules.riester.sockelbetrag, rules.riester.sockelbetrag)).toBe(false)
+    expect(isSection10aEligible({ directlyEligible: false, indirectSpouseEligible: undefined }, rules.riester.sockelbetrag, rules.riester.sockelbetrag)).toBe(false)
   })
 })

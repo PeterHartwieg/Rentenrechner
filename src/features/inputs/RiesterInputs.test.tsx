@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { calculateRiesterFunding } from '../../engine/riester'
+import { calculateSalaryResult } from '../../engine/salary'
 import { RiesterInputs } from './RiesterInputs'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { de2026Rules } from '../../rules/de2026'
@@ -28,6 +30,46 @@ const FUNDING: RiesterFundingResult = {
 }
 
 describe('RiesterInputs', () => {
+  it.each([
+    { directlyEligible: false, indirectSpouseEligible: false, monthlyOwnContribution: 50, eligible: false },
+    { directlyEligible: false, indirectSpouseEligible: true, monthlyOwnContribution: 2.5, eligible: false },
+    { directlyEligible: true, indirectSpouseEligible: false, monthlyOwnContribution: 50, eligible: true },
+  ])('shows proration only when eligible: $directlyEligible / $indirectSpouseEligible / $monthlyOwnContribution', ({ directlyEligible, indirectSpouseEligible, monthlyOwnContribution, eligible }) => {
+    const assumptions = {
+      ...defaultAssumptions,
+      riester: {
+        ...defaultAssumptions.riester,
+        monthlyOwnContribution,
+        eligibility: { ...defaultAssumptions.riester.eligibility, directlyEligible, indirectSpouseEligible },
+      },
+    }
+    const funding = calculateRiesterFunding(
+      de2026Rules,
+      calculateSalaryResult(defaultProfile, de2026Rules),
+      assumptions.riester,
+      defaultProfile,
+    )
+    expect(funding.meetsMinContribution).toBe(false)
+    render(
+      <RiesterInputs
+        assumptions={assumptions}
+        onAssumptionsChange={vi.fn()}
+        onSyncMonthlyContribution={vi.fn()}
+        profile={defaultProfile}
+        riesterFunding={funding}
+        riesterProductResult={undefined}
+      />,
+    )
+    if (eligible) {
+      expect(screen.getByText(/Zulagen werden anteilig/)).toBeInTheDocument()
+      expect(screen.queryByText(/Nicht förderberechtigt/)).not.toBeInTheDocument()
+    } else {
+      expect(screen.getByText(/Nicht förderberechtigt/)).toBeInTheDocument()
+      expect(screen.queryByText(/Zulagen werden anteilig/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/Eigenbeitrag unter Mindesteigenbeitrag/)).not.toBeInTheDocument()
+    }
+  })
+
   it('names the child allowance checkbox without the tooltip text', () => {
     render(
       <RiesterInputs

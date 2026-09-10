@@ -289,9 +289,14 @@ export function calculateAvdFunding(
   //    Contributions above 1 800 EUR increase neither allowance nor §10a.
   //    Step 0: the deduction requires the begünstigter Personenkreis
   //    (§10a / §79 EStG) — a saver who is neither directly nor mittelbar
-  //    eligible gets no Sonderausgabenabzug at all.
+  //    eligible gets no Sonderausgabenabzug at all. Indirect eligibility
+  //    requires the minimum own contribution (§79 Satz 2 Nr. 4).
   // -------------------------------------------------------------------------
-  const specialExpenseBaseAnnual = isSection10aEligible(effectiveEligibility)
+  const specialExpenseBaseAnnual = isSection10aEligible(
+    effectiveEligibility,
+    annualOwnContribution,
+    avdRules.minimumOwnContributionAnnual,
+  )
     ? Math.min(annualOwnContribution, avdRules.specialExpenseOwnContributionCap) + totalAllowanceAnnual
     : 0
 

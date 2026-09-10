@@ -332,6 +332,28 @@ describe('calculateAvdFunding — §10a eligibility gate (#363)', () => {
     expect(result.monthlyNetCost).toBe(avdBase.monthlyOwnContribution)
   })
 
+  it.each([
+    { annualOwnContribution: 5 * 12, eligible: false },
+    { annualOwnContribution: rules.altersvorsorgedepot.minimumOwnContributionAnnual - 0.01, eligible: false },
+    { annualOwnContribution: rules.altersvorsorgedepot.minimumOwnContributionAnnual, eligible: true },
+  ])('gates mittelbar §10a at the own-contribution minimum: $annualOwnContribution/year', ({ annualOwnContribution, eligible }) => {
+    const contribution = {
+      ...avdBase,
+      monthlyOwnContribution: annualOwnContribution / 12,
+      eligibility: { ...avdBase.eligibility, indirectSpouseEligible: true },
+    }
+    const result = calculateAvdFunding(rules, salary, contribution)
+    if (eligible) {
+      expect(result.specialExpenseBaseAnnual).toBeCloseTo(annualOwnContribution + result.totalAllowanceAnnual, 8)
+      expect(result.totalAllowanceAnnual).toBeGreaterThan(0)
+    } else {
+      expect(result.specialExpenseBaseAnnual).toBe(0)
+      expect(result.guenstigerpruefungBenefitAnnual).toBe(0)
+      expect(result.totalAllowanceAnnual).toBe(0)
+      expect(result.monthlyNetCost).toBe(contribution.monthlyOwnContribution)
+    }
+  })
+
   it('keeps the mittelbar spouse inside the gate (§79 Satz 2)', () => {
     const result = calculateAvdFunding(rules, salary, {
       ...avdBase,
@@ -342,8 +364,8 @@ describe('calculateAvdFunding — §10a eligibility gate (#363)', () => {
     expect(result.guenstigerpruefungBenefitAnnual).toBeGreaterThan(0)
   })
 
-  it('keeps the §10a deduction for an eligible saver below the 120 EUR minimum contribution', () => {
-    // The Mindesteigenbeitrag gates the Zulage only, never the Sonderausgabenabzug.
+  it('keeps the §10a deduction for a directly eligible saver below the 120 EUR minimum contribution', () => {
+    // For directly eligible savers, the minimum gates only the Zulage.
     const result = calculateAvdFunding(rules, salary, {
       ...avdBase,
       monthlyOwnContribution: 5, // 60 EUR/year — below minimumOwnContributionAnnual

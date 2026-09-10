@@ -126,8 +126,12 @@ export function AltersvorsorgedepotInputs({
       positive: true,
     })
   }
-  if (!isSection10aEligible(effectiveEligibility)) {
-    // #363: neither directly nor mittelbar eligible — no Zulage and no §10a
+  if (!isSection10aEligible(
+    effectiveEligibility,
+    avdFunding.annualOwnContribution,
+    rules.altersvorsorgedepot.minimumOwnContributionAnnual,
+  )) {
+    // #363: outside effective direct/mittelbar eligibility — no Zulage and no §10a
     // deduction. The engine gates the base; this row explains the resulting
     // zeros instead of the (now wrong) minimum-contribution hint.
     ledgerRows.push({

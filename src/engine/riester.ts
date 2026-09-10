@@ -248,9 +248,14 @@ export function calculateRiesterFunding(
   // 4. §10a EStG Sonderausgabenabzug: capped at 2,100 EUR including allowances.
   //    Step 0: the deduction requires the begünstigter Personenkreis
   //    (§10a / §79 EStG) — a saver who is neither directly nor mittelbar
-  //    eligible gets no Sonderausgabenabzug at all.
+  //    eligible gets no Sonderausgabenabzug at all. Indirect eligibility
+  //    requires the minimum own contribution (§79 Satz 2 Nr. 4).
   // -------------------------------------------------------------------------
-  const specialExpenseDeductibleAnnual = isSection10aEligible(riester.eligibility)
+  const specialExpenseDeductibleAnnual = isSection10aEligible(
+    riester.eligibility,
+    annualOwnContribution,
+    r.sockelbetrag,
+  )
     ? Math.min(
         annualOwnContribution + totalAllowanceAnnual,
         r.annualCapInclAllowances,
