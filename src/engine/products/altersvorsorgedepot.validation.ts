@@ -65,7 +65,6 @@ export function validateAltersvorsorgedepot(avd: AltersvorsorgedepotAssumptions)
   if (typeof e.careerStarterBonusUsed !== 'boolean') return false
   // allocation / returns
   if (!inRange(avd.riskAllocationPct, 0, 1)) return false
-  if (!inRange(avd.riskAnnualReturn, -0.5, 0.5)) return false
   if (!inRange(avd.lowRiskAnnualReturn, -0.5, 0.5)) return false
   // payout
   if (!VALID_AVD_PAYOUT_MODES.includes(avd.payoutMode)) return false

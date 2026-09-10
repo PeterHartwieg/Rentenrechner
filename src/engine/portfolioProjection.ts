@@ -144,7 +144,6 @@ export const NEUTRALISED_ALTERSVORSORGEDEPOT: AltersvorsorgedepotAssumptions = {
     careerStarterBonusUsed: true,
   },
   riskAllocationPct: 0,
-  riskAnnualReturn: 0,
   lowRiskAnnualReturn: 0,
   fees: {
     wrapperAssetFee: 0,
