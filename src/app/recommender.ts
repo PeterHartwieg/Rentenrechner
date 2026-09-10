@@ -856,7 +856,8 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
       }
     }
     // P10 risk score: re-run the candidate's marginal accumulation under
-    // `MC_PATHS` stochastic paths to estimate the bad-outcome floor.
+    // `MC_PATHS` stochastic paths at its resolved contract/scenario return
+    // to estimate the bad-outcome floor.
     // Seed is derived from (workspace MC seed) ⊕ hash(candidate id) so the
     // same workspace+budget produces an identical ranking every call, while
     // distinct candidates draw uncorrelated paths.
@@ -864,7 +865,7 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
     const riskScoreP10 = monteCarloP10Capital(
       d.mcInputs.monthlyContribution,
       d.mcInputs.totalFeeDecimal,
-      basis.annualReturn,
+      d.candidateResult.annualReturn,
       mcVolatility,
       yearsToRetirement,
       MC_PATHS,

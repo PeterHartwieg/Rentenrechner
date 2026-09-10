@@ -21,6 +21,7 @@ import type {
 } from '../../domain'
 import type { PortfolioFunding, Workspace } from '../../domain/workspace'
 import type {
+  InstanceCommon,
   BavInstance,
   BasisrenteInstance,
   AltersvorsorgedepotInstance,
@@ -130,6 +131,14 @@ export type CandidateGenerator = (g: GeneratorContext) => CandidateDraft | null
 // ---------------------------------------------------------------------------
 // Shared pure helpers
 // ---------------------------------------------------------------------------
+
+/** Existing targets (including offers) keep their absolute contract return. */
+export function candidateAnnualReturn(
+  scenario: BasisScenarioInfo,
+  target?: Pick<InstanceCommon, 'expectedReturn'>,
+): number {
+  return target?.expectedReturn ?? scenario.annualReturn
+}
 
 /**
  * Compound monthly contribution with simple geometric accumulation.

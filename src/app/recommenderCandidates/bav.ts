@@ -29,6 +29,7 @@ import {
   type CandidateDraft,
   type GeneratorContext,
   type ResolvedBavOffer,
+  candidateAnnualReturn,
   projectMonthlyContributionFV,
   synthesizeProductResult,
 } from './types'
@@ -222,7 +223,8 @@ function makeBavCandidateForTarget(
     (prospectiveFunding.headroom.bav.employerAnnual - baselineHeadroom.employerAnnual) / 12,
   )
   const fees = (target.fees?.wrapperAssetFee ?? 0) + (target.fees?.fundAssetFee ?? 0)
-  const netReturn = Math.max(-0.5, g.basis.annualReturn - fees)
+  const annualReturn = candidateAnnualReturn(g.basis, isNewInstance ? undefined : target)
+  const netReturn = Math.max(-0.5, annualReturn - fees)
   const capital = projectMonthlyContributionFV(totalMonthly, netReturn, g.yearsToRetirement)
   const totalContributions = totalMonthly * 12 * g.yearsToRetirement
   const payoutYears = Math.max(1, wsa.retirementEndAge - profile.retirementAge)
@@ -266,7 +268,7 @@ function makeBavCandidateForTarget(
     instanceId: target.instanceId,
     scenarioId: g.basis.scenarioId,
     scenarioLabel: 'Basis',
-    annualReturn: g.basis.annualReturn,
+    annualReturn,
     grossMonthlyPayout: grossPayout,
     capitalAtRetirement: capital,
     totalProductContributions: totalContributions,
