@@ -24,7 +24,7 @@ import {
   STORAGE_KEY_V2,
   transferEventKey,
 } from './storage'
-import { forkBaselineScenario } from './app/portfolioState'
+import { applyWhatIfToBaseline, forkBaselineScenario } from './app/portfolioState'
 import type { Workspace } from './domain/workspace'
 
 // ---------------------------------------------------------------------------
@@ -648,6 +648,55 @@ describe('F — transferEventKey export (shared with portfolio transfer collecti
 })
 
 describe('legacy offered bAV conversion (issue 349)', () => {
+  it.each(['recommender', 'manual'] as const)(
+    'repairs a saved double-count only for recommender alternatives (%s origin)',
+    (origin) => {
+      const workspace = makeValidV2Workspace()
+      Object.assign(workspace.baseline.assumptions.bav[0], {
+        status: 'offered', monthlyGrossConversion: 200,
+      })
+      // Same label in both cases: only the explicit origin identifies a recommendation.
+      const whatIf = forkBaselineScenario(workspace.baseline, 'bAV-Angebot nutzen', origin)
+      Object.assign(whatIf.assumptions.bav[0], {
+        status: 'active', monthlyGrossConversion: 400,
+      })
+      workspace.whatIfs = [whatIf]
+      const loaded = parseWorkspaceJson(buildWorkspaceJson(workspace))!
+      expect(loaded).not.toBeNull()
+      const expected = origin === 'recommender' ? 200 : 400
+      expect(loaded.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(0)
+      expect(loaded.whatIfs[0].derivedFromBaselineSnapshot.assumptions.bav[0].monthlyGrossConversion).toBe(0)
+      expect(loaded.whatIfs[0].assumptions.bav[0].monthlyGrossConversion).toBe(expected)
+      const applied = applyWhatIfToBaseline(loaded.whatIfs[0], loaded.baseline)
+      expect(applied.assumptions.bav[0]).toMatchObject({ status: 'active', monthlyGrossConversion: expected })
+      expect(parseWorkspaceJson(buildWorkspaceJson(loaded))).toEqual(loaded)
+      expect(whatIf.assumptions.bav[0].monthlyGrossConversion).toBe(400)
+    },
+  )
+
+  it.each(['zero-snapshot', 'active-snapshot', 'smaller-conversion', 'paid-up', 'different-instance'] as const)(
+    'leaves recommender conversions untouched without a provable stale offer: %s',
+    (condition) => {
+      const workspace = makeValidV2Workspace()
+      Object.assign(workspace.baseline.assumptions.bav[0], {
+        status: 'offered', monthlyGrossConversion: 200,
+      })
+      const whatIf = forkBaselineScenario(workspace.baseline, 'bAV-Angebot nutzen', 'recommender')
+      const snapshot = whatIf.derivedFromBaselineSnapshot.assumptions.bav[0]
+      const instance = whatIf.assumptions.bav[0]
+      instance.status = 'active'
+      instance.monthlyGrossConversion = 400
+      if (condition === 'zero-snapshot') snapshot.monthlyGrossConversion = 0
+      if (condition === 'active-snapshot') snapshot.status = 'active'
+      if (condition === 'smaller-conversion') instance.monthlyGrossConversion = 100
+      if (condition === 'paid-up') instance.status = 'paid_up'
+      if (condition === 'different-instance') instance.instanceId = 'bav-different'
+      workspace.whatIfs = [whatIf]
+      const loaded = parseWorkspaceJson(buildWorkspaceJson(workspace))!
+      expect(loaded.whatIfs[0].assumptions.bav[0].monthlyGrossConversion).toBe(instance.monthlyGrossConversion)
+    },
+  )
+
   it('v2 load repair removes entered provenance for the discarded €200 conversion', () => {
     const workspace = makeValidV2Workspace()
     Object.assign(workspace.baseline.assumptions.bav[0], {
