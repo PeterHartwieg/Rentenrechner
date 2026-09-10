@@ -51,7 +51,7 @@ import {
   buildPrintWendepunkteRows,
   buildPrintVergleichRows,
   buildPrintProContraRows,
-  PRINT_METHODE_BULLETS,
+  buildPrintMethodeBullets,
   type PrintWohinRow,
   type PrintZusammenRow,
   type PrintVertragBlock,
@@ -470,7 +470,7 @@ export function PrintReport({
         />
       )}
 
-      <MethodeSection />
+      <MethodeSection returnScenarios={assumptions.returnScenarios} />
 
       <section className="pr-section pr-disclaimer">
         <div className="pr-section-title">Hinweise und Grenzen der Rechnung</div>
@@ -861,7 +861,7 @@ function CombinePrintReport({
         <VertragImDetailSection blocks={vertragBlocks} />
       )}
 
-      <MethodeSection />
+      <MethodeSection returnScenarios={returnScenarios} />
 
       <section className="pr-section pr-disclaimer">
         <div className="pr-section-title">Hinweise und Grenzen der Rechnung</div>
@@ -1197,13 +1197,22 @@ function formatRowValue(row: VergleichDetailRow): string {
  * Statutorische Werte / Bewusst nicht modellieren) as a short definition
  * list, plus a pointer to the live `/methode` page for full statutory
  * tables. Kept terse — the print budget is ≤ 1 A4 page for this block.
+ *
+ * `returnScenarios` is the live set (compare: singleton assumptions;
+ * combine: workspace baseline) so the Renditeannahmen bullet can flag a
+ * user-defined `custom` scenario (#408). The bullet still lists only the
+ * three standard rates — the Rentenszenarien table above lists the live set.
  */
-function MethodeSection() {
+function MethodeSection({
+  returnScenarios,
+}: {
+  returnScenarios: ScenarioAssumptions['returnScenarios']
+}) {
   return (
     <section className="pr-section pr-methode-section">
       <div className="pr-section-title">Methode &amp; Quellen</div>
       <ul className="pr-methode-list">
-        {PRINT_METHODE_BULLETS.map((bullet) => (
+        {buildPrintMethodeBullets(returnScenarios).map((bullet) => (
           <li key={bullet.label}>
             <strong>{bullet.label}:</strong> {bullet.body}
           </li>

@@ -90,10 +90,10 @@ values are derived afterwards as `capital / (1 + inflationRate) ** years`
 (`src/engine/accumulation.ts`, `src/engine/buildResult.ts`); the nominal
 return path itself is never deflated.
 
-The band is oriented on long-run historical MSCI World returns: that is what
-the `/eingaben` Annahmen section tells users ("Renditeannahmen orientieren sich
-an historischen MSCI-World-Renditen"). The print report's Methode section
-(`src/features/results/printReportRows.ts`) now states the same nominal,
+User-facing copy names no dataset behind the rates: the `/eingaben` Annahmen
+section says "Renditeannahmen orientieren sich an langfristigen
+Aktienmarktrenditen", and the print report's Methode section
+(`src/features/results/printReportRows.ts`) states the same nominal,
 not-externally-validated framing. No dataset, period, or publication behind
 the three rates is recorded in this repository, so their derivation is not
 citable. They are therefore absent from `validationSources` in
@@ -101,9 +101,9 @@ citable. They are therefore absent from `validationSources` in
 golden tests. Internal regression snapshots (`simulate.integration.test.ts`,
 `src/test/scenarioReports/`) do pin their current values as regression anchors,
 not as validation. Do not add a fixture entry for them — that array is reserved
-for official sources with URLs and capture dates. If the MSCI World orientation
-is ever pinned to a specific series, record it here first and source the
-print-report wording in the same change.
+for official sources with URLs and capture dates. If the orientation is ever
+pinned to a specific dataset or series, record it here first and source the
+user-facing wording in the same change.
 
 All products in a comparison share the same scenario per run, so the rate is a
 market assumption, not a product property. Compare mode keeps every product on
@@ -114,7 +114,7 @@ while product fees, taxes, and payout modes diverge normally.
 Users see the scenarios in these places:
 
 - `/eingaben`, Annahmen section (`src/features/inputs/sections/AngabenAnnahmenSection.tsx`):
-  all three default rates plus the MSCI World orientation sentence
+  all three default rates plus the equity-market orientation sentence
 - `/methode`, § 1 "Renditeannahmen" (`src/features/methode/MethodePage.tsx`)
 - compare mode: the Rendite strip on `/vergleich`
   (`src/features/vergleich/VergleichRenditeStrip.tsx`) selects among the defaults
