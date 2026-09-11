@@ -108,3 +108,14 @@ describe('AlternativeComparison — F03 change summary', () => {
     expect(screen.queryByText(/Belastung|Entlastung/)).not.toBeInTheDocument()
   })
 })
+
+
+it('distinguishes a resized model contribution from the original broker quote', () => {
+  const description: WhatIfDescription = { instanceId: 'versicherung-1', instanceLabel: 'Audit Brokerangebot',
+    productId: 'versicherung', decision: 'activate_offer', changed: true, beforeContributionMonthly: 0,
+    afterContributionMonthly: 118, quotedContributionMonthly: 270, sourceRevision }
+  render(<AlternativeComparison before={summary(1652)} after={summary(1770)} description={description} retirementAge={67} />)
+  expect(screen.getByText('Monatlicher Beitrag im Modell')).toBeInTheDocument()
+  expect(screen.getByRole('note')).toHaveTextContent('Ursprünglicher Beitrag laut Angebot: 270 € / Monat')
+  expect(screen.queryByText('Monatlicher Beitrag laut Angebot')).not.toBeInTheDocument()
+})

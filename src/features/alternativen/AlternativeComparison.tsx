@@ -21,6 +21,9 @@ function actionLabel(decision: WhatIfDecisionKind): string {
 }
 
 function contributionLabel(description: WhatIfDescription): string {
+  if (description.quotedContributionMonthly != null && description.quotedContributionMonthly !== description.afterContributionMonthly) {
+    return description.productId === 'bav' ? 'Monatlicher Bruttobeitrag im Modell' : 'Monatlicher Beitrag im Modell'
+  }
   if (description.productId === 'bav') return 'Monatlicher Bruttobeitrag zur bAV'
   if (description.decision === 'activate_offer') return 'Monatlicher Beitrag laut Angebot'
   return 'Monatlicher Beitrag'
@@ -73,6 +76,10 @@ export function AlternativeComparison({ before, after, delta = null, description
           <span>{contributionLabel(description)}</span>
           <span>Bisher: {beforeText(description)}</span>
           <span>Danach: {afterText(description)}</span>
+          {description.quotedContributionMonthly != null && description.quotedContributionMonthly !== description.afterContributionMonthly && <span role="note">
+            Ursprünglicher Beitrag laut Angebot: {money(description.quotedContributionMonthly)}.
+            Diese Alternative rechnet mit einem anderen Beitrag. Kosten und Leistungen müssen für diesen Beitrag neu bestätigt werden.
+          </span>}
           {description.decision !== 'paid_up' && extraNetCost !== null && extraNetCost !== 0 && <span>
             {extraNetCost > 0 ? 'Zusätzliche monatliche Belastung' : 'Monatliche Entlastung'}: {formatCurrency(Math.abs(extraNetCost))} / Monat
           </span>}

@@ -288,5 +288,6 @@ it('reviews the selected offer at its quoted amount without changing another off
   expect(reviewed.assumptions.bav[1]).toEqual({ ...original.baseline.assumptions.bav[1], status: 'active' })
   expect(describeWhatIf(reviewed)).toMatchObject({ decision: 'activate_offer', beforeContributionMonthly: 0, afterContributionMonthly: 350 })
   expect(ws).toEqual(original)
+  expect(describeWhatIf(reviewed).quotedContributionMonthly).toBe(350)
   expect(buildOfferActivationWhatIf(ws, 'missing')).toBeNull()
 })

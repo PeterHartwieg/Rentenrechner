@@ -141,6 +141,8 @@ export interface WhatIfDescription {
   beforeContributionMonthly: number | null
   /** Monthly contribution inside the alternative. */
   afterContributionMonthly: number | null
+  /** Original quoted contribution when activating an unsigned offer. */
+  quotedContributionMonthly?: number | null
   /**
    * The plan revision the frozen before/after was computed on — the
    * "Stand beim Speichern" the saved-alternatives list shows.
@@ -276,6 +278,8 @@ export function describeWhatIf(whatIf: WhatIfScenario): WhatIfDescription {
     changed,
     beforeContributionMonthly: beforeContribution,
     afterContributionMonthly: afterContribution,
+    ...(subject.decision === 'activate_offer' && previous
+      ? { quotedContributionMonthly: contributionOf(previous.productId, previous.instance) } : {}),
     sourceRevision,
   }
 }
