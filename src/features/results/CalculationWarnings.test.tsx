@@ -8,7 +8,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import { CalculationWarnings } from './CalculationWarnings'
-import { CALCULATION_WARNINGS } from '../../app/productPresentation'
+import { CALCULATION_NOTES } from '../../content/calculationNotes'
 
 afterEach(() => cleanup())
 
@@ -25,8 +25,8 @@ describe('CalculationWarnings grouping', () => {
   it('places implementiert items under their group heading and not-modelled items under theirs', () => {
     const { container } = render(<CalculationWarnings />)
 
-    const implementiertItems = CALCULATION_WARNINGS.filter((w) => w.status === 'implementiert')
-    const nichtModelliertItems = CALCULATION_WARNINGS.filter((w) => w.status === 'nicht-modelliert')
+    const implementiertItems = CALCULATION_NOTES.filter((w) => w.status === 'implementiert')
+    const nichtModelliertItems = CALCULATION_NOTES.filter((w) => w.status === 'nicht-modelliert')
 
     // There should be separate group containers for each status.
     const implementiertGroup = container.querySelector('[data-warning-group="implementiert"]')
@@ -52,7 +52,7 @@ describe('CalculationWarnings grouping', () => {
   it('vereinfacht items are in their own group, not mixed with implementiert', () => {
     const { container } = render(<CalculationWarnings />)
 
-    const vereinfachtItems = CALCULATION_WARNINGS.filter((w) => w.status === 'vereinfacht')
+    const vereinfachtItems = CALCULATION_NOTES.filter((w) => w.status === 'vereinfacht')
     const implementiertGroup = container.querySelector('[data-warning-group="implementiert"]')
     const vereinfachtGroup = container.querySelector('[data-warning-group="vereinfacht"]')
 

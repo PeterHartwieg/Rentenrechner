@@ -9,8 +9,11 @@ import './DStepIndicator.css'
  * Visual treatment is ported from `direction-d-pages.jsx` `DStepIndicator`
  * (bundle L261-315) — two-column grid with mono kicker (I. / II.), sans
  * label + sublabel, and a mono uppercase status badge that flips between
- * `abgeschlossen` (done), `aktueller Schritt` (active), and `ausstehend`
- * (pending). Inline styles in the bundle become CSS classes that consume
+ * `abgeschlossen` (done), `aktueller Schritt` (active), and `nächster Schritt`
+ * (pending). The pending label deliberately does not say "ausstehend": a
+ * returning user with saved contracts is not missing anything, they simply
+ * have not opened step II in this visit. Inline styles in the bundle become
+ * CSS classes that consume
  * the existing Sober D tokens (`--rw-paper`, `--rw-ink`, `--rw-rule`, etc.)
  * defined in `src/App.css` — no new design tokens are introduced.
  *
@@ -39,7 +42,7 @@ const STEPS: ReadonlyArray<Step> = [
 function statusLabel(state: 'done' | 'active' | 'pending'): string {
   if (state === 'done') return 'abgeschlossen'
   if (state === 'active') return 'aktueller Schritt'
-  return 'ausstehend'
+  return 'nächster Schritt'
 }
 
 export function DStepIndicator({ current }: DStepIndicatorProps) {

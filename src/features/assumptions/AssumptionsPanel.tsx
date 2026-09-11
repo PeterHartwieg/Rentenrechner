@@ -86,7 +86,7 @@ export function AssumptionsPanel({
           </div>
 
           <div className="assumptions-group">
-            <h3>Gesetzliche Rente (Schätzwerte für #5)</h3>
+            <h3>Gesetzliche Rente (Schätzwerte)</h3>
             <dl>
               <div><dt>Vorläufiges Durchschnittsentgelt 2026</dt><dd>{formatCurrency(rules.socialSecurity.durchschnittsentgelt, 0)} · SGB VI Anlage 1</dd></div>
               <div><dt>Aktueller Rentenwert West</dt><dd>{formatCurrency(rules.socialSecurity.aktuellerRentenwert, 2)} pro Entgeltpunkt (ab 1.7.{rules.year})</dd></div>

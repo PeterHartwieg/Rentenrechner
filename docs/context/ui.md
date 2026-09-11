@@ -107,8 +107,8 @@ Calculator
 |-----------|------|-----|-------|
 | Cashflow table | `src/features/cashflows/CashflowTable.tsx` | `CashflowTable.css` | Yearly rows for one selected product/scenario; after-tax balance built by `makeRowAfterTaxBalance` in `simulationSelectors.ts` and exposed as the `rowAfterTaxBalance` field of `useDerivedViews`. |
 | ETF payout table | inline in results | — | `EtfProductResult.etfPayoutRows` |
-| Assumptions panel | `src/features/assumptions/AssumptionsPanel.tsx` | `AssumptionsPanel.css` | Static `CALCULATION_WARNINGS` from `productPresentation.ts` |
-| Calculation warnings | `src/features/results/CalculationWarnings.tsx` | `CalculationWarnings.css` | Same `CALCULATION_WARNINGS` |
+| Assumptions panel | `src/features/assumptions/AssumptionsPanel.tsx` | `AssumptionsPanel.css` | Static rule values + source links |
+| Calculation warnings | `src/features/results/CalculationWarnings.tsx` | `CalculationWarnings.css` | Consumer-facing `CALCULATION_NOTES` from `src/content/calculationNotes.ts` (no issue numbers or internal status language) |
 
 ## Shared UI primitives (`src/ui/`)
 
@@ -174,7 +174,7 @@ but `App.tsx` consumes the three hooks directly.
 | `useDerivedViews.ts` | Composes the simulation result + UI state into chart/table data (`capitalChartData`, `pensionBars`, `selectedResults`, `visibleProducts`, `cashflowResult`, `rowAfterTaxBalance`, etc.) and the share-link / CSV side-effects (`handleCopyLink`, `handleExportCsv`). |
 | `simulationSelectors.ts` | Pure framework-agnostic selectors (`deriveSelectedResults`, `buildCapitalChartData`, `buildPensionBars`, `deriveTaxModes`, `makeRowAfterTaxBalance`, …) consumed by the three hooks above. Unit-testable without React. |
 | `useSimulationViewModel.ts` | Back-compat facade that calls the three hooks above and returns a single object. New code should consume the focused hooks; this file exists so the migration was non-breaking. |
-| `productPresentation.ts` | `BAV_FEE_PRESETS`, `PAV_FEE_PRESETS`, `CALCULATION_WARNINGS`, `GRV_COLOR`. Re-exports `getProductMeta`, `PRODUCT_MANIFEST` from `productManifest.ts`. |
+| `productPresentation.ts` | `BAV_FEE_PRESETS`, `PAV_FEE_PRESETS`, `GRV_COLOR`. Re-exports `getProductMeta`, `PRODUCT_MANIFEST` from `productManifest.ts`. (`CALCULATION_WARNINGS` still exported here but no longer rendered; the UI reads `src/content/calculationNotes.ts`.) |
 
 ## Simplification surfaces (plan, wizard, contract editors)
 

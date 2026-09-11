@@ -1,5 +1,5 @@
 import './CalculationWarnings.css'
-import { CALCULATION_WARNINGS, BADGE_LABEL, type WarningStatus } from '../../app/productPresentation';
+import { CALCULATION_NOTES, BADGE_LABEL, type WarningStatus } from '../../content/calculationNotes';
 import { qaTargetAttrs } from '../qa-feedback/useFeedbackTarget';
 import { useQaMode } from '../qa-feedback/useQaMode';
 
@@ -30,7 +30,7 @@ export function CalculationWarnings() {
     <section className="warnings-panel">
       <h2>Berechnungshinweise</h2>
       {STATUS_ORDER.map((status) => {
-        const items = CALCULATION_WARNINGS.filter((w) => w.status === status)
+        const items = CALCULATION_NOTES.filter((w) => w.status === status)
         return (
           <div key={status} data-warning-group={status} className="warnings-group">
             <h3 className="warnings-group-heading">{GROUP_HEADING[status]}</h3>
