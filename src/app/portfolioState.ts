@@ -938,16 +938,8 @@ export function usePortfolioState(): UsePortfolioStateApi {
         const updated = status
           ? { ...merged, inputStatus: { ...(existing.inputStatus ?? {}), ...status } }
           : merged
-        if (patch.status === 'offered' && existing.status !== 'offered') {
-          const field = 'monthlyGrossConversion' in updated ? 'monthlyGrossConversion'
-            : productId === 'versicherung' && 'monthlyContribution' in updated ? 'monthlyContribution' : null
-          if (field) {
-            if ('monthlyGrossConversion' in updated) updated.monthlyGrossConversion = 0
-            else if ('monthlyContribution' in updated) updated.monthlyContribution = 0
-            updated.inputStatus = { ...updated.inputStatus, [field]: 'assumed' }
-            updated.evidenceMap = { ...updated.evidenceMap, [field]: 'model_estimate' }
-          }
-        }
+        // Offer status controls inclusion in the baseline simulation. Keep the
+        // quoted contribution and its provenance for comparison/reactivation.
         return updated
       })
       const patched = nextArray.find((i) => i.instanceId === instanceId)

@@ -112,7 +112,7 @@ export function buildContributionWhatIf(
 // Describing a saved alternative
 // ---------------------------------------------------------------------------
 
-export type WhatIfDecisionKind = 'contribution' | 'paid_up' | 'other'
+export type WhatIfDecisionKind = 'contribution' | 'paid_up' | 'activate_offer' | 'new_contract' | 'other'
 
 export interface WhatIfDescription {
   instanceId: string | null
@@ -165,6 +165,13 @@ function findSubject(
   before: Map<string, { productId: ProductId; instance: AnyWorkspaceInstance }>,
   after: Map<string, { productId: ProductId; instance: AnyWorkspaceInstance }>,
 ): WhatIfSubject | null {
+  for (const [instanceId, entry] of after) {
+    const previous = before.get(instanceId)
+    if (!previous) return { instanceId, instanceLabel: entry.instance.label ?? null, decision: 'new_contract' }
+    if (previous.instance.status === 'offered' && entry.instance.status === 'active') {
+      return { instanceId, instanceLabel: entry.instance.label ?? null, decision: 'activate_offer' }
+    }
+  }
   for (const [instanceId, entry] of after) {
     const previous = before.get(instanceId)
     if (!previous) continue
@@ -238,12 +245,13 @@ export function describeWhatIf(whatIf: WhatIfScenario): WhatIfDescription {
   // has a before and an after to show, it just has not changed anything.
   const previous = before.get(subject.instanceId) ?? null
   const current = after.get(subject.instanceId) ?? null
-  const beforeContribution = previous
+  const beforeContribution = subject.decision === 'activate_offer' || subject.decision === 'new_contract'
+    ? 0 : previous
     ? contributionOf(previous.productId, previous.instance)
     : null
   const afterContribution = current ? contributionOf(current.productId, current.instance) : null
   const changed =
-    subject.decision === 'paid_up' ||
+    subject.decision === 'paid_up' || subject.decision === 'activate_offer' || subject.decision === 'new_contract' ||
     (beforeContribution !== null &&
       afterContribution !== null &&
       beforeContribution !== afterContribution)
@@ -281,7 +289,7 @@ export function whatIfStatus(
 ): 'current' | 'stale' | 'shape-drift' | 'missing-source' {
   const baseline: Scenario = workspace.baseline
   const description = describeWhatIf(whatIf)
-  if (description.instanceId !== null && findEntry(workspace, description.instanceId) === null) {
+  if (description.decision !== 'new_contract' && description.instanceId !== null && findEntry(workspace, description.instanceId) === null) {
     return 'missing-source'
   }
   if (!productArrayShapeMatches(whatIf.derivedFromBaselineSnapshot, baseline)) {

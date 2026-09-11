@@ -259,3 +259,17 @@ describe('compare-mode singleton path', () => {
     expect(ws).toEqual(before)
   })
 })
+
+
+describe('audit: offer activation description', () => {
+  it('identifies an offered contract even when its quoted contribution stays the same', () => {
+    const ws = workspace()
+    ws.baseline.assumptions.bav[0].status = 'offered'
+    const alternative = forkBaselineScenario(ws.baseline, 'Angebot nutzen', 'recommender')
+    alternative.assumptions.bav[0].status = 'active'
+    expect(describeWhatIf(alternative)).toMatchObject({
+      decision: 'activate_offer', instanceId: 'bav-cccc3333', instanceLabel: 'Betriebsrente',
+      beforeContributionMonthly: 0, afterContributionMonthly: 100, changed: true,
+    })
+  })
+})

@@ -1165,3 +1165,31 @@ describe('recommendNextEuro — reacts to selectedScenarioId (#08)', () => {
     })
   })
 })
+
+
+describe('audit: recommendation and saved scenario use the same calculation', () => {
+  it('matches saved household income with existing capital and itemized insurance fees', () => {
+    const ws = buildAnnaWorkspace()
+    ws.baseline.profile = { ...ws.baseline.profile, age: 30, retirementAge: 67, grossSalaryYear: 50160 }
+    ws.baseline.assumptions.etf[0].currentValueEUR = 10000
+    ws.baseline.assumptions.etf[0].monthlyContribution = 270
+    const insurance = structuredClone(defaultAssumptions.insurance)
+    ws.baseline.assumptions.insurance = [{
+      ...insurance, instanceId: 'versicherung-audit001', label: 'Audit Brokerangebot',
+      status: 'offered', contractStartYear: 2026, currentValueEUR: 0,
+      monthlyContribution: 270, payoutMode: 'leibrente', rentenfaktor: 25,
+      evidenceMap: {}, fees: { ...insurance.fees, wrapperAssetFee: 0.01, fundAssetFee: 0.002,
+        fixedMonthlyFee: 3, acquisitionCostPct: 0.025, acquisitionCostSpreadYears: 5 },
+    }]
+    const input = buildInput(ws, 270)
+    const original = structuredClone(ws)
+    const candidates = recommendNextEuro(input)
+    expect(candidates.some(c => c.productId === 'versicherung')).toBe(true)
+    for (const candidate of candidates) {
+      const saved = buildWhatIfFromCandidate(ws.baseline, candidate)
+      const recalculated = runCombineSimulation({ ...ws, baseline: saved }, de2026Rules)
+      expect(candidate.medianNettoRente, candidate.label).toBeCloseTo(recalculated.combinedByScenarioId.basis.monthlyNetIncome, 7)
+    }
+    expect(ws).toEqual(original)
+  })
+})

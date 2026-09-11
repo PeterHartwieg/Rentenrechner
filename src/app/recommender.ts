@@ -70,11 +70,12 @@ import type {
   BavInstance,
   BasisrenteInstance,
   AltersvorsorgedepotInstance,
-  RiesterInstance,
 } from '../domain/instances'
-import { combinePortfolio, type CombinedResult } from '../engine/portfolioCombine'
+import type { CombinedResult } from '../engine/portfolioCombine'
+import { runCombineSimulation } from './useCombineSimulation'
+import { realDeflator } from './planSummary'
 import { buildPortfolioFunding } from '../engine/portfolioFunding'
-import { buildCombineContext, type CombineContext } from '../engine/combineContext'
+import { buildCombineContext } from '../engine/combineContext'
 import { runRules, type Atom } from './recommendations'
 import { SeededNormal, generateMarketReturnPath } from '../engine/monteCarlo'
 import {
@@ -407,98 +408,6 @@ function resolveBavOffer(input?: BavEmployerOfferInput): ResolvedBavOffer {
 // Combine a candidate's ProductResult into a candidate workspace
 // ---------------------------------------------------------------------------
 
-/**
- * Clone the workspace and add the candidate's instance metadata so
- * `combinePortfolio` can resolve `instanceId → instance` lookups consistently.
- *
- * For "add to existing" candidates the existing instance metadata is reused —
- * we only need to inject the candidate's *delta* contribution into the
- * synthesized ProductResult bundle (the workspace itself doesn't change because
- * combinePortfolio's instance metadata only carries fee + payout-mode shape,
- * not the contribution amount). The dashboard-mode bundle reflects the user's
- * existing contributions; the candidate's gross is layered on top via the
- * synthesized ProductResult that combinePortfolio sees alongside the baseline
- * results.
- */
-function workspaceWithCandidateInstance(
-  workspace: Workspace,
-  draft: CandidateDraft,
-): Workspace {
-  if (!draft.isNewInstance || !draft.newInstance) return workspace
-  const wsa = workspace.baseline.assumptions
-  const newAsm = (() => {
-    if (draft.productId === 'basisrente') {
-      return { ...wsa, basisrente: [...wsa.basisrente, draft.newInstance as BasisrenteInstance] }
-    }
-    if (draft.productId === 'altersvorsorgedepot') {
-      return {
-        ...wsa,
-        altersvorsorgedepot: [...wsa.altersvorsorgedepot, draft.newInstance as AltersvorsorgedepotInstance],
-      }
-    }
-    if (draft.productId === 'riester') {
-      return { ...wsa, riester: [...wsa.riester, draft.newInstance as RiesterInstance] }
-    }
-    if (draft.productId === 'bav') {
-      return { ...wsa, bav: [...wsa.bav, draft.newInstance as BavInstance] }
-    }
-    return wsa
-  })()
-  return {
-    ...workspace,
-    baseline: { ...workspace.baseline, assumptions: newAsm },
-  }
-}
-
-/**
- * Compute the candidate's combined retirement income by:
- *   1. Cloning the workspace with the candidate's new instance (when
- *      isNewInstance) so combinePortfolio's instance lookup map resolves.
- *   2. Producing a per-instance bundle: baseline basis-scenario results PLUS
- *      the candidate's synthesized ProductResult.
- *   3. Calling combinePortfolio over the merged bundle.
- *
- * For "add to existing instance" candidates: the candidateResult shares the
- * existing instance's id, but it represents the OPTIMIZED instance with extra
- * contribution layered on top. The simplest preservation of "marginal
- * benefit" is to ADD the candidate's gross monthly payout to the baseline
- * instance's gross, and re-combine. We do this by replacing the baseline
- * instance's result with a sum.
- */
-function combinedForCandidate(
-  workspace: Workspace,
-  draft: CandidateDraft,
-  baselinePerInstance: Record<string, ProductResult[]>,
-  basisScenarioId: string,
-  combineCtx: CombineContext,
-): CombinedResult {
-  const baselineResults = basisInstanceResults(baselinePerInstance, basisScenarioId)
-  let merged: ProductResult[]
-  if (draft.isNewInstance) {
-    merged = [...baselineResults, draft.candidateResult]
-  } else {
-    let matchedExistingResult = false
-    merged = baselineResults.map((r) => {
-      if (r.instanceId !== draft.targetInstanceId) return r
-      matchedExistingResult = true
-      return {
-        ...r,
-        grossMonthlyPayout: r.grossMonthlyPayout + draft.candidateResult.grossMonthlyPayout,
-        netMonthlyPayout: r.netMonthlyPayout + draft.candidateResult.netMonthlyPayout,
-        capitalAtRetirement: r.capitalAtRetirement + draft.candidateResult.capitalAtRetirement,
-        totalProductContributions: r.totalProductContributions + draft.candidateResult.totalProductContributions,
-        totalContributionsBeforeFees:
-          r.totalContributionsBeforeFees + draft.candidateResult.totalContributionsBeforeFees,
-      }
-    })
-    if (!matchedExistingResult) {
-      merged = [...merged, draft.candidateResult]
-    }
-  }
-  const candidateWorkspace = workspaceWithCandidateInstance(workspace, draft)
-  return combinePortfolio(candidateWorkspace, merged, combineCtx)
-}
-
 function effortForCandidate(
   workspace: Workspace,
   draft: CandidateDraft,
@@ -816,13 +725,16 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
 
   // Materialise each draft into a RecommendedCandidate via combinePortfolio.
   const candidates: RecommendedCandidate[] = drafts.map((d) => {
-    const combined = combinedForCandidate(
-      workspace,
-      d,
-      input.baselinePerInstance,
-      basis.scenarioId,
-      combineCtx,
-    )
+    // Score the exact contract assumptions that saving the candidate writes.
+    // This retains fees, existing capital, tax allowances and funding interactions.
+    const candidateAssumptions = deepCloneScenario(workspace.baseline.assumptions)
+    applyCandidateToAssumptions(candidateAssumptions, d)
+    const candidateWorkspace = {
+      ...workspace,
+      baseline: { ...workspace.baseline, assumptions: candidateAssumptions },
+    }
+    const exact = runCombineSimulation(candidateWorkspace, rules)
+    const combined = exact.combinedByScenarioId[basis.scenarioId]
     const median = combined.monthlyNetIncome
     const lifetimeYears = Math.max(
       1,
@@ -832,7 +744,7 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
       ),
     )
     const lifetimeCash = median * 12 * lifetimeYears
-    const wunschnettoFloorMet = wunschnetto > 0 ? median >= wunschnetto : true
+    const wunschnettoFloorMet = wunschnetto > 0 ? median * realDeflator(wsa.inflationRate, profile.retirementAge - profile.age) >= wunschnetto : true
     const atoms: Atom[] = runRules({
       workspace,
       simulationResult: { products: basisInstanceResults(input.baselinePerInstance, basis.scenarioId) },
@@ -888,9 +800,19 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
     // Issue 67: net capital at retirement. afterTaxLumpSum is null for products
     // with a forced annuity payout (Basisrente). Fall back to gross capital so
     // the UI still has a value to render — accompanied by `payoutOnly: true`.
-    const netCapitalAtRetirement = d.candidateResult.afterTaxLumpSum
-      ?? d.candidateResult.capitalAtRetirement
-    const payoutOnly = d.candidateResult.afterTaxLumpSum === null
+    const candidateRow = Object.values(exact.perInstance).flat().find((row) =>
+      row.scenarioId === basis.scenarioId && (d.targetInstanceId
+        ? row.instanceId === d.targetInstanceId
+        : !input.baselinePerInstance[row.instanceId ?? '']),
+    )
+    const priorRow = d.targetInstanceId
+      ? input.baselinePerInstance[d.targetInstanceId]?.find(row => row.scenarioId === basis.scenarioId)
+      : undefined
+    const capitalAtRetirement = Math.max(0, (candidateRow?.capitalAtRetirement ?? 0) - (priorRow?.capitalAtRetirement ?? 0))
+    const payoutOnly = candidateRow?.afterTaxLumpSum === null
+    const netCapitalAtRetirement = payoutOnly ? capitalAtRetirement : Math.max(0,
+      (candidateRow?.afterTaxLumpSum ?? 0) - (priorRow?.afterTaxLumpSum ?? 0),
+    )
     return {
       id: d.id,
       label: d.label,
@@ -905,8 +827,8 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
       flexibilityScore: flexibilityDetails.overall,
       flexibilityDetails,
       effort: effortForCandidate(workspace, d, d.productId === 'bav' ? d.bavOffer : bavOffer),
-      riskScore: d.candidateResult.capitalAtRetirement,
-      capitalAtRetirement: d.candidateResult.capitalAtRetirement,
+      riskScore: capitalAtRetirement,
+      capitalAtRetirement,
       netCapitalAtRetirement,
       payoutOnly,
       riskScoreP10,
@@ -998,7 +920,7 @@ export function buildWhatIfFromCandidate(
 
 function applyCandidateToAssumptions(
   wsa: Scenario['assumptions'],
-  candidate: RecommendedCandidate,
+  candidate: Pick<RecommendedCandidate, 'productId' | 'isNewInstance' | 'targetInstanceId' | 'grossMonthlyEUR' | 'label' | 'newInstance' | 'bavOffer' | 'monthlyEmployerContributionEUR'>,
 ): void {
   if (!candidate.isNewInstance && candidate.targetInstanceId) {
     if (candidate.productId === 'bav') {
@@ -1092,7 +1014,7 @@ function applyCandidateToAssumptions(
 }
 
 function bavOfferPatchForSavedPlan(
-  candidate: RecommendedCandidate,
+  candidate: Pick<RecommendedCandidate, 'bavOffer' | 'monthlyEmployerContributionEUR'>,
   totalMonthlyGrossConversion: number,
 ): Partial<BavInstance> {
   const offer = candidate.bavOffer
