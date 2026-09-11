@@ -10,6 +10,7 @@ import { getProductMeta } from '../../app/productPresentation'
 import { ProvLabel } from './provenance'
 import { evidenceStateToProvKind } from './provenanceHelpers'
 import { formatCurrency, formatPercent } from '../../utils/format'
+import { availableRiy, RIY_UNAVAILABLE, RIY_UNAVAILABLE_REASON } from './riyAvailability'
 
 /**
  * Per-instance row used by the combine-mode details view (Group G issue 28).
@@ -173,7 +174,7 @@ function CombineDetailRowView({
   const statusClass = `combine-detail-status combine-detail-status--${row.status}`
 
   const capital = result?.capitalAtRetirement
-  const riy = result?.accumulationRiy
+  const riy = availableRiy(result)
   // Use the back-allocated `monthlyNet` from the aggregate progressive
   // tax + KV/PV pipeline when available. This is the correct contract-level
   // net whenever multiple taxable sources interact (combine mode). Fall back
@@ -225,7 +226,7 @@ function CombineDetailRowView({
         <span className={statusClass}>{statusLabel}</span>
       </td>
       <td>{capital !== undefined ? formatCurrency(capital, 0) : '–'}</td>
-      <td>{riy !== undefined ? formatPercent(riy, 2) : '–'}</td>
+      <td title={riy === undefined && result ? RIY_UNAVAILABLE_REASON : undefined}>{riy !== undefined ? formatPercent(riy, 2) : result ? RIY_UNAVAILABLE : '–'}</td>
       <td title={netCellTitle} aria-label={netCellTitle}>
         {householdTotalBlocked
           ? '—'

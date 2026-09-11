@@ -1,3 +1,4 @@
+import { availableRiy, RIY_UNAVAILABLE } from './riyAvailability'
 /**
  * PrintReport — Sober D port (PR 4.1, H4).
  *
@@ -838,7 +839,7 @@ function CombinePrintReport({
                     {householdTotalBlocked ? '—' : formatCurrency(netMonthly, 0)}
                     <ConfidenceIndicator state={r.inputConfidence} />
                   </td>
-                  <td className="pr-num">{formatPercent(r.accumulationRiy, 2)}</td>
+                  <td className="pr-num">{availableRiy(r) === undefined ? RIY_UNAVAILABLE : formatPercent(availableRiy(r)!, 2)}</td>
                 </tr>
               )
             })}

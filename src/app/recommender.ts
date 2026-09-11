@@ -809,7 +809,7 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
       ? input.baselinePerInstance[d.targetInstanceId]?.find(row => row.scenarioId === basis.scenarioId)
       : undefined
     const capitalAtRetirement = Math.max(0, (candidateRow?.capitalAtRetirement ?? 0) - (priorRow?.capitalAtRetirement ?? 0))
-    const payoutOnly = candidateRow?.afterTaxLumpSum === null
+    const payoutOnly = d.candidateResult.afterTaxLumpSum === null || candidateRow?.afterTaxLumpSum === null
     const netCapitalAtRetirement = payoutOnly ? capitalAtRetirement : Math.max(0,
       (candidateRow?.afterTaxLumpSum ?? 0) - (priorRow?.afterTaxLumpSum ?? 0),
     )
