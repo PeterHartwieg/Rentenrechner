@@ -16,6 +16,7 @@
 
 import type { ProductId } from '../domain'
 import type { Scenario, WhatIfScenario, Workspace } from '../domain/workspace'
+import { resolveInputStatus } from '../features/results/provenanceHelpers'
 import { scenarioDiff } from './scenarioDiff'
 import { formatCurrency } from '../utils/format'
 import { applyContractDecision, beitragsfreiWhatIf } from './contractDecisions'
@@ -268,6 +269,12 @@ export function describeWhatIf(whatIf: WhatIfScenario): WhatIfDescription {
     ? contributionOf(previous.productId, previous.instance)
     : null
   const afterContribution = current ? contributionOf(current.productId, current.instance) : null
+  const contributionField = previous ? CONTRIBUTION_FIELD_BY_PRODUCT[previous.productId] : null
+  const quoteStatus = previous && contributionField ? resolveInputStatus(previous.instance.inputStatus,
+    previous.instance.evidenceMap[contributionField], contributionField) : 'unknown'
+  const knownQuote = subject.decision === 'activate_offer' && previous
+    && (quoteStatus === 'entered' || quoteStatus === 'document')
+    ? contributionOf(previous.productId, previous.instance) : null
   const changed =
     subject.decision === 'paid_up' || subject.decision === 'activate_offer' || subject.decision === 'new_contract' ||
     (beforeContribution !== null &&
@@ -283,8 +290,7 @@ export function describeWhatIf(whatIf: WhatIfScenario): WhatIfDescription {
     changed,
     beforeContributionMonthly: beforeContribution,
     afterContributionMonthly: afterContribution,
-    ...(subject.decision === 'activate_offer' && previous
-      ? { quotedContributionMonthly: contributionOf(previous.productId, previous.instance) } : {}),
+    ...(knownQuote !== null && knownQuote >= 0 ? { quotedContributionMonthly: knownQuote } : {}),
     sourceRevision,
   }
 }

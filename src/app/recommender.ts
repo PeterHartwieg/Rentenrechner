@@ -69,7 +69,7 @@ import type {
 import type { CombinedResult } from '../engine/portfolioCombine'
 import { runCombineSimulation } from './useCombineSimulation'
 import { realDeflator } from './planSummary'
-import { listWorkspaceInstances } from './resultReadiness'
+import { CONTRIBUTION_FIELD_BY_PRODUCT, listWorkspaceInstances } from './resultReadiness'
 import { PRODUCT_EVIDENCE_FIELDS } from '../utils/evidence'
 import { buildPortfolioFunding } from '../engine/portfolioFunding'
 import { buildCombineContext } from '../engine/combineContext'
@@ -918,8 +918,9 @@ export function buildWhatIfFromCandidate(
       at && typeof at === 'object' ? (at as Record<string, unknown>)[key] : undefined, value)
     for (const field of PRODUCT_EVIDENCE_FIELDS[changed.productId]) {
       if (read(previous.instance, field) === read(changed.instance, field)) continue
-      changed.instance.inputStatus = { ...changed.instance.inputStatus, [field]: 'assumed' }
-      changed.instance.evidenceMap = { ...changed.instance.evidenceMap, [field]: 'model_estimate' }
+      const chosenTopUp = previous.instance.status === 'active' && field === CONTRIBUTION_FIELD_BY_PRODUCT[changed.productId]
+      changed.instance.inputStatus = { ...changed.instance.inputStatus, [field]: chosenTopUp ? 'entered' : 'assumed' }
+      changed.instance.evidenceMap = { ...changed.instance.evidenceMap, [field]: chosenTopUp ? 'user_confirmed' : 'model_estimate' }
     }
   }
   return {

@@ -748,13 +748,9 @@ export function usePortfolioState(): UsePortfolioStateApi {
   )
 
   const addWhatIf = useCallback((whatIf: WhatIfScenario, options?: { preserveUndo?: boolean }) => {
-    if (options?.preserveUndo && lastUndoHandle) {
-      // Reviewing a quote is independent of the previous baseline edit.
-      // Keep the new comparison when that previous edit is undone.
-      publishLastUndo({ ...lastUndoHandle, previous: {
-        ...lastUndoHandle.previous, whatIfs: [...lastUndoHandle.previous.whatIfs, whatIf],
-      } })
-    } else publishLastUndo(null)
+    // A quote review must not clear an existing undo. If that edit is undone,
+    // restore the original workspace, discarding reviews of the undone state.
+    if (!options?.preserveUndo) publishLastUndo(null)
     updateWorkspaceStore((w) => ({ ...w, whatIfs: [...w.whatIfs, whatIf] }))
   }, [])
 

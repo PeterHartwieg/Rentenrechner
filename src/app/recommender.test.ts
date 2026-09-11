@@ -1230,3 +1230,15 @@ it('marks a resized documented offer contribution as a model estimate without ch
   expect(ws.baseline.assumptions.insurance[0].monthlyContribution).toBe(270)
   expect(ws.baseline.assumptions.insurance[0].inputStatus?.monthlyContribution).toBe('document')
 })
+
+
+it('marks a chosen active ETF top-up as entered, without retaining old document evidence', () => {
+  const ws = buildAnnaWorkspace()
+  ws.baseline.assumptions.etf[0].inputStatus = { monthlyContribution: 'document' }
+  ws.baseline.assumptions.etf[0].evidenceMap.monthlyContribution = 'statement'
+  const candidate = recommendNextEuro(buildInput(ws, 100)).find(c => c.productId === 'etf')!
+  const saved = buildWhatIfFromCandidate(ws.baseline, candidate)
+  expect(saved.assumptions.etf[0].inputStatus?.monthlyContribution).toBe('entered')
+  expect(saved.assumptions.etf[0].evidenceMap.monthlyContribution).toBe('user_confirmed')
+  expect(ws.baseline.assumptions.etf[0].inputStatus?.monthlyContribution).toBe('document')
+})

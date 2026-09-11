@@ -39,7 +39,7 @@ describe('AlternativeComparison — F03 change summary', () => {
   it('names an activated offer, its quoted contribution, the extra cost and the payout promise', () => {
     const description: WhatIfDescription = {
       instanceId: 'versicherung-1', instanceLabel: 'Audit Brokerangebot', productId: 'versicherung',
-      decision: 'activate_offer', changed: true, beforeContributionMonthly: 0, afterContributionMonthly: 270, sourceRevision,
+      decision: 'activate_offer', changed: true, beforeContributionMonthly: 0, afterContributionMonthly: 270, quotedContributionMonthly: 270, sourceRevision,
     }
     render(<AlternativeComparison before={summary(1652, [statutory, etfBefore], 270)} after={summary(1926, [statutory, etfBefore, offerAfter], 540)}
       delta={274} description={description} retirementAge={67} />)
@@ -118,4 +118,15 @@ it('distinguishes a resized model contribution from the original broker quote', 
   expect(screen.getByText('Monatlicher Beitrag im Modell')).toBeInTheDocument()
   expect(screen.getByRole('note')).toHaveTextContent('Ursprünglicher Beitrag laut Angebot: 270 € / Monat')
   expect(screen.queryByText('Monatlicher Beitrag laut Angebot')).not.toBeInTheDocument()
+})
+
+
+it('does not label a missing original amount as a zero-euro quote', () => {
+  const description: WhatIfDescription = { instanceId: 'versicherung-1', instanceLabel: 'Altangebot',
+    productId: 'versicherung', decision: 'activate_offer', changed: true, beforeContributionMonthly: 0,
+    afterContributionMonthly: 100, sourceRevision }
+  render(<AlternativeComparison before={summary(1652)} after={summary(1750)} description={description} retirementAge={67} />)
+  expect(screen.getByRole('note')).toHaveTextContent('bestätigte Beitragshöhe aus dem Angebot fehlt')
+  expect(screen.getByText('Monatlicher Beitrag im Modell')).toBeInTheDocument()
+  expect(screen.queryByText(/Ursprünglicher Beitrag laut Angebot: 0/)).not.toBeInTheDocument()
 })

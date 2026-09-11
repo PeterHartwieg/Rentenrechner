@@ -585,7 +585,7 @@ describe('productArrayShapeMatches', () => {
 })
 
 
-it('reviewing an offer can preserve the previous undo without losing the saved comparison', () => {
+it('reviewing an offer preserves undo, which discards the review of the undone state', () => {
   const ws = populatedWorkspace()
   const { result } = renderHook(() => usePortfolioState())
   act(() => result.current.replaceWorkspace(ws))
@@ -596,5 +596,6 @@ it('reviewing an offer can preserve the previous undo without losing the saved c
   expect(result.current.lastUndo?.id).toBe(previousUndo!.id)
   act(() => { expect(result.current.undo(previousUndo!)).toBe(true) })
   expect(result.current.baseline.assumptions.etf).toHaveLength(2)
-  expect(result.current.whatIfs.some(w => w.id === comparison.id)).toBe(true)
+  expect(result.current.whatIfs.some(w => w.id === comparison.id)).toBe(false)
+  expect(result.current.workspace).toEqual(ws)
 })

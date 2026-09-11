@@ -280,7 +280,7 @@ it('reviews the selected offer at its quoted amount without changing another off
   const ws = workspace()
   ws.baseline.assumptions.bav = [
     { ...bav('bav-first001', 100), status: 'offered' },
-    { ...bav('bav-second01', 350), status: 'offered' },
+    { ...bav('bav-second01', 350), status: 'offered', inputStatus: { monthlyGrossConversion: 'entered' } },
   ]
   const original = structuredClone(ws)
   const reviewed = buildOfferActivationWhatIf(ws, 'bav-second01')!
@@ -292,4 +292,15 @@ it('reviews the selected offer at its quoted amount without changing another off
   ws.whatIfs.push(reviewed)
   expect(buildOfferActivationWhatIf(ws, 'bav-second01')?.id).toBe(reviewed.id)
   expect(buildOfferActivationWhatIf(ws, 'missing')).toBeNull()
+})
+
+
+it('does not invent a broker quote from a legacy zeroed, assumed offer', () => {
+  const ws = workspace()
+  ws.baseline.assumptions.bav[0].status = 'offered'
+  ws.baseline.assumptions.bav[0].monthlyGrossConversion = 0
+  ws.baseline.assumptions.bav[0].inputStatus = { monthlyGrossConversion: 'assumed' }
+  const offer = buildOfferActivationWhatIf(ws, ws.baseline.assumptions.bav[0].instanceId)!
+  offer.assumptions.bav[0].monthlyGrossConversion = 100
+  expect(describeWhatIf(offer).quotedContributionMonthly).toBeUndefined()
 })
