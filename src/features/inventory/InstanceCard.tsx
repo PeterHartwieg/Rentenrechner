@@ -34,6 +34,7 @@ import { estimateEpFromYears } from './inventoryHelpers'
 import { VintageChips } from './VintageChips'
 import type { Atom } from '../../app/recommendations'
 import { FeeSection, type FeeInputMode } from '../inputs/sections/FeeSection'
+import { hasNonAssetFees } from '../inputs/sections/feeModelHelpers'
 import { BeitragsdynamikField } from '../inputs/sections/BeitragsdynamikField'
 import { EvidenceBadge } from './EvidenceBadge'
 import { InvField, InvNumber, InvSelect, InvText } from './fields'
@@ -264,8 +265,9 @@ function Layer3Details({
   const [feeMode, setFeeMode] = useState<FeeInputMode>('effektivkosten')
 
   // Adapter: preserve an edited Einzelposten split; otherwise derive the all-in fee from the scalar.
+  // No computed RIY exists at draft time, so FeeSection gets no `riy` and shows
+  // only the asset-charge sum (never labelled as Effektivkosten).
   const feesForInput = feeDetails ?? allInFeeDetails(effektivkostenPct)
-  const riy = feesForInput.wrapperAssetFee + feesForInput.fundAssetFee
   const handleFeesChange = (fees: FeeModel) => {
     const nextEffektivkostenPct = (fees.wrapperAssetFee + fees.fundAssetFee) * 100
     if (onFeeDetailsChange) {
@@ -290,7 +292,6 @@ function Layer3Details({
             fees={feesForInput}
             onChangeFees={handleFeesChange}
             presets={LAYER3_FEE_PRESETS}
-            riy={riy}
             feeInputMode={feeMode}
             setFeeInputMode={setFeeMode}
           />
@@ -400,6 +401,33 @@ function allInFeeDetails(effektivkostenPct: number): FeeModel {
     acquisitionCostPct: 0,
     acquisitionCostSpreadYears: 5,
     pensionPayoutFeePct: 0,
+  }
+}
+
+/**
+ * Label + hint for the Layer-1 cost field. `effektivkostenPct` is the quoted
+ * all-in figure only while no itemized extras exist; once the user has entered
+ * fixed / contribution / acquisition / payout charges under "Details", the
+ * scalar is just wrapper + fund and must not be called Effektivkosten.
+ */
+function effektivkostenFieldCopy(
+  feeDetails: FeeModel | undefined,
+  typicalRange?: string,
+): { label: string; hint: string } {
+  if (feeDetails && hasNonAssetFees(feeDetails)) {
+    return {
+      label: 'Laufende Kapitalgebühr p.a. (Mantel + Fonds)',
+      hint:
+        'Aus den Einzelposten unter „Details" abgeleitet, ohne Fix-, Beitrags-, Abschluss- und Auszahlungskosten. ' +
+        'Nicht die Effektivkostenquote aus dem PIB. Eine Eingabe hier ersetzt alle Einzelposten.',
+    }
+  }
+  return {
+    label: 'Effektivkosten p.a. laut PIB/KID (all-in)',
+    hint:
+      'Renditeminderung aus dem Produktinformationsblatt, alle Kosten enthalten.' +
+      (typicalRange ? ` ${typicalRange}` : '') +
+      ' Einzelposten lassen sich unter „Details" erfassen.',
   }
 }
 
@@ -523,8 +551,7 @@ export function BavCard({
         </InvField>
 
         <InvField
-          label="Effektivkosten p.a. (aus PIB/KID)"
-          hint="Renditeminderung aus dem Produktinformationsblatt. Typisch 0,6–1,5 % für ETF-Nettotarife."
+          {...effektivkostenFieldCopy(draft.feeDetails, 'Typisch 0,6–1,5 % für ETF-Nettotarife.')}
         >
           <InvNumber
             value={draft.effektivkostenPct}
@@ -617,8 +644,7 @@ export function PavCard({
       <p className="inventory-instance-section-heading">pAV-spezifisch</p>
       <div className="inventory-field-grid">
         <InvField
-          label="Effektivkosten p.a. (aus PIB/KID)"
-          hint="Renditeminderung aus dem Produktinformationsblatt. Typisch 0,5–1,5 % für Nettotarife."
+          {...effektivkostenFieldCopy(draft.feeDetails, 'Typisch 0,5–1,5 % für Nettotarife.')}
         >
           <InvNumber
             value={draft.effektivkostenPct}
@@ -766,10 +792,7 @@ export function BasisrenteCard({ draft, onChange, setEvidence }: BaseProps<Basis
 
       <p className="inventory-instance-section-heading">Basisrente-spezifisch</p>
       <div className="inventory-field-grid">
-        <InvField
-          label="Effektivkosten p.a. (aus PIB/KID)"
-          hint="Renditeminderung aus dem Produktinformationsblatt."
-        >
+        <InvField {...effektivkostenFieldCopy(draft.feeDetails)}>
           <InvNumber
             value={draft.effektivkostenPct}
             min={0}

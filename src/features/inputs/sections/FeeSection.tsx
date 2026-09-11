@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { FeeModel } from '../../../domain'
 import { NumberField } from '../../../ui/NumberField'
 import { formatPercent } from '../../../utils/format'
+import { describeNonAssetFees, hasNonAssetFees } from './feeModelHelpers'
 import { qaTargetAttrs } from '../../qa-feedback'
 import { useQaMode } from '../../qa-feedback/useQaMode'
 
@@ -30,8 +31,13 @@ interface Props {
   onChangeFees: (fees: FeeModel) => void
   /** Pre-canned preset buttons for the host's product (BAV_FEE_PRESETS / PAV_FEE_PRESETS). */
   presets: readonly FeePreset[]
-  /** Effektivkosten / RIY (decimal) for the threshold-warning thresholds and the summary line. */
-  riy: number
+  /**
+   * Computed Effektivkosten / RIY (decimal) from the engine's fee solver, for
+   * the threshold warnings and the summary line. Omit when the host has no
+   * simulation result: the section then shows only the asset-charge sum and
+   * never labels that sum as Effektivkosten.
+   */
+  riy?: number
   feeInputMode: FeeInputMode
   setFeeInputMode: Dispatch<SetStateAction<FeeInputMode>>
   /**
@@ -65,6 +71,7 @@ export function FeeSection({
 }: Props) {
   const { enabled: qaEnabled } = useQaMode()
   const totalAsset = fees.wrapperAssetFee + fees.fundAssetFee
+  const itemizedExtras = hasNonAssetFees(fees)
   const update = (patch: Partial<FeeModel>) => onChangeFees({ ...fees, ...patch })
   const fid = (suffix: string) => feedbackBaseId ? `${feedbackBaseId}.${suffix}` : undefined
   // Derive leaf QA ids for the mode-tab buttons. When no feedbackBaseId is
@@ -186,7 +193,7 @@ export function FeeSection({
       {feeInputMode === 'effektivkosten' && (
         <>
           <NumberField
-            label="Effektivkosten aus PIB/KID (Renditeminderung p.a.)"
+            label="Effektivkostenquote laut PIB/KID (all-in, Renditeminderung p.a.)"
             feedbackTargetId={fid('effektivkosten')}
             value={(fees.wrapperAssetFee + fees.fundAssetFee) * 100}
             min={0}
@@ -197,10 +204,20 @@ export function FeeSection({
               onChangeFees({ ...ALL_IN_FALLBACK, wrapperAssetFee: Number(value) / 100 })
             }
           />
+          {itemizedExtras && (
+            <p className="field-warning" data-testid="fee-allin-itemized-note">
+              Für diesen Vertrag sind Einzelposten hinterlegt ({describeNonAssetFees(fees)}).
+              Sie bleiben in der Rechnung erhalten. Der Wert oben ist deshalb nur
+              die laufende Kapitalgebühr (Mantel + Fonds), nicht die
+              Effektivkostenquote aus dem Produktinformationsblatt.
+            </p>
+          )}
           <p className="field-hint">
-            Näherung: Die Effektivkosten aus dem PIB/KID werden als gleichmäßige
-            jährliche Renditeminderung eingestellt. Abschluss- und beitragsbezogene
-            Kosten sind darin bereits enthalten.{' '}
+            Näherung: Der eingegebene Wert wird als gleichmäßige jährliche
+            Renditeminderung angesetzt. Eine Eingabe hier ersetzt alle
+            Einzelposten (Fixkosten, Kosten je Beitrag, Abschluss- und
+            Auszahlungskosten), weil die Effektivkostenquote diese bereits
+            enthält.{' '}
             <button
               type="button"
               className="link-btn"
@@ -215,14 +232,19 @@ export function FeeSection({
       <div className="fee-summary">
         {feeInputMode === 'aufgeschluesselt' && (
           <span>
-            Gesamt Kapitalgebühr: <strong>{formatPercent(totalAsset)}</strong> p.a.
+            Laufende Kapitalgebühr (Mantel + Fonds):{' '}
+            <strong>{formatPercent(totalAsset)}</strong> p.a.
             (Mantel {formatPercent(fees.wrapperAssetFee)} + Fonds{' '}
             {formatPercent(fees.fundAssetFee)})
+            {itemizedExtras && ' — ohne Fix-, Beitrags-, Abschluss- und Auszahlungskosten'}
           </span>
         )}
-        <span className={riy > 0.02 ? 'riy-high' : riy > 0.015 ? 'riy-warn' : ''}>
-          Effektivkosten: <strong>{formatPercent(riy)}</strong>
-        </span>
+        {riy !== undefined && (
+          <span className={riy > 0.02 ? 'riy-high' : riy > 0.015 ? 'riy-warn' : ''}>
+            Effektivkosten (berechnete Renditeminderung, alle Kosten):{' '}
+            <strong>{formatPercent(riy)}</strong>
+          </span>
+        )}
         {fees.contributionFee > 0.05 && (
           <p className="field-warning">
             Beitragskostenquote {formatPercent(fees.contributionFee)} liegt über
@@ -241,13 +263,13 @@ export function FeeSection({
             1,0 % — prüfen Sie ETF-basierte Nettotarife (typisch 0,5–0,8 % all-in).
           </p>
         )}
-        {riy > 0.02 && (
+        {riy !== undefined && riy > 0.02 && (
           <p className="field-warning">
             Effektivkosten {formatPercent(riy)} überschreiten 2,0 % — ETF-basierte
             Verträge über dieser Schwelle gelten i. d. R. als unwirtschaftlich.
           </p>
         )}
-        {riy > 0.015 && riy <= 0.02 && (
+        {riy !== undefined && riy > 0.015 && riy <= 0.02 && (
           <p className="field-warning">
             Effektivkosten {formatPercent(riy)} liegen im kritischen Bereich
             (1,5–2,0 %) — Nettotarife erzielen typisch 0,6–1,0 %.

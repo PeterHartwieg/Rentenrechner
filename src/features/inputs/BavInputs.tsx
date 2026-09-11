@@ -201,7 +201,7 @@ export function BavInputs({
 
       {riy > 0 && (
         <p className="field-hint">
-          Effektivkosten:{' '}
+          Effektivkosten (berechnete Renditeminderung, alle Kosten):{' '}
           <strong className={riy > 0.015 ? 'riy-warn' : ''}>{formatPercent(riy)}</strong>
           {riy > 0.015 && ' — Nettotarife erzielen typisch 0,6–1,0 %'}
         </p>
@@ -408,7 +408,7 @@ export function BavInputs({
 
           <div className="subsection-heading">
             <h3>bAV-Kosten</h3>
-            <p>Kosteneingabe direkt aus dem Produktinformationsblatt (Effektivkosten all-in) oder als Einzelposten.</p>
+            <p>Entweder die Effektivkostenquote aus dem Produktinformationsblatt (all-in) eingeben oder die Kosten als Einzelposten erfassen. Die angezeigten Effektivkosten werden in beiden Fällen aus der Rechnung abgeleitet.</p>
           </div>
           <FeeSection
             fees={assumptions.bav.fees}
