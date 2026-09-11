@@ -579,7 +579,9 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
             onReviewOffer={(instanceId) => {
               const offer = buildOfferActivationWhatIf(portfolioState.workspace, instanceId)
               if (!offer) return
-              portfolioState.addWhatIf(offer)
+              if (!portfolioState.workspace.whatIfs.some(saved => saved.id === offer.id)) {
+                portfolioState.addWhatIf(offer, { preserveUndo: true })
+              }
               navigate(ROUTES.alternativen, `?id=${encodeURIComponent(offer.id)}`)
             }}
             topicIntent={topicIntent}
@@ -635,6 +637,11 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
               onSaveAsPlan={(candidate) => {
                 const whatIf = buildWhatIfFromCandidate(portfolioState.baseline, candidate)
                 portfolioState.addWhatIf(whatIf)
+                return whatIf.id
+              }}
+              onOpenSaved={(id) => {
+                setShowLueckeModal(false)
+                navigate(ROUTES.alternativen, `?id=${encodeURIComponent(id)}`)
               }}
             />
           )}

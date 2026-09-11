@@ -14,6 +14,8 @@ import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
 import { migrateV1ToV2 } from '../storage'
+import { solveTargetContribution } from './targetContribution'
+import { realDeflator } from './planSummary'
 import { runCombineSimulation } from './useCombineSimulation'
 import {
   recommendNextEuro,
@@ -1192,4 +1194,39 @@ describe('audit: recommendation and saved scenario use the same calculation', ()
     }
     expect(ws).toEqual(original)
   })
+})
+
+
+it('keeps the solver-selected second ETF through recommendation and save', () => {
+  const ws = buildAnnaWorkspace()
+  const first = ws.baseline.assumptions.etf[0]
+  ws.baseline.assumptions.etf.push({ ...first, instanceId: 'etf-second', label: 'Depot B', annualAssetFee: 0.01 })
+  const input = buildInput(ws, 100)
+  const p = ws.baseline.profile
+  const deflator = realDeflator(ws.baseline.assumptions.inflationRate, p.retirementAge - p.age)
+  const solved = solveTargetContribution(ws, de2026Rules, 'etf-second', input.baselineCombined.monthlyNetIncome * deflator + 200)!
+  expect(solved).not.toBeNull()
+  const candidate = recommendNextEuro({ ...input, marginalMonthlyEUR: solved.additionalMonthly,
+    preferredEtfInstanceId: 'etf-second' }).find(c => c.productId === 'etf')!
+  expect(candidate.targetInstanceId).toBe('etf-second')
+  expect(candidate.medianNettoRente * deflator).toBeCloseTo(solved.achievedMonthlyReal, 8)
+  const saved = buildWhatIfFromCandidate(ws.baseline, candidate)
+  expect(saved.assumptions.etf[0]).toEqual(first)
+  expect(saved.assumptions.etf[1].monthlyContribution).toBe(solved.monthlyContribution)
+  first.status = 'paid_up'
+  expect(recommendNextEuro(buildInput(ws, 100)).find(c => c.productId === 'etf')?.targetInstanceId).toBe('etf-second')
+})
+
+it('marks a resized documented offer contribution as a model estimate without changing the quote', () => {
+  const ws = buildAnnaWorkspace()
+  ws.baseline.assumptions.insurance = [{ ...structuredClone(defaultAssumptions.insurance),
+    instanceId: 'versicherung-quote', label: 'Dokumentiertes Angebot', status: 'offered', contractStartYear: 2026,
+    monthlyContribution: 270, evidenceMap: { monthlyContribution: 'statement' }, inputStatus: { monthlyContribution: 'document' } }]
+  const candidate = recommendNextEuro(buildInput(ws, 100)).find(c => c.productId === 'versicherung')!
+  const saved = buildWhatIfFromCandidate(ws.baseline, candidate)
+  expect(saved.assumptions.insurance[0].monthlyContribution).toBe(100)
+  expect(saved.assumptions.insurance[0].inputStatus?.monthlyContribution).toBe('assumed')
+  expect(saved.assumptions.insurance[0].evidenceMap.monthlyContribution).toBe('model_estimate')
+  expect(ws.baseline.assumptions.insurance[0].monthlyContribution).toBe(270)
+  expect(ws.baseline.assumptions.insurance[0].inputStatus?.monthlyContribution).toBe('document')
 })

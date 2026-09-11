@@ -425,7 +425,7 @@ export interface UsePortfolioStateApi {
   setBaseline: (scenario: Scenario) => void
   /** Update the baseline in-place (preserves id/createdAt). Stamps lastEditedAt. */
   patchBaseline: (patch: Partial<Omit<Scenario, 'id' | 'createdAt'>>) => void
-  addWhatIf: (whatIf: WhatIfScenario) => void
+  addWhatIf: (whatIf: WhatIfScenario, options?: { preserveUndo?: boolean }) => void
   updateWhatIf: (id: string, patch: Partial<Omit<WhatIfScenario, 'id'>>) => void
   /** Remove a saved alternative. Returns the undo handle (§5). */
   removeWhatIf: (id: string) => WorkspaceUndo
@@ -588,7 +588,7 @@ export function commitWorkspace(label: string, next: Workspace): WorkspaceUndo {
  */
 export function undoWorkspace(handle: WorkspaceUndo): boolean {
   if (!lastUndoHandle || lastUndoHandle.id !== handle.id) return false
-  setWorkspaceStore(handle.previous)
+  setWorkspaceStore(lastUndoHandle.previous)
   publishLastUndo(null)
   return true
 }
@@ -747,8 +747,14 @@ export function usePortfolioState(): UsePortfolioStateApi {
     [],
   )
 
-  const addWhatIf = useCallback((whatIf: WhatIfScenario) => {
-    publishLastUndo(null)
+  const addWhatIf = useCallback((whatIf: WhatIfScenario, options?: { preserveUndo?: boolean }) => {
+    if (options?.preserveUndo && lastUndoHandle) {
+      // Reviewing a quote is independent of the previous baseline edit.
+      // Keep the new comparison when that previous edit is undone.
+      publishLastUndo({ ...lastUndoHandle, previous: {
+        ...lastUndoHandle.previous, whatIfs: [...lastUndoHandle.previous.whatIfs, whatIf],
+      } })
+    } else publishLastUndo(null)
     updateWorkspaceStore((w) => ({ ...w, whatIfs: [...w.whatIfs, whatIf] }))
   }, [])
 

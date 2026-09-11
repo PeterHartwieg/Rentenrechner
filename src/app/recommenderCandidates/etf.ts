@@ -24,7 +24,7 @@ import {
 
 export function makeEtfCandidate(g: GeneratorContext): CandidateDraft | null {
   const wsa = g.workspace.baseline.assumptions
-  const target = wsa.etf.find((e) => e.status !== 'surrendered' && e.status !== 'offered')
+  const target = wsa.etf.find((e) => e.status === 'active' && (!g.preferredEtfInstanceId || e.instanceId === g.preferredEtfInstanceId))
   if (!target) return null
   const gross = g.marginalMonthlyEUR
   const annualFee = target.annualAssetFee ?? defaultAssumptions.etf.annualAssetFee
@@ -36,7 +36,7 @@ export function makeEtfCandidate(g: GeneratorContext): CandidateDraft | null {
     Math.min(MAX_LIFETIME_YEARS, wsa.retirementEndAge - g.workspace.baseline.profile.retirementAge),
   )
   const grossPayout = monthlyPayoutFromCapital(capital, netReturn, payoutYears)
-  const partialExemption = wsa.etf[0]?.equityPartialExemption ?? defaultAssumptions.etf.equityPartialExemption
+  const partialExemption = target.equityPartialExemption ?? defaultAssumptions.etf.equityPartialExemption
   const afterTaxLumpSum = afterTaxInvestmentCapital(capital, totalContributions, g.rules, partialExemption, 0)
   // ETF payout is taxed via Abgeltungsteuer in the per-instance helper using a
   // FIFO cost-basis schedule (`etfPayoutSchedule`). The recommender's "what

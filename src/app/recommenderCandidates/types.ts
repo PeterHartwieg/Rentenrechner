@@ -66,6 +66,7 @@ export interface ResolvedBavOffer {
 // ---------------------------------------------------------------------------
 
 export interface GeneratorContext {
+  preferredEtfInstanceId?: string
   workspace: Workspace
   rules: GermanRules
   marginalMonthlyEUR: number

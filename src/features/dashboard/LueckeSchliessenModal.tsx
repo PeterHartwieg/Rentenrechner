@@ -518,6 +518,7 @@ export function LueckeSchliessenModal({
               grvGrossMonthlyPension={grvGrossMonthlyPension}
               marginalMonthlyEUR={safeBudget}
               bavOffer={bavOffer}
+              preferredEtfInstanceId={solverEtf?.instanceId}
               selectedScenarioId={selectedScenarioId}
               onSaveAsPlan={(candidate) => {
                 // Issue 68: do NOT close the modal silently. Persist the

@@ -65,6 +65,7 @@ const RANKING_KEYS: RecommenderRankingCriterion[] = [
 ]
 
 interface Props {
+  preferredEtfInstanceId?: string
   workspace: Workspace
   baselineCombined: CombinedResult
   baselinePerInstance: Record<string, ProductResult[]>
@@ -90,6 +91,7 @@ export function RecommenderCard({
   grvGrossMonthlyPension,
   marginalMonthlyEUR,
   bavOffer,
+  preferredEtfInstanceId,
   selectedScenarioId,
   onSaveAsPlan,
 }: Props) {
@@ -114,6 +116,7 @@ export function RecommenderCard({
       grvGrossMonthlyPension,
       selectedScenarioId,
       bavOffer,
+  preferredEtfInstanceId,
     })
   }, [
     workspace,
@@ -124,6 +127,7 @@ export function RecommenderCard({
     grvGrossMonthlyPension,
     selectedScenarioId,
     bavOffer,
+  preferredEtfInstanceId,
   ])
 
   const sorted = useMemo(() => {

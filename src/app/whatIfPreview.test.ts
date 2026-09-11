@@ -289,5 +289,7 @@ it('reviews the selected offer at its quoted amount without changing another off
   expect(describeWhatIf(reviewed)).toMatchObject({ decision: 'activate_offer', beforeContributionMonthly: 0, afterContributionMonthly: 350 })
   expect(ws).toEqual(original)
   expect(describeWhatIf(reviewed).quotedContributionMonthly).toBe(350)
+  ws.whatIfs.push(reviewed)
+  expect(buildOfferActivationWhatIf(ws, 'bav-second01')?.id).toBe(reviewed.id)
   expect(buildOfferActivationWhatIf(ws, 'missing')).toBeNull()
 })

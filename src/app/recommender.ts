@@ -69,6 +69,8 @@ import type {
 import type { CombinedResult } from '../engine/portfolioCombine'
 import { runCombineSimulation } from './useCombineSimulation'
 import { realDeflator } from './planSummary'
+import { listWorkspaceInstances } from './resultReadiness'
+import { PRODUCT_EVIDENCE_FIELDS } from '../utils/evidence'
 import { buildPortfolioFunding } from '../engine/portfolioFunding'
 import { buildCombineContext } from '../engine/combineContext'
 import { runRules, type Atom } from './recommendations'
@@ -648,6 +650,7 @@ function desc(a: number, b: number): number {
 // ---------------------------------------------------------------------------
 
 export interface RecommendNextEuroInput {
+  preferredEtfInstanceId?: string
   workspace: Workspace
   rules: GermanRules
   marginalMonthlyEUR: number
@@ -696,6 +699,7 @@ export function recommendNextEuro(input: RecommendNextEuroInput): RecommendedCan
   const portfolioFunding = input.portfolioFunding ?? buildPortfolioFunding(workspace, rules)
 
   const g: GeneratorContext = {
+    preferredEtfInstanceId: input.preferredEtfInstanceId,
     workspace,
     rules,
     marginalMonthlyEUR,
@@ -906,6 +910,18 @@ export function buildWhatIfFromCandidate(
   // Apply the candidate's contribution change to the cloned assumptions.
   const wsa = deepCloneScenario(fork.assumptions)
   applyCandidateToAssumptions(wsa, candidate)
+  // A budget scenario is a model change, not a new fact from the old receipt.
+  const previous = listWorkspaceInstances(baseline.assumptions).find(e => e.instance.instanceId === candidate.targetInstanceId)
+  const changed = listWorkspaceInstances(wsa).find(e => e.instance.instanceId === candidate.targetInstanceId)
+  if (previous && changed) {
+    const read = (value: unknown, path: string): unknown => path.split('.').reduce<unknown>((at, key) =>
+      at && typeof at === 'object' ? (at as Record<string, unknown>)[key] : undefined, value)
+    for (const field of PRODUCT_EVIDENCE_FIELDS[changed.productId]) {
+      if (read(previous.instance, field) === read(changed.instance, field)) continue
+      changed.instance.inputStatus = { ...changed.instance.inputStatus, [field]: 'assumed' }
+      changed.instance.evidenceMap = { ...changed.instance.evidenceMap, [field]: 'model_estimate' }
+    }
+  }
   return {
     ...fork,
     id: newScenarioId('whatif'),

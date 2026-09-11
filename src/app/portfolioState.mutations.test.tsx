@@ -583,3 +583,18 @@ describe('productArrayShapeMatches', () => {
     expect(productArrayShapeMatches(ws.baseline, other)).toBe(true)
   })
 })
+
+
+it('reviewing an offer can preserve the previous undo without losing the saved comparison', () => {
+  const ws = populatedWorkspace()
+  const { result } = renderHook(() => usePortfolioState())
+  act(() => result.current.replaceWorkspace(ws))
+  let previousUndo: WorkspaceUndo
+  act(() => { previousUndo = result.current.removeInstance('etf', 'etf-bbbb2222') })
+  const comparison = forkBaselineScenario(result.current.baseline, 'Angebot prüfen')
+  act(() => result.current.addWhatIf(comparison, { preserveUndo: true }))
+  expect(result.current.lastUndo?.id).toBe(previousUndo!.id)
+  act(() => { expect(result.current.undo(previousUndo!)).toBe(true) })
+  expect(result.current.baseline.assumptions.etf).toHaveLength(2)
+  expect(result.current.whatIfs.some(w => w.id === comparison.id)).toBe(true)
+})

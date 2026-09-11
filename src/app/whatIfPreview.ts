@@ -16,6 +16,7 @@
 
 import type { ProductId } from '../domain'
 import type { Scenario, WhatIfScenario, Workspace } from '../domain/workspace'
+import { scenarioDiff } from './scenarioDiff'
 import { formatCurrency } from '../utils/format'
 import { applyContractDecision, beitragsfreiWhatIf } from './contractDecisions'
 import {
@@ -62,7 +63,11 @@ export function buildOfferActivationWhatIf(workspace: Workspace, instanceId: str
   const target = listWorkspaceInstances(alternative.assumptions).find(item => item.instance.instanceId === instanceId)
   if (!target) return null
   target.instance.status = 'active'
-  return alternative
+  // Reopening an unchanged quote should reuse its current comparison.
+  const existing = workspace.whatIfs.find(saved => !whatIfIsStale(saved, workspace.baseline)
+    && scenarioDiff(saved.derivedFromBaselineSnapshot, workspace.baseline).length === 0
+    && scenarioDiff(saved, alternative).length === 0)
+  return existing ?? alternative
 }
 
 /** German label for a preview, per the §4 copy table. */
