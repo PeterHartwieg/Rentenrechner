@@ -54,6 +54,17 @@ function contributionOf(
   return typeof value === 'number' ? value : null
 }
 
+/** Review the named offer at its quoted contribution; never activate the baseline. */
+export function buildOfferActivationWhatIf(workspace: Workspace, instanceId: string): WhatIfScenario | null {
+  const entry = findEntry(workspace, instanceId)
+  if (!entry || entry.instance.status !== 'offered') return null
+  const alternative = forkBaselineScenario(workspace.baseline, `${entry.instance.label}: Angebot aufnehmen`, 'manual')
+  const target = listWorkspaceInstances(alternative.assumptions).find(item => item.instance.instanceId === instanceId)
+  if (!target) return null
+  target.instance.status = 'active'
+  return alternative
+}
+
 /** German label for a preview, per the §4 copy table. */
 export function whatIfLabel(instanceLabel: string, change: WhatIfChange): string {
   if (change.kind === 'paid_up') return `${instanceLabel}: keine weiteren Beiträge`

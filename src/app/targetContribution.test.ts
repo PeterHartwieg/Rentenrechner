@@ -42,5 +42,7 @@ describe('target contribution solver', () => {
     expect(solveTargetContribution(ws, de2026Rules, 'missing', 2000)).toBeNull()
     expect(solveTargetContribution(ws, de2026Rules, 'etf-target01', NaN)).toBeNull()
     expect(solveTargetContribution(ws, de2026Rules, 'etf-target01', 1e9)).toBeNull()
+    ws.baseline.assumptions.statutoryPension.pensionEntryMethod = { kind: 'skipped' }
+    expect(solveTargetContribution(ws, de2026Rules, 'etf-target01', 2000)).toBeNull()
   })
 })

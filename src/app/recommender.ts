@@ -28,24 +28,19 @@
  *   atom is attached. Candidates that would be statutorily impossible (zero
  *   remaining cap) are skipped.
  *
- * Median Netto-Rente:
- *   The candidate's after-tax monthly retirement income is computed by
- *   simulating its accumulation at the basis scenario's expected return,
- *   projecting a ProductResult, then folding it into a cloned per-instance
- *   bundle and re-running `combinePortfolio` on the candidate workspace.
+ * Retirement income:
+ *   Candidate sizing remains product-specific. Scoring materialises the same
+ *   assumptions as buildWhatIfFromCandidate and runs runCombineSimulation.
+ *   Existing capital, itemized fees, shared allowances and household taxes are
+ *   therefore identical when the user saves and opens the alternative.
+ *   medianNettoRente is a legacy field name for that deterministic nominal
+ *   household result, not the median of a Monte Carlo distribution.
  *
- * Risk score (P10):
- *   `riskScoreP10` is the 10th-percentile of total nominal capital at
- *   retirement across N stochastic paths sampled from the basis scenario's
- *   expected return + `assumptions.monteCarlo.annualVolatility`. The MC sim
- *   used here is a lightweight FV simulator over the candidate's marginal
- *   monthly contribution and fees — consistent with the deterministic FV
- *   used for `medianNettoRente`. We do not run the full per-instance engine
- *   per path: budget is under 500ms total for 4 candidates × 200 paths.
- *
- *   The deterministic basis-scenario capital remains as `riskScore` for
- *   back-compat (still used by the UI's "Endkapital" sort key); P10 is
- *   exposed via `riskScoreP10` and is the primary worst-case figure shown.
+ * Risk estimate:
+ *   A lightweight simulation varies only the additional contribution; the
+ *   baseline's income remains fixed. safetyNettoRenteP10 is an approximation,
+ *   not a full-portfolio percentile or guarantee. UI must explain that scope.
+ *   Monetary engine fields remain nominal; UI uses the plan's realDeflator.
  *
  * Module structure:
  *   Per-product candidate generation lives in `recommenderCandidates/`:
@@ -119,7 +114,7 @@ export type RecommenderRankingCriterion =
   | 'low_effort'
 
 export const RECOMMENDER_RANKING_LABELS: Record<RecommenderRankingCriterion, string> = {
-  median_net_pension: 'höchste mittlere Netto-Rente',
+  median_net_pension: 'höchste Netto-Rente im Modell',
   capital_at_retirement: 'höchstes Kapital bei Renteneinstieg',
   safety: 'Sicherheit',
   flexibility: 'Flexibilität',
@@ -170,7 +165,7 @@ export interface RecommendedCandidate {
    * solver tolerance unless the candidate was clamped to a cap.
    */
   netCashOutEUR: number
-  /** Combined monthly net retirement income (EUR/month) with the candidate added. */
+  /** Deterministic combined nominal net income with the candidate added (legacy name). */
   medianNettoRente: number
   /** Estimated lifetime cash payouts (EUR) — net monthly × 12 × longevity assumption. */
   lifetimeCash: number

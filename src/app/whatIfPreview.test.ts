@@ -13,6 +13,7 @@ import { INVENTORY_PRODUCT_REGISTRY } from '../features/inventory/inventoryProdu
 import { deepCloneScenario, forkBaselineScenario } from './portfolioState'
 import {
   buildContributionWhatIf,
+  buildOfferActivationWhatIf,
   describeWhatIf,
   whatIfLabel,
   whatIfStatus,
@@ -272,4 +273,20 @@ describe('audit: offer activation description', () => {
       beforeContributionMonthly: 0, afterContributionMonthly: 100, changed: true,
     })
   })
+})
+
+
+it('reviews the selected offer at its quoted amount without changing another offer or the baseline', () => {
+  const ws = workspace()
+  ws.baseline.assumptions.bav = [
+    { ...bav('bav-first001', 100), status: 'offered' },
+    { ...bav('bav-second01', 350), status: 'offered' },
+  ]
+  const original = structuredClone(ws)
+  const reviewed = buildOfferActivationWhatIf(ws, 'bav-second01')!
+  expect(reviewed.assumptions.bav[0].status).toBe('offered')
+  expect(reviewed.assumptions.bav[1]).toEqual({ ...original.baseline.assumptions.bav[1], status: 'active' })
+  expect(describeWhatIf(reviewed)).toMatchObject({ decision: 'activate_offer', beforeContributionMonthly: 0, afterContributionMonthly: 350 })
+  expect(ws).toEqual(original)
+  expect(buildOfferActivationWhatIf(ws, 'missing')).toBeNull()
 })
