@@ -116,7 +116,7 @@ export function RecommenderCard({
       grvGrossMonthlyPension,
       selectedScenarioId,
       bavOffer,
-  preferredEtfInstanceId,
+      preferredEtfInstanceId,
     })
   }, [
     workspace,
@@ -127,7 +127,7 @@ export function RecommenderCard({
     grvGrossMonthlyPension,
     selectedScenarioId,
     bavOffer,
-  preferredEtfInstanceId,
+    preferredEtfInstanceId,
   ])
 
   const sorted = useMemo(() => {

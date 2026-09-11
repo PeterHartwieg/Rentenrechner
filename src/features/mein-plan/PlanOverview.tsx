@@ -121,8 +121,8 @@ export function PlanOverview(props: PlanOverviewProps) {
       {hasStarted && props.topicIntent && <div className="plan-overview__notice plan-overview__topic" role="status" data-testid="plan-topic-intent">
         <p><strong>Du hast schon einen Plan.</strong>{' '}
           {props.topicIntent.productLabel
-            ? `${props.topicIntent.productLabel}: ergänze ein Angebot oder einen Vertrag in deinem Plan, oder vergleiche ein Beispiel ohne deine Daten.`
-            : 'Ergänze deine Vorsorge in deinem Plan, oder vergleiche ein Beispiel ohne deine Daten.'}
+            ? `${props.topicIntent.productLabel}: ergänze ein Angebot oder einen Vertrag in deinem Plan, oder vergleiche ein Beispiel mit Muster-Sparformen.`
+            : 'Ergänze deine Vorsorge in deinem Plan, oder vergleiche ein Beispiel mit Muster-Sparformen.'}
         </p>
         <div className="plan-overview__actions">
           {props.topicIntent.onAddProduct && props.topicIntent.productLabel && <button type="button" className="plan-overview__secondary" onClick={props.topicIntent.onAddProduct}>{props.topicIntent.productLabel} ergänzen</button>}
