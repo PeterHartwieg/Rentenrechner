@@ -71,7 +71,8 @@ export function FeeSection({
 }: Props) {
   const { enabled: qaEnabled } = useQaMode()
   const totalAsset = fees.wrapperAssetFee + fees.fundAssetFee
-  const itemizedExtras = hasNonAssetFees(fees)
+  const accumulationFees = { ...fees, pensionPayoutFeePct: 0 }
+  const itemizedExtras = hasNonAssetFees(accumulationFees)
   const update = (patch: Partial<FeeModel>) => onChangeFees({ ...fees, ...patch })
   const fid = (suffix: string) => feedbackBaseId ? `${feedbackBaseId}.${suffix}` : undefined
   // Derive leaf QA ids for the mode-tab buttons. When no feedbackBaseId is
@@ -193,7 +194,7 @@ export function FeeSection({
       {feeInputMode === 'effektivkosten' && (
         <>
           <NumberField
-            label="Effektivkostenquote laut PIB/KID (all-in, Renditeminderung p.a.)"
+            label="Effektivkostenquote laut PIB/KID (Ansparphase, Renditeminderung p.a.)"
             feedbackTargetId={fid('effektivkosten')}
             value={(fees.wrapperAssetFee + fees.fundAssetFee) * 100}
             min={0}
@@ -201,23 +202,22 @@ export function FeeSection({
             step={0.05}
             suffix="% p.a."
             onChange={(value) =>
-              onChangeFees({ ...ALL_IN_FALLBACK, wrapperAssetFee: Number(value) / 100 })
+              onChangeFees({ ...ALL_IN_FALLBACK, wrapperAssetFee: Number(value) / 100, pensionPayoutFeePct: fees.pensionPayoutFeePct })
             }
           />
           {itemizedExtras && (
             <p className="field-warning" data-testid="fee-allin-itemized-note">
-              Für diesen Vertrag sind Einzelposten hinterlegt ({describeNonAssetFees(fees)}).
+              Für diesen Vertrag sind Einzelposten hinterlegt ({describeNonAssetFees(accumulationFees)}).
               Sie bleiben in der Rechnung erhalten. Der Wert oben ist deshalb nur
               die laufende Kapitalgebühr (Mantel + Fonds), nicht die
               Effektivkostenquote aus dem Produktinformationsblatt.
             </p>
           )}
           <p className="field-hint">
-            Näherung: Der eingegebene Wert wird als gleichmäßige jährliche
-            Renditeminderung angesetzt. Eine Eingabe hier ersetzt alle
-            Einzelposten (Fixkosten, Kosten je Beitrag, Abschluss- und
-            Auszahlungskosten), weil die Effektivkostenquote diese bereits
-            enthält.{' '}
+            Vereinfachte Eingabe: Wir bilden die angegebene Renditeminderung der
+            Ansparphase durch eine laufende Kapitalgebühr nach. Beim Eintragen
+            werden bisherige Fix-, Beitrags- und Abschlusskosten ersetzt.
+            Kosten der Rentenauszahlung bleiben separat bestehen.{' '}
             <button
               type="button"
               className="link-btn"
@@ -241,7 +241,7 @@ export function FeeSection({
         )}
         {riy !== undefined && (
           <span className={riy > 0.02 ? 'riy-high' : riy > 0.015 ? 'riy-warn' : ''}>
-            Effektivkosten (berechnete Renditeminderung, alle Kosten):{' '}
+            Effektivkosten (berechnete Renditeminderung der Ansparphase):{' '}
             <strong>{formatPercent(riy)}</strong>
           </span>
         )}

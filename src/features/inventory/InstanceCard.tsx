@@ -262,7 +262,7 @@ function Layer3Details({
   onBeitragsdynamikChange,
   bavSubsidy,
 }: Layer3Props) {
-  const [feeMode, setFeeMode] = useState<FeeInputMode>('effektivkosten')
+  const [feeMode, setFeeMode] = useState<FeeInputMode>(() => feeDetails && hasNonAssetFees(feeDetails) ? 'aufgeschluesselt' : 'effektivkosten')
 
   // Adapter: preserve an edited Einzelposten split; otherwise derive the all-in fee from the scalar.
   // No computed RIY exists at draft time, so FeeSection gets no `riy` and shows

@@ -321,3 +321,20 @@ describe('selectPlanSummary', () => {
     expect(summary.rows.every((r) => r.netMonthlyNominal === 0)).toBe(true)
   })
 })
+
+
+describe('plan monthly saving cost', () => {
+  it('uses net funding cost for bAV and excludes unsigned and paid-up direct savings', () => {
+    const ws = makeWorkspace()
+    const a = ws.baseline.assumptions
+    a.basisrente = []; a.altersvorsorgedepot = []; a.riester = []
+    a.insurance = []
+    a.etf[0].monthlyContribution = 270
+    a.etf.push({ ...a.etf[0], instanceId: 'unsigned', status: 'offered', monthlyContribution: 500 })
+    a.etf.push({ ...a.etf[0], instanceId: 'paid-up', status: 'paid_up', monthlyContribution: 900 })
+    const bundle = runCombineSimulation(ws, de2026Rules)
+    const cost = selectPlanSummary(ws, bundle, 'basis').monthlyNetSavingCost
+    expect(cost).toBeCloseTo(270 + bundle.portfolioFunding.headroom!.bav.monthlyNetCost, 8)
+    expect(cost).toBeLessThan(270 + a.bav[0].monthlyContribution!)
+  })
+})

@@ -9,18 +9,6 @@ function money(value: number | null): string {
   return value === null ? 'unbekannt' : `${formatCurrency(value)} / Monat`
 }
 
-/** Sum of the plan's monthly contributions; `null` when a row's contribution is unknown. */
-function contributionTotal(summary: PlanSummary | null): number | null {
-  if (!summary || summary.rows.length === 0) return null
-  let total = 0
-  for (const row of summary.rows) {
-    if (row.key === 'statutory') continue
-    if (row.contributionMonthly === undefined || row.contributionMonthly === null) return null
-    total += row.contributionMonthly
-  }
-  return total
-}
-
 /** What the alternative actually does, in the user's words (audit F03). */
 function actionLabel(decision: WhatIfDecisionKind): string {
   switch (decision) {
@@ -64,12 +52,9 @@ export function AlternativeComparison({ before, after, delta = null, description
   const subjectRow: PlanSourceRow | undefined = description.instanceId
     ? after?.rows.find((row) => row.instanceId === description.instanceId)
     : undefined
-  const extraNetCost =
-    description.beforeContributionMonthly !== null && description.afterContributionMonthly !== null
-      ? description.afterContributionMonthly - description.beforeContributionMonthly
-      : null
-  const savingBefore = contributionTotal(before)
-  const savingAfter = contributionTotal(after)
+  const savingBefore = before?.monthlyNetSavingCost ?? null
+  const savingAfter = after?.monthlyNetSavingCost ?? null
+  const extraNetCost = savingBefore !== null && savingAfter !== null ? savingAfter - savingBefore : null
   return <section className="alternativen__comparison" aria-label="Vorher und nachher">
     <h2 ref={headingRef} tabIndex={-1}>{heading}</h2>
     <div className="alternativen__columns">
@@ -83,7 +68,7 @@ export function AlternativeComparison({ before, after, delta = null, description
       <strong>{description.instanceLabel ?? 'Geänderte Vorsorge'}</strong>
       <span>{actionLabel(description.decision)}</span>
       {undescribed
-        ? <span className="alternativen__notice" role="note">Diese Alternative enthält Änderungen, die hier nicht einzeln aufgeführt werden können. Prüfe deinen Plan nach dem Übernehmen.</span>
+        ? <span className="alternativen__notice" role="note">Diese Alternative enthält Änderungen, die hier nicht einzeln aufgeführt werden können. Bitte erstelle eine neue Alternative, bevor du eine Änderung übernimmst.</span>
         : <>
           <span>{contributionLabel(description)}</span>
           <span>Bisher: {beforeText(description)}</span>
@@ -92,8 +77,9 @@ export function AlternativeComparison({ before, after, delta = null, description
             {extraNetCost > 0 ? 'Zusätzliche monatliche Belastung' : 'Monatliche Entlastung'}: {formatCurrency(Math.abs(extraNetCost))} / Monat
           </span>}
           {savingBefore !== null && savingAfter !== null && <span>
-            Summe aller Beiträge im Plan: {formatCurrency(savingBefore)} → {formatCurrency(savingAfter)} / Monat
+            Nettoaufwand aller Sparformen zu Beginn: {formatCurrency(savingBefore)} → {formatCurrency(savingAfter)} / Monat
           </span>}
+          {savingBefore !== null && savingAfter !== null && <span>Mit modellierter Förderung und Steuerwirkung; Erstattungen können zeitversetzt erfolgen.</span>}
           {subjectRow && <span>Auszahlung: <PlanDurationText duration={subjectRow.duration} /></span>}
         </>}
     </div>

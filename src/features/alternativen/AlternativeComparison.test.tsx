@@ -20,9 +20,9 @@ function row(overrides: Partial<PlanSourceRow> & Pick<PlanSourceRow, 'key' | 'la
   }
 }
 
-function summary(amount: number, rows: PlanSourceRow[] = []): PlanSummary {
+function summary(amount: number, rows: PlanSourceRow[] = [], cost: number | null = null): PlanSummary {
   return {
-    pkvRetirementMonthlyCost: 0, netMonthlyTotalReal: amount, netMonthlyTotalNominal: amount / 0.7,
+    monthlyNetSavingCost: cost, pkvRetirementMonthlyCost: 0, netMonthlyTotalReal: amount, netMonthlyTotalNominal: amount / 0.7,
     deflator: 0.7, yearsUntilRetirement: 37, rows,
     readiness: { status: 'available', canShowHouseholdTotal: true, reasons: [], blocking: [], assumptions: [] },
   }
@@ -41,7 +41,7 @@ describe('AlternativeComparison — F03 change summary', () => {
       instanceId: 'versicherung-1', instanceLabel: 'Audit Brokerangebot', productId: 'versicherung',
       decision: 'activate_offer', changed: true, beforeContributionMonthly: 0, afterContributionMonthly: 270, sourceRevision,
     }
-    render(<AlternativeComparison before={summary(1652, [statutory, etfBefore])} after={summary(1926, [statutory, etfBefore, offerAfter])}
+    render(<AlternativeComparison before={summary(1652, [statutory, etfBefore], 270)} after={summary(1926, [statutory, etfBefore, offerAfter], 540)}
       delta={274} description={description} retirementAge={67} />)
     expect(screen.getByText('Audit Brokerangebot')).toBeInTheDocument()
     expect(screen.getByText(/Angebot wird in den Plan aufgenommen/)).toBeInTheDocument()
@@ -49,7 +49,7 @@ describe('AlternativeComparison — F03 change summary', () => {
     expect(screen.getByText(/^Bisher: 0 € \/ Monat \(Angebot zählt noch nicht zum Plan\)/)).toBeInTheDocument()
     expect(screen.getByText('Danach: 270 € / Monat')).toBeInTheDocument()
     expect(screen.getByText('Zusätzliche monatliche Belastung: 270 € / Monat')).toBeInTheDocument()
-    expect(screen.getByText('Summe aller Beiträge im Plan: 270 € → 540 € / Monat')).toBeInTheDocument()
+    expect(screen.getByText('Nettoaufwand aller Sparformen zu Beginn: 270 € → 540 € / Monat')).toBeInTheDocument()
     expect(screen.getByText(/^Auszahlung:/)).toHaveTextContent('Auszahlung: Lebenslang')
     expect(screen.queryByText(/unbekannt/)).not.toBeInTheDocument()
   })
@@ -61,7 +61,7 @@ describe('AlternativeComparison — F03 change summary', () => {
     }
     const after = row({ key: 'etf-neu', instanceId: 'etf-neu', productId: 'etf', label: 'Neues ETF-Depot', contributionMonthly: 150,
       duration: { kind: 'drawdown-shared-horizon', endAge: 90, sharedWith: ['etf-1'] } })
-    render(<AlternativeComparison before={summary(1652, [statutory, etfBefore])} after={summary(1800, [statutory, etfBefore, after])}
+    render(<AlternativeComparison before={summary(1652, [statutory, etfBefore], 270)} after={summary(1800, [statutory, etfBefore, after])}
       description={description} retirementAge={67} />)
     expect(screen.getByText('Neue Sparform wird ergänzt')).toBeInTheDocument()
     expect(screen.getByText('Bisher: 0 € / Monat (noch nicht vorhanden)')).toBeInTheDocument()
@@ -74,12 +74,12 @@ describe('AlternativeComparison — F03 change summary', () => {
       instanceId: 'bav-1', instanceLabel: 'Betriebsrente', productId: 'bav',
       decision: 'contribution', changed: true, beforeContributionMonthly: 100, afterContributionMonthly: 50, sourceRevision,
     }
-    render(<AlternativeComparison before={summary(1652)} after={summary(1600)} description={description} retirementAge={67} />)
+    render(<AlternativeComparison before={summary(1652, [], 60)} after={summary(1600, [], 30)} description={description} retirementAge={67} />)
     expect(screen.getByText('Monatlicher Beitrag wird geändert')).toBeInTheDocument()
     expect(screen.getByText('Monatlicher Bruttobeitrag zur bAV')).toBeInTheDocument()
     expect(screen.getByText('Bisher: 100 € / Monat')).toBeInTheDocument()
     expect(screen.getByText('Danach: 50 € / Monat')).toBeInTheDocument()
-    expect(screen.getByText('Monatliche Entlastung: 50 € / Monat')).toBeInTheDocument()
+    expect(screen.getByText('Monatliche Entlastung: 30 € / Monat')).toBeInTheDocument()
     // No rows on the fixture summaries, so no plan-wide contribution sum is claimed.
     expect(screen.queryByText(/Summe aller Beiträge/)).not.toBeInTheDocument()
   })

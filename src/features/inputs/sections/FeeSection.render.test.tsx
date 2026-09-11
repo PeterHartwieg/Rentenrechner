@@ -6,7 +6,7 @@
  * in the model.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, fireEvent, render } from '@testing-library/react'
 import type { FeeModel } from '../../../domain'
 import { FeeSection } from './FeeSection'
 import { describeNonAssetFees, hasNonAssetFees } from './feeModelHelpers'
@@ -75,7 +75,7 @@ describe('FeeSection labels', () => {
     )
     const summary = container.querySelector('.fee-summary')!.textContent ?? ''
     expect(summary).toContain('Laufende Kapitalgebühr (Mantel + Fonds)')
-    expect(summary).toContain('Effektivkosten (berechnete Renditeminderung, alle Kosten)')
+    expect(summary).toContain('Effektivkosten (berechnete Renditeminderung der Ansparphase)')
   })
 
   it('all-in mode warns when itemized extras still exist in the model', () => {
@@ -107,3 +107,14 @@ describe('FeeSection labels', () => {
     expect(container.querySelector('[data-testid="fee-allin-itemized-note"]')).toBeNull()
   })
 })
+
+ it('replacing accumulation costs with a quote preserves the separate payout fee', () => {
+    const onChangeFees = vi.fn()
+    const { getByRole } = render(<FeeSection fees={{ ...WITH_EXTRAS, pensionPayoutFeePct: 0.015 }}
+      onChangeFees={onChangeFees} presets={[]} feeInputMode="effektivkosten" setFeeInputMode={vi.fn()} />)
+    const input = getByRole('spinbutton', { name: /Effektivkostenquote laut/ })
+    fireEvent.change(input, { target: { value: '1.5' } })
+    fireEvent.blur(input)
+    expect(onChangeFees).toHaveBeenLastCalledWith(expect.objectContaining({ wrapperAssetFee: 0.015,
+      fundAssetFee: 0, fixedMonthlyFee: 0, acquisitionCostPct: 0, pensionPayoutFeePct: 0.015 }))
+  })
