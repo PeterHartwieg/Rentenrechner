@@ -166,13 +166,102 @@ describe('LueckeSchliessenModal', () => {
 
     expect(onSave).toHaveBeenCalledTimes(1)
     // Saved-step content visible: confirmation status region + summary list.
-    expect(container.textContent).toContain('Plan gespeichert')
+    expect(container.textContent).toContain('Alternative gespeichert')
     expect(container.querySelector('.luecke-modal__body--saved')).toBeTruthy()
     expect(container.querySelector('[role="status"]')).toBeTruthy()
     // Modal must NOT auto-close: user must click Fertig.
     expect(onClose).not.toHaveBeenCalled()
     fireEvent.click(getByText('Fertig'))
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  // Browser review 2026-09-11: the confirmation must name the real location
+  // of saved alternatives (Mein Plan → Gespeicherte Alternativen), not the
+  // non-existent "Meine Verträge → Szenarien", and must not imply the main
+  // plan was changed.
+  it('points to Mein Plan → Gespeicherte Alternativen and keeps the main plan untouched', () => {
+    const ctx = setup()
+    const before = JSON.stringify(ctx.workspace)
+    const { container, getByText } = render(
+      <LueckeSchliessenModal {...ctx} onClose={() => {}} onSaveAsPlan={() => {}} />,
+    )
+    fireEvent.click(getByText('Weiter'))
+    fireEvent.click(getByText('Nein, Standardannahmen nutzen'))
+    fireEvent.click(getByText('Optionen anzeigen'))
+    fireEvent.click(container.querySelector('.recommender-candidate-save')!)
+    const saved = container.querySelector('.luecke-modal__body--saved')!
+    expect(saved.textContent).toContain('Mein Plan → Gespeicherte Alternativen')
+    expect(saved.textContent).not.toContain('Meine Verträge')
+    expect(saved.textContent).not.toContain('Szenarien')
+    expect(saved.textContent).toContain('Hauptplan bleibt unverändert')
+    expect(container.querySelector('.rw-modal-slot__eyebrow')?.textContent).toBe('Alternative gespeichert')
+    expect(JSON.stringify(ctx.workspace)).toBe(before)
+  })
+
+  describe('saved-alternative deep link', () => {
+    function saveOnce(props: {
+      onSaveAsPlan: (c: unknown) => string | void
+      onOpenSaved?: (id: string) => void
+      onClose?: () => void
+    }) {
+      const ctx = setup()
+      const utils = render(
+        <LueckeSchliessenModal
+          {...ctx}
+          onClose={props.onClose ?? (() => {})}
+          onSaveAsPlan={props.onSaveAsPlan}
+          onOpenSaved={props.onOpenSaved}
+        />,
+      )
+      fireEvent.click(utils.getByText('Weiter'))
+      fireEvent.click(utils.getByText('Nein, Standardannahmen nutzen'))
+      fireEvent.click(utils.getByText('Optionen anzeigen'))
+      fireEvent.click(utils.container.querySelector('.recommender-candidate-save')!)
+      return utils
+    }
+
+    it('offers "Gespeicherte Alternative ansehen" with the returned id and saves only once', () => {
+      const onSave = vi.fn(() => 'whatif-abc123')
+      const onOpenSaved = vi.fn()
+      const onClose = vi.fn()
+      const { getByRole } = saveOnce({ onSaveAsPlan: onSave, onOpenSaved, onClose })
+      expect(onSave).toHaveBeenCalledTimes(1)
+      const view = getByRole('button', { name: 'Gespeicherte Alternative ansehen' })
+      fireEvent.click(view)
+      expect(onOpenSaved).toHaveBeenCalledTimes(1)
+      expect(onOpenSaved).toHaveBeenCalledWith('whatif-abc123')
+      // Viewing never re-saves and never closes on its own; the parent decides.
+      expect(onSave).toHaveBeenCalledTimes(1)
+      expect(onClose).not.toHaveBeenCalled()
+    })
+
+    it('hides the view button when the save handler returns nothing', () => {
+      const onOpenSaved = vi.fn()
+      const { queryByRole, container } = saveOnce({ onSaveAsPlan: () => {}, onOpenSaved })
+      expect(container.querySelector('.luecke-modal__body--saved')).toBeTruthy()
+      expect(queryByRole('button', { name: 'Gespeicherte Alternative ansehen' })).toBeNull()
+      expect(onOpenSaved).not.toHaveBeenCalled()
+    })
+
+    it('hides the view button when no onOpenSaved callback is wired (back-compat)', () => {
+      const { queryByRole, container } = saveOnce({ onSaveAsPlan: () => 'whatif-abc123' })
+      expect(container.querySelector('.luecke-modal__body--saved')).toBeTruthy()
+      expect(queryByRole('button', { name: 'Gespeicherte Alternative ansehen' })).toBeNull()
+    })
+
+    it('drops the previous id when the user goes back to save another alternative', () => {
+      let calls = 0
+      const onSave = vi.fn(() => (calls++ === 0 ? 'whatif-first' : undefined))
+      const onOpenSaved = vi.fn()
+      const { getByText, getByRole, queryByRole, container } = saveOnce({ onSaveAsPlan: onSave, onOpenSaved })
+      expect(getByRole('button', { name: 'Gespeicherte Alternative ansehen' })).toBeTruthy()
+      fireEvent.click(getByText('Weitere Alternative speichern'))
+      expect(container.querySelector('.luecke-modal__body--saved')).toBeNull()
+      // Second save returns no id: the view button must not reuse the stale one.
+      fireEvent.click(container.querySelector('.recommender-candidate-save')!)
+      expect(onSave).toHaveBeenCalledTimes(2)
+      expect(queryByRole('button', { name: 'Gespeicherte Alternative ansehen' })).toBeNull()
+    })
   })
 
   // Codex P2 (R3.1 R1): ModalSlot's FocusTrap focuses the first focusable
