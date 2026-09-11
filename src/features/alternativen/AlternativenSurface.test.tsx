@@ -320,3 +320,32 @@ describe('AlternativenSurface — apply label per decision (F03)', () => {
     expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
   })
 })
+
+describe('stale saved alternatives (audit F10)', () => {
+  it('explains what changed since saving and offers recalculation directly in the list', () => {
+    const stale: SavedAlternative = { ...item, status: 'stale', canApply: false, blockReason: ALTERNATIVEN_COPY.stale }
+    const props = host({ saved: [stale], rebase: vi.fn(() => ({ ok: true as const, undo: { id: 'u', label: 'x', workspace } as never })) })
+    render(<AlternativenSurface {...props} />)
+    const list = screen.getByRole('region', { name: 'Deine gespeicherten Alternativen' })
+    expect(list).toHaveTextContent('in heutigen Euro · Stand beim Speichern')
+    expect(list).toHaveTextContent('beruhen auf älteren Angaben')
+    expect(within(list).getByRole('list', { name: 'Seit dem Speichern geändert' })).toHaveTextContent('Renteneintritt: 65 → 67')
+    fireEvent.click(within(list).getByRole('button', { name: 'Mit aktuellem Plan neu berechnen' }))
+    expect(props.rebase).toHaveBeenCalledWith(item.id)
+  })
+
+  it('shows no drift list for a current alternative', () => {
+    render(<AlternativenSurface {...host({ saved: [item], whatIfs: [{ ...whatIf, derivedFromBaselineSnapshot: workspace.baseline }] })} />)
+    expect(screen.queryByRole('list', { name: 'Seit dem Speichern geändert' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Mit aktuellem Plan neu berechnen' })).not.toBeInTheDocument()
+  })
+
+  it('lists the differences in the opened stale alternative next to the recalculation choice', () => {
+    const stale: SavedAlternative = { ...item, status: 'stale', canApply: false, blockReason: ALTERNATIVEN_COPY.stale }
+    render(<AlternativenSurface {...host({ saved: [stale], openWhatIfId: item.id })} />)
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent('Die Beträge unten gelten für den gespeicherten Stand.')
+    expect(within(alert).getByRole('list', { name: 'Seit dem Speichern geändert' })).toHaveTextContent('Renteneintritt: 65 → 67')
+    expect(alert).toHaveTextContent('Der gespeicherte Stand bleibt sonst so, wie er war.')
+  })
+})

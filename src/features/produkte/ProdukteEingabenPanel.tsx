@@ -53,6 +53,7 @@ import {
 } from '../inventory/inventoryProductRegistry'
 import { DProduktSection } from './DProduktSection'
 import { DProduktRow, type ProduktRowField } from './DProduktRow'
+import { produktRowAsideCopy } from './produktRowCopy'
 import { DSparformOption } from './DSparformOption'
 import { pensionEntryLabels, sparformDescriptions } from './sparformDescriptions'
 import type { PensionEntryMethod } from '../../domain/inputStatus'
@@ -688,6 +689,7 @@ function CombinePanel({
                   kind={kindFor(productId)}
                   title={titleLabel}
                   status={statusLabel(status)}
+                  asideCopy={produktRowAsideCopy(status)}
                   fields={buildInstanceFieldsCombine(productId, instance)}
                   primary={isOpen ? 'Schließen' : 'Bearbeiten'}
                   onPrimary={toggleEditor}

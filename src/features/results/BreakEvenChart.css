@@ -179,38 +179,35 @@
   font-size: 12px;
 }
 
+/* ── Tablet and phone (≤ 720px): move the legend below the chart. As an ──
+   overlay it covered plot area at ~590px; below the frame it keeps the
+   plot free and the entries get a readable size.                          */
 @media (max-width: 720px) {
-  .lifecycle-legend--overlay {
-    top: 10px;
-    right: 8px;
-  }
-}
-
-/* ── Mobile (≤ 480px): move lifecycle legend below the chart area to avoid ──
-   overlapping lines and annotations at 390px viewport width.               */
-@media (max-width: 480px) {
-  .break-even-frame {
-    height: 360px;
-    min-height: 360px;
-  }
-
   /* The legend is a sibling to .break-even-frame inside .break-even-frame-wrap.
-     On mobile we switch from absolute overlay to a static row below the chart. */
+     Below 720px we switch from absolute overlay to a static row under the chart. */
   .lifecycle-legend--overlay {
     position: static;
     top: auto;
     right: auto;
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 6px 12px;
+    gap: 6px 14px;
     margin-top: 8px;
+    padding: 0;
     background: transparent;
     border: none;
-    padding: 0;
+    font-size: 12px;
     pointer-events: auto;
   }
 
   .lifecycle-legend__item {
     white-space: normal;
+  }
+}
+
+@media (max-width: 480px) {
+  .break-even-frame {
+    height: 360px;
+    min-height: 360px;
   }
 }

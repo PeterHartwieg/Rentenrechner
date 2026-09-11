@@ -38,6 +38,7 @@ import type { LandingChoice } from '../landing/LandingPage'
 import { PrintReport } from '../results/PrintReport'
 import { VergleichPage } from './VergleichPage'
 import { VergleichJourneyView } from './VergleichJourneyView'
+import { profileDiffersFrom, type PlanProfileSummary } from './planProfileSummary'
 
 /**
  * The control surface the `/vergleich` presentation layer consumes. Every
@@ -64,6 +65,14 @@ export interface VergleichJourneyControls {
   ownMoneyMonthly: number
   /** Set the anchor through the existing `syncMonthlyContributions` path. */
   setOwnMoneyMonthly: (value: number) => void
+  /**
+   * The person + inflation the saved plan computes on, read once at mount.
+   * Undefined without a saved plan. Lets the result say when the comparison
+   * runs on other figures than the plan (audit F11).
+   */
+  planProfile?: PlanProfileSummary
+  /** True when `planProfile` exists and differs from the compare-state profile. */
+  profileDiffersFromPlan: boolean
 }
 
 interface Props {
@@ -104,6 +113,14 @@ export function VergleichJourneyPage({ navigate, pendingChoice, onPendingChoiceC
     }
   })
   const hasSavedPlan = savedWorkspace !== null && hasStartedPlan(savedWorkspace)
+  const planProfile: PlanProfileSummary | undefined = hasSavedPlan && savedWorkspace
+    ? {
+        age: savedWorkspace.baseline.profile.age,
+        grossSalaryYear: savedWorkspace.baseline.profile.grossSalaryYear,
+        publicHealthInsurance: savedWorkspace.baseline.profile.publicHealthInsurance,
+        inflationRate: savedWorkspace.baseline.assumptions.inflationRate,
+      }
+    : undefined
 
   // Landing-CTA / topic preselection. One-shot, mirrors Calculator's
   // `pendingChoice` effect.
@@ -153,6 +170,8 @@ export function VergleichJourneyPage({ navigate, pendingChoice, onPendingChoiceC
     },
     ownMoneyMonthly: assumptions.equalInputAmountEUR ?? 0,
     setOwnMoneyMonthly: setSyncedMonthlyContribution,
+    planProfile,
+    profileDiffersFromPlan: profileDiffersFrom(planProfile, profile, assumptions.inflationRate),
   }
 
   function handleExportCsv(): void {
@@ -196,9 +215,10 @@ export function VergleichJourneyPage({ navigate, pendingChoice, onPendingChoiceC
         controls={controls}
         productIds={ALL_PRODUCT_IDS}
         onToggleProduct={toggleProduct}
-        renderResult={(onEditSetup) => (
+        renderResult={(onEditSetup, profileNote) => (
           <VergleichPage
             onEditSetup={onEditSetup}
+            profileNote={profileNote}
             profile={profile}
             assumptions={assumptions}
             result={result}

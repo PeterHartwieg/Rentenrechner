@@ -105,12 +105,15 @@ export function VertragScenarioTable({
 
       {rows.length > 0 ? (
         <div className="vertrag-table-scroll" role="region" aria-label="Vertragsszenarien" tabIndex={0}>
+          <p className="vertrag-scenario-scope" data-testid="vertrag-scenario-scope">
+            Netto-Rente hier: dein ganzer Plan, alle Quellen zusammen, pro Monat in Euro des Rentenbeginns (nominal). Die Kennzahlen oben gelten nur für diesen Vertrag.
+          </p>
           <table className="vertrag-scenario-table">
             <thead>
               <tr>
                 <th>Szenario</th>
                 <th>Was sich ändert</th>
-                <th className="vertrag-num">Netto-Rente</th>
+                <th className="vertrag-num">Netto-Rente gesamt</th>
                 <th className="vertrag-num">Δ ggü. heute</th>
               </tr>
             </thead>
@@ -307,13 +310,13 @@ function ScenarioRowView({ row }: { row: ScenarioRow }) {
         {row.isCurrent && <span className="vertrag-scenario-marker" aria-hidden="true">▸</span>}
         <span className="vertrag-scenario-label">{row.label}</span>
       </td>
-      <td className="vertrag-scenario-detail">{row.detail}</td>
-      <td className="vertrag-num">
+      <td className="vertrag-scenario-detail" data-label="Was sich ändert">{row.detail}</td>
+      <td className="vertrag-num" data-label="Netto-Rente gesamt">
         {row.resultingNetMonthly === null
           ? '—'
           : formatCurrency(row.resultingNetMonthly, 0)}
       </td>
-      <td className={`vertrag-num vertrag-scenario-delta vertrag-scenario-delta--${sign}`}>
+      <td className={`vertrag-num vertrag-scenario-delta vertrag-scenario-delta--${sign}`} data-label="Δ ggü. heute">
         {deltaText}
       </td>
     </tr>

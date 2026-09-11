@@ -7,7 +7,16 @@ import type { AlternativenHostProps } from './AlternativenPage'
 import { ALTERNATIVEN_COPY } from './useAlternativenFlow'
 import { AlternativeComparison } from './AlternativeComparison'
 import { alternativeDate, alternativeTotal, STORAGE_NOTE } from './alternativePresentation'
+import { describeBaselineDrift } from './alternativeDrift'
 import './AlternativenSurface.css'
+
+/** What moved in the plan since this alternative was saved; empty for a current one. */
+function DriftList({ lines }: { lines: string[] }) {
+  if (lines.length === 0) return null
+  return <ul className="alternativen__drift" aria-label="Seit dem Speichern geändert">
+    {lines.map((line) => <li key={line}>{line}</li>)}
+  </ul>
+}
 
 export function AlternativenSurface(props: AlternativenHostProps) {
   const { contracts, draft, preview, saved, openWhatIfId, selectContract } = props
@@ -83,6 +92,16 @@ export function AlternativenSurface(props: AlternativenHostProps) {
       : 'Änderung in meinen Plan übernehmen'
   const failure = error ?? props.previewError
   const savedScenario = props.whatIfs.find((item) => item.id === open?.id)
+  const driftFor = (id: string): string[] => {
+    const scenario = props.whatIfs.find((item) => item.id === id)
+    return scenario ? describeBaselineDrift(scenario.derivedFromBaselineSnapshot, props.workspace.baseline) : []
+  }
+  function rebase(id: string) {
+    const result = props.rebase(id)
+    focusRequested.current = true
+    if (result.ok) { setError(null); setReviewId(id) }
+    else setError(result.message)
+  }
 
   return <section className="alternativen-page" data-testid="alternativen">
     <header>
@@ -98,14 +117,11 @@ export function AlternativenSurface(props: AlternativenHostProps) {
 
     {open ? <>
       {open.status === 'stale' && <div role="alert" className="alternativen__notice">
-        <p>Dein Plan hat sich seit dem Speichern geändert.</p>
+        <p>Dein Plan hat sich seit dem Speichern geändert. Die Beträge unten gelten für den gespeicherten Stand.</p>
+        <DriftList lines={driftFor(open.id)} />
+        <p className="alternativen__muted">Neu berechnen rechnet die Alternative mit deinen heutigen Angaben. Der gespeicherte Stand bleibt sonst so, wie er war.</p>
         <div className="alternativen__actions">
-          <button type="button" className="alternativen__secondary" onClick={() => {
-            const result = props.rebase(open.id)
-            focusRequested.current = true
-            if (result.ok) { setError(null); setReviewId(open.id) }
-            else setError(result.message)
-          }}>Mit aktuellem Plan neu berechnen</button>
+          <button type="button" className="alternativen__secondary" onClick={() => rebase(open.id)}>Mit aktuellem Plan neu berechnen</button>
           <button type="button" className="alternativen__link" onClick={() => resultHeading.current?.focus()}>Gespeicherten Stand ansehen</button>
         </div>
       </div>}
@@ -163,14 +179,20 @@ export function AlternativenSurface(props: AlternativenHostProps) {
       <section className="alternativen__saved" aria-label="Deine gespeicherten Alternativen">
         <h2>Deine gespeicherten Alternativen</h2>
         {!saved.length ? <p data-testid="alternativen-empty">Noch keine Alternative gespeichert.</p> : <ul>
-          {saved.map((item) => <li key={item.id}>
+          {saved.map((item) => <li key={item.id} data-status={item.status}>
             <h3>{item.label}</h3>
             {item.status === 'stale' && <span className="alternativen__badge">Plan seit dem Speichern geändert</span>}
             <p className="alternativen__list-total">{item.before?.readiness.canShowHouseholdTotal && item.after?.readiness.canShowHouseholdTotal
-              ? `${alternativeTotal(item.before)} → ${alternativeTotal(item.after)} netto / Monat` : 'Noch offen'}</p>
+              ? `${alternativeTotal(item.before)} → ${alternativeTotal(item.after)} netto / Monat` : 'Noch offen'}
+              {' '}<small>in heutigen Euro · Stand beim Speichern</small></p>
             <p className="alternativen__muted">Stand beim Speichern: {alternativeDate(item.savedAt)}</p>
+            {item.status === 'stale' && <>
+              <p className="alternativen__muted">Diese Beträge beruhen auf älteren Angaben und sind mit neueren Alternativen nicht direkt vergleichbar.</p>
+              <DriftList lines={driftFor(item.id)} />
+            </>}
             <div className="alternativen__actions">
               <button type="button" className="alternativen__secondary" onClick={() => openSavedView(item.id)}>Vorher und nachher öffnen</button>
+              {item.status === 'stale' && <button type="button" className="alternativen__secondary" onClick={() => rebase(item.id)}>Mit aktuellem Plan neu berechnen</button>}
               <button type="button" className="alternativen__link" onClick={() => props.remove(item.id)}>Entfernen</button>
             </div>
           </li>)}

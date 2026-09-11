@@ -213,3 +213,90 @@ describe('PlanOverview', () => {
     expect(screen.queryByText('Für deine Gesamtrente fehlen noch Angaben.')).not.toBeInTheDocument()
   })
 })
+
+describe('PlanOverview — offers, topic intent and assumptions (audit F04 / F12 / F18)', () => {
+  const offer = {
+    instanceId: 'versicherung-1', label: 'Audit Brokerangebot', productLabel: 'Private Rentenversicherung',
+    contributionMonthly: 270, contributionLabel: 'Beitrag',
+  }
+
+  it('lists unsigned offers apart from the sources with review and edit actions', () => {
+    const p = props({ offers: [offer], onEditOffer: vi.fn(), onReviewOffer: vi.fn() })
+    render(<PlanOverview {...p} />)
+    const section = screen.getByTestId('plan-offers')
+    expect(within(section).getByRole('heading', { name: 'Angebote, noch nicht abgeschlossen' })).toBeVisible()
+    expect(within(section).getByText(`Beitrag lt. Angebot: ${money(270)} / Monat`)).toBeVisible()
+    expect(section).toHaveTextContent('Angebote zählen nicht zu deiner Rente oben.')
+    expect(within(screen.getByRole('list', { name: 'Deine Rentenquellen' })).queryByText('Audit Brokerangebot')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Angebot prüfen: Audit Brokerangebot' }))
+    expect(p.onReviewOffer).toHaveBeenCalledWith(offer)
+    fireEvent.click(screen.getByRole('button', { name: 'Angebot bearbeiten: Audit Brokerangebot' }))
+    expect(p.onEditOffer).toHaveBeenCalledWith(offer)
+  })
+
+  it('hides the review action without a review flow and the whole section without offers', () => {
+    render(<PlanOverview {...props({ offers: [offer], onEditOffer: vi.fn() })} />)
+    expect(screen.queryByRole('button', { name: /Angebot prüfen/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Angebot bearbeiten: Audit Brokerangebot' })).toBeVisible()
+    cleanup()
+    render(<PlanOverview {...props()} />)
+    expect(screen.queryByTestId('plan-offers')).not.toBeInTheDocument()
+  })
+
+  it('keeps a topic arrival as a banner with add, compare and dismiss actions', () => {
+    const intent = { productLabel: 'Private Rentenversicherung', onAddProduct: vi.fn(), onCompareExample: vi.fn(), onDismiss: vi.fn() }
+    render(<PlanOverview {...props({ topicIntent: intent })} />)
+    const banner = screen.getByTestId('plan-topic-intent')
+    expect(banner).toHaveTextContent('Du hast schon einen Plan.')
+    expect(banner).toHaveTextContent('Private Rentenversicherung: ergänze ein Angebot oder einen Vertrag')
+    fireEvent.click(within(banner).getByRole('button', { name: 'Private Rentenversicherung ergänzen' }))
+    fireEvent.click(within(banner).getByRole('button', { name: 'Beispiel vergleichen' }))
+    fireEvent.click(within(banner).getByRole('button', { name: 'Ausblenden' }))
+    expect(intent.onAddProduct).toHaveBeenCalledOnce()
+    expect(intent.onCompareExample).toHaveBeenCalledOnce()
+    expect(intent.onDismiss).toHaveBeenCalledOnce()
+  })
+
+  it('offers only the comparison when the topic names no single product, and nothing before the plan started', () => {
+    const intent = { onCompareExample: vi.fn(), onDismiss: vi.fn() }
+    render(<PlanOverview {...props({ topicIntent: intent })} />)
+    const banner = screen.getByTestId('plan-topic-intent')
+    expect(within(banner).queryByRole('button', { name: /ergänzen$/ })).not.toBeInTheDocument()
+    expect(within(banner).getByRole('button', { name: 'Beispiel vergleichen' })).toBeVisible()
+    cleanup()
+    render(<PlanOverview {...props({ topicIntent: intent, hasStarted: false, hasContracts: false, summary: null })} />)
+    expect(screen.queryByTestId('plan-topic-intent')).not.toBeInTheDocument()
+  })
+
+  it('puts the growth assumptions next to the result and bridges the statutory gross figure to today\'s money', () => {
+    const p = props({ assumptions: {
+      ...props().assumptions, returnRate: 0.05, returnScenarioLabel: 'Basis', retirementEndAge: 90,
+      salaryGrowthRate: 0, pensionValueGrowthRate: 0, statutoryGrossMonthly: 2400,
+    } })
+    render(<PlanOverview {...p} />)
+    const line = screen.getByTestId('plan-assumption-line')
+    expect(line).toHaveTextContent('Rendite 5 % p. a. (Basis)')
+    expect(line).toHaveTextContent('Inflation 2 %')
+    expect(line).toHaveTextContent('Entnahme bis 90')
+    expect(line).toHaveTextContent('Einkommen 0 % p. a.')
+    expect(line).toHaveTextContent('Rentenwert 0 % p. a.')
+    const bridge = screen.getByTestId('plan-statutory-bridge')
+    expect(bridge).toHaveTextContent(`${money(2400)} brutto`)
+    expect(bridge).toHaveTextContent(`${money(2000)} netto`)
+    expect(bridge).toHaveTextContent(`${money(1440)} in heutigen Euro`)
+    expect(bridge).toHaveTextContent('Renteninformation nennt Bruttobeträge')
+    const details = screen.getByText('Angaben & Annahmen prüfen').closest('details')
+    expect(details).not.toHaveAttribute('open')
+    fireEvent.click(within(line).getByRole('button', { name: 'Alle Annahmen' }))
+    expect(details).toHaveAttribute('open')
+    expect(details).toHaveTextContent('beides ohne Wachstum angesetzt')
+  })
+
+  it('suppresses the assumption line and the bridge while the total is blocked', () => {
+    render(<PlanOverview {...props({ assumptions: { ...props().assumptions, statutoryGrossMonthly: 2400 }, summary: { ...summary, readiness: {
+      status: 'incomplete', canShowHouseholdTotal: false, reasons: [reason], blocking: [reason], assumptions: [],
+    } } })} />)
+    expect(screen.queryByTestId('plan-assumption-line')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('plan-statutory-bridge')).not.toBeInTheDocument()
+  })
+})
