@@ -1,8 +1,53 @@
 import type { Ref } from 'react'
-import type { PlanSummary } from '../../app/planSummary'
-import type { WhatIfDescription } from '../../app/whatIfPreview'
+import type { PlanSourceRow, PlanSummary } from '../../app/planSummary'
+import type { WhatIfDecisionKind, WhatIfDescription } from '../../app/whatIfPreview'
 import { formatCurrency } from '../../utils/format'
+import { PlanDurationText } from '../mein-plan/PlanDurationSummary'
 import { alternativeTotal } from './alternativePresentation'
+
+function money(value: number | null): string {
+  return value === null ? 'unbekannt' : `${formatCurrency(value)} / Monat`
+}
+
+/** Sum of the plan's monthly contributions; `null` when a row's contribution is unknown. */
+function contributionTotal(summary: PlanSummary | null): number | null {
+  if (!summary || summary.rows.length === 0) return null
+  let total = 0
+  for (const row of summary.rows) {
+    if (row.key === 'statutory') continue
+    if (row.contributionMonthly === undefined || row.contributionMonthly === null) return null
+    total += row.contributionMonthly
+  }
+  return total
+}
+
+/** What the alternative actually does, in the user's words (audit F03). */
+function actionLabel(decision: WhatIfDecisionKind): string {
+  switch (decision) {
+    case 'activate_offer': return 'Angebot wird in den Plan aufgenommen: Status Angebot → aktiver Vertrag'
+    case 'new_contract': return 'Neue Sparform wird ergänzt'
+    case 'paid_up': return 'Vertrag wird beitragsfrei gestellt'
+    case 'contribution': return 'Monatlicher Beitrag wird geändert'
+    default: return 'Änderung konnte nicht im Einzelnen beschrieben werden'
+  }
+}
+
+function contributionLabel(description: WhatIfDescription): string {
+  if (description.productId === 'bav') return 'Monatlicher Bruttobeitrag zur bAV'
+  if (description.decision === 'activate_offer') return 'Monatlicher Beitrag laut Angebot'
+  return 'Monatlicher Beitrag'
+}
+
+function beforeText(description: WhatIfDescription): string {
+  if (description.decision === 'activate_offer') return `${formatCurrency(0)} / Monat (Angebot zählt noch nicht zum Plan)`
+  if (description.decision === 'new_contract') return `${formatCurrency(0)} / Monat (noch nicht vorhanden)`
+  return money(description.beforeContributionMonthly)
+}
+
+function afterText(description: WhatIfDescription): string {
+  if (description.decision === 'paid_up') return 'Keine weiteren Beiträge'
+  return money(description.afterContributionMonthly)
+}
 
 export function AlternativeComparison({ before, after, delta = null, description, retirementAge, heading = 'Vorher und nachher', headingRef, showApplyNote = true }: {
   before: PlanSummary | null
@@ -15,6 +60,16 @@ export function AlternativeComparison({ before, after, delta = null, description
   showApplyNote?: boolean
 }) {
   const complete = before?.readiness.canShowHouseholdTotal && after?.readiness.canShowHouseholdTotal
+  const undescribed = description.decision === 'other'
+  const subjectRow: PlanSourceRow | undefined = description.instanceId
+    ? after?.rows.find((row) => row.instanceId === description.instanceId)
+    : undefined
+  const extraNetCost =
+    description.beforeContributionMonthly !== null && description.afterContributionMonthly !== null
+      ? description.afterContributionMonthly - description.beforeContributionMonthly
+      : null
+  const savingBefore = contributionTotal(before)
+  const savingAfter = contributionTotal(after)
   return <section className="alternativen__comparison" aria-label="Vorher und nachher">
     <h2 ref={headingRef} tabIndex={-1}>{heading}</h2>
     <div className="alternativen__columns">
@@ -26,9 +81,21 @@ export function AlternativeComparison({ before, after, delta = null, description
     {complete && delta !== null && <p className="alternativen__delta">Änderung: {delta >= 0 ? '+' : ''}{formatCurrency(delta).replace('-', '−')} / Monat</p>}
     <div className="alternativen__source">
       <strong>{description.instanceLabel ?? 'Geänderte Vorsorge'}</strong>
-      <span>{description.productId === 'bav' ? 'Monatlicher Bruttobeitrag zur bAV' : 'Monatlicher Beitrag'}</span>
-      <span>Bisher: {description.beforeContributionMonthly === null ? 'unbekannt' : `${formatCurrency(description.beforeContributionMonthly)} / Monat`}</span>
-      <span>Danach: {description.decision === 'paid_up' ? 'Keine weiteren Beiträge' : description.afterContributionMonthly === null ? 'unbekannt' : `${formatCurrency(description.afterContributionMonthly)} / Monat`}</span>
+      <span>{actionLabel(description.decision)}</span>
+      {undescribed
+        ? <span className="alternativen__notice" role="note">Diese Alternative enthält Änderungen, die hier nicht einzeln aufgeführt werden können. Prüfe deinen Plan nach dem Übernehmen.</span>
+        : <>
+          <span>{contributionLabel(description)}</span>
+          <span>Bisher: {beforeText(description)}</span>
+          <span>Danach: {afterText(description)}</span>
+          {description.decision !== 'paid_up' && extraNetCost !== null && extraNetCost !== 0 && <span>
+            {extraNetCost > 0 ? 'Zusätzliche monatliche Belastung' : 'Monatliche Entlastung'}: {formatCurrency(Math.abs(extraNetCost))} / Monat
+          </span>}
+          {savingBefore !== null && savingAfter !== null && <span>
+            Summe aller Beiträge im Plan: {formatCurrency(savingBefore)} → {formatCurrency(savingAfter)} / Monat
+          </span>}
+          {subjectRow && <span>Auszahlung: <PlanDurationText duration={subjectRow.duration} /></span>}
+        </>}
     </div>
     {showApplyNote && <p className="alternativen__muted">Die Änderung gilt erst, wenn du sie in deinen Plan übernimmst.</p>}
   </section>

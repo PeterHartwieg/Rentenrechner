@@ -73,8 +73,14 @@ export function AlternativenSurface(props: AlternativenHostProps) {
     props.selectContract(null)
     props.openSaved(null)
   }
-  const applyLabel = (decision: string) => decision === 'paid_up'
-    ? 'Änderung in meinen Plan übernehmen' : 'Beitrag in meinen Plan übernehmen'
+  // Audit F03: name the action the user is about to apply. Only a plain
+  // contribution change is a "Beitrag"; an offer is taken into the plan, and
+  // anything else (paid-up, new contract, undescribed) is a generic change.
+  const applyLabel = (decision: string) => decision === 'contribution'
+    ? 'Beitrag in meinen Plan übernehmen'
+    : decision === 'activate_offer'
+      ? 'Angebot in meinen Plan aufnehmen'
+      : 'Änderung in meinen Plan übernehmen'
   const failure = error ?? props.previewError
   const savedScenario = props.whatIfs.find((item) => item.id === open?.id)
 
