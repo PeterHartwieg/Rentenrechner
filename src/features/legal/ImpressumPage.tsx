@@ -95,7 +95,7 @@ export function ImpressumPage({ navigate }: Props) {
         </p>
       </section>
 
-      <section>
+      <section id="lizenz">
         <h2>Urheberrecht und Lizenz</h2>
         <p>
           Der Quellcode dieser Anwendung wird unter der{' '}
