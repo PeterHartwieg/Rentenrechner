@@ -96,6 +96,11 @@ export function PlanOverview(props: PlanOverviewProps) {
           <button type="button" className="plan-overview__link" onClick={props.onOpenDuration}>Dauer ansehen →</button>
         </div>}
         {!canShow && summary?.readiness.status !== 'error' && <p className="plan-overview__muted">Einzelbeträge erscheinen, sobald alle Angaben vorliegen. Steuern und Krankenversicherung hängen von allen Renten zusammen ab.</p>}
+        {summary && summary.pkvRetirementMonthlyCost > 0 && <p className="plan-overview__notice">
+          Private Kranken- und Pflegeversicherung, abzgl. Zuschuss § 106 SGB VI:
+          {' '}{canShow ? `−${formatCurrency(summary.pkvRetirementMonthlyCost * (moneyBasis === 'real' ? summary.deflator : 1))} / Monat` : '—'}
+          {' '}Bereits im Gesamtbetrag abgezogen. Heutige Beiträge ohne künftige Erhöhungen fortgeschrieben.
+        </p>}
         <ul className="plan-overview__sources" aria-label="Deine Rentenquellen">
           {summary?.rows.map((row) => {
             const amount = moneyBasis === 'real' ? row.netMonthlyReal : row.netMonthlyNominal

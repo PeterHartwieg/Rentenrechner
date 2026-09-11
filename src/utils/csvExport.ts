@@ -1,4 +1,4 @@
-import type { GermanRules, InsuranceTaxMode, PersonalProfile, ProductResult } from '../domain'
+import type { GermanRules, InsuranceTaxMode, PersonalProfile, ProductResult, StatutoryPensionResult } from '../domain'
 import {
   buildCombineExportProjection,
   buildCompareExportProjection,
@@ -13,6 +13,7 @@ import { formatExportProvenance } from '../features/results/provenanceHelpers'
 export type { InstanceTaxModes } from '../engine/exportProjection'
 
 interface ExportOptions {
+  statutoryPension?: StatutoryPensionResult
   products: ProductResult[]
   bavAnnualTaxSvSavings: number
   bavProfile: PersonalProfile
@@ -85,6 +86,14 @@ export function buildExportCsv(opts: ExportOptions): string {
   }
   lines.push('')
   addActiveAssumptions(lines, opts.inflationRate)
+
+  if (opts.statutoryPension && !opts.bavProfile.publicHealthInsurance) {
+    lines.push('Private Kranken- und Pflegeversicherung im Ruhestand')
+    lines.push(csvRow('PKV/PV abzgl. Zuschuss §106 SGB VI mtl. (EUR)', n(opts.statutoryPension.pkvRetirementMonthlyCost)))
+    lines.push(csvRow('Gesetzl. Rente netto nach privater KV/PV mtl. (EUR)', n(opts.statutoryPension.netMonthlyPension)))
+    lines.push('Heutige Beiträge unverändert fortgeschrieben; keine Beitragserhöhungen modelliert.')
+    lines.push('')
+  }
 
   const projection = buildCompareExportProjection({
     products: opts.products,
@@ -249,12 +258,13 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
   // selector blocks the household total, the Netto-Einkommen cell stays blank
   // rather than exporting a number that would read as reliable.
   lines.push('Kombiniertes Renteneinkommen')
-  lines.push(csvRow('Szenario', 'Netto-Einkommen mtl. (EUR)', 'Gesetzl. Rente netto mtl. (EUR)'))
+  lines.push(csvRow('Szenario', 'Netto-Einkommen mtl. (EUR)', opts.profile?.publicHealthInsurance === false ? 'Gesetzl. Rente vor privater KV/PV mtl. (EUR)' : 'Gesetzl. Rente netto mtl. (EUR)', 'Private KV/PV abzgl. Zuschuss §106 SGB VI mtl. (EUR)'))
   for (const [scenarioId, combined] of Object.entries(combinedByScenarioId)) {
     lines.push(csvRow(
       scenarioLabels[scenarioId] ?? scenarioId,
       blocked ? '' : n(combined.monthlyNetIncome),
       blocked ? '' : n(combined.statutoryPensionMonthlyNet),
+      blocked ? '' : n(combined.pkvRetirementMonthlyCost),
     ))
   }
 

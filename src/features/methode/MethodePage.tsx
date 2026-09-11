@@ -434,6 +434,18 @@ export function MethodePage({ navigate }: Props) {
                   </span>
                 </li>
                 <li>
+                  <span className="methode-deflist-key">PKV im Ruhestand</span>
+                  <span className="methode-deflist-val">
+                    Heutige PKV- und Pflegebeiträge werden unverändert fortgeschrieben;
+                    künftige Beitragserhöhungen sind nicht modelliert. Bei gesetzlicher Rente
+                    wird der Zuschuss nach § 106 SGB VI mit dem durchschnittlichen Zusatzbeitrag
+                    abgezogen, begrenzt auf den halben Krankenversicherungsbeitrag.
+                    Für die Pflegeversicherung gibt es keinen Zuschuss. Ohne gesetzliche Rente
+                    wird kein §106-Zuschuss angesetzt. Maßgeblich ist die Angabe GKV/PKV im Profil;
+                    ein späterer Versicherungswechsel wird nicht modelliert.
+                  </span>
+                </li>
+                <li>
                   <span className="methode-deflist-key">Vorsorgepauschale</span>
                   <span className="methode-deflist-val">
                     § 39b EStG (BMF-PAP): nur RV, GKV und PV werden in der

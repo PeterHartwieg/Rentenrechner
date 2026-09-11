@@ -106,6 +106,7 @@ function makeSimulation(): SimulationResult {
 
 function makeCombined(monthlyNetIncome: number): CombinedResult {
   return {
+    pkvRetirementMonthlyCost: 0,
     monthlyNetIncome,
     monthlyGrossPayouts: {
       statutoryPension: 1000,

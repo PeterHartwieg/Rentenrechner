@@ -38,6 +38,10 @@ export function makeAvdCandidate(g: GeneratorContext): CandidateDraft | null {
   const careerStarterBonusAlreadyUsed = hasUsedCareerStarterBonus(wsa, g.rules)
   const effectiveEligibility = {
     ...baseAvd.eligibility,
+    claimsChildAllowance: ![...wsa.riester, ...wsa.altersvorsorgedepot].some(
+      (instance) => instance.status !== 'surrendered' && instance.status !== 'offered' &&
+        instance.eligibility.claimsChildAllowance !== false,
+    ),
     ageAtContractStart: profile.age,
     careerStarterBonusUsed: careerStarterBonusAlreadyUsed,
     eligibleChildren: childBirthYearsUnder25InYear(

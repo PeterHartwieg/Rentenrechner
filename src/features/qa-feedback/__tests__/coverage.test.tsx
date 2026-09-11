@@ -675,6 +675,7 @@ const AVD_FUNDING: AltersvorsorgedepotFundingResult = {
 
 /** Minimal stub for statutoryPensionResult */
 const GRV_RESULT = {
+  pkvRetirementMonthlyCost: 0,
   projectedEntgeltpunkte: 35,
   grossMonthlyPension: 1400,
   netMonthlyPension: 1200,

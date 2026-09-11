@@ -68,6 +68,7 @@ function makeSimulation(inputConfidence: ProductResult['inputConfidence']): Simu
     } as unknown as SimulationResult['bavFunding'],
     statutoryPension: {
       grossMonthlyPension: 1000,
+      pkvRetirementMonthlyCost: 0,
       netMonthlyPension: 900,
       projectedEntgeltpunkte: 35,
     } as unknown as SimulationResult['statutoryPension'],
@@ -206,6 +207,7 @@ describe('PrintReport', () => {
 
   function makeCombined(monthlyNetIncome: number): CombinedResult {
     return {
+      pkvRetirementMonthlyCost: 0,
       monthlyNetIncome,
       monthlyGrossPayouts: {
         statutoryPension: 1000,
@@ -281,6 +283,29 @@ describe('PrintReport', () => {
     // and there is exactly one `.pr-disclaimer-top` in the print tree.
     expect(firstChild?.tagName.toLowerCase()).toBe('section')
     expect(root!.querySelectorAll('.pr-disclaimer-top').length).toBe(1)
+  })
+
+  it('combine PKV report distinguishes statutory net before and after private premiums', () => {
+    const simulation = makeSimulation('user_confirmed')
+    simulation.statutoryPension = {
+      grossMonthlyPension: 1800, taxMonthly: 153.5, kvPvMonthly: 0,
+      pkvRetirementMonthlyCost: 412.5, netMonthlyPension: 1234,
+      projectedEntgeltpunkte: 0, grvReductionApplied: 0,
+    }
+    const { container } = render(<PrintReport
+      profile={{ ...defaultProfile, publicHealthInsurance: false }}
+      assumptions={defaultAssumptions} simulation={simulation} combineMode
+      portfolio={{ perInstance: {}, scenarioLabels: { basis: 'Basis' },
+        combinedByScenarioId: { basis: { ...makeCombined(1234),
+          statutoryPensionMonthlyNet: 1646.5, pkvRetirementMonthlyCost: 412.5,
+        } },
+      }}
+    />)
+    const text = container.textContent ?? ''
+    expect(text).toContain('Nettorente nach privater KV/PV')
+    expect(text).toContain('Private KV/PV abzgl. Zuschuss §106 (bereits abgezogen)')
+    expect(text).toContain('Gesetzl. Rente vor privater KV/PV')
+    expect(text).toContain('einmal vom Gesamtbetrag abgezogen')
   })
 
   it('compare-mode (combineMode=false / undefined) renders the R3 Vergleich mirror', () => {
@@ -479,6 +504,7 @@ describe('PrintReport', () => {
     // Workspace GRV: deliberately different values.
     const workspaceGrv = {
       grossMonthlyPension: 1_234,
+      pkvRetirementMonthlyCost: 0,
       netMonthlyPension: 1_111,
       projectedEntgeltpunkte: 42,
       taxMonthly: 100,

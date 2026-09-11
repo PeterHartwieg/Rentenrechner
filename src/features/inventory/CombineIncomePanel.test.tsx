@@ -28,6 +28,7 @@ import { eachViewport, mockViewport } from '../../test/viewport'
 function makeCombinedResult(overrides: Partial<CombinedResult> = {}): CombinedResult {
   // Minimal stub: CombineIncomePanel only reads monthlyNetIncome from this.
   return {
+    pkvRetirementMonthlyCost: 0,
     monthlyNetIncome: 1500,
     statutoryPensionMonthlyNet: 900,
     monthlyGrossPayouts: {} as CombinedResult['monthlyGrossPayouts'],

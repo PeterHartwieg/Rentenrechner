@@ -935,9 +935,20 @@ export function usePortfolioState(): UsePortfolioStateApi {
         // different one would silently orphan every transfer event and pin
         // pointing at this contract.
         const merged = { ...existing, ...patch, instanceId } as AnyInstance
-        return status
+        const updated = status
           ? { ...merged, inputStatus: { ...(existing.inputStatus ?? {}), ...status } }
           : merged
+        if (patch.status === 'offered' && existing.status !== 'offered') {
+          const field = 'monthlyGrossConversion' in updated ? 'monthlyGrossConversion'
+            : productId === 'versicherung' && 'monthlyContribution' in updated ? 'monthlyContribution' : null
+          if (field) {
+            if ('monthlyGrossConversion' in updated) updated.monthlyGrossConversion = 0
+            else if ('monthlyContribution' in updated) updated.monthlyContribution = 0
+            updated.inputStatus = { ...updated.inputStatus, [field]: 'assumed' }
+            updated.evidenceMap = { ...updated.evidenceMap, [field]: 'model_estimate' }
+          }
+        }
+        return updated
       })
       const patched = nextArray.find((i) => i.instanceId === instanceId)
       // Same persisted-schema gate as `addPopulatedInstance`.

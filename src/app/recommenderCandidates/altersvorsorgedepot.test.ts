@@ -62,6 +62,8 @@ describe('makeAvdCandidate — visible candidate behavior', () => {
   it('reserves profile-based child allowances when sizing the contract cap', () => {
     const ws = buildBerndWorkspace()
     ws.baseline.profile.childBirthYears = [2018]
+    ws.baseline.assumptions.riester = []
+    ws.baseline.assumptions.altersvorsorgedepot = []
     const eligibility = {
       ...defaultAssumptions.altersvorsorgedepot.eligibility,
       ageAtContractStart: ws.baseline.profile.age,
@@ -87,6 +89,41 @@ describe('makeAvdCandidate — visible candidate behavior', () => {
       (draft.newInstance as AltersvorsorgedepotInstance).eligibility.eligibleChildren,
     ).toBe(1)
   })
+
+  it.each(['riester', 'altersvorsorgedepot'] as const)(
+    'does not claim children already claimed by an existing %s contract', (product) => {
+      const ws = buildBerndWorkspace()
+      ws.baseline.profile.childBirthYears = [2018, 2020]
+      const claimant = ws.baseline.assumptions[product][0]
+      claimant.status = 'active'
+      claimant.eligibility.claimsChildAllowance = true
+      const draft = makeAvdCandidate(buildGeneratorContext(ws, 200))!
+      const created = draft.newInstance as AltersvorsorgedepotInstance
+      ws.baseline.assumptions.altersvorsorgedepot.push(created)
+      const funding = buildPortfolioFunding(ws, de2026Rules)
+      expect(funding.altersvorsorgedepotByInstanceId[created.instanceId].childAllowanceAnnual).toBe(0)
+      expect(created.eligibility.claimsChildAllowance).toBe(false)
+    },
+  )
+
+  it.each(['riester', 'altersvorsorgedepot'] as const)(
+    'an unaccepted %s offer does not reserve child allowances', (product) => {
+      const ws = buildBerndWorkspace()
+      ws.baseline.profile.childBirthYears = [2018, 2020]
+      const offer = ws.baseline.assumptions[product][0]
+      ws.baseline.assumptions.riester = []
+      ws.baseline.assumptions.altersvorsorgedepot = []
+      offer.status = 'offered'
+      offer.eligibility.claimsChildAllowance = true
+      if (product === 'riester') ws.baseline.assumptions.riester.push(offer as typeof ws.baseline.assumptions.riester[number])
+      else ws.baseline.assumptions.altersvorsorgedepot.push(offer as AltersvorsorgedepotInstance)
+      const draft = makeAvdCandidate(buildGeneratorContext(ws, 200))!
+      const created = draft.newInstance as AltersvorsorgedepotInstance
+      ws.baseline.assumptions.altersvorsorgedepot.push(created)
+      const funding = buildPortfolioFunding(ws, de2026Rules)
+      expect(funding.altersvorsorgedepotByInstanceId[created.instanceId].childAllowanceAnnual).toBe(600)
+    },
+  )
 
   it('uses profile age and reserves an unused first-year career-starter bonus', () => {
     const ws = buildBerndWorkspace()

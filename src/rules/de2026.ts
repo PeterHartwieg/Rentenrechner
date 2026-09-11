@@ -85,6 +85,8 @@ export const de2026Rules: GermanRules = {
     unemploymentEmployeeRate: 0.013,
     unemploymentEmployerRate: 0.013,
     healthGeneralRate: 0.146,
+    // §242a SGB V, BAnz AT 10.11.2025 B7; §106(3) SGB VI PKV subsidy.
+    healthAverageAdditionalRate: 0.029,
     // ermäßigter Beitragssatz (§243 SGB V, without Krankengeld entitlement): used in §39b EStG Vorsorgepauschale
     healthReducedRate: 0.14,
     careEmployeeBaseRate: 0.018,
@@ -189,7 +191,7 @@ export const de2026Rules: GermanRules = {
 export const de2026RulesMetadata: RuleSetMetadata = {
   ruleSetId: 'de2026',
   ruleYear: 2026,
-  revision: 1,
+  revision: 2,
   calculationModel: TAX_CALCULATION_MODEL,
   scope:
     'Covers the tax areas routed through src/engine/tax.ts and their rule inputs ' +

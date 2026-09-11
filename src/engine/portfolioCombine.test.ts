@@ -53,6 +53,8 @@ function makeBaseCombineContext(
     retirementYear: de2026Rules.year + (profile.retirementAge - profile.age),
     grvGrossMonthlyPension,
     statutoryPensionTaxChannel: grvGrossMonthlyPension > 0 ? 'statutory_pension' : 'none',
+    bavKvChannel: 'bav_versorgungsbezug',
+    pkvRetirementMonthlyCost: 0,
     statutoryPensionKvChannel: grvGrossMonthlyPension > 0 ? 'kvdr_half_rate' : 'none',
     retirementHealthStatus: 'kvdr',
     filingStatus,

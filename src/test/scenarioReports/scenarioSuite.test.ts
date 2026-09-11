@@ -268,20 +268,11 @@ describe('scenario families exercise the intended engine branches', () => {
     expect(pkv['kvPv.basis.aggregate.statutoryPensionKvMonthly']).toBe(0)
     expect(pkv['kvPv.basis.aggregate.freiwilligOtherKvMonthly']).toBe(0)
     expect(pkv['kvPv.basis.aggregate.otherVersorgungsbezuegeKvMonthly']).toBe(0)
-    // KNOWN DEFECT #390 — asserted for MEMBERSHIP ONLY, observationally.
-    // In combine mode the bAV Versorgungsbezug channel still charges KV/PV
-    // although the shared compare-mode monthly primitive gates it on
-    // publicHealthInsurance, and the bundle-level GRV stage contradicts the
-    // zero aggregate. This is NOT an approved modeling choice and NOT an
-    // expected legal result; the baseline freezes the defect so the fix in
-    // the #390 PR is a deliberate, reviewed baseline update. Do not read the
-    // positive assertions below as desirable.
-    expect(pkv['kvPv.basis.aggregate.bavKvMonthly']).toBeGreaterThan(0)
-    expect(pkv['kvPv.basis.aggregate.bavPvMonthly']).toBeGreaterThan(0)
-    expect(pkv['baseline.statutoryPension.kvPvMonthly']).toBeGreaterThan(0)
-    expect(pkv['net.basis.monthlyNetIncome']).toBeGreaterThan(
-      kvdr['net.basis.monthlyNetIncome'] as number,
-    )
+    expect(pkv['kvPv.basis.aggregate.bavKvMonthly']).toBe(0)
+    expect(pkv['kvPv.basis.aggregate.bavPvMonthly']).toBe(0)
+    expect(pkv['baseline.statutoryPension.kvPvMonthly']).toBe(0)
+    expect(pkv['net.basis.pkvRetirementMonthlyCost']).toBeGreaterThan(0)
+
   })
 
   it('transfer events move capital out of the source and into the target', () => {

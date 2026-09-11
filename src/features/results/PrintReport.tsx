@@ -401,9 +401,10 @@ export function PrintReport({
               <table className="pr-kv">
                 <tbody>
                   <KvRow label="Bruttorente">{formatCurrency(grv.grossMonthlyPension, 0)}/Monat</KvRow>
-                  <KvRow label="Nettorente">
+                  <KvRow label={profile.publicHealthInsurance ? "Nettorente" : "Nettorente nach privater KV/PV"}>
                     <strong>{formatCurrency(grv.netMonthlyPension, 0)}/Monat</strong>
                   </KvRow>
+                  {grv.pkvRetirementMonthlyCost > 0 && <KvRow label="Private KV/PV abzgl. Zuschuss §106 (bereits abgezogen)">{formatCurrency(grv.pkvRetirementMonthlyCost, 0)}/Monat</KvRow>}
                   <KvRow label="Entgeltpunkte">{formatNumber(grv.projectedEntgeltpunkte, 1)} EP</KvRow>
                   <KvRow label="bAV Nettoaufwand">{formatCurrency(bav.monthlyNetCost, 0)}/Monat</KvRow>
                   <KvRow label="bAV Gesamtbeitrag">
@@ -701,11 +702,14 @@ function CombinePrintReport({
                   <KvRow label="Bruttorente">
                     {householdTotalBlocked ? '—' : `${formatCurrency(grv.grossMonthlyPension, 0)}/Monat`}
                   </KvRow>
-                  <KvRow label="Nettorente">
+                  <KvRow label={profile.publicHealthInsurance ? "Nettorente" : "Nettorente nach privater KV/PV"}>
                     <strong>
                       {householdTotalBlocked ? '—' : `${formatCurrency(grv.netMonthlyPension, 0)}/Monat`}
                     </strong>
                   </KvRow>
+                  {!profile.publicHealthInsurance && <KvRow label="Private KV/PV abzgl. Zuschuss §106 (bereits abgezogen)">
+                    {householdTotalBlocked ? '—' : `${formatCurrency(grv.pkvRetirementMonthlyCost, 0)}/Monat`}
+                  </KvRow>}
                   <KvRow label="Entgeltpunkte">
                     {householdTotalBlocked ? '—' : `${formatNumber(grv.projectedEntgeltpunkte, 1)} EP`}
                   </KvRow>
@@ -747,7 +751,8 @@ function CombinePrintReport({
             <tr>
               <th>Szenario</th>
               <th className="pr-num">Netto-Einkommen mtl.</th>
-              <th className="pr-num">Gesetzl. Rente netto mtl.</th>
+              <th className="pr-num">{profile.publicHealthInsurance ? 'Gesetzl. Rente netto mtl.' : 'Gesetzl. Rente vor privater KV/PV'}</th>
+              <th className="pr-num">Private KV/PV abzgl. Zuschuss §106</th>
             </tr>
           </thead>
           <tbody>
@@ -767,6 +772,7 @@ function CombinePrintReport({
                       ? '—'
                       : `${formatCurrency(c.statutoryPensionMonthlyNet, 0)}/Monat`}
                   </td>
+                  <td className="pr-num">{householdTotalBlocked ? '—' : `${formatCurrency(c.pkvRetirementMonthlyCost, 0)}/Monat`}</td>
                 </tr>
               )
             })}
@@ -780,6 +786,7 @@ function CombinePrintReport({
         <p className="pr-note pr-table-note">
           Aggregierte Steuer- und Sozialversicherungsabgaben über alle Verträge nach §32a EStG
           und §240 SGB V (KV/PV). Fettgedruckte Zeile = Basisszenario.
+          {!profile.publicHealthInsurance && ' Die gesetzliche Rente in dieser Tabelle ist vor privater KV/PV ausgewiesen. Die private KV/PV wird einmal vom Gesamtbetrag abgezogen; heutige Beiträge werden ohne künftige Erhöhungen fortgeschrieben.'}
         </p>
       </section>
 

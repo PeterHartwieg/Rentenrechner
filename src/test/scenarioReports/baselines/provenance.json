@@ -1,20 +1,51 @@
 {
   "label": "INTERNAL REGRESSION",
-  "baseSha": "5449bd85d13312b7853ae440ded108f6736b1d59",
-  "baseShaCapturedAt": "2026-09-08T21:13:49.305Z",
+  "baseSha": "c0622aa06e4d1b83020d670bbfbb2c6c992ef8cc",
+  "baseShaCapturedAt": "2026-09-11T06:49:46.353Z",
   "engineSources": {
-    "digestSha": "eca1a9262738e41b",
-    "dirty": false,
-    "paths": []
+    "digestSha": "64816e9c67516f3e",
+    "dirty": true,
+    "paths": [
+      "src/app/combineCsvWiring.test.ts",
+      "src/app/planSummary.ts",
+      "src/app/portfolioState.mutations.test.tsx",
+      "src/app/portfolioState.ts",
+      "src/app/recommender.test.ts",
+      "src/app/recommender.ts",
+      "src/app/recommenderCandidates/altersvorsorgedepot.test.ts",
+      "src/app/recommenderCandidates/altersvorsorgedepot.ts",
+      "src/app/recommenderCandidates/bav.test.ts",
+      "src/app/recommenderCandidates/insurance.test.ts",
+      "src/app/resultReadiness.test.ts",
+      "src/app/resultReadiness.ts",
+      "src/app/useCombineSimulation.test.ts",
+      "src/app/useCombineSimulation.ts",
+      "src/app/useDerivedViews.test.ts",
+      "src/app/useDerivedViews.ts",
+      "src/domain/products/grv.ts",
+      "src/domain/rules.ts",
+      "src/engine/combineContext.ts",
+      "src/engine/exportProjection.test.ts",
+      "src/engine/grv.test.ts",
+      "src/engine/grv.ts",
+      "src/engine/insuranceClassification.test.ts",
+      "src/engine/portfolioCombine.test.ts",
+      "src/engine/portfolioCombine.ts",
+      "src/rules/de2026.ts",
+      "src/rules/legalConstants.ts",
+      "src/utils/csvExport.test.ts",
+      "src/utils/csvExport.ts"
+    ],
+    "allowDirtyReason": "User-authorized focused fixes are being verified locally; source digest records the reviewed working tree"
   },
   "rulesIdentity": {
     "ruleSet": {
       "ruleSetId": "de2026",
       "ruleYear": 2026,
-      "revision": 1,
-      "contentFingerprint": "4aa06e786bbc30d7"
+      "revision": 2,
+      "contentFingerprint": "e2475788cb650edd"
     },
-    "snapshotSha": "3f64ade6843720f8",
+    "snapshotSha": "05ab94d01786e338",
     "cohortSchedules": {
       "besteuerungsanteilGrvByRetirementYear": {
         "2005": 0.5,
@@ -482,6 +513,7 @@
         "unemploymentEmployeeRate": 0.013,
         "unemploymentEmployerRate": 0.013,
         "healthGeneralRate": 0.146,
+        "healthAverageAdditionalRate": 0.029,
         "healthReducedRate": 0.14,
         "careEmployeeBaseRate": 0.018,
         "careEmployeeChildlessRate": 0.024,
@@ -522,6 +554,9 @@
     },
     "legalRuleData": {
       "legalConstants": {
+        "retirementPkv": {
+          "subsidyShare": 0.5
+        },
         "insurance": {
           "pre2005YearBoundary": 2005,
           "halbeinkuenfteMinRuntimeYears": 12,
@@ -565,5 +600,5 @@
       "pvBeitragszuschlagKinderloseMinAge": 23
     }
   },
-  "notes": "Erfasst mit: npm run scenario:update -- --reason \"Replace the new Abgeltungsteuer scenario with a coherent current contract and retirement at age 60; derive branch assertions from frozen inputs. Record existing PKV inconsistency separately as issue 390. Only this new scenario may change numerical baselines.\". rulesIdentity friert die RuleSetIdentity aus src/rules/ruleMetadata.ts (ruleSetId, Revision, Content-Fingerprint über Jahresregeln UND legalRuleData-Katalog), den Snapshot-Sha des kanonischen Regel-Snapshots, die evaluierten Kohortentabellen (Code, den kein JSON-Snapshot sehen kann) und die vollen Jahresregeln als kanonisches JSON ein; engineSources.digestSha identifiziert den Rechenwerkscode der Basis-Revision (sha256-Präfix). Rules-Identität dieser Erfassung: ddc962b049165c3d. Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise."
+  "notes": "Erfasst mit: npm run scenario:update -- --reason \"#390/#400 PKV corrections; Fable follow-up gates stale freiwillig status, clarifies deduction labels and readiness; #411 excludes unaccepted offers\" --allow-dirty-reason \"User-authorized focused fixes are being verified locally; source digest records the reviewed working tree\". rulesIdentity friert die RuleSetIdentity aus src/rules/ruleMetadata.ts (ruleSetId, Revision, Content-Fingerprint über Jahresregeln UND legalRuleData-Katalog), den Snapshot-Sha des kanonischen Regel-Snapshots, die evaluierten Kohortentabellen (Code, den kein JSON-Snapshot sehen kann) und die vollen Jahresregeln als kanonisches JSON ein; engineSources.digestSha identifiziert den Rechenwerkscode der Basis-Revision (sha256-Präfix). Rules-Identität dieser Erfassung: 0dafb7f96476e43c. Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise."
 }

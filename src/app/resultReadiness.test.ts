@@ -221,12 +221,35 @@ describe('selectResultReadiness', () => {
     ).toContain('pkv-premium-unknown')
   })
 
+  it('marks untouched PKV premiums as an assumption instead of a complete result', () => {
+    const ws = makeWorkspace()
+    clearContracts(ws)
+    ws.baseline.profile.publicHealthInsurance = false
+    const readiness = selectResultReadiness(ws, bundleFor(ws))
+    expect(readiness.status).toBe('estimated')
+    expect(readiness.assumptions.map((r) => r.code)).toContain('pkv-retirement-premium-assumed')
+  })
+
   it('returns error — never a zero total — when the simulation threw', () => {
     const ws = makeWorkspace()
     const readiness = selectResultReadiness(ws, null, new Error('boom'))
     expect(readiness.status).toBe('error')
     expect(readiness.blocking.map((r) => r.code)).toContain('simulation-error')
     expect(readiness.canShowHouseholdTotal).toBe(false)
+  })
+
+  it('allows entered PKV premiums to be available', () => {
+    const ws = makeWorkspace()
+    clearContracts(ws)
+    ws.baseline.profile.publicHealthInsurance = false
+    ws.baseline.profile.pkvMonthlyPremium = 450
+    ws.baseline.profile.pPVMonthlyPremium = 120
+    ws.baseline.assumptions.inputStatus = {
+      'profile.pkvMonthlyPremium': 'entered', 'profile.pPVMonthlyPremium': 'entered',
+    }
+    const readiness = selectResultReadiness(ws, bundleFor(ws))
+    expect(readiness.status).toBe('available')
+    expect(readiness.assumptions.map((r) => r.code)).not.toContain('pkv-retirement-premium-assumed')
   })
 
   it('returns error when the headline is non-finite', () => {

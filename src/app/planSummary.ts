@@ -157,6 +157,7 @@ export interface PlanSourceRow {
 }
 
 export interface PlanSummary {
+  pkvRetirementMonthlyCost: number
   netMonthlyTotalNominal: number
   netMonthlyTotalReal: number
   /** Multiply nominal by this to get "heutige Euro". */
@@ -400,6 +401,7 @@ export function selectPlanSummary(
       : undefined
 
   return {
+    pkvRetirementMonthlyCost: combined?.pkvRetirementMonthlyCost ?? 0,
     netMonthlyTotalNominal,
     netMonthlyTotalReal: netMonthlyTotalNominal * deflator,
     deflator,

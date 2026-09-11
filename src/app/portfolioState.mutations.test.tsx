@@ -196,6 +196,18 @@ describe('shared workspace store', () => {
 })
 
 describe('updateInstance', () => {
+  it('clears the contribution when a bAV becomes an offer, without restoring it on activation', () => {
+    const { result } = renderHook(() => usePortfolioState())
+    const ws = populatedWorkspace()
+    ws.baseline.assumptions.bav = [INVENTORY_PRODUCT_REGISTRY.bav.createDefault(2026, 1, () => 'bav-offer111')]
+    act(() => result.current.replaceWorkspace(ws))
+    act(() => { result.current.updateInstance('bav', 'bav-offer111', { status: 'offered', monthlyGrossConversion: 350 }, { monthlyGrossConversion: 'entered' }) })
+    expect(result.current.workspace.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(0)
+    expect(result.current.workspace.baseline.assumptions.bav[0].inputStatus?.monthlyGrossConversion).toBe('assumed')
+    act(() => { result.current.updateInstance('bav', 'bav-offer111', { status: 'active' }) })
+    expect(result.current.workspace.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(0)
+  })
+
   it('merges the patch and the status map, leaving other statuses alone', () => {
     const { result } = renderHook(() => usePortfolioState())
     act(() => result.current.replaceWorkspace(populatedWorkspace()))

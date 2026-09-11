@@ -14,7 +14,11 @@ import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
 import { migrateV1ToV2 } from '../storage'
+import { simulateRetirementComparison } from '../engine/simulate'
 import { runCombineSimulation } from './useCombineSimulation'
+import { buildPrintZusammenRows } from '../features/results/printReportRows'
+import { buildCombinePortfolioCsv } from '../utils/csvExport'
+import { selectPlanSummary } from './planSummary'
 import { PRODUCT_EVIDENCE_FIELDS } from './evidence'
 import { buildPortfolioFunding } from '../engine/portfolioAdapter'
 import type { BavInstance } from '../domain/instances'
@@ -554,5 +558,56 @@ describe('runCombineSimulation — single-bAV back-compat (QA #14)', () => {
     expect(bundle.statutoryPension.grossMonthlyPension).toBeGreaterThan(0)
     const basisId = ws.baseline.assumptions.returnScenarios[0].id
     expect(bundle.combinedByScenarioId[basisId].monthlyNetIncome).toBeGreaterThan(0)
+  })
+})
+
+describe('PKV retirement deductions (#390, #400)', () => {
+  it.each([
+    [false, 'kvdr'], [true, 'kvdr'], [true, 'pkv'], [true, 'freiwillig_gkv'],
+  ] as const)('does not charge statutory KV/PV with mixed portfolio=%s and stored status=%s', (mixed, healthStatus) => {
+    const ws = makeWs()
+    ws.baseline.profile.publicHealthInsurance = false
+    ws.baseline.assumptions.statutoryPension.retirementHealthStatus = healthStatus
+    ws.baseline.profile.pkvMonthlyPremium = 450
+    ws.baseline.profile.pPVMonthlyPremium = 120
+    ws.baseline.assumptions.statutoryPension.manualMonthlyGross = 1800
+    if (!mixed) {
+      ws.baseline.assumptions.etf = []
+      ws.baseline.assumptions.insurance = []
+      ws.baseline.assumptions.basisrente = []
+      ws.baseline.assumptions.altersvorsorgedepot = []
+      ws.baseline.assumptions.riester = []
+    }
+    const bundle = runCombineSimulation(ws, de2026Rules)
+    const combined = bundle.combinedByScenarioId.basis
+    expect(combined.aggregateKvPv.totalKvMonthly).toBe(0)
+    expect(combined.aggregateKvPv.totalPvMonthly).toBe(0)
+    expect(bundle.statutoryPension.kvPvMonthly).toBe(0)
+    // 2026 §106: 8.75% of GRV, limited to half of the KV premium.
+    expect(bundle.statutoryPension.pkvRetirementMonthlyCost).toBeCloseTo(412.5, 8)
+    expect(combined.pkvRetirementMonthlyCost).toBeCloseTo(412.5, 8)
+    expect(combined.monthlyNetIncome).toBeCloseTo(
+      combined.statutoryPensionMonthlyNet + Object.values(combined.byInstance)
+        .reduce((sum, entry) => sum + entry.monthlyNet, 0) - 412.5, 8,
+    )
+    const comparison = simulateRetirementComparison(ws.baseline.profile, {
+      ...defaultAssumptions,
+      statutoryPension: ws.baseline.assumptions.statutoryPension,
+    }, de2026Rules)
+    expect(comparison.statutoryPension.kvPvMonthly).toBe(0)
+    expect(comparison.statutoryPension.pkvRetirementMonthlyCost).toBeCloseTo(412.5, 8)
+    const printRows = buildPrintZusammenRows({ workspace: ws, combinedForScenario: combined })
+    expect(printRows.find((row) => row.key === 'pkv')?.monthlyNet).toBeCloseTo(-412.5, 8)
+    expect(printRows.reduce((sum, row) => sum + row.monthlyNet, 0)).toBeCloseTo(combined.monthlyNetIncome, 8)
+    const summary = selectPlanSummary(ws, bundle, 'basis')
+    expect(summary.pkvRetirementMonthlyCost).toBeCloseTo(412.5, 8)
+    expect(summary.rows.reduce((sum, row) => sum + row.netMonthlyNominal, 0) - summary.pkvRetirementMonthlyCost)
+      .toBeCloseTo(summary.netMonthlyTotalNominal, 8)
+    const csv = buildCombinePortfolioCsv({
+      combinedByScenarioId: { basis: combined }, scenarioLabels: { basis: 'Basis' },
+      perInstance: bundle.perInstance, profile: ws.baseline.profile, rules: de2026Rules,
+    })
+    expect(csv).toContain('Private KV/PV abzgl. Zuschuss §106 SGB VI mtl. (EUR)')
+    expect(csv).toContain('412.50')
   })
 })

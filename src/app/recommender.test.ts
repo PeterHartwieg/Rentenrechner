@@ -504,6 +504,8 @@ function buildCombineCtx(workspace: ReturnType<typeof buildBerndWorkspace>) {
     retirementYear,
     grvGrossMonthlyPension: grvGross,
     statutoryPensionTaxChannel: taxChannel,
+    bavKvChannel: 'bav_versorgungsbezug' as const,
+    pkvRetirementMonthlyCost: 0,
     statutoryPensionKvChannel: kvChannel,
     retirementHealthStatus,
     filingStatus: (workspace.baseline.partner !== undefined ? 'married' : 'single') as 'single' | 'married',
@@ -682,7 +684,7 @@ describe('recommendNextEuro - bAV offers in Mein Plan', () => {
       contractStartYear: de2026Rules.year,
       currentValueEUR: 0,
       evidenceMap: {},
-      monthlyGrossConversion: 0,
+      monthlyGrossConversion: 200,
       contractualMatchPercent: matchPct,
       contractualFixedMonthly: 0,
     }

@@ -240,3 +240,19 @@ should be flagged in review.
   references in design docs / ADRs / backlog.
 - Changes to calculation results, statutory rules, payout math, or rounding
   policy — those are product changes and need their own issue.
+
+### Private health insurance in retirement (#390, #400)
+
+`profile.publicHealthInsurance` is the membership gate for both phases. The
+legacy `retirementHealthStatus: 'pkv'` value does not independently switch
+membership; a future insurance switch is not modelled. `buildCombineContext`
+owns the bAV and statutory KV/PV channels consumed by combine and recommender.
+It resolves retirement health status to PKV for private profiles, overriding stale
+GKV selections before any freiwillig-GKV channel is built.
+`calculatePkvRetirementMonthlyCost` in `grv.ts` owns the private expense:
+current KV + PV premiums held constant, less the §106 subsidy on GRV only
+(average Zusatzbeitrag, capped at half the KV premium, no PV subsidy).
+`projectStatutoryPension.netMonthlyPension` includes that expense and can be
+negative when it exceeds the pension. `CombinedResult.statutoryPensionMonthlyNet`
+is the income share before this household expense; `pkvRetirementMonthlyCost`
+is subtracted once from the total and shown separately in composition and exports.

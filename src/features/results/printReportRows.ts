@@ -462,6 +462,16 @@ export function buildPrintZusammenRows({
     monthlyNet: statutoryMonthly,
     share: denom > 0 ? statutoryMonthly / denom : 0,
   })
+  const pkvCost = combinedForScenario?.pkvRetirementMonthlyCost ?? 0
+  if (pkvCost > 0) rows.push({
+    key: 'pkv',
+    label: 'Private Kranken- und Pflegeversicherung, abzgl. Zuschuss § 106 SGB VI',
+    sublabel: 'Heutige Beiträge unverändert fortgeschrieben',
+    contributionMonthly: null,
+    monthlyNet: -pkvCost,
+    share: denom > 0 ? -pkvCost / denom : 0,
+  })
+
 
   const slots = buildProductSlots(wsa)
   for (const slot of slots) {

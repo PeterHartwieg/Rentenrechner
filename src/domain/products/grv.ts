@@ -98,6 +98,8 @@ export interface StatutoryPensionResult {
   grossMonthlyPension: number
   /** Net monthly pension after income tax and KV/PV. */
   netMonthlyPension: number
+  /** Private KV/PV premiums less §106 subsidy (zero for GKV). */
+  pkvRetirementMonthlyCost: number
   /** Income tax + Soli per month. */
   taxMonthly: number
   /** KV + PV per month (§249a SGB V half-rate on GRV). */

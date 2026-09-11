@@ -21,6 +21,7 @@ const whatIf: WhatIfScenario = {
 }
 function summary(amount: number, ready = true): PlanSummary {
   return {
+    pkvRetirementMonthlyCost: 0,
     netMonthlyTotalReal: amount, netMonthlyTotalNominal: 9999, deflator: 0.7, yearsUntilRetirement: 30, rows: [],
     readiness: { status: ready ? 'available' : 'incomplete', canShowHouseholdTotal: ready, reasons: [], blocking: [], assumptions: [] },
   }

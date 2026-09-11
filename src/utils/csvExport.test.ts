@@ -311,6 +311,7 @@ const FIXTURE_BAV_INSTANCE_RESULT: ProductResult = {
 } as unknown as ProductResult
 
 const FIXTURE_COMBINED: CombinedResult = {
+  pkvRetirementMonthlyCost: 0,
   monthlyNetIncome: 2345.67,
   monthlyGrossPayouts: {
     statutoryPension: 1200,
@@ -711,6 +712,7 @@ describe('buildCombinePortfolioCsv — gh#59 byInstance net regression', () => {
   } as unknown as ProductResult
 
   const combinedWithByInstance: CombinedResult = {
+    pkvRetirementMonthlyCost: 0,
     monthlyNetIncome: BAV_AGGREGATE_NET + ETF_PER_INSTANCE_NET + 1100,
     monthlyGrossPayouts: {
       statutoryPension: 1200,

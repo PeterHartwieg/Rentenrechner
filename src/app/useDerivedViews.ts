@@ -151,6 +151,7 @@ export function useDerivedViews(
       return
     }
     const csv = buildExportCsv({
+      statutoryPension: simulation.statutoryPension,
       products: visibleProducts,
       bavAnnualTaxSvSavings: simulation.bavFunding.annualTaxAndSvSavings,
       bavProfile: profile,

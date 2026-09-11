@@ -336,6 +336,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
   function handleExportCsvAllProducts(): void {
     if (!compareAllProductsSimulation) return
     const csv = buildExportCsv({
+      statutoryPension: compareAllProductsSimulation.statutoryPension,
       products: compareAllProductsSimulation.products,
       bavAnnualTaxSvSavings: compareAllProductsSimulation.bavFunding.annualTaxAndSvSavings,
       bavProfile: profile,

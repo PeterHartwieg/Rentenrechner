@@ -20,6 +20,7 @@ const assumption: ReadinessReason = {
   target: { route: { kind: 'home' } },
 }
 const summary: PlanSummary = {
+  pkvRetirementMonthlyCost: 0,
   netMonthlyTotalNominal: 2500, netMonthlyTotalReal: 1800, deflator: 0.72, yearsUntilRetirement: 25,
   rows: [
     { key: 'statutory', label: 'Gesetzliche Rente', netMonthlyNominal: 2000, netMonthlyReal: 1440, status: 'document', duration: { kind: 'lifelong' }, contributionMonthly: null, contributionStatus: null, contributionLabel: '', provenanceLabel: 'lt. Renteninformation' },

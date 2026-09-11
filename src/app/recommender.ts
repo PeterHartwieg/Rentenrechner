@@ -1005,11 +1005,12 @@ function applyCandidateToAssumptions(
       const idx = wsa.bav.findIndex((b) => b.instanceId === candidate.targetInstanceId)
       if (idx >= 0) {
         const current = wsa.bav[idx]
-        const offerPatch = bavOfferPatchForSavedPlan(candidate, current.monthlyGrossConversion + candidate.grossMonthlyEUR)
+        const monthlyGrossConversion = (current.status === 'offered' ? 0 : current.monthlyGrossConversion ?? 0) + candidate.grossMonthlyEUR
+        const offerPatch = bavOfferPatchForSavedPlan(candidate, monthlyGrossConversion)
         wsa.bav[idx] = {
           ...current,
           status: current.status === 'offered' ? 'active' : current.status,
-          monthlyGrossConversion: (current.monthlyGrossConversion ?? 0) + candidate.grossMonthlyEUR,
+          monthlyGrossConversion,
           ...offerPatch,
         }
       }
@@ -1042,7 +1043,7 @@ function applyCandidateToAssumptions(
           ...current,
           status: current.status === 'offered' ? 'active' : current.status,
           monthlyContribution:
-            (current.monthlyContribution ?? 0) + candidate.grossMonthlyEUR,
+            (current.status === 'offered' ? 0 : current.monthlyContribution ?? 0) + candidate.grossMonthlyEUR,
         }
       }
     }

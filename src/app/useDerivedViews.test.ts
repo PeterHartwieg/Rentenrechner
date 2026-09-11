@@ -52,6 +52,7 @@ const FIXTURE_PRODUCT: ProductResult = {
 } as unknown as ProductResult
 
 const FIXTURE_COMBINED: CombinedResult = {
+  pkvRetirementMonthlyCost: 0,
   monthlyNetIncome: 1500,
   monthlyGrossPayouts: {
     statutoryPension: 1000,

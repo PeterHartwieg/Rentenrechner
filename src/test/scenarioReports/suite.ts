@@ -343,7 +343,7 @@ const CASE_META: CaseMeta[] = [
     familyLabel: 'I · Kombination — Krankenversicherungsstatus',
     caseId: 'pkv',
     purpose:
-      'PKV holder (publicHealthInsurance: false, PKV/PV premiums 450/120 EUR). KNOWN DEFECT, tracked as GitHub issue #390 and recorded here OBSERVATIONALLY: the gated statutory retirement KV/PV channels (GRV KVdR half-rate, freiwillig §240 base, sonstige Versorgungsbezüge) are zero as the engine supports — but in combine mode the bAV Versorgungsbezug channel still charges KV/PV although the shared compare-mode monthly primitive gates it, and the bundle-level baseline.statutoryPension.kvPvMonthly contradicts the zero aggregate. This case FREEZES the defect for regression detection; it is NOT an approved modeling choice and NOT an expected legal result. The KVdR sibling proves the gate has something to switch off.',
+      'PKV holder: statutory KV/PV is zero on every channel; private KV/PV premiums 450/120 EUR are held constant and deducted once, less the GRV subsidy under §106 SGB VI (#390, #400).',
     provenance: 'internal-regression',
   },
   // J — paid-up

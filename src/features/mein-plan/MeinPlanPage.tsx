@@ -797,7 +797,7 @@ interface ZusammenStatutoryRow extends ZusammenRowBase {
   kind: 'statutory'
 }
 
-type ZusammenRow = ZusammenInstanceRow | ZusammenStatutoryRow
+type ZusammenRow = ZusammenInstanceRow | ZusammenStatutoryRow | (ZusammenRowBase & { kind: 'pkv' })
 
 const STATUTORY_PENSION_COLOR = '#222222'
 const FALLBACK_PRODUCT_COLOR = '#888888'
@@ -894,6 +894,17 @@ function collectZusammenRows(
     monthlyNet: statutoryMonthly,
     color: STATUTORY_PENSION_COLOR,
   })
+
+  if ((combinedForScenario?.pkvRetirementMonthlyCost ?? 0) > 0) {
+    rows.push({
+      kind: 'pkv', key: 'pkv',
+      label: 'Private Kranken- und Pflegeversicherung, abzgl. Zuschuss § 106 SGB VI',
+      sublabel: 'Heutige Beiträge unverändert fortgeschrieben',
+      contributionMonthly: null,
+      monthlyNet: -combinedForScenario!.pkvRetirementMonthlyCost,
+      color: STATUTORY_PENSION_COLOR,
+    })
+  }
 
   const productSlots = buildProductSlots(wsa)
 

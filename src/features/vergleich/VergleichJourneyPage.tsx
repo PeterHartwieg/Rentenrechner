@@ -157,6 +157,7 @@ export function VergleichJourneyPage({ navigate, pendingChoice, onPendingChoiceC
 
   function handleExportCsv(): void {
     const csv = buildExportCsv({
+      statutoryPension: filteredSimulation.statutoryPension,
       products: filteredSimulation.products,
       bavAnnualTaxSvSavings: filteredSimulation.bavFunding.annualTaxAndSvSavings,
       bavProfile: profile,

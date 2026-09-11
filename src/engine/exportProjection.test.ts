@@ -307,6 +307,7 @@ describe('buildCombineExportProjection — multi-instance byInstance and instanc
   } as unknown as ProductResult
 
   const combined: CombinedResult = {
+    pkvRetirementMonthlyCost: 0,
     monthlyNetIncome: BAV_AGGREGATE_NET + ETF_PER_INSTANCE_NET + 1100,
     monthlyGrossPayouts: {
       statutoryPension: 1200,
@@ -425,6 +426,7 @@ describe('buildCombineExportProjection — transfer-event (surrender_reinvest) c
   } as unknown as ProductResult
 
   const combined: CombinedResult = {
+    pkvRetirementMonthlyCost: 0,
     monthlyNetIncome: 1500,
     monthlyGrossPayouts: {
       statutoryPension: 1100,
@@ -518,6 +520,7 @@ describe('buildCombineExportProjection — Basisrente null-after-tax invariant',
       perInstance: { 'br-1': [{ ...basisrente, instanceId: 'br-1' } as ProductResult] },
       combinedByScenarioId: {
         basis: {
+          pkvRetirementMonthlyCost: 0,
           monthlyNetIncome: 100,
           monthlyGrossPayouts: {
             statutoryPension: 0,
@@ -555,6 +558,7 @@ describe('buildCombineExportProjection — without per-instance tax modes', () =
   const bavWithId = { ...bav, instanceId: 'bav-1' } as ProductResult
 
   const combined: CombinedResult = {
+    pkvRetirementMonthlyCost: 0,
     monthlyNetIncome: 1000,
     monthlyGrossPayouts: {
       statutoryPension: 500,

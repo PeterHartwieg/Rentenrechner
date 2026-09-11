@@ -102,6 +102,8 @@ export interface GermanRules {
     unemploymentEmployeeRate: number
     unemploymentEmployerRate: number
     healthGeneralRate: number
+  /** Average additional rate (§242a SGB V), used for the §106 PKV subsidy. */
+  healthAverageAdditionalRate: number
     // ermäßigter Beitragssatz (without Krankengeld) — used for Vorsorgepauschale §39b EStG
     healthReducedRate: number
     careEmployeeBaseRate: number
