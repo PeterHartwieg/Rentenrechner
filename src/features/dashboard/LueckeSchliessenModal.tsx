@@ -38,7 +38,17 @@ interface Props {
   grvGrossMonthlyPension: number
   selectedScenarioId?: string
   onClose: () => void
-  onSaveAsPlan: (candidate: RecommendedCandidate) => void
+  /**
+   * Persists the candidate as a saved alternative (what-if scenario). May
+   * return the new scenario id; when it does, the confirmation step offers a
+   * "Gespeicherte Alternative ansehen" button (requires `onOpenSaved`).
+   */
+  onSaveAsPlan: (candidate: RecommendedCandidate) => string | void
+  /**
+   * Navigates to the saved alternative with the given id. The modal does not
+   * close itself here; the parent decides whether navigation unmounts it.
+   */
+  onOpenSaved?: (id: string) => void
 }
 
 export function LueckeSchliessenModal({
@@ -50,6 +60,7 @@ export function LueckeSchliessenModal({
   selectedScenarioId,
   onClose,
   onSaveAsPlan,
+  onOpenSaved,
 }: Props) {
   const [step, setStep] = useState<Step>('budget')
   const [budget, setBudget] = useState(200)
@@ -77,6 +88,9 @@ export function LueckeSchliessenModal({
   // Issue 68: track the candidate the user adopted so the confirmation step
   // can echo what was saved.
   const [savedCandidate, setSavedCandidate] = useState<RecommendedCandidate | null>(null)
+  // Id of the saved alternative, when the parent's save handler returns one.
+  // Drives the "Gespeicherte Alternative ansehen" button on the saved step.
+  const [savedId, setSavedId] = useState<string | null>(null)
 
   // Keyboard a11y: ModalSlot's FocusTrap focuses the first focusable element
   // on mount, which is the invisible backdrop <button>. Override by focusing
@@ -447,10 +461,10 @@ export function LueckeSchliessenModal({
             role="status"
             aria-live="polite"
           >
-            <h3 {...stepHeadingTargetProps}>Plan gespeichert</h3>
+            <h3 {...stepHeadingTargetProps}>Alternative gespeichert</h3>
             <p className="luecke-modal__saved-summary">
-              <strong>{savedCandidate.label}</strong> wurde als Was-wäre-wenn-Szenario gespeichert.
-              Zu finden unter Meine Verträge → Szenarien.
+              <strong>{savedCandidate.label}</strong> wurde als gespeicherte Alternative angelegt.
+              Zu finden unter Mein Plan → Gespeicherte Alternativen.
             </p>
             {/* Audit F02: the confirmation renders the same shared rows as the
                 card, so the numbers a user just saw cannot change here. */}
@@ -462,8 +476,8 @@ export function LueckeSchliessenModal({
             </div>
             <FiguresBasisNote scenario={scenario} className="luecke-modal__note" />
             <p className="luecke-modal__note">
-              Die Basisplanung bleibt unverändert. Erst wenn du das Szenario aktiv übernimmst,
-              wird es Teil des Hauptplans.
+              Dein Hauptplan bleibt unverändert. Die Alternative wird erst Teil des Hauptplans,
+              wenn du sie dort aktiv übernimmst.
             </p>
             <div className="luecke-modal__actions">
               <button
@@ -472,11 +486,21 @@ export function LueckeSchliessenModal({
                 className="luecke-modal__secondary"
                 onClick={() => {
                   setSavedCandidate(null)
+                  setSavedId(null)
                   setStep('result')
                 }}
               >
-                Weiteres Szenario speichern
+                Weitere Alternative speichern
               </button>
+              {savedId !== null && onOpenSaved && (
+                <button
+                  type="button"
+                  className="luecke-modal__secondary"
+                  onClick={() => onOpenSaved(savedId)}
+                >
+                  Gespeicherte Alternative ansehen
+                </button>
+              )}
               <button type="button" className="luecke-modal__primary" onClick={onClose}>
                 Fertig
               </button>
@@ -499,10 +523,13 @@ export function LueckeSchliessenModal({
                 // Issue 68: do NOT close the modal silently. Persist the
                 // candidate via the parent's onSaveAsPlan handler (which adds
                 // a what-if scenario in App.tsx) and then show a confirmation
-                // step. The user gets explicit feedback that the plan was
-                // saved and where to find it; closing the modal moves them
-                // back to the dashboard.
-                onSaveAsPlan(candidate)
+                // step. The user gets explicit feedback that the alternative
+                // was saved and where to find it; closing the modal moves
+                // them back to the dashboard. Save fires exactly once per
+                // click; the returned id (if any) only enables the
+                // "ansehen" button, it never triggers a second save.
+                const returned = onSaveAsPlan(candidate)
+                setSavedId(typeof returned === 'string' && returned.length > 0 ? returned : null)
                 setSavedCandidate(candidate)
                 setStep('saved')
               }}
@@ -525,6 +552,6 @@ export function LueckeSchliessenModal({
 function stepLabel(step: Step): string {
   if (step === 'budget') return 'Schritt 1 von 3'
   if (step === 'bav-offer') return 'Schritt 2 von 3'
-  if (step === 'saved') return 'Plan gespeichert'
+  if (step === 'saved') return 'Alternative gespeichert'
   return 'Ergebnis'
 }

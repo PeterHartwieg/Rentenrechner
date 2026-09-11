@@ -99,14 +99,17 @@ export function CandidateFigureRows({
           <InfoTip
             label={`Zusätzliches Kapital für ${candidateLabel} erklären`}
             text={f.payoutOnly
-              ? 'Vertraglicher Wert bei Renteneintritt, der nur als Rente ausgezahlt wird. Keine Kapitalauszahlung möglich. Nur der Zuwachs durch diese Änderung, in heutigen Euro.'
+              ? 'Vertraglicher Wert bei Renteneintritt, den das Modell für laufende Auszahlungen vorsieht, nicht als Einmalbetrag. Nur der Zuwachs durch diese Änderung, in heutigen Euro.'
               : 'Nur der Zuwachs durch diese Änderung, netto nach Steuern und ggf. KV/PV, in heutigen Euro. Nicht das gesamte Kapital deines Plans.'}
           />
         </dt>
         <dd>
           {formatCurrency(f.extraCapitalReal)}
+          {/* Neutral wording on purpose: payoutOnly covers lifelong annuities
+              (Basisrente, Leibrente-bAV) as well as finite payout plans (AVD,
+              Riester), so "annuitisiert" would misdescribe the latter. */}
           {f.payoutOnly && (
-            <span className="recommender-figures__note"> (annuitisiert, keine Kapitalauszahlung)</span>
+            <span className="recommender-figures__note"> (im Modell für laufende Auszahlungen vorgesehen)</span>
           )}
         </dd>
       </div>
