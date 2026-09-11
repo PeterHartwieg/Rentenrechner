@@ -20,6 +20,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
 import { VergleichComparisonTable } from './VergleichComparisonTable'
 import type { VergleichTableRow } from './vergleichRows'
+import { RIY_UNAVAILABLE, RIY_UNAVAILABLE_REASON } from '../results/riyAvailability'
+import { formatPercent } from '../../utils/format'
 import { eachViewport, mockViewport } from '../../test/viewport'
 
 beforeEach(() => {
@@ -122,6 +124,38 @@ describe('VergleichComparisonTable — desktop', () => {
     rows.forEach((row) => {
       expect(row.className).toBe('')
     })
+  })
+})
+
+describe('VergleichComparisonTable — cost column availability', () => {
+  const unavailable: VergleichTableRow = { ...SAMPLE_ROWS[0], effectiveAnnualCost: undefined }
+  const trueZero: VergleichTableRow = { ...SAMPLE_ROWS[1], effectiveAnnualCost: 0 }
+
+  it('desktop: renders the unavailable sentinel with a reason, never a formatted 0 %', () => {
+    const { container } = render(<VergleichComparisonTable rows={[unavailable]} retirementAge={67} />)
+    const cost = container.querySelectorAll('tbody tr td')[3]
+    expect(cost.textContent).toBe(RIY_UNAVAILABLE)
+    expect(cost.textContent).not.toContain('p.a.')
+    expect(cost.getAttribute('title')).toBe(RIY_UNAVAILABLE_REASON)
+    expect(container.textContent).not.toContain(formatPercent(0, 2))
+  })
+
+  it('desktop: a genuine zero-fee product still shows a formatted 0 %', () => {
+    const { container } = render(<VergleichComparisonTable rows={[trueZero]} retirementAge={67} />)
+    const cost = container.querySelectorAll('tbody tr td')[3]
+    expect(cost.textContent).toBe(formatPercent(0, 2))
+    expect(cost.getAttribute('title')).toBeNull()
+  })
+
+  it('phone: the card mirrors the sentinel and the genuine zero', () => {
+    mockViewport('phone')
+    const { container } = render(
+      <VergleichComparisonTable rows={[unavailable, trueZero]} retirementAge={67} />,
+    )
+    const kosten = container.querySelectorAll('.vergleich-product-card__kosten')
+    expect(kosten[0].textContent).toBe(`Kosten: ${RIY_UNAVAILABLE}`)
+    expect(kosten[0].getAttribute('title')).toBe(RIY_UNAVAILABLE_REASON)
+    expect(kosten[1].textContent).toBe(`Kosten ${formatPercent(0, 2)}`)
   })
 })
 

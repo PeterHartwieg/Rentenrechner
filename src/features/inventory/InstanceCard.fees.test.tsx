@@ -3,10 +3,14 @@
  * Behavior tests for the Layer-1 all-in cost field on the insurance-style
  * inventory cards (bAV, pAV, Basisrente).
  *
- * The scalar describes the accumulation phase. Editing it must behave like
- * `FeeSection`'s Effektivkosten path: fixed / contribution / acquisition
- * charges are replaced, an existing Auszahlungsgebühr is carried over, and a
- * payout fee alone never turns the field into "Laufende Kapitalgebühr" or
+ * What an edit of the scalar does depends on what is itemised under Details:
+ *   - with fixed / contribution / acquisition extras the field is the asset
+ *     charge only ("Laufende Kapitalgebühr"); editing it replaces wrapper +
+ *     fund and keeps every extra plus the Auszahlungsgebühr;
+ *   - without extras it is the quoted all-in Effektivkosten (mirrors
+ *     `FeeSection`'s all-in path): accumulation fields collapse to the asset
+ *     charge, an existing Auszahlungsgebühr is carried over.
+ * A payout fee alone never turns the field into "Laufende Kapitalgebühr" or
  * flips the Details section into Einzelposten mode.
  */
 
@@ -84,14 +88,46 @@ function activeFeeTab(): string {
   return document.querySelector('.fee-mode-tab--active')!.textContent!
 }
 
-describe.each(cards)('$name — all-in cost field keeps the payout fee', ({ make, render: renderCard }) => {
-  it('preserves an existing Auszahlungsgebühr when the main cost field is edited', () => {
+describe.each(cards)('$name — Layer-1 cost field edits', ({ make, render: renderCard }) => {
+  it('asset-only edit: replaces wrapper + fund and keeps itemised extras plus the payout fee', () => {
     const onChange = vi.fn()
-    renderCard(make(fees({ pensionPayoutFeePct: 0.015, fixedMonthlyFee: 3, acquisitionCostPct: 0.025 })), onChange)
+    renderCard(
+      make(fees({
+        wrapperAssetFee: 0.007,
+        fundAssetFee: 0.003,
+        fixedMonthlyFee: 3,
+        contributionFee: 0.04,
+        acquisitionCostPct: 0.025,
+        acquisitionCostSpreadYears: 8,
+        pensionPayoutFeePct: 0.015,
+      })),
+      onChange,
+    )
+    expect(screen.getByText('Laufende Kapitalgebühr p.a. (Mantel + Fonds)')).toBeInTheDocument()
     const input = mainCostInput()
     fireEvent.change(input, { target: { value: '1.2' } })
     fireEvent.blur(input)
     expect(onChange).toHaveBeenCalled()
+    const next = onChange.mock.calls.at(-1)![0] as AnyDraft
+    expect(next.effektivkostenPct).toBeCloseTo(1.2)
+    expect(next.feeDetails).toEqual(fees({
+      wrapperAssetFee: 0.012,
+      fundAssetFee: 0,
+      fixedMonthlyFee: 3,
+      contributionFee: 0.04,
+      acquisitionCostPct: 0.025,
+      acquisitionCostSpreadYears: 8,
+      pensionPayoutFeePct: 0.015,
+    }))
+  })
+
+  it('pure all-in edit: collapses accumulation fields and preserves the Auszahlungsgebühr', () => {
+    const onChange = vi.fn()
+    renderCard(make(fees({ wrapperAssetFee: 0.007, fundAssetFee: 0.003, pensionPayoutFeePct: 0.015 })), onChange)
+    expect(screen.getByText('Effektivkosten p.a. laut PIB/KID (all-in)')).toBeInTheDocument()
+    const input = mainCostInput()
+    fireEvent.change(input, { target: { value: '1.2' } })
+    fireEvent.blur(input)
     const next = onChange.mock.calls.at(-1)![0] as AnyDraft
     expect(next.effektivkostenPct).toBeCloseTo(1.2)
     expect(next.feeDetails).toEqual(fees({
@@ -121,8 +157,8 @@ describe.each(cards)('$name — all-in cost field keeps the payout fee', ({ make
   it('switches to the derived label and Einzelposten mode once accumulation extras exist', () => {
     renderCard(make(fees({ fixedMonthlyFee: 2 })), vi.fn())
     expect(screen.getByText('Laufende Kapitalgebühr p.a. (Mantel + Fonds)')).toBeInTheDocument()
-    expect(screen.getByText(/ersetzt die Fix-, Beitrags- und Abschlusskosten der Ansparphase; eine Auszahlungsgebühr bleibt bestehen/)).toBeInTheDocument()
-    expect(screen.queryByText(/ersetzt alle Einzelposten/)).toBeNull()
+    expect(screen.getByText(/ändert nur die laufende Kapitalgebühr; die Fix-, Beitrags-, Abschluss- und Auszahlungskosten unter „Details" bleiben erhalten/)).toBeInTheDocument()
+    expect(screen.queryByText(/ersetzt/)).toBeNull()
     expect(activeFeeTab()).toBe('Einzelposten')
   })
 })

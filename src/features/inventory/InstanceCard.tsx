@@ -393,15 +393,25 @@ function EtfLayer3Details({
 }
 
 /**
- * Fee model for the Layer-1 all-in field. The scalar describes the
- * accumulation phase only (mirrors `FeeSection`'s Effektivkosten path): it
- * replaces the fixed / contribution / acquisition charges, while an existing
- * Auszahlungsgebühr is a payout-phase cost and is carried over unchanged.
+ * Fee model for the Layer-1 cost field. What the scalar means depends on what
+ * the user already itemised under "Details":
+ *
+ * - With accumulation extras (fixed / contribution / acquisition charges) the
+ *   field is labelled "Laufende Kapitalgebühr (Mantel + Fonds)" and only that
+ *   asset charge is replaced (wrapper = pct, fund = 0). The itemised extras
+ *   and the Auszahlungsgebühr stay as entered.
+ * - Without extras the scalar is the quoted all-in Effektivkosten (mirrors
+ *   `FeeSection`'s all-in path): the accumulation-phase fields collapse to
+ *   the asset charge, and an existing Auszahlungsgebühr is carried over
+ *   because it is a payout-phase cost.
  */
 function allInFeeDetails(effektivkostenPct: number, previous?: FeeModel): FeeModel {
+  const assetCharge = { wrapperAssetFee: effektivkostenPct / 100, fundAssetFee: 0 }
+  if (previous && hasAccumulationExtras(previous)) {
+    return { ...previous, ...assetCharge }
+  }
   return {
-    wrapperAssetFee: effektivkostenPct / 100,
-    fundAssetFee: 0,
+    ...assetCharge,
     contributionFee: 0,
     fixedMonthlyFee: 0,
     acquisitionCostPct: 0,
@@ -435,8 +445,8 @@ function effektivkostenFieldCopy(
       label: 'Laufende Kapitalgebühr p.a. (Mantel + Fonds)',
       hint:
         'Aus den Einzelposten unter „Details" abgeleitet, ohne Fix-, Beitrags-, Abschluss- und Auszahlungskosten. ' +
-        'Nicht die Effektivkostenquote aus dem PIB. Eine Eingabe hier ersetzt die Fix-, Beitrags- und Abschlusskosten der Ansparphase; ' +
-        'eine Auszahlungsgebühr bleibt bestehen.',
+        'Nicht die Effektivkostenquote aus dem PIB. Eine Eingabe hier ändert nur die laufende Kapitalgebühr; ' +
+        'die Fix-, Beitrags-, Abschluss- und Auszahlungskosten unter „Details" bleiben erhalten.',
     }
   }
   return {

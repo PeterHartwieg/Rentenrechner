@@ -13,6 +13,7 @@ import {
 import { formatCurrency, formatPercent } from '../../utils/format'
 import { defaultAssumptions } from '../../data/defaultScenario'
 import { FieldWithProv, ProvLabel } from './provenance'
+import { availableRiy, RIY_UNAVAILABLE, RIY_UNAVAILABLE_REASON } from './riyAvailability'
 import {
   isProductAllDefaults,
   buildProductDefaultsSummary,
@@ -138,6 +139,8 @@ function ProductCard({
 }) {
   const meta = getProductMeta(result.productId)
   const color = meta?.color ?? '#94a3b8'
+  // `undefined` = engine RIY not presentable (zero next to charged fees).
+  const riy = availableRiy(result)
   const showRentenfaktorHint = hasUnconfirmedRentenfaktor(result.productId, assumptions)
   const allDefaults = isProductAllDefaults(result.productId, assumptions)
   const defaultsSummary = allDefaults
@@ -178,13 +181,17 @@ function ProductCard({
               {formatCurrency(result.netMonthlyPayout, 0)} /Mon.
             </span>
           </span>
-          {result.accumulationRiy > 0 && (
+          {(riy === undefined || riy > 0) && (
             <span className="pec-metric">
               <span className="pec-metric-label">
                 Effektivkosten
                 <InfoTip label="Effektivkosten erklären" text={TIP_EFFEKTIVKOSTEN} />
               </span>
-              <span className="pec-metric-value">{formatPercent(result.accumulationRiy, 2)} p.a.</span>
+              {riy === undefined ? (
+                <span className="pec-metric-value" title={RIY_UNAVAILABLE_REASON}>{RIY_UNAVAILABLE}</span>
+              ) : (
+                <span className="pec-metric-value">{formatPercent(riy, 2)} p.a.</span>
+              )}
             </span>
           )}
         </div>
