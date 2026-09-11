@@ -336,7 +336,7 @@ export function KapitalPage({ navigate }: Props) {
                 />
               </div>
 
-              <p className="kapital-empty">
+              <p className="kapital-benchmark-note">
                 Bei Sparverträgen umfasst „Netto eingezahlt“ nur deine künftigen eigenen Beiträge ab heute.
                 Bereits vorhandenes Guthaben ist im Kapital enthalten, aber nicht in diesem Vergleichswert.
                 Der markierte Rückzahlungszeitpunkt bezieht sich auf diese künftigen Beiträge,

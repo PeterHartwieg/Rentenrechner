@@ -43,5 +43,5 @@ export function applyBavTotalMatch(totalPct: number): {
   }
 }
 
-export { CALCULATION_WARNINGS, BADGE_LABEL } from '../content/calculationNotes'
+export { CALCULATION_NOTES as CALCULATION_WARNINGS, BADGE_LABEL } from '../content/calculationNotes'
 export type { WarningStatus } from '../content/calculationNotes'

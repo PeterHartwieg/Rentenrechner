@@ -335,6 +335,6 @@ describe('plan monthly saving cost', () => {
     const bundle = runCombineSimulation(ws, de2026Rules)
     const cost = selectPlanSummary(ws, bundle, 'basis').monthlyNetSavingCost
     expect(cost).toBeCloseTo(270 + bundle.portfolioFunding.headroom!.bav.monthlyNetCost, 8)
-    expect(cost).toBeLessThan(270 + a.bav[0].monthlyContribution!)
+    expect(cost).toBeLessThan(270 + a.bav[0].monthlyGrossConversion)
   })
 })

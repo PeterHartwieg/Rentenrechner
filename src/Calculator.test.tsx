@@ -170,3 +170,26 @@ describe('plan navigation and topic arrival (audit F08 / F18)', () => {
     expect(window.location.search).not.toContain('topic=')
   })
 })
+
+
+it('reviews the clicked offer at its quoted contribution without activating the plan', async () => {
+  let seed: Workspace = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
+  seed = { ...seed, mode: 'combine' }
+  seed = addInstanceToWorkspace(seed, 'etf')
+  seed = addInstanceToWorkspace(seed, 'versicherung')
+  seed = addInstanceToWorkspace(seed, 'versicherung')
+  seed.baseline.assumptions.insurance[0].label = 'Erstes Angebot'
+  seed.baseline.assumptions.insurance[0].status = 'offered'
+  seed.baseline.assumptions.insurance[0].monthlyContribution = 270
+  seed.baseline.assumptions.insurance[1].label = 'Zweites Angebot'
+  seed.baseline.assumptions.insurance[1].status = 'offered'
+  seed.baseline.assumptions.insurance[1].monthlyContribution = 350
+  localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+  render(<App />)
+  await waitForCalculator()
+  fireEvent.click(await screen.findByRole('button', { name: 'Angebot prüfen: Zweites Angebot' }))
+  expect(await screen.findByText('Danach: 350 € / Monat')).toBeInTheDocument()
+  expect(window.location.pathname).toBe('/alternativen')
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_V2)!) as Workspace
+  expect(saved.baseline.assumptions.insurance.map(i => i.status)).toEqual(['offered', 'offered'])
+})

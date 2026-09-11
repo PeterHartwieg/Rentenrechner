@@ -41,7 +41,7 @@ describe('describeBaselineDrift', () => {
   it('collapses differences it does not name into one generic line', () => {
     const snapshot = baseline()
     const current = baseline()
-    current.assumptions.etfEquityPartialExemptionNote = 'x' as never
+    current.assumptions.monteCarlo.annualVolatility += 0.01
     const lines = describeBaselineDrift(snapshot, current)
     expect(lines).toEqual(['Weitere Angaben geändert'])
   })

@@ -48,6 +48,7 @@ import { InventoryWizard } from './features/inventory/InventoryWizard'
 import { createFreshOnboardingScenario } from './features/inventory/onboardingDraft'
 import { useCombineSimulation } from './app/useCombineSimulation'
 import { LueckeSchliessenModal } from './features/dashboard/LueckeSchliessenModal'
+import { buildOfferActivationWhatIf } from './app/whatIfPreview'
 import { buildWhatIfFromCandidate } from './app/recommender'
 import { LegalFooter } from './features/legal/LegalFooter'
 import { ErrorStatePanel } from './ui/chrome/ErrorStatePanel'
@@ -575,7 +576,12 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
             onEditSource={handleEditSource}
             onEditProfile={handleEditProfile}
             onEditPension={handleEditPension}
-            onReviewOffer={combineBasisResult ? () => setShowLueckeModal(true) : undefined}
+            onReviewOffer={(instanceId) => {
+              const offer = buildOfferActivationWhatIf(portfolioState.workspace, instanceId)
+              if (!offer) return
+              portfolioState.addWhatIf(offer)
+              navigate(ROUTES.alternativen, `?id=${encodeURIComponent(offer.id)}`)
+            }}
             topicIntent={topicIntent}
             statutoryGrossMonthly={combineSimulation.statutoryPension.grossMonthlyPension}
             onSetTarget={(value) => portfolioState.patchBaseline({

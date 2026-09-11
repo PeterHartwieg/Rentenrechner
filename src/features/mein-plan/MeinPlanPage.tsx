@@ -111,7 +111,7 @@ export interface MeinPlanPageProps {
   /**
    * Evaluate an unsigned offer against the plan. The plan lists offers apart
    * from counted sources; this opens whatever flow the host uses to price a
-   * candidate (today the Lücke-schließen recommender). Hidden when absent.
+   * candidate. Hidden when absent.
    */
   onReviewOffer?: (instanceId: string) => void
   /** A `?topic=` arrival on an existing plan, rendered as a banner. */
