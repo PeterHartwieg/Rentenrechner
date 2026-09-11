@@ -151,16 +151,15 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
         ? () => { dismiss(); navigate(ROUTES.vorsorgeNeu, `?produkt=${encodeURIComponent(productId)}`) }
         : undefined,
       onCompareExample: () => {
+        // The comparison owns its own state hook. Carry intent across the
+        // route transition instead of relying on this unmounting hook's save effect.
+        const topic = new URLSearchParams(window.location.search).get('topic')
         dismiss()
-        if (products.length > 0) {
-          const seed = [...products]
-          setAssumptions((current) => ({ ...current, visibleProducts: seed }))
-        }
-        navigate(ROUTES.vergleich)
+        navigate(ROUTES.vergleich, topic ? `?topic=${encodeURIComponent(topic)}` : undefined)
       },
       onDismiss: dismiss,
     }
-  }, [topicPreselection, navigate, setAssumptions])
+  }, [topicPreselection, navigate])
 
   // Workspace-tabs collapse (this PR): the pre-existing `?view=<WorkspaceView>`
   // deep-link is gone — the tab strip it routed to was removed. Any legacy

@@ -193,3 +193,18 @@ it('reviews the clicked offer at its quoted contribution without activating the 
   const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_V2)!) as Workspace
   expect(saved.baseline.assumptions.insurance.map(i => i.status)).toEqual(['offered', 'offered'])
 })
+
+it('carries the topic product pair across navigation to the comparison', async () => {
+  seedCompareModeWithEtfOnly()
+  let seed: Workspace = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
+  seed = addInstanceToWorkspace({ ...seed, mode: 'combine' }, 'etf')
+  localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+  window.history.pushState(null, '', '/?topic=private-rentenversicherung-rechner')
+  render(<App />)
+  await waitForCalculator()
+  fireEvent.click(await screen.findByRole('button', { name: 'Beispiel vergleichen' }))
+  expect(await screen.findByRole('heading', { name: 'Private Rentenversicherung', exact: true })).toBeInTheDocument()
+  const savedComparison = JSON.parse(localStorage.getItem(STORAGE_KEY_V1)!)
+  expect(savedComparison.assumptions.visibleProducts).toEqual(['etf', 'versicherung'])
+  expect(screen.queryByRole('heading', { name: 'Betriebliche Altersvorsorge (bAV)', exact: true })).not.toBeInTheDocument()
+})

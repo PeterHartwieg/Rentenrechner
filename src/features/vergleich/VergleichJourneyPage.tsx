@@ -24,6 +24,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { PersonalProfile, ProductId } from '../../domain'
 import type { Route } from '../../app/useRoute'
+import { resolveTopicPreselection } from '../../seo/publicRouteRegistry'
 import { useCalculatorState } from '../../app/useCalculatorState'
 import { useSimulationResult } from '../../app/useSimulationResult'
 import { buildAllProductsSimulation } from '../../app/buildAllProductsSimulation'
@@ -128,6 +129,17 @@ export function VergleichJourneyPage({ navigate, pendingChoice, onPendingChoiceC
         inflationRate: savedWorkspace.baseline.assumptions.inflationRate,
       }
     : undefined
+
+  // A returning plan hands the topic to the newly mounted comparison owner.
+  const [topicProducts] = useState(() => typeof window === 'undefined' ? undefined
+    : resolveTopicPreselection(window.location.search)?.visibleProducts)
+  useEffect(() => {
+    if (!topicProducts?.length) return
+    setAssumptions(current => ({ ...current, visibleProducts: [...topicProducts] }))
+    const url = new URL(window.location.href)
+    url.searchParams.delete('topic')
+    window.history.replaceState(window.history.state, '', url)
+  }, [topicProducts, setAssumptions])
 
   // Landing-CTA / topic preselection. One-shot, mirrors Calculator's
   // `pendingChoice` effect.

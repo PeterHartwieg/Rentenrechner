@@ -102,8 +102,8 @@ export function buildCombineChipOptions(args: {
  * sourced from the first product's paid-in alone. Per-product chips
  * forward the single `ProductResult` directly.
  *
- * The aggregator (`aggregateLifecycleResults`) is shared with combine-mode's
- * `Gesamtportfolio` view so both modes' "all" chips have identical math.
+ * These products are mutually exclusive uses of one budget. Only combine mode
+ * may aggregate real holdings; comparison chips always show one product.
  */
 export function buildCompareChipOptions(args: {
   assumptions: ScenarioAssumptions
@@ -116,21 +116,6 @@ export function buildCompareChipOptions(args: {
   const filtered = args.productResults.filter((r) => visible.has(r.productId))
   if (filtered.length === 0) return []
 
-  const aggregateResult = aggregateLifecycleResults({
-    id: PORTFOLIO_LIFECYCLE_ID,
-    label: 'Alle Produkte',
-    results: filtered,
-    startAge: args.startAge,
-    retirementAge: args.retirementAge,
-    horizonAge: args.horizonAge,
-  })
-  const allOption: KapitalChipOption = {
-    id: 'all',
-    label: 'Alle Produkte',
-    shortLabel: 'Alle',
-    results: [aggregateResult],
-    color: NEUTRAL_INK,
-  }
   const perProduct: KapitalChipOption[] = []
   // Iterate `PRODUCT_REGISTRY` order so chips stay in canonical product order
   // regardless of how `visibleProducts` was sorted in the workspace.
@@ -147,7 +132,7 @@ export function buildCompareChipOptions(args: {
       color: meta.color,
     })
   }
-  return [allOption, ...perProduct]
+  return perProduct
 }
 
 // ---------------------------------------------------------------------------
@@ -169,7 +154,7 @@ function productMeta(productId: ProductId): {
 
 /**
  * Resolve the active chip id against the available chip list. Falls back to
- * the first chip ('all' by construction) when the selection no longer
+ * the first available chip when the selection no longer
  * exists — keeps the page rendering after a workspace mutation that
  * removed the chip the user had picked (e.g. last ETF instance deleted).
  */

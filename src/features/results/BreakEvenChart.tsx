@@ -308,7 +308,8 @@ export function BreakEvenChart({
               />
               <YAxis
                 tickFormatter={(value) => `${formatNumber(Number(value) / 1_000)}k`}
-                width={density.yAxisWidth}
+                width={Math.max(64, density.yAxisWidth)}
+                tick={{ fontSize: 12 }}
                 label={density.axisLabelsVisible ? {
                   value: 'EUR',
                   angle: -90,
