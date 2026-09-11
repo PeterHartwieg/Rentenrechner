@@ -210,14 +210,14 @@ export function BavInputs({
 
       {riy !== undefined && riy > 0 && (
         <p className="field-hint">
-          Effektivkosten (berechnete Renditeminderung, alle Kosten):{' '}
+          Effektivkosten (berechnete Renditeminderung der Ansparphase):{' '}
           <strong className={riy > 0.015 ? 'riy-warn' : ''}>{formatPercent(riy)}</strong>
           {riy > 0.015 && ' — Nettotarife erzielen typisch 0,6–1,0 %'}
         </p>
       )}
       {riyUnavailable && (
         <p className="field-hint">
-          Effektivkosten (berechnete Renditeminderung, alle Kosten):{' '}
+          Effektivkosten (berechnete Renditeminderung der Ansparphase):{' '}
           <strong>{RIY_UNAVAILABLE}</strong>. {RIY_UNAVAILABLE_REASON}
         </p>
       )}
