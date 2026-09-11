@@ -722,7 +722,7 @@ function BreakEvenAccessibleTable({
       </thead>
       <tbody>
         <tr>
-          <td>Benchmark (alle Produkte)</td>
+          <td>Vergleichswert: eigene Beiträge</td>
           <td>{formatCurrency(totalPaidIn, 0)}</td>
           <td>-</td>
           <td>-</td>

@@ -3,7 +3,6 @@ import type { ProductId, ProductResult, ScenarioAssumptions } from '../../domain
 import type { LifecycleSeriesResult } from '../results/breakEvenSeries'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import {
-  aggregateLifecycleResults,
   buildPortfolioLifecycleViews,
   PORTFOLIO_LIFECYCLE_ID,
   type PortfolioLifecycleView,
