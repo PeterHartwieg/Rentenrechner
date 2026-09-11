@@ -306,3 +306,17 @@ it('applies a fresh preview using the real flow and makes undo immediately avail
   fireEvent.click(screen.getByRole('button', { name: 'Rückgängig' }))
   expect(screen.getByTestId('actual-contribution')).toHaveTextContent('200')
 })
+
+// UI audit 2026-09-11, F03: the apply button names the action.
+describe('AlternativenSurface — apply label per decision (F03)', () => {
+  it.each([
+    ['activate_offer', 'Angebot in meinen Plan aufnehmen'],
+    ['new_contract', 'Änderung in meinen Plan übernehmen'],
+    ['paid_up', 'Änderung in meinen Plan übernehmen'],
+    ['contribution', 'Beitrag in meinen Plan übernehmen'],
+  ] as const)('%s → "%s"', (decision, label) => {
+    const props = host({ saved: [{ ...item, description: { ...description, decision } }], openWhatIfId: item.id })
+    render(<AlternativenSurface {...props} />)
+    expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
+  })
+})
