@@ -6,6 +6,7 @@ import { createElement, type ReactElement } from 'react'
 import { AppShell } from '../../ui/chrome/AppShell'
 import { pathToRoute, ROUTES } from '../../app/useRoute'
 import { MeinPlanPage } from './MeinPlanPage'
+import { selectPlanOffers } from './planOffers'
 import { selectPlanSummary } from '../../app/planSummary'
 import { formatCurrency } from '../../utils/format'
 import { defaultWorkspace, STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../../storage'
@@ -790,5 +791,39 @@ describe('MeinPlanPage — Kapital scenario drill-in', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Dauer ansehen →' }))
     fireEvent.click(screen.getByRole('button', { name: 'Kapital im Verlauf ansehen →' }))
     expect(navigate).toHaveBeenCalledWith(ROUTES.kapital, '?scenario=konservativ')
+  })
+})
+
+describe('offers on the plan (audit F04)', () => {
+  it('lists an offered contract under Angebote, keeps it out of the sources, and routes its actions', () => {
+    let ws = buildCombineWorkspace()
+    ws = addInstanceToWorkspace(ws, 'versicherung')
+    const offer = ws.baseline.assumptions.insurance[0]
+    offer.status = 'offered'
+    offer.label = 'Audit Brokerangebot'
+    offer.monthlyContribution = 270
+    const props = buildProps(ws)
+    const summary = selectPlanSummary(ws, runCombineSimulation(ws, de2026Rules), props.selectedScenarioId, { rules: de2026Rules })
+    const navigate = vi.fn()
+    const onReviewOffer = vi.fn()
+    render(<MeinPlanPage {...props} navigate={navigate} summary={summary} onReviewOffer={onReviewOffer} />)
+    expect(selectPlanOffers(ws)).toEqual([expect.objectContaining({ instanceId: offer.instanceId, label: 'Audit Brokerangebot', contributionMonthly: 270 })])
+    const section = screen.getByTestId('plan-offers')
+    expect(section).toHaveTextContent('Audit Brokerangebot')
+    expect(section).toHaveTextContent('Beitrag lt. Angebot: 270')
+    expect(screen.queryByRole('button', { name: 'Audit Brokerangebot bearbeiten' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Angebot prüfen: Audit Brokerangebot' }))
+    expect(onReviewOffer).toHaveBeenCalledWith(offer.instanceId)
+    fireEvent.click(screen.getByRole('button', { name: 'Angebot bearbeiten: Audit Brokerangebot' }))
+    expect(navigate).toHaveBeenCalledWith(ROUTES.vertragBearbeiten(offer.instanceId))
+  })
+
+  it('renders the assumption line from the selected scenario and the workspace horizon', () => {
+    const props = buildProps()
+    const summary = selectPlanSummary(props.workspace, runCombineSimulation(props.workspace, de2026Rules), props.selectedScenarioId, { rules: de2026Rules })
+    render(<MeinPlanPage {...props} summary={summary} />)
+    const line = screen.getByTestId('plan-assumption-line')
+    expect(line).toHaveTextContent(`Entnahme bis ${props.workspace.baseline.assumptions.retirementEndAge}`)
+    expect(line).toHaveTextContent('(Basis)')
   })
 })

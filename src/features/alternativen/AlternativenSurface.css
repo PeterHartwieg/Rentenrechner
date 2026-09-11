@@ -50,6 +50,10 @@
 .alternativen__saved ul { list-style: none; margin: 0; padding: 0; }
 .alternativen__saved li { display: flex; flex-direction: column; align-items: start; gap: 8px; padding: 20px 0; border-bottom: 1px solid var(--rw-rule-soft); }
 .alternativen__badge { padding: 3px 8px; border: 1px solid var(--rw-rule); background: var(--rw-bg-paper-soft); color: var(--rw-ink-soft); font-size: .8rem; }
+.alternativen__list-total small { font: .8rem/1.4 var(--rw-font-sans); color: var(--rw-ink-soft); }
+.alternativen__drift { margin: 4px 0; padding-left: 20px; color: var(--rw-ink-soft); font-size: .85rem; }
+.alternativen__drift li { margin: 2px 0; }
+.alternativen__notice > .alternativen__muted { margin-top: 8px; }
 .alternativen-page [aria-live] > .alternativen__actions { margin: 20px 0 12px; }
 @media (max-width: 650px) {
   .alternativen-page { padding: 24px 16px; gap: 20px; }

@@ -233,3 +233,38 @@ describe('VertragDetailPage — combine-mode drill-in surface', () => {
     })
   })
 })
+
+describe('units and scope on the contract detail page (audit F06 / F19)', () => {
+  it('names nominal Euro and the single-contract scope on the KPI strip and the household scope on the scenario table', () => {
+    const { workspace, etfId } = seedCombineWorkspaceWithBav()
+    // A positive inflation assumption so the heutige-Euro bridge has something to say.
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify({
+      ...workspace,
+      baseline: { ...workspace.baseline, assumptions: { ...workspace.baseline.assumptions, inflationRate: 0.02 } },
+    }))
+    const { container } = render(<VertragDetailPage instanceId={etfId} navigate={() => {}} />)
+    const tiles = Array.from(container.querySelectorAll('.vertrag-kpi-sublabel')).map((el) => el.textContent)
+    expect(tiles).toContain('pro Monat · nominal · nur dieser Vertrag')
+    expect(tiles.some((t) => t?.endsWith('· nominal'))).toBe(true)
+    const kpiScope = container.querySelector('[data-testid="vertrag-kpi-scope"]')
+    expect(kpiScope?.textContent).toContain('für sich allein versteuert')
+    expect(kpiScope?.textContent).toContain('In deinem Plan, gemeinsam mit allen Einkünften versteuert')
+    expect(kpiScope?.textContent).toContain('in heutigen Euro')
+    const tableScope = container.querySelector('[data-testid="vertrag-scenario-scope"]')
+    expect(tableScope?.textContent).toContain('dein ganzer Plan')
+    expect(container.querySelector('.vertrag-scenario-table thead')?.textContent).toContain('Netto-Rente gesamt')
+    // Phone rendering repeats the column heading per cell via data-label.
+    expect(container.querySelector('.vertrag-scenario-row td[data-label="Netto-Rente gesamt"]')).not.toBeNull()
+  })
+
+  it('uses the plan vocabulary for provenance pills', () => {
+    const { etfId } = seedCombineWorkspaceWithBav()
+    const { container } = render(<VertragDetailPage instanceId={etfId} navigate={() => {}} />)
+    const pills = Array.from(container.querySelectorAll('.vertrag-provenance-pill')).map((el) => el.textContent)
+    expect(pills.length).toBeGreaterThan(0)
+    for (const pill of pills) {
+      expect(['Angenommen', 'Von dir angegeben', 'lt. Beleg', 'Unbekannt']).toContain(pill)
+    }
+    expect(container.querySelector('.vertrag-provenance-intro')?.textContent).not.toContain('Modellwert')
+  })
+})

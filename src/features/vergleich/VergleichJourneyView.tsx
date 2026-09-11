@@ -14,7 +14,11 @@ interface Props {
   controls: VergleichJourneyControls
   productIds: readonly ProductId[]
   onToggleProduct: (id: ProductId) => void
-  renderResult: (onEditSetup: () => void) => ReactNode
+  renderResult: (onEditSetup: () => void, profileNote: ReactNode) => ReactNode
+}
+
+function healthLabel(publicHealthInsurance: boolean): string {
+  return publicHealthInsurance ? 'gesetzlich versichert' : 'privat versichert'
 }
 
 /** View navigation stays local; all edits use the container's compare-state handlers. */
@@ -37,9 +41,30 @@ export function VergleichJourneyView({ controls, productIds, onToggleProduct, re
     setView(next)
   }
 
+  // The result page names the person it computes on. Without this the
+  // comparison silently kept an older salary after the plan had been refined
+  // (audit F11): the figures looked personal but were not the plan's.
+  const plan = controls.planProfile
+  const profileNote = (
+    <div className="vergleich-profile-strip" role="note" data-testid="vergleich-profile-strip">
+      <p>
+        <strong>Beispielrechnung mit Muster-Sparformen</strong>, nicht mit deinen Verträgen oder Angeboten.
+        {' '}Angaben: {profile.age} Jahre · {formatCurrency(profile.grossSalaryYear)} brutto im Jahr · {healthLabel(profile.publicHealthInsurance)}.
+        {controls.hasSavedPlan && !controls.profileDiffersFromPlan && ' Wie in deinem Plan.'}
+      </p>
+      {controls.hasSavedPlan && plan && controls.profileDiffersFromPlan && (
+        <p className="vergleich-profile-strip__diff">
+          Dein Plan rechnet mit anderen Angaben: {plan.age} Jahre · {formatCurrency(plan.grossSalaryYear)} brutto im Jahr · {healthLabel(plan.publicHealthInsurance)}.
+          {' '}<button type="button" className="vergleich-actions__button" onClick={controls.seedFromPlan}>Angaben aus meinem Plan übernehmen</button>
+        </p>
+      )}
+      <button type="button" className="vergleich-profile-strip__edit" onClick={() => changeView('setup')}>Angaben ändern</button>
+    </div>
+  )
+
   return (
     <div ref={root} className="vergleich-journey">
-      {view === 'result' ? renderResult(() => changeView('setup')) : (
+      {view === 'result' ? renderResult(() => changeView('setup'), profileNote) : (
         <section className="vergleich-shell vergleich-journey-setup" data-testid="vergleich-setup">
           <div className="vergleich-main vergleich-body">
             <div className="vergleich-kicker">Sparformen vergleichen</div>

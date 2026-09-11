@@ -315,6 +315,11 @@ export function KapitalPage({ navigate }: Props) {
                 activeId={activeChipId}
                 onSelect={setPickedChipId}
               />
+              <p className="kapital-scope" data-testid="kapital-scope">
+                Alle Beträge nominal, in Euro des jeweiligen Jahres, nicht in heutigen Euro.
+                {' '}Gezeigt wird die Auswahl oben{activeChip ? ` („${activeChip.label}“)` : ''}
+                {isCombine ? ', nicht dein ganzer Plan; jede Quelle ist hier für sich allein versteuert.' : ', jedes Produkt für sich allein versteuert.'}
+              </p>
 
               <div className="kapital-chart-wrap">
                 <BreakEvenChart

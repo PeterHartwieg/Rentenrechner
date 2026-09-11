@@ -505,20 +505,26 @@ export function BreakEvenChart({
               GRV Netto-Einzahlung kumuliert
             </span>
           )}
-          <span
-            className="lifecycle-legend__item"
-            {...qaTargetAttrs(qaEnabled, { id: 'results.breakEvenChart.legend.breakEven', label: 'Break-even', precision: 'exact' })}
-          >
-            <span className="lifecycle-legend__dot" />
-            Break-even
-          </span>
-          <span
-            className="lifecycle-legend__item"
-            {...qaTargetAttrs(qaEnabled, { id: 'results.breakEvenChart.legend.leibrenteCrossover', label: 'Leibrente überholt Kapitalverzehr', precision: 'exact' })}
-          >
-            <span className="lifecycle-legend__dot lifecycle-legend__dot--ring" />
-            Leibrente überholt Kapitalverzehr
-          </span>
+          {/* Marker entries only when the marker is actually drawn, so a
+              single ETF does not carry a "Leibrente überholt" legend row. */}
+          {breakEvenPoints.length > 0 && (
+            <span
+              className="lifecycle-legend__item"
+              {...qaTargetAttrs(qaEnabled, { id: 'results.breakEvenChart.legend.breakEven', label: 'Break-even', precision: 'exact' })}
+            >
+              <span className="lifecycle-legend__dot" />
+              Break-even
+            </span>
+          )}
+          {inFrameCrossovers.length > 0 && (
+            <span
+              className="lifecycle-legend__item"
+              {...qaTargetAttrs(qaEnabled, { id: 'results.breakEvenChart.legend.leibrenteCrossover', label: 'Leibrente überholt Kapitalverzehr', precision: 'exact' })}
+            >
+              <span className="lifecycle-legend__dot lifecycle-legend__dot--ring" />
+              Leibrente überholt Kapitalverzehr
+            </span>
+          )}
         </div>
       </div>
       {leibrenteCrossovers.length > 0 && (

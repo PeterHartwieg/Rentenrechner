@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import './MeinPlanPage.css'
-import { PlanOverview } from './PlanOverview'
+import { PlanOverview, type PlanTopicIntent } from './PlanOverview'
 import { PlanDurationSummary } from './PlanDurationSummary'
+import { selectPlanOffers } from './planOffers'
 import { NumberField } from '../../ui/NumberField'
 import type { GermanRules } from '../../domain'
 import type { PersonalProfile } from '../../domain'
@@ -107,6 +108,16 @@ export interface MeinPlanPageProps {
    * `/vertrag/:id/bearbeiten` is still undoable after the redirect back here.
    */
   notification?: { message: string; onUndo?: () => void }
+  /**
+   * Evaluate an unsigned offer against the plan. The plan lists offers apart
+   * from counted sources; this opens whatever flow the host uses to price a
+   * candidate (today the Lücke-schließen recommender). Hidden when absent.
+   */
+  onReviewOffer?: (instanceId: string) => void
+  /** A `?topic=` arrival on an existing plan, rendered as a banner. */
+  topicIntent?: PlanTopicIntent
+  /** Gross statutory pension in the retirement year, for the brutto → netto bridge. */
+  statutoryGrossMonthly?: number
 }
 
 function kapitalSearch(selectedScenarioId: string): string {
@@ -184,6 +195,8 @@ function OverviewMeinPlanPage(props: MeinPlanPageProps & { summary: PlanSummary 
     onSetTarget?.(value)
     setEditingTarget(false)
   }
+  const offers = useMemo(() => selectPlanOffers(workspace), [workspace])
+  const selectedScenario = assumptions.returnScenarios.find((s) => s.id === props.selectedScenarioId)
   const pensionMethod = assumptions.statutoryPension.pensionEntryMethod?.kind
   const pensionMethodLabel = assumptions.statutoryPension.pensionBaselineType === 'none'
     ? 'Keine Pflichtrente'
@@ -199,6 +212,7 @@ function OverviewMeinPlanPage(props: MeinPlanPageProps & { summary: PlanSummary 
       <button type="button" className="plan-overview__link" onClick={() => setShowDuration(false)}>← Zurück zum Plan</button>
     </div>
     <PlanDurationSummary rows={summary.rows} onOpenKapital={openKapital}
+      retirementAge={profile.retirementAge} targetMonthly={profile.desiredNetMonthlyPension}
       onEditSharedHorizon={() => navigate?.(ROUTES.eingaben, undefined, '#renteneintritt')} />
   </div>
 
@@ -214,7 +228,16 @@ function OverviewMeinPlanPage(props: MeinPlanPageProps & { summary: PlanSummary 
       onToggleMoneyBasis={() => setMoneyBasis((basis) => basis === 'real' ? 'nominal' : 'real')}
       targetMonthly={profile.desiredNetMonthlyPension}
       assumptions={{ age: profile.age, grossSalaryYear: profile.grossSalaryYear,
-        retirementAge: profile.retirementAge, inflationRate: assumptions.inflationRate, pensionMethodLabel }}
+        retirementAge: profile.retirementAge, inflationRate: assumptions.inflationRate, pensionMethodLabel,
+        returnRate: selectedScenario?.annualReturn, returnScenarioLabel: selectedScenario?.label,
+        retirementEndAge: assumptions.retirementEndAge,
+        salaryGrowthRate: assumptions.statutoryPension.annualSalaryGrowthRate,
+        pensionValueGrowthRate: assumptions.statutoryPension.rentenwertGrowthRate,
+        statutoryGrossMonthly: props.statutoryGrossMonthly }}
+      offers={offers}
+      onEditOffer={(offer) => navigate?.(ROUTES.vertragBearbeiten(offer.instanceId))}
+      onReviewOffer={props.onReviewOffer ? (offer) => props.onReviewOffer?.(offer.instanceId) : undefined}
+      topicIntent={props.topicIntent}
       onStart={editProfile}
       onAddContract={() => props.onAddContract ? props.onAddContract() : navigate?.(ROUTES.vorsorgeNeu)}
       onEditSource={(row) => {

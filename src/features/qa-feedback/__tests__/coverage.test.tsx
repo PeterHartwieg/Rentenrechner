@@ -389,7 +389,7 @@ describe('BreakEvenChart — leaf-level legend items (issue 13)', () => {
     expect(el).not.toBeNull()
   })
 
-  it('all five legend items are individually selectable', () => {
+  it('the three line items are always selectable; marker items only when their marker is drawn', () => {
     const { container } = render(
       <QaFeedbackProvider>
         <BreakEvenChart {...BREAK_EVEN_PROPS} />
@@ -399,12 +399,14 @@ describe('BreakEvenChart — leaf-level legend items (issue 13)', () => {
       'results.breakEvenChart.legend.nettoEingezahlt',
       'results.breakEvenChart.legend.restkapital',
       'results.breakEvenChart.legend.nettoAusgezahlt',
-      'results.breakEvenChart.legend.breakEven',
-      'results.breakEvenChart.legend.leibrenteCrossover',
     ]
     for (const id of ids) {
       expect(container.querySelector(`[data-qa-target="${id}"]`)).not.toBeNull()
     }
+    // A single product cannot overtake itself, so the legend carries no
+    // "Leibrente überholt Kapitalverzehr" row for this fixture (audit F19:
+    // legend entries are filtered to what is actually drawn).
+    expect(container.querySelector('[data-qa-target="results.breakEvenChart.legend.leibrenteCrossover"]')).toBeNull()
   })
 
   it('product picker chip carries data-qa-target="results.breakEvenChart.picker.etf"', () => {

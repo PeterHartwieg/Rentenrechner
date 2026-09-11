@@ -72,6 +72,15 @@
 .plan-overview__secondary:hover { border-color: var(--rw-accent); }
 .plan-overview__link { padding: 8px 0; min-height: 44px; color: var(--rw-ink); border: 0; background: transparent; text-align: left; text-decoration: underline; text-underline-offset: 3px; }
 .plan-overview__link:hover { color: var(--rw-accent); }
+.plan-overview__assumption-line { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; color: var(--rw-ink-soft); font-size: 0.85rem; }
+.plan-overview__assumption-line > span:first-child { color: var(--rw-ink); }
+.plan-overview__assumption-line > .plan-overview__link { padding: 0; min-height: 0; font-size: inherit; }
+.plan-overview__offers { display: flex; flex-direction: column; gap: 8px; }
+.plan-overview__offers h2 { margin: 0; font: 600 1rem/1.4 var(--rw-font-sans); }
+.plan-overview__offer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 24px; padding: 14px 0; }
+.plan-overview__offer small { display: block; margin-top: 3px; }
+.plan-overview__offer > .plan-overview__actions { flex-direction: row; align-items: center; gap: 8px 16px; }
+.plan-overview__topic { border-left-color: var(--rw-accent); }
 .plan-overview__reasons, .plan-overview__assumptions { margin: 0; padding-left: 20px; }
 .plan-overview__assumptions { color: var(--rw-ink-soft); font-size: 0.85rem; }
 .plan-overview__details { border-top: 1px solid var(--rw-rule); min-width: 0; }
@@ -79,6 +88,16 @@
 .plan-overview__details > p { margin: 8px 0; }
 .plan-overview__details > .plan-overview__actions { margin-top: 12px; }
 .plan-duration-summary__row { display: flex; flex-direction: column; gap: 5px; padding: 16px 0; }
+.plan-duration-summary__scroll { overflow-x: auto; max-width: 100%; }
+.plan-duration-summary__table { width: 100%; min-width: 0; border-collapse: collapse; font-size: 0.9rem; }
+.plan-duration-summary__table caption { text-align: left; padding: 0 0 8px; color: var(--rw-ink-soft); font-size: 0.85rem; }
+.plan-duration-summary__table th, .plan-duration-summary__table td { padding: 8px 6px; border-bottom: 1px solid var(--rw-rule-soft); white-space: normal; text-align: left; vertical-align: baseline; }
+.plan-duration-summary__table thead th { font: 500 0.7rem/1.4 var(--rw-font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--rw-ink-soft); }
+.plan-duration-summary__table tbody th { font-weight: 600; }
+.plan-duration-summary__table tfoot th, .plan-duration-summary__table tfoot td { color: var(--rw-ink-soft); }
+.plan-duration-summary__num { text-align: right; font-family: var(--rw-font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.plan-duration-summary__table td[data-paying='false'] { color: var(--rw-ink-soft); }
+.plan-duration-summary__sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 639px) {
   .plan-overview { padding: 24px 16px; gap: 18px; }
   .plan-overview__hero { gap: 18px; }

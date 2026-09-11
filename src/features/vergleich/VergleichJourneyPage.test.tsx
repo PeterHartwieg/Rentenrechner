@@ -131,3 +131,35 @@ describe('comparison journey with real compare-state handlers', () => {
     expect(screen.getByText(/Aktuell verwendet:/)).toHaveTextContent('48 Jahre · 93.000')
   })
 })
+
+describe('profile strip on the result (audit F11)', () => {
+  it('names the person the comparison runs on, flags a differing saved plan, and refreshes from it', () => {
+    const workspace = migrateV1ToV2({ ...defaultProfile, age: 48, grossSalaryYear: 93000 }, { ...defaultAssumptions })
+    workspace.mode = 'combine'
+    saveWorkspace(workspace)
+    window.history.replaceState(null, '', buildShareUrl(defaultProfile, {
+      ...defaultAssumptions, visibleProducts: ['etf'],
+      monteCarlo: { ...defaultAssumptions.monteCarlo, enabled: false },
+    }))
+    render(<VergleichJourneyPage navigate={vi.fn()} />)
+    const strip = () => screen.getByTestId('vergleich-profile-strip')
+    expect(strip()).toHaveTextContent('Beispielrechnung mit Muster-Sparformen')
+    expect(strip()).toHaveTextContent(`${defaultProfile.age} Jahre`)
+    expect(strip()).toHaveTextContent('Dein Plan rechnet mit anderen Angaben: 48 Jahre · 93.000')
+    fireEvent.click(within(strip()).getByRole('button', { name: 'Angaben aus meinem Plan übernehmen' }))
+    expect(strip()).toHaveTextContent('48 Jahre · 93.000')
+    expect(strip()).toHaveTextContent('Wie in deinem Plan.')
+    expect(strip()).not.toHaveTextContent('anderen Angaben')
+    fireEvent.click(within(strip()).getByRole('button', { name: 'Angaben ändern' }))
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Was möchtest du vergleichen?')
+  })
+
+  it('shows the strip without a plan reference when no plan is saved', () => {
+    saveComparison(['etf'])
+    render(<VergleichJourneyPage navigate={vi.fn()} />)
+    const strip = screen.getByTestId('vergleich-profile-strip')
+    expect(strip).toHaveTextContent('nicht mit deinen Verträgen oder Angeboten')
+    expect(strip).not.toHaveTextContent('Dein Plan')
+    expect(screen.queryByRole('button', { name: 'Angaben aus meinem Plan übernehmen' })).not.toBeInTheDocument()
+  })
+})

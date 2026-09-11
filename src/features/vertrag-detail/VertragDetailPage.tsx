@@ -6,6 +6,7 @@ import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { usePortfolioState } from '../../app/portfolioState'
 import { useCombineSimulation } from '../../app/useCombineSimulation'
 import { de2026Rules } from '../../rules/de2026'
+import { realDeflator } from '../../app/planSummary'
 import { getProductMeta } from '../../engine/productRegistry'
 import type { InstanceCommon } from '../../domain/instances'
 import type { ProductId } from '../../domain/products/common'
@@ -244,6 +245,15 @@ export function VertragDetailPage({ instanceId, navigate }: Props) {
               instanceResult={instanceResult}
               retirementAge={workspace.baseline.profile.retirementAge}
               currentAge={workspace.baseline.profile.age}
+              deflator={realDeflator(
+                workspace.baseline.assumptions.inflationRate,
+                workspace.baseline.profile.retirementAge - workspace.baseline.profile.age,
+              )}
+              inPlanMonthlyNet={
+                instance.status === 'active' || instance.status === 'paid_up'
+                  ? combinedForScenario?.byInstance[instanceId]?.monthlyNet
+                  : undefined
+              }
             />
 
             <VertragScenarioTable
