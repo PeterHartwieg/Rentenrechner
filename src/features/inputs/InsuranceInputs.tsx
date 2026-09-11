@@ -21,6 +21,7 @@ import { PayoutModeSection } from './sections/PayoutModeSection';
 import { OfferCapitalCompareField } from './sections/OfferCapitalCompareField';
 import { BeitragsdynamikField } from './sections/BeitragsdynamikField';
 import { FeeSection, type FeeInputMode } from './sections/FeeSection';
+import { availableRiy, RIY_UNAVAILABLE, RIY_UNAVAILABLE_REASON } from '../results/riyAvailability';
 
 type Props = {
   assumptions: ScenarioAssumptions;
@@ -47,11 +48,19 @@ export function InsuranceInputs({
 }: Props) {
   const ins = assumptions.insurance;
   const halbeinkuenfteMinAge = halbeinkuenfteMinAgeForContractStartYear(ins.contractStartYear)
-  const riy = insuranceProductResult?.accumulationRiy ?? 0
+  // `undefined` both when no pAV result exists and when the engine RIY is not
+  // presentable (zero next to charged fees); only the latter shows the sentinel.
+  const riy = availableRiy(insuranceProductResult)
+  const riyUnavailable = insuranceProductResult !== undefined && riy === undefined
   const [feeInputMode, setFeeInputMode] = useState<FeeInputMode>('aufgeschluesselt')
   const [offerCapital, setOfferCapital] = useState<number | null>(null)
   const modelCapital = insuranceProductResult?.capitalAtRetirement ?? 0
-  const erweitertSummary = `${TAX_MODE_SHORT[insuranceTaxMode]}${riy > 0 ? ` · Kosten: ${formatPercent(riy)}` : ''}${ins.capitalGuarantee.enabled ? ` · Garantie: ${(ins.capitalGuarantee.floorPctOfContributions * 100).toFixed(0)} %` : ''}`
+  const kostenSummary = riyUnavailable
+    ? ` · Kosten: ${RIY_UNAVAILABLE}`
+    : riy !== undefined && riy > 0
+      ? ` · Kosten: ${formatPercent(riy)}`
+      : ''
+  const erweitertSummary = `${TAX_MODE_SHORT[insuranceTaxMode]}${kostenSummary}${ins.capitalGuarantee.enabled ? ` · Garantie: ${(ins.capitalGuarantee.floorPctOfContributions * 100).toFixed(0)} %` : ''}`
 
   return (
     <>
@@ -120,11 +129,17 @@ export function InsuranceInputs({
         feedbackBaseId="inputs.privateInsurance.offerCapital"
       />
 
-      {riy > 0 && (
+      {riy !== undefined && riy > 0 && (
         <p className="field-hint">
           Effektivkosten (berechnete Renditeminderung, alle Kosten):{' '}
           <strong className={riy > 0.015 ? 'riy-warn' : ''}>{formatPercent(riy)}</strong>
           {riy > 0.015 && ' — Nettotarife erzielen typisch 0,6–1,0 %'}
+        </p>
+      )}
+      {riyUnavailable && (
+        <p className="field-hint">
+          Effektivkosten (berechnete Renditeminderung, alle Kosten):{' '}
+          <strong>{RIY_UNAVAILABLE}</strong>. {RIY_UNAVAILABLE_REASON}
         </p>
       )}
 

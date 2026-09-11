@@ -6,6 +6,7 @@ import type {
   ScenarioAssumptions,
 } from '../../domain'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
+import { formatPercent } from '../../utils/format'
 import { buildVergleichDetailCardData } from './vergleichDetailRows'
 
 // ---------------------------------------------------------------------------
@@ -347,6 +348,40 @@ describe('buildVergleichDetailCardData', () => {
     expect(rows[1].labelSuffix).toBeDefined()
     expect(rows[1].labelSuffix!).toMatch(/0,?\s?9?\s*%/)
     expect(rows[1].labelSuffix!).toContain('p.a.')
+  })
+
+  it('§ Mit X: zero RIY next to charged fees names the rate as unavailable (no "p.a.")', () => {
+    // Initial-capital legacy path: the engine reports `accumulationRiy: 0`
+    // although `totalFees` is positive. The euro fee bite stays; the rate
+    // suffix must not read "0,0 % p.a.".
+    const result = makeResult({
+      productId: 'versicherung',
+      totalFees: 8_500,
+      accumulationRiy: 0,
+    })
+    const d = buildVergleichDetailCardData({
+      result,
+      retirementAge: 67,
+      yearsToRetirement: DEFAULT_YEARS_TO_RETIREMENT,
+      assumptions: ASSUMPTIONS,
+    })
+    const kosten = d!.sections[1].rows[1]
+    expect(kosten.value).toBe(8_500)
+    expect(kosten.labelSuffix).toBe('(Effektivkosten: Nicht ermittelbar)')
+    expect(kosten.labelSuffix).not.toContain('p.a.')
+    expect(d!.effectiveAnnualCost).toBeUndefined()
+  })
+
+  it('§ Mit X: a genuine zero-fee product keeps a formatted "0 % p.a."', () => {
+    const result = makeResult({ productId: 'etf', totalFees: 0, accumulationRiy: 0 })
+    const d = buildVergleichDetailCardData({
+      result,
+      retirementAge: 67,
+      yearsToRetirement: DEFAULT_YEARS_TO_RETIREMENT,
+      assumptions: ASSUMPTIONS,
+    })
+    expect(d!.sections[1].rows[1].labelSuffix).toBe(`(${formatPercent(0, 1)} p.a.)`)
+    expect(d!.effectiveAnnualCost).toBe(0)
   })
 
   it('§ Im Alter derives income tax as gross − net − kvPv', () => {

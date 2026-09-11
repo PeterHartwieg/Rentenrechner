@@ -979,7 +979,11 @@ function VergleichSection({
               </td>
               <td className="pr-vergleich-cell-tagline">{row.tagline}</td>
               <td className="pr-num">{formatCurrency(row.capitalAtRetirement, 0)}</td>
-              <td className="pr-num">{formatPercent(row.effectiveAnnualCost, 1)}</td>
+              <td className="pr-num">
+                {row.effectiveAnnualCost === undefined
+                  ? RIY_UNAVAILABLE
+                  : formatPercent(row.effectiveAnnualCost, 1)}
+              </td>
               <td className="pr-num">{formatCurrency(row.grossMonthlyPayout, 0)}</td>
               <td className="pr-num pr-vergleich-cell-abzuege">
                 −{formatCurrency(row.deductionsMonthly, 0)}

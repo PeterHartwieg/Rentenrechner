@@ -2,6 +2,7 @@ import type { BavFundingResult, ProductId, ProductResult, ScenarioAssumptions } 
 import { getProductMeta } from '../../engine/productRegistry'
 import { legalConstants } from '../../rules/legalConstants'
 import { formatPercent } from '../../utils/format'
+import { availableRiy, RIY_UNAVAILABLE } from '../results/riyAvailability'
 
 // ---------------------------------------------------------------------------
 // vergleichDetailRows — pure data layer for the `/vergleich/details` cards.
@@ -56,8 +57,11 @@ export interface VergleichDetailCardData {
   readonly label: string
   readonly shortLabel: string
   readonly sections: ReadonlyArray<VergleichDetailSection>
-  /** Effektivkosten p. a. (decimal — e.g. `0.012` for 1.2 %). */
-  readonly effectiveAnnualCost: number
+  /**
+   * Effektivkosten p. a. (decimal — e.g. `0.012` for 1.2 %). `undefined` when
+   * `availableRiy` rejects the engine value (zero RIY next to positive fees).
+   */
+  readonly effectiveAnnualCost: number | undefined
   /**
    * Live `assumptions.insurance.contractStartYear`, threaded so the card
    * footer can resolve the per-scenario "Verfügbar ab" copy (PR 290 Codex
@@ -127,7 +131,7 @@ export function buildVergleichDetailCardData(
       buildKapitalSection(result, retirementAge),
       buildPayoutSection(result, assumptions, bavFunding),
     ],
-    effectiveAnnualCost: result.accumulationRiy,
+    effectiveAnnualCost: availableRiy(result),
     // PR 290 Codex P2: forward the live insurance contractStartYear so the
     // card can resolve per-scenario "Verfügbar ab" copy via the
     // productAvailabilityCopy registry. Default to the canonical post-2011
@@ -271,15 +275,21 @@ function buildKapitalSection(
   // `− Kosten` sub row, per the direction-d design (`DProductBreakdown` /
   // `TBreakdown`). The lifetime fee bite goes into the row value; the
   // annualised rate rides in the suffix (`(1,2 % p.a.)`) so the label does
-  // not claim the euro figure is itself a per-annum amount.
-  const ratePct = formatPercent(result.accumulationRiy, 1)
+  // not claim the euro figure is itself a per-annum amount. When the RIY is
+  // not presentable (`availableRiy`), the suffix names that instead of
+  // showing "0,0 % p.a." next to a positive fee sum; the euro value stays.
+  const riy = availableRiy(result)
+  const labelSuffix =
+    riy === undefined
+      ? `(Effektivkosten: ${RIY_UNAVAILABLE})`
+      : `(${formatPercent(riy, 1)} p.a.)`
   return {
     heading: `Mit ${retirementAge}, Kapital`,
     rows: [
       { label: 'Kapital brutto', value: result.capitalAtRetirement, kind: 'add' },
       {
         label: '− Kosten',
-        labelSuffix: `(${ratePct} p.a.)`,
+        labelSuffix,
         value: result.totalFees,
         kind: 'sub',
       },

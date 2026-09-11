@@ -1,7 +1,16 @@
 import { useViewport } from '../../ui/chrome/useViewport'
 import { formatCurrency, formatPercent } from '../../utils/format'
+import { RIY_UNAVAILABLE, RIY_UNAVAILABLE_REASON } from '../results/riyAvailability'
 import { productTaglines } from './productTaglines'
 import type { VergleichTableRow } from './vergleichRows'
+
+/** Cost cell content + hover reason. A genuine 0 % stays "0,00 %". */
+function costDisplay(row: VergleichTableRow): { text: string; title: string | undefined } {
+  if (row.effectiveAnnualCost === undefined) {
+    return { text: RIY_UNAVAILABLE, title: RIY_UNAVAILABLE_REASON }
+  }
+  return { text: formatPercent(row.effectiveAnnualCost, 2), title: undefined }
+}
 
 interface Props {
   rows: ReadonlyArray<VergleichTableRow>
@@ -64,7 +73,9 @@ export function VergleichComparisonTable({ rows, retirementAge }: Props) {
         </tr>
       </thead>
       <tbody>
-        {rows.map((row) => (
+        {rows.map((row) => {
+          const cost = costDisplay(row)
+          return (
           <tr key={row.productId}>
             <td>
               <div className="vergleich-cell-product">
@@ -74,7 +85,7 @@ export function VergleichComparisonTable({ rows, retirementAge }: Props) {
             </td>
             <td className="vergleich-cell-tagline vergleich-col-tagline">{productTaglines[row.productId]}</td>
             <td className="vergleich-cell--num">{formatCurrency(row.capitalAtRetirement, 0)}</td>
-            <td className="vergleich-cell--num">{formatPercent(row.effectiveAnnualCost, 2)}</td>
+            <td className="vergleich-cell--num" title={cost.title}>{cost.text}</td>
             <td className="vergleich-cell--num">{formatCurrency(row.grossMonthlyPayout, 0)}</td>
             <td className="vergleich-cell--num vergleich-cell--abzuege">
               −{formatCurrency(row.deductionsMonthly, 0)}
@@ -91,7 +102,8 @@ export function VergleichComparisonTable({ rows, retirementAge }: Props) {
               </div>
             </td>
           </tr>
-        ))}
+          )
+        })}
       </tbody>
     </table>
   )
@@ -110,6 +122,7 @@ interface CardProps {
  * monetary-grid table columns.
  */
 function ProductCard({ row, maxNet, retirementAge }: CardProps) {
+  const cost = costDisplay(row)
   return (
     <li className="vergleich-product-card" data-product={row.productId}>
       <div className="vergleich-product-card__head">
@@ -119,8 +132,8 @@ function ProductCard({ row, maxNet, retirementAge }: CardProps) {
         </div>
         <div>
           <div className="vergleich-product-card__netto">{formatCurrency(row.netMonthlyPayout, 0)}</div>
-          <div className="vergleich-product-card__kosten">
-            Kosten {formatPercent(row.effectiveAnnualCost, 2)}
+          <div className="vergleich-product-card__kosten" title={cost.title}>
+            {row.effectiveAnnualCost === undefined ? `Kosten: ${cost.text}` : `Kosten ${cost.text}`}
           </div>
         </div>
       </div>
