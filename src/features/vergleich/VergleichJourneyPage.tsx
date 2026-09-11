@@ -66,6 +66,12 @@ export interface VergleichJourneyControls {
   /** Set the anchor through the existing `syncMonthlyContributions` path. */
   setOwnMoneyMonthly: (value: number) => void
   /**
+   * The inflation rate the comparison computes on (`assumptions.inflationRate`).
+   * Read-only here: the view names it next to the profile so the plan diff
+   * can be understood; editing stays on the assumptions surface.
+   */
+  inflationRate: number
+  /**
    * The person + inflation the saved plan computes on, read once at mount.
    * Undefined without a saved plan. Lets the result say when the comparison
    * runs on other figures than the plan (audit F11).
@@ -116,6 +122,7 @@ export function VergleichJourneyPage({ navigate, pendingChoice, onPendingChoiceC
   const planProfile: PlanProfileSummary | undefined = hasSavedPlan && savedWorkspace
     ? {
         age: savedWorkspace.baseline.profile.age,
+        retirementAge: savedWorkspace.baseline.profile.retirementAge,
         grossSalaryYear: savedWorkspace.baseline.profile.grossSalaryYear,
         publicHealthInsurance: savedWorkspace.baseline.profile.publicHealthInsurance,
         inflationRate: savedWorkspace.baseline.assumptions.inflationRate,
@@ -170,6 +177,7 @@ export function VergleichJourneyPage({ navigate, pendingChoice, onPendingChoiceC
     },
     ownMoneyMonthly: assumptions.equalInputAmountEUR ?? 0,
     setOwnMoneyMonthly: setSyncedMonthlyContribution,
+    inflationRate: assumptions.inflationRate,
     planProfile,
     profileDiffersFromPlan: profileDiffersFrom(planProfile, profile, assumptions.inflationRate),
   }

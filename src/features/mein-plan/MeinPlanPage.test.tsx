@@ -762,6 +762,25 @@ describe('MeinPlanPage — default overview', () => {
     fireEvent.click(screen.getByRole('button', { name: reason.label }))
     expect(navigate).toHaveBeenCalledWith(ROUTES.eingaben, undefined, '#renteneintritt')
   })
+
+  it('keeps blocked readiness on the duration view: durations render, source amounts do not', () => {
+    // The overview and the duration view share one readiness guard. The
+    // summary rows still carry nets from the last simulation, so the duration
+    // view must be told explicitly that they may not be shown.
+    const props = buildOverviewProps()
+    expect(props.summary.rows.some((row) => Number.isFinite(row.netMonthlyReal) && row.netMonthlyReal !== 0)).toBe(true)
+    const reason = { code: 'pension-entry-skipped' as const, severity: 'blocking' as const,
+      label: 'Rentenangabe fehlt', target: { route: ROUTES.eingaben, anchor: 'renteneintritt' } }
+    render(<MeinPlanPage {...props} readiness={{ status: 'incomplete', canShowHouseholdTotal: false,
+      reasons: [reason], blocking: [reason], assumptions: [] }} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Dauer ansehen →' }))
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Wie lange kommt welches Geld?')
+    const table = screen.getByTestId('plan-duration-checkpoints')
+    const amountCells = Array.from(table.querySelectorAll('tbody td.plan-duration-summary__num:first-of-type')).map((td) => td.textContent)
+    expect(amountCells.length).toBe(props.summary.rows.length)
+    expect(amountCells.every((cell) => cell === '—')).toBe(true)
+    expect(screen.queryByTestId('plan-duration-cutoff')?.textContent ?? '').not.toContain('pro Monat in heutigen Euro')
+  })
 })
 
 

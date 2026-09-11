@@ -211,7 +211,7 @@ function OverviewMeinPlanPage(props: MeinPlanPageProps & { summary: PlanSummary 
     <div className="mein-plan-view-back">
       <button type="button" className="plan-overview__link" onClick={() => setShowDuration(false)}>← Zurück zum Plan</button>
     </div>
-    <PlanDurationSummary rows={summary.rows} onOpenKapital={openKapital}
+    <PlanDurationSummary rows={summary.rows} onOpenKapital={openKapital} canShowAmounts={canShow}
       retirementAge={profile.retirementAge} targetMonthly={profile.desiredNetMonthlyPension}
       onEditSharedHorizon={() => navigate?.(ROUTES.eingaben, undefined, '#renteneintritt')} />
   </div>

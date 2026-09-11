@@ -262,7 +262,7 @@ function Layer3Details({
   onBeitragsdynamikChange,
   bavSubsidy,
 }: Layer3Props) {
-  const [feeMode, setFeeMode] = useState<FeeInputMode>(() => feeDetails && hasNonAssetFees(feeDetails) ? 'aufgeschluesselt' : 'effektivkosten')
+  const [feeMode, setFeeMode] = useState<FeeInputMode>(() => feeDetails && hasAccumulationExtras(feeDetails) ? 'aufgeschluesselt' : 'effektivkosten')
 
   // Adapter: preserve an edited Einzelposten split; otherwise derive the all-in fee from the scalar.
   // No computed RIY exists at draft time, so FeeSection gets no `riy` and shows
@@ -392,7 +392,13 @@ function EtfLayer3Details({
   )
 }
 
-function allInFeeDetails(effektivkostenPct: number): FeeModel {
+/**
+ * Fee model for the Layer-1 all-in field. The scalar describes the
+ * accumulation phase only (mirrors `FeeSection`'s Effektivkosten path): it
+ * replaces the fixed / contribution / acquisition charges, while an existing
+ * Auszahlungsgebühr is a payout-phase cost and is carried over unchanged.
+ */
+function allInFeeDetails(effektivkostenPct: number, previous?: FeeModel): FeeModel {
   return {
     wrapperAssetFee: effektivkostenPct / 100,
     fundAssetFee: 0,
@@ -400,26 +406,37 @@ function allInFeeDetails(effektivkostenPct: number): FeeModel {
     fixedMonthlyFee: 0,
     acquisitionCostPct: 0,
     acquisitionCostSpreadYears: 5,
-    pensionPayoutFeePct: 0,
+    pensionPayoutFeePct: previous?.pensionPayoutFeePct ?? 0,
   }
 }
 
 /**
+ * True when accumulation-phase itemized charges exist (fixed, contribution,
+ * acquisition). A payout fee alone does not count: the all-in scalar is still
+ * the quoted accumulation Effektivkosten then, exactly as `FeeSection` treats
+ * it.
+ */
+function hasAccumulationExtras(feeDetails: FeeModel): boolean {
+  return hasNonAssetFees({ ...feeDetails, pensionPayoutFeePct: 0 })
+}
+
+/**
  * Label + hint for the Layer-1 cost field. `effektivkostenPct` is the quoted
- * all-in figure only while no itemized extras exist; once the user has entered
- * fixed / contribution / acquisition / payout charges under "Details", the
+ * all-in figure only while no accumulation-phase extras exist; once the user
+ * has entered fixed / contribution / acquisition charges under "Details", the
  * scalar is just wrapper + fund and must not be called Effektivkosten.
  */
 function effektivkostenFieldCopy(
   feeDetails: FeeModel | undefined,
   typicalRange?: string,
 ): { label: string; hint: string } {
-  if (feeDetails && hasNonAssetFees(feeDetails)) {
+  if (feeDetails && hasAccumulationExtras(feeDetails)) {
     return {
       label: 'Laufende Kapitalgebühr p.a. (Mantel + Fonds)',
       hint:
         'Aus den Einzelposten unter „Details" abgeleitet, ohne Fix-, Beitrags-, Abschluss- und Auszahlungskosten. ' +
-        'Nicht die Effektivkostenquote aus dem PIB. Eine Eingabe hier ersetzt alle Einzelposten.',
+        'Nicht die Effektivkostenquote aus dem PIB. Eine Eingabe hier ersetzt die Fix-, Beitrags- und Abschlusskosten der Ansparphase; ' +
+        'eine Auszahlungsgebühr bleibt bestehen.',
     }
   }
   return {
@@ -561,7 +578,7 @@ export function BavCard({
             suffix="% p.a."
             onChange={(n) => {
               setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
-              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n) })
+              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n, draft.feeDetails) })
             }}
           />
           {shouldRenderEvidenceBadge(draft, 'fees.wrapperAssetFee', draft.effektivkostenPct <= 0) && (
@@ -654,7 +671,7 @@ export function PavCard({
             suffix="% p.a."
             onChange={(n) => {
               setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
-              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n) })
+              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n, draft.feeDetails) })
             }}
           />
           {shouldRenderEvidenceBadge(draft, 'fees.wrapperAssetFee', draft.effektivkostenPct <= 0) && (
@@ -801,7 +818,7 @@ export function BasisrenteCard({ draft, onChange, setEvidence }: BaseProps<Basis
             suffix="% p.a."
             onChange={(n) => {
               setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
-              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n) })
+              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n, draft.feeDetails) })
             }}
           />
           {shouldRenderEvidenceBadge(draft, 'fees.wrapperAssetFee', draft.effektivkostenPct <= 0) && (

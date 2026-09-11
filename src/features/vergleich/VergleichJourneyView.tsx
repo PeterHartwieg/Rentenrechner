@@ -3,10 +3,11 @@ import type { ProductId } from '../../domain'
 import { getProductMeta } from '../../engine/productRegistry'
 import { NumberField } from '../../ui/NumberField'
 import { clampNumber } from '../../ui/formatting'
-import { formatCurrency } from '../../utils/format'
+import { formatCurrency, formatPercent } from '../../utils/format'
 import { qaTargetAttrs } from '../qa-feedback'
 import { useQaMode } from '../qa-feedback/useQaMode'
 import type { VergleichJourneyControls } from './VergleichJourneyPage'
+import type { PlanProfileSummary } from './planProfileSummary'
 import { productTaglines } from './productTaglines'
 import './VergleichPage.css'
 
@@ -19,6 +20,19 @@ interface Props {
 
 function healthLabel(publicHealthInsurance: boolean): string {
   return publicHealthInsurance ? 'gesetzlich versichert' : 'privat versichert'
+}
+
+/**
+ * One sentence naming every field the comparison is diffed against the plan
+ * on (`profileDiffersFrom`). Used verbatim for the comparison's own figures
+ * and for the plan's, so when the two differ the differing field is visible
+ * rather than hidden behind identical-looking copy.
+ */
+function describeProfile(summary: PlanProfileSummary): string {
+  return `${summary.age} Jahre · ${formatCurrency(summary.grossSalaryYear)} brutto im Jahr`
+    + ` · ${healthLabel(summary.publicHealthInsurance)}`
+    + ` · Rente mit ${summary.retirementAge}`
+    + ` · Inflation ${formatPercent(summary.inflationRate)}`
 }
 
 /** View navigation stays local; all edits use the container's compare-state handlers. */
@@ -45,16 +59,23 @@ export function VergleichJourneyView({ controls, productIds, onToggleProduct, re
   // comparison silently kept an older salary after the plan had been refined
   // (audit F11): the figures looked personal but were not the plan's.
   const plan = controls.planProfile
+  const current = describeProfile({
+    age: profile.age,
+    retirementAge: profile.retirementAge,
+    grossSalaryYear: profile.grossSalaryYear,
+    publicHealthInsurance: profile.publicHealthInsurance,
+    inflationRate: controls.inflationRate,
+  })
   const profileNote = (
     <div className="vergleich-profile-strip" role="note" data-testid="vergleich-profile-strip">
       <p>
         <strong>Beispielrechnung mit Muster-Sparformen</strong>, nicht mit deinen Verträgen oder Angeboten.
-        {' '}Angaben: {profile.age} Jahre · {formatCurrency(profile.grossSalaryYear)} brutto im Jahr · {healthLabel(profile.publicHealthInsurance)}.
+        {' '}Angaben: {current}.
         {controls.hasSavedPlan && !controls.profileDiffersFromPlan && ' Wie in deinem Plan.'}
       </p>
       {controls.hasSavedPlan && plan && controls.profileDiffersFromPlan && (
         <p className="vergleich-profile-strip__diff">
-          Dein Plan rechnet mit anderen Angaben: {plan.age} Jahre · {formatCurrency(plan.grossSalaryYear)} brutto im Jahr · {healthLabel(plan.publicHealthInsurance)}.
+          Dein Plan rechnet mit anderen Angaben: {describeProfile(plan)}.
           {' '}<button type="button" className="vergleich-actions__button" onClick={controls.seedFromPlan}>Angaben aus meinem Plan übernehmen</button>
         </p>
       )}
@@ -99,8 +120,7 @@ export function VergleichJourneyView({ controls, productIds, onToggleProduct, re
                     Angaben aus meinem Plan verwenden
                   </button>
                   <p className="vergleich-muted" data-qa-sensitive="true">
-                    Aktuell verwendet: {profile.age} Jahre · {formatCurrency(profile.grossSalaryYear)} brutto im Jahr
-                    {' · '}{profile.publicHealthInsurance ? 'gesetzlich versichert' : 'privat versichert'}.
+                    Aktuell verwendet: {current}.
                   </p>
                 </div>
               ) : (

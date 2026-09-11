@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { VergleichJourneyPage } from './VergleichJourneyPage'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { buildShareUrl } from '../../utils/urlShare'
+import { formatCurrency, formatPercent } from '../../utils/format'
 import { PRODUCT_REGISTRY, getProductMeta } from '../../engine/productRegistry'
 import { buildStateJson, migrateV1ToV2, saveWorkspace, STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../../storage'
 
@@ -152,6 +153,64 @@ describe('profile strip on the result (audit F11)', () => {
     expect(strip()).not.toHaveTextContent('anderen Angaben')
     fireEvent.click(within(strip()).getByRole('button', { name: 'Angaben ändern' }))
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Was möchtest du vergleichen?')
+  })
+
+  it('names each compared field for both the comparison and the plan', () => {
+    const workspace = migrateV1ToV2({ ...defaultProfile, age: 48, grossSalaryYear: 93000 }, { ...defaultAssumptions })
+    workspace.mode = 'combine'
+    saveWorkspace(workspace)
+    window.history.replaceState(null, '', buildShareUrl(defaultProfile, {
+      ...defaultAssumptions, visibleProducts: ['etf'],
+      monteCarlo: { ...defaultAssumptions.monteCarlo, enabled: false },
+    }))
+    render(<VergleichJourneyPage navigate={vi.fn()} />)
+    const strip = screen.getByTestId('vergleich-profile-strip')
+    const nbsp = (text: string) => text.replace(/\u00a0/g, ' ')
+    const tail = `brutto im Jahr · gesetzlich versichert · Rente mit ${defaultProfile.retirementAge} · Inflation ${nbsp(formatPercent(defaultAssumptions.inflationRate))}.`
+    expect(strip).toHaveTextContent(`Angaben: ${defaultProfile.age} Jahre · ${nbsp(formatCurrency(defaultProfile.grossSalaryYear))} ${tail}`)
+    expect(strip).toHaveTextContent(`Dein Plan rechnet mit anderen Angaben: 48 Jahre · 93.000 € ${tail}`)
+  })
+
+  it('makes a differing inflation visible when the person is otherwise identical', () => {
+    // Regression: the diff line used to repeat age / salary / insurance only,
+    // so a plan that differed in inflation alone read as "other figures" with
+    // no visible difference.
+    const workspace = migrateV1ToV2({ ...defaultProfile }, { ...defaultAssumptions, inflationRate: 0.03 })
+    workspace.mode = 'combine'
+    saveWorkspace(workspace)
+    window.history.replaceState(null, '', buildShareUrl(defaultProfile, {
+      ...defaultAssumptions, inflationRate: 0.01, visibleProducts: ['etf'],
+      monteCarlo: { ...defaultAssumptions.monteCarlo, enabled: false },
+    }))
+    render(<VergleichJourneyPage navigate={vi.fn()} />)
+    const strip = () => screen.getByTestId('vergleich-profile-strip')
+    expect(strip()).toHaveTextContent('Dein Plan rechnet mit anderen Angaben')
+    expect(strip().querySelector("p:first-of-type")).toHaveTextContent('Inflation 1 %')
+    expect(strip().querySelector('.vergleich-profile-strip__diff')).toHaveTextContent('Inflation 3 %')
+    fireEvent.click(within(strip()).getByRole('button', { name: 'Angaben aus meinem Plan übernehmen' }))
+    expect(strip()).toHaveTextContent('Inflation 3 %')
+    expect(strip()).toHaveTextContent('Wie in deinem Plan.')
+    expect(strip()).not.toHaveTextContent('anderen Angaben')
+  })
+
+  it('makes a differing retirement age visible when the person is otherwise identical', () => {
+    const workspace = migrateV1ToV2({ ...defaultProfile, retirementAge: 63 }, { ...defaultAssumptions })
+    workspace.mode = 'combine'
+    saveWorkspace(workspace)
+    window.history.replaceState(null, '', buildShareUrl(defaultProfile, {
+      ...defaultAssumptions, visibleProducts: ['etf'],
+      monteCarlo: { ...defaultAssumptions.monteCarlo, enabled: false },
+    }))
+    render(<VergleichJourneyPage navigate={vi.fn()} />)
+    const strip = () => screen.getByTestId('vergleich-profile-strip')
+    expect(strip()).toHaveTextContent('Dein Plan rechnet mit anderen Angaben')
+    expect(strip().querySelector("p:first-of-type")).toHaveTextContent(`Rente mit ${defaultProfile.retirementAge}`)
+    expect(strip().querySelector('.vergleich-profile-strip__diff')).toHaveTextContent('Rente mit 63')
+    fireEvent.click(within(strip()).getByRole('button', { name: 'Angaben aus meinem Plan übernehmen' }))
+    expect(strip()).toHaveTextContent('Wie in deinem Plan.')
+    expect(strip()).not.toHaveTextContent('anderen Angaben')
+    fireEvent.click(within(strip()).getByRole('button', { name: 'Angaben ändern' }))
+    expect(screen.getByText(/Aktuell verwendet:/)).toHaveTextContent('Rente mit 63')
   })
 
   it('shows the strip without a plan reference when no plan is saved', () => {
