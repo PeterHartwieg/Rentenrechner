@@ -131,6 +131,7 @@ export function PlanOverview(props: PlanOverviewProps) {
           <button type="button" className="plan-overview__link" onClick={props.onEditTarget}>{props.targetMonthly !== undefined || summary?.gap ? 'Wunschrente' : 'Wunschrente ergänzen (optional)'}</button>
         </div>
         {props.targetEditor}
+        <div className="plan-overview__disclosures">
         <details className="plan-overview__details">
           <summary>Angaben &amp; Annahmen prüfen</summary>
           <p>{assumptions.age} Jahre · {formatCurrency(assumptions.grossSalaryYear)} Jahreseinkommen vor Steuern · Rente ab {assumptions.retirementAge}.</p>
@@ -146,6 +147,7 @@ export function PlanOverview(props: PlanOverviewProps) {
         </details>
         {props.children != null && <details className="plan-overview__details" open={props.analysisOpen}
           onToggle={(event) => props.onAnalysisToggle?.(event.currentTarget.open)}><summary>Weitere Auswertungen</summary>{props.children}</details>}
+        </div>
       </>}
     </section>
   )

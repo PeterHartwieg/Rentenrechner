@@ -74,8 +74,8 @@
 .plan-overview__link:hover { color: var(--rw-accent); }
 .plan-overview__reasons, .plan-overview__assumptions { margin: 0; padding-left: 20px; }
 .plan-overview__assumptions { color: var(--rw-ink-soft); font-size: 0.85rem; }
-.plan-overview__details { border-top: 1px solid var(--rw-rule); padding-top: 14px; min-width: 0; }
-.plan-overview__details > summary { cursor: pointer; min-height: 44px; font-weight: 600; }
+.plan-overview__details { border-top: 1px solid var(--rw-rule); min-width: 0; }
+.plan-overview__details > summary { cursor: pointer; min-height: 44px; padding: 14px 0; line-height: 1.4; font-weight: 600; }
 .plan-overview__details > p { margin: 8px 0; }
 .plan-overview__details > .plan-overview__actions { margin-top: 12px; }
 .plan-duration-summary__row { display: flex; flex-direction: column; gap: 5px; padding: 16px 0; }
@@ -89,3 +89,7 @@
   .plan-overview__amount { grid-column: 1; grid-row: 2; }
   .plan-overview__source > span:last-child { grid-column: 2; grid-row: 1 / 3; }
 }
+
+/* Keep the disclosure stack contiguous with the remaining plan sections. */
+.plan-overview:has(> .plan-overview__disclosures) { padding-bottom: 0; }
+.plan-overview__disclosures { min-width: 0; }

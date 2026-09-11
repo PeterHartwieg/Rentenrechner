@@ -627,10 +627,13 @@
   overflow-wrap: anywhere;
 }
 
+.mein-plan-host:has(.plan-overview__disclosures) { gap: 0; }
+
 .rw-plan-disclosure > summary {
   box-sizing: border-box;
   min-height: 44px;
   padding: 14px 0;
+  line-height: 1.4;
   font-weight: 600;
   cursor: pointer;
 }
