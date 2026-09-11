@@ -196,16 +196,35 @@ describe('shared workspace store', () => {
 })
 
 describe('updateInstance', () => {
-  it('clears the contribution when a bAV becomes an offer, without restoring it on activation', () => {
+  it('preserves a quoted bAV contribution and provenance across offer activation', () => {
     const { result } = renderHook(() => usePortfolioState())
     const ws = populatedWorkspace()
     ws.baseline.assumptions.bav = [INVENTORY_PRODUCT_REGISTRY.bav.createDefault(2026, 1, () => 'bav-offer111')]
     act(() => result.current.replaceWorkspace(ws))
     act(() => { result.current.updateInstance('bav', 'bav-offer111', { status: 'offered', monthlyGrossConversion: 350 }, { monthlyGrossConversion: 'entered' }) })
-    expect(result.current.workspace.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(0)
-    expect(result.current.workspace.baseline.assumptions.bav[0].inputStatus?.monthlyGrossConversion).toBe('assumed')
+    expect(result.current.workspace.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(350)
+    expect(result.current.workspace.baseline.assumptions.bav[0].inputStatus?.monthlyGrossConversion).toBe('entered')
     act(() => { result.current.updateInstance('bav', 'bav-offer111', { status: 'active' }) })
-    expect(result.current.workspace.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(0)
+    expect(result.current.workspace.baseline.assumptions.bav[0].monthlyGrossConversion).toBe(350)
+  })
+
+  it('preserves insurance offer terms through save/load and reactivation', () => {
+    const { result } = renderHook(() => usePortfolioState())
+    const ws = populatedWorkspace()
+    const insurance = {
+      ...INVENTORY_PRODUCT_REGISTRY.versicherung.createDefault(2026, 1, () => 'versicherung-offer111'),
+      monthlyContribution: 270,
+      inputStatus: { monthlyContribution: 'document' as const },
+      evidenceMap: { monthlyContribution: 'statement' as const },
+    }
+    ws.baseline.assumptions.insurance = [insurance]
+    act(() => result.current.replaceWorkspace(ws))
+    act(() => { result.current.updateInstance('versicherung', insurance.instanceId, { status: 'offered' }) })
+    const saved = result.current.workspace.baseline.assumptions.insurance[0]
+    expect(saved).toEqual({ ...insurance, status: 'offered' })
+    expect(loadSavedWorkspace()!.baseline.assumptions.insurance[0]).toEqual(saved)
+    act(() => { result.current.updateInstance('versicherung', insurance.instanceId, { status: 'active' }) })
+    expect(result.current.workspace.baseline.assumptions.insurance[0]).toEqual(insurance)
   })
 
   it('merges the patch and the status map, leaving other statuses alone', () => {
@@ -563,4 +582,20 @@ describe('productArrayShapeMatches', () => {
     other.assumptions.etf[0].monthlyContribution = 99_999
     expect(productArrayShapeMatches(ws.baseline, other)).toBe(true)
   })
+})
+
+
+it('reviewing an offer preserves undo, which discards the review of the undone state', () => {
+  const ws = populatedWorkspace()
+  const { result } = renderHook(() => usePortfolioState())
+  act(() => result.current.replaceWorkspace(ws))
+  let previousUndo: WorkspaceUndo
+  act(() => { previousUndo = result.current.removeInstance('etf', 'etf-bbbb2222') })
+  const comparison = forkBaselineScenario(result.current.baseline, 'Angebot prüfen')
+  act(() => result.current.addWhatIf(comparison, { preserveUndo: true }))
+  expect(result.current.lastUndo?.id).toBe(previousUndo!.id)
+  act(() => { expect(result.current.undo(previousUndo!)).toBe(true) })
+  expect(result.current.baseline.assumptions.etf).toHaveLength(2)
+  expect(result.current.whatIfs.some(w => w.id === comparison.id)).toBe(false)
+  expect(result.current.workspace).toEqual(ws)
 })

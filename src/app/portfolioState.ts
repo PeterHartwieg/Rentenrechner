@@ -425,7 +425,7 @@ export interface UsePortfolioStateApi {
   setBaseline: (scenario: Scenario) => void
   /** Update the baseline in-place (preserves id/createdAt). Stamps lastEditedAt. */
   patchBaseline: (patch: Partial<Omit<Scenario, 'id' | 'createdAt'>>) => void
-  addWhatIf: (whatIf: WhatIfScenario) => void
+  addWhatIf: (whatIf: WhatIfScenario, options?: { preserveUndo?: boolean }) => void
   updateWhatIf: (id: string, patch: Partial<Omit<WhatIfScenario, 'id'>>) => void
   /** Remove a saved alternative. Returns the undo handle (§5). */
   removeWhatIf: (id: string) => WorkspaceUndo
@@ -588,7 +588,7 @@ export function commitWorkspace(label: string, next: Workspace): WorkspaceUndo {
  */
 export function undoWorkspace(handle: WorkspaceUndo): boolean {
   if (!lastUndoHandle || lastUndoHandle.id !== handle.id) return false
-  setWorkspaceStore(handle.previous)
+  setWorkspaceStore(lastUndoHandle.previous)
   publishLastUndo(null)
   return true
 }
@@ -747,8 +747,10 @@ export function usePortfolioState(): UsePortfolioStateApi {
     [],
   )
 
-  const addWhatIf = useCallback((whatIf: WhatIfScenario) => {
-    publishLastUndo(null)
+  const addWhatIf = useCallback((whatIf: WhatIfScenario, options?: { preserveUndo?: boolean }) => {
+    // A quote review must not clear an existing undo. If that edit is undone,
+    // restore the original workspace, discarding reviews of the undone state.
+    if (!options?.preserveUndo) publishLastUndo(null)
     updateWorkspaceStore((w) => ({ ...w, whatIfs: [...w.whatIfs, whatIf] }))
   }, [])
 
@@ -938,16 +940,8 @@ export function usePortfolioState(): UsePortfolioStateApi {
         const updated = status
           ? { ...merged, inputStatus: { ...(existing.inputStatus ?? {}), ...status } }
           : merged
-        if (patch.status === 'offered' && existing.status !== 'offered') {
-          const field = 'monthlyGrossConversion' in updated ? 'monthlyGrossConversion'
-            : productId === 'versicherung' && 'monthlyContribution' in updated ? 'monthlyContribution' : null
-          if (field) {
-            if ('monthlyGrossConversion' in updated) updated.monthlyGrossConversion = 0
-            else if ('monthlyContribution' in updated) updated.monthlyContribution = 0
-            updated.inputStatus = { ...updated.inputStatus, [field]: 'assumed' }
-            updated.evidenceMap = { ...updated.evidenceMap, [field]: 'model_estimate' }
-          }
-        }
+        // Offer status controls inclusion in the baseline simulation. Keep the
+        // quoted contribution and its provenance for comparison/reactivation.
         return updated
       })
       const patched = nextArray.find((i) => i.instanceId === instanceId)

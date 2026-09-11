@@ -115,6 +115,11 @@ export function ContractEditorField({ draft, spec, patchField, setFieldUnknown, 
   )
 }
 
+/** Accessible name of the per-field "aus einem Beleg übernommen" checkbox. */
+function evidenceCheckboxName(fieldLabel: string): string {
+  return `${fieldLabel}: Wert aus einem Beleg übernommen`
+}
+
 export function ContractEditorEvidence({ draft, spec, patchField }: Pick<Props, 'draft' | 'spec' | 'patchField'>) {
   const id = useId()
   const state = draftFieldState(draft, spec.id)
@@ -125,7 +130,11 @@ export function ContractEditorEvidence({ draft, spec, patchField }: Pick<Props, 
     <div className="contract-editor__evidence" role="group" aria-labelledby={`${id}-field`}>
       <span id={`${id}-field`}>{spec.label}</span>
       <label className="contract-editor__check" htmlFor={id}>
+        {/* The visible sentence is the same for every field; the accessible
+            name carries the field so a screen-reader user hears which value
+            the checkbox confirms (audit F20). */}
         <input id={id} type="checkbox" checked={state === 'document'} aria-describedby={`${id}-field`}
+          aria-label={evidenceCheckboxName(spec.label)}
           onChange={(event) => patchField(spec.id, value, event.target.checked ? 'document' : 'entered')} />
         <span>Ich habe diesen Wert aus einem Beleg (z. B. Kontoauszug, Vertragsunterlagen) übernommen</span>
       </label>

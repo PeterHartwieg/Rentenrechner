@@ -11,6 +11,8 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import { PrintReport } from './PrintReport'
+import { RIY_UNAVAILABLE } from './riyAvailability'
+import { formatPercent } from '../../utils/format'
 import { defaultProfile, defaultAssumptions } from '../../data/defaultScenario'
 import type { SimulationResult, ProductResult, ScenarioAssumptions } from '../../domain'
 import type { Workspace } from '../../domain/workspace'
@@ -754,6 +756,35 @@ describe('PrintReport', () => {
       expect(headers[4].textContent).toContain('Brutto-Rente')
       expect(headers[5].textContent).toContain('Abzüge')
       expect(headers[6].textContent).toContain('Netto pro Monat')
+    })
+
+    it('R3 Vergleich table prints the unavailable sentinel for a zero RIY with charged fees, and a formatted 0 % for a fee-free product', () => {
+      const base = makeSimulation('user_confirmed')
+      const etf = base.products[0] as ProductResult
+      // Initial-capital legacy path: RIY 0 although fees were charged.
+      const legacyZero = { ...etf, accumulationRiy: 0, totalFees: 1000 } as ProductResult
+      // Genuine zero-fee product: "0,0 %" is the honest figure.
+      const feeFree = {
+        ...etf,
+        productId: 'versicherung',
+        label: 'pAV',
+        accumulationRiy: 0,
+        totalFees: 0,
+      } as unknown as ProductResult
+      const sim: SimulationResult = { ...base, products: [legacyZero, feeFree] }
+      const { container } = render(
+        <PrintReport
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          simulation={sim}
+          compareAllProductsSimulation={sim}
+        />
+      )
+      const rows = container.querySelectorAll('.pr-vergleich-table tbody tr')
+      const costs = Array.from(rows).map((row) => row.querySelectorAll('td')[3].textContent?.trim())
+      // Equal net payouts → registry order (etf before versicherung).
+      expect(costs).toEqual([RIY_UNAVAILABLE, formatPercent(0, 1)])
+      expect(costs[0]).not.toContain('p.a.')
     })
 
     it('R3 § 1 pro/contra block has one row per registry product (6 rows)', async () => {

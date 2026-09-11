@@ -24,6 +24,7 @@ import type {
   RiesterInstance,
 } from '../../domain/instances'
 import { formatCurrency, formatNumber, formatPercent } from '../../utils/format'
+import { availableRiy, RIY_UNAVAILABLE } from '../results/riyAvailability'
 import { activeRules } from '../../rules'
 import { getProductMeta, PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import {
@@ -53,6 +54,7 @@ import {
 } from '../inventory/inventoryProductRegistry'
 import { DProduktSection } from './DProduktSection'
 import { DProduktRow, type ProduktRowField } from './DProduktRow'
+import { produktRowAsideCopy } from './produktRowCopy'
 import { DSparformOption } from './DSparformOption'
 import { pensionEntryLabels, sparformDescriptions } from './sparformDescriptions'
 import type { PensionEntryMethod } from '../../domain/inputStatus'
@@ -688,6 +690,7 @@ function CombinePanel({
                   kind={kindFor(productId)}
                   title={titleLabel}
                   status={statusLabel(status)}
+                  asideCopy={produktRowAsideCopy(status)}
                   fields={buildInstanceFieldsCombine(productId, instance)}
                   primary={isOpen ? 'Schließen' : 'Bearbeiten'}
                   onPrimary={toggleEditor}
@@ -796,7 +799,11 @@ function buildContractFieldsCompare(
   selectedResults: readonly ProductResult[],
 ): readonly ProduktRowField[] {
   const result = selectedResults.find((r) => r.productId === productId)
-  const riy = result?.accumulationRiy
+  // Zero RIY next to charged fees is not presentable as "0,00 % p.a."; the
+  // sentinel carries no "p.a." because it is not a rate.
+  const riy = availableRiy(result)
+  const effKosten =
+    riy !== undefined ? `${formatPercent(riy, 2)} p.a.` : result ? RIY_UNAVAILABLE : '–'
   switch (productId) {
     case 'etf': {
       return [
@@ -814,7 +821,7 @@ function buildContractFieldsCompare(
         },
         {
           key: 'Eff. Kosten',
-          value: riy !== undefined ? `${formatPercent(riy, 2)} p.a.` : '–',
+          value: effKosten,
         },
         {
           key: 'Steuerlich',
@@ -847,7 +854,7 @@ function buildContractFieldsCompare(
         },
         {
           key: 'Eff. Kosten',
-          value: riy !== undefined ? `${formatPercent(riy, 2)} p.a.` : '–',
+          value: effKosten,
         },
         {
           key: 'Auszahlung',
@@ -876,7 +883,7 @@ function buildContractFieldsCompare(
         },
         {
           key: 'Eff. Kosten',
-          value: riy !== undefined ? `${formatPercent(riy, 2)} p.a.` : '–',
+          value: effKosten,
         },
         {
           key: 'Auszahlung',
@@ -905,7 +912,7 @@ function buildContractFieldsCompare(
         },
         {
           key: 'Eff. Kosten',
-          value: riy !== undefined ? `${formatPercent(riy, 2)} p.a.` : '–',
+          value: effKosten,
         },
         {
           key: 'Auszahlung',
@@ -934,7 +941,7 @@ function buildContractFieldsCompare(
         },
         {
           key: 'Eff. Kosten',
-          value: riy !== undefined ? `${formatPercent(riy, 2)} p.a.` : '–',
+          value: effKosten,
         },
         {
           key: 'Auszahlung',
@@ -965,7 +972,7 @@ function buildContractFieldsCompare(
         },
         {
           key: 'Eff. Kosten',
-          value: riy !== undefined ? `${formatPercent(riy, 2)} p.a.` : '–',
+          value: effKosten,
         },
         {
           key: 'Auszahlung',

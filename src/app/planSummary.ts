@@ -157,6 +157,8 @@ export interface PlanSourceRow {
 }
 
 export interface PlanSummary {
+  /** Current monthly net saving cost after modeled funding effects; not a sum of gross contributions. */
+  monthlyNetSavingCost?: number | null
   pkvRetirementMonthlyCost: number
   netMonthlyTotalNominal: number
   netMonthlyTotalReal: number
@@ -267,6 +269,18 @@ function statutoryRowLabel(
  * falls back to an empty result rather than to another scenario, so a stale id
  * can never silently show optimistic numbers.
  */
+function monthlySavingCost(workspace: Workspace, bundle: CombineSimulationBundle): number | null {
+  const funding = bundle.portfolioFunding
+  if (!funding.headroom) return null
+  const direct = [...workspace.baseline.assumptions.etf, ...workspace.baseline.assumptions.insurance]
+    .filter(instance => instance.status === 'active')
+    .reduce((sum, instance) => sum + (instance.monthlyContribution ?? 0), 0)
+  const subsidised = [funding.basisrenteByInstanceId, funding.altersvorsorgedepotByInstanceId, funding.riesterByInstanceId]
+    .reduce((sum, group) => sum + Object.values(group).reduce((subtotal, value) => subtotal + value.monthlyNetCost, 0), 0)
+  const total = direct + funding.headroom.bav.monthlyNetCost + subsidised
+  return Number.isFinite(total) ? total : null
+}
+
 export function selectPlanSummary(
   workspace: Workspace,
   bundle: CombineSimulationBundle,
@@ -401,6 +415,7 @@ export function selectPlanSummary(
       : undefined
 
   return {
+    monthlyNetSavingCost: readiness.canShowHouseholdTotal ? monthlySavingCost(workspace, bundle) : null,
     pkvRetirementMonthlyCost: combined?.pkvRetirementMonthlyCost ?? 0,
     netMonthlyTotalNominal,
     netMonthlyTotalReal: netMonthlyTotalNominal * deflator,

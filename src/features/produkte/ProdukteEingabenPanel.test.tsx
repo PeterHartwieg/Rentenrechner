@@ -23,7 +23,7 @@ import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { de2026Rules } from '../../rules/de2026'
 import { activeRules } from '../../rules'
 import { legacyEpSeedDurchschnittsentgelt } from '../../rules/legacyArtefacts'
-import { formatNumber } from '../../utils/format'
+import { formatNumber, formatPercent } from '../../utils/format'
 import { simulateRetirementComparison } from '../../engine/simulate'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { INVENTORY_PRODUCT_REGISTRY } from '../inventory/inventoryProductRegistry'
@@ -32,6 +32,7 @@ import { selectResultReadiness } from '../../app/resultReadiness'
 import { runCombineSimulation } from '../../app/useCombineSimulation'
 import { addInstanceToWorkspace, estimateEpFromYears } from '../inventory/inventoryHelpers'
 import { ProdukteEingabenPanel, type ProdukteEingabenPanelProps } from './ProdukteEingabenPanel'
+import { RIY_UNAVAILABLE } from '../results/riyAvailability'
 
 afterEach(() => cleanup())
 
@@ -108,6 +109,46 @@ function defaultProps(
     onSyncMonthlyContribution: vi.fn(),
   }
 }
+
+/** Every "Eff. Kosten" value rendered in the panel, in row order. */
+function effKostenValues(container: HTMLElement): string[] {
+  return Array.from(container.querySelectorAll('.d-produkt-row__field'))
+    .filter(
+      (field) =>
+        field.querySelector('.d-produkt-row__field-key')?.textContent === 'Eff. Kosten',
+    )
+    .map((field) => field.querySelector('.d-produkt-row__field-val')?.textContent ?? '')
+}
+
+describe('ProdukteEingabenPanel — § 2 "Eff. Kosten" availability', () => {
+  it('shows the unavailable sentinel for a zero RIY next to charged fees, never a formatted "0 % p.a."', () => {
+    const props = defaultProps()
+    const selectedResults = props.selectedResults.map((r) =>
+      r.productId === 'etf' ? { ...r, accumulationRiy: 0, totalFees: 1_000 } : r,
+    )
+    const { container } = render(
+      <ProdukteEingabenPanel {...props} selectedResults={selectedResults} />,
+    )
+    const values = effKostenValues(container)
+    expect(values).toContain(RIY_UNAVAILABLE)
+    expect(values.some((v) => v.startsWith(formatPercent(0, 2)))).toBe(false)
+    // The untouched bAV row keeps its computed rate with the "p.a." unit.
+    expect(values.some((v) => v !== RIY_UNAVAILABLE && v.endsWith(' p.a.'))).toBe(true)
+  })
+
+  it('keeps a formatted "0 % p.a." for a genuinely fee-free product', () => {
+    const props = defaultProps()
+    const selectedResults = props.selectedResults.map((r) =>
+      r.productId === 'etf' ? { ...r, accumulationRiy: 0, totalFees: 0 } : r,
+    )
+    const { container } = render(
+      <ProdukteEingabenPanel {...props} selectedResults={selectedResults} />,
+    )
+    const values = effKostenValues(container)
+    expect(values).toContain(`${formatPercent(0, 2)} p.a.`)
+    expect(values).not.toContain(RIY_UNAVAILABLE)
+  })
+})
 
 // ---------------------------------------------------------------------------
 // § 1 — DRV card. Live values, no hardcoded statutory numbers.

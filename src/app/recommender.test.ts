@@ -14,6 +14,8 @@ import { describe, expect, it } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
 import { migrateV1ToV2 } from '../storage'
+import { solveTargetContribution } from './targetContribution'
+import { realDeflator } from './planSummary'
 import { runCombineSimulation } from './useCombineSimulation'
 import {
   recommendNextEuro,
@@ -1164,4 +1166,79 @@ describe('recommendNextEuro — reacts to selectedScenarioId (#08)', () => {
       expect(c.medianNettoRente).toBeCloseTo(withoutId[i].medianNettoRente, 2)
     })
   })
+})
+
+
+describe('audit: recommendation and saved scenario use the same calculation', () => {
+  it('matches saved household income with existing capital and itemized insurance fees', () => {
+    const ws = buildAnnaWorkspace()
+    ws.baseline.profile = { ...ws.baseline.profile, age: 30, retirementAge: 67, grossSalaryYear: 50160 }
+    ws.baseline.assumptions.etf[0].currentValueEUR = 10000
+    ws.baseline.assumptions.etf[0].monthlyContribution = 270
+    const insurance = structuredClone(defaultAssumptions.insurance)
+    ws.baseline.assumptions.insurance = [{
+      ...insurance, instanceId: 'versicherung-audit001', label: 'Audit Brokerangebot',
+      status: 'offered', contractStartYear: 2026, currentValueEUR: 0,
+      monthlyContribution: 270, payoutMode: 'leibrente', rentenfaktor: 25,
+      evidenceMap: {}, fees: { ...insurance.fees, wrapperAssetFee: 0.01, fundAssetFee: 0.002,
+        fixedMonthlyFee: 3, acquisitionCostPct: 0.025, acquisitionCostSpreadYears: 5 },
+    }]
+    const input = buildInput(ws, 270)
+    const original = structuredClone(ws)
+    const candidates = recommendNextEuro(input)
+    expect(candidates.some(c => c.productId === 'versicherung')).toBe(true)
+    for (const candidate of candidates) {
+      const saved = buildWhatIfFromCandidate(ws.baseline, candidate)
+      const recalculated = runCombineSimulation({ ...ws, baseline: saved }, de2026Rules)
+      expect(candidate.medianNettoRente, candidate.label).toBeCloseTo(recalculated.combinedByScenarioId.basis.monthlyNetIncome, 7)
+    }
+    expect(ws).toEqual(original)
+  })
+})
+
+
+it('keeps the solver-selected second ETF through recommendation and save', () => {
+  const ws = buildAnnaWorkspace()
+  const first = ws.baseline.assumptions.etf[0]
+  ws.baseline.assumptions.etf.push({ ...first, instanceId: 'etf-second', label: 'Depot B', annualAssetFee: 0.01 })
+  const input = buildInput(ws, 100)
+  const p = ws.baseline.profile
+  const deflator = realDeflator(ws.baseline.assumptions.inflationRate, p.retirementAge - p.age)
+  const solved = solveTargetContribution(ws, de2026Rules, 'etf-second', input.baselineCombined.monthlyNetIncome * deflator + 200)!
+  expect(solved).not.toBeNull()
+  const candidate = recommendNextEuro({ ...input, marginalMonthlyEUR: solved.additionalMonthly,
+    preferredEtfInstanceId: 'etf-second' }).find(c => c.productId === 'etf')!
+  expect(candidate.targetInstanceId).toBe('etf-second')
+  expect(candidate.medianNettoRente * deflator).toBeCloseTo(solved.achievedMonthlyReal, 8)
+  const saved = buildWhatIfFromCandidate(ws.baseline, candidate)
+  expect(saved.assumptions.etf[0]).toEqual(first)
+  expect(saved.assumptions.etf[1].monthlyContribution).toBe(solved.monthlyContribution)
+  first.status = 'paid_up'
+  expect(recommendNextEuro(buildInput(ws, 100)).find(c => c.productId === 'etf')?.targetInstanceId).toBe('etf-second')
+})
+
+it('marks a resized documented offer contribution as a model estimate without changing the quote', () => {
+  const ws = buildAnnaWorkspace()
+  ws.baseline.assumptions.insurance = [{ ...structuredClone(defaultAssumptions.insurance),
+    instanceId: 'versicherung-quote', label: 'Dokumentiertes Angebot', status: 'offered', contractStartYear: 2026,
+    monthlyContribution: 270, evidenceMap: { monthlyContribution: 'statement' }, inputStatus: { monthlyContribution: 'document' } }]
+  const candidate = recommendNextEuro(buildInput(ws, 100)).find(c => c.productId === 'versicherung')!
+  const saved = buildWhatIfFromCandidate(ws.baseline, candidate)
+  expect(saved.assumptions.insurance[0].monthlyContribution).toBe(100)
+  expect(saved.assumptions.insurance[0].inputStatus?.monthlyContribution).toBe('assumed')
+  expect(saved.assumptions.insurance[0].evidenceMap.monthlyContribution).toBe('model_estimate')
+  expect(ws.baseline.assumptions.insurance[0].monthlyContribution).toBe(270)
+  expect(ws.baseline.assumptions.insurance[0].inputStatus?.monthlyContribution).toBe('document')
+})
+
+
+it('marks a chosen active ETF top-up as entered, without retaining old document evidence', () => {
+  const ws = buildAnnaWorkspace()
+  ws.baseline.assumptions.etf[0].inputStatus = { monthlyContribution: 'document' }
+  ws.baseline.assumptions.etf[0].evidenceMap.monthlyContribution = 'statement'
+  const candidate = recommendNextEuro(buildInput(ws, 100)).find(c => c.productId === 'etf')!
+  const saved = buildWhatIfFromCandidate(ws.baseline, candidate)
+  expect(saved.assumptions.etf[0].inputStatus?.monthlyContribution).toBe('entered')
+  expect(saved.assumptions.etf[0].evidenceMap.monthlyContribution).toBe('user_confirmed')
+  expect(ws.baseline.assumptions.etf[0].inputStatus?.monthlyContribution).toBe('document')
 })

@@ -29,6 +29,8 @@ import { formatCurrency } from '../../utils/format'
 import { renderAtom } from '../../content/recommendationCopy'
 import { productIdFromInstanceId } from '../../utils/scenarioSchema'
 import { getProductMeta, type ProductId } from '../../engine/productRegistry'
+import { candidateFigures, selectedScenario } from './RecommenderCard.figures'
+import { CandidateFigureRows, FiguresBasisNote } from './RecommenderCard.figureRows'
 
 const FLEX_LABEL: Record<RecommendedCandidate['flexibilityScore'], string> = {
   high: 'Hoch',
@@ -63,6 +65,7 @@ const RANKING_KEYS: RecommenderRankingCriterion[] = [
 ]
 
 interface Props {
+  preferredEtfInstanceId?: string
   workspace: Workspace
   baselineCombined: CombinedResult
   baselinePerInstance: Record<string, ProductResult[]>
@@ -88,6 +91,7 @@ export function RecommenderCard({
   grvGrossMonthlyPension,
   marginalMonthlyEUR,
   bavOffer,
+  preferredEtfInstanceId,
   selectedScenarioId,
   onSaveAsPlan,
 }: Props) {
@@ -112,6 +116,7 @@ export function RecommenderCard({
       grvGrossMonthlyPension,
       selectedScenarioId,
       bavOffer,
+      preferredEtfInstanceId,
     })
   }, [
     workspace,
@@ -122,15 +127,23 @@ export function RecommenderCard({
     grvGrossMonthlyPension,
     selectedScenarioId,
     bavOffer,
+    preferredEtfInstanceId,
   ])
 
   const sorted = useMemo(() => {
     return rankRecommendedCandidates(candidates, ranking)
   }, [candidates, ranking])
 
+  const baselineNominal = baselineCombined.monthlyNetIncome
   const rankingMax = useMemo(() => {
-    return Math.max(0, ...sorted.map((cand) => rankingValue(cand, ranking)))
-  }, [sorted, ranking])
+    return Math.max(0, ...sorted.map((cand) => rankingValue(cand, ranking, baselineNominal)))
+  }, [sorted, ranking, baselineNominal])
+
+  const figuresContext = useMemo(
+    () => ({ workspace, baselineCombined, rules: de2026Rules, selectedScenarioId }),
+    [workspace, baselineCombined, selectedScenarioId],
+  )
+  const scenario = selectedScenario(workspace, selectedScenarioId)
 
   function toggleAtomDetails(candidateId: string) {
     setExpandedAtomIds((prev) => {
@@ -187,6 +200,7 @@ export function RecommenderCard({
           <p className="recommender-intro">
             {confidence.prefix} diese Rangliste für deine zusätzliche Sparrate:
           </p>
+          <FiguresBasisNote scenario={scenario} className="recommender-basis-note" />
 
           <div className="recommender-sort-row">
             {/* PR 6: dropped the "Beste Option für …" indicator span. The
@@ -216,7 +230,8 @@ export function RecommenderCard({
 
           <ol className="recommender-list">
             {sorted.map((cand) => {
-              const scorePct = relativeRankingPct(cand, ranking, rankingMax)
+              const scorePct = relativeRankingPct(cand, ranking, rankingMax, baselineNominal)
+              const figures = candidateFigures(cand, figuresContext)
               // Per-product color (PRODUCT_REGISTRY single source of truth);
               // Sober D ink as the neutral fallback if the registry lookup
               // misses, so we never reach for the legacy blue palette.
@@ -229,17 +244,35 @@ export function RecommenderCard({
                     ranking meter below still surfaces how each candidate
                     scores against the criterion, without crowning a winner. */}
                 <div className="recommender-candidate-header">
-                  <strong>{cand.label}</strong>
+                  <div className="recommender-candidate-title">
+                    <strong>{cand.label}</strong>
+                    {cand.isNewInstance && (
+                      <span className="recommender-candidate-product">
+                        Neue Sparform: {figures.productLabel}
+                      </span>
+                    )}
+                  </div>
                   <span className="recommender-candidate-budget">
-                    {formatCurrency(cand.grossMonthlyEUR, 0)} brutto / Mon.
-                    {cand.grossMonthlyEUR !== cand.netCashOutEUR && (
-                      <> · {formatCurrency(cand.netCashOutEUR, 0)} netto</>
+                    {formatCurrency(cand.netCashOutEUR, 0)} netto zusätzlich / Mon.
+                    {Math.abs(cand.grossMonthlyEUR - cand.netCashOutEUR) >= 0.5 && (
+                      <> · {formatCurrency(cand.grossMonthlyEUR, 0)} brutto</>
                     )}
                   </span>
                 </div>
+                {figures.productStartYear !== null && (
+                  <span className="recommender-candidate-tag recommender-candidate-tag--info">
+                    Abschluss erst ab {figures.productStartYear} möglich
+                  </span>
+                )}
                 <div className="recommender-ranking">
                   <div className="recommender-ranking-copy">
-                    <span>Relative Bewertung</span>
+                    <span>
+                      Vergleichswert · {RECOMMENDER_RANKING_LABELS[ranking]}
+                      <InfoTip
+                        label={`Vergleichswert für ${cand.label} erklären`}
+                        text={rankingExplanation(ranking)}
+                      />
+                    </span>
                     <strong>{scorePct} %</strong>
                   </div>
                   <div
@@ -258,38 +291,19 @@ export function RecommenderCard({
                     <span className="recommender-ranking-meter-fill" />
                   </div>
                 </div>
-                <div className="recommender-candidate-metrics">
-                  <span>
-                    Netto-Rente <strong>{formatCurrency(cand.medianNettoRente, 0)} / Mon.</strong>
-                  </span>
-                  <span>Flexibilität <strong>{FLEX_LABEL[cand.flexibilityScore]}</strong></span>
-                  <span>
-                    Sicherheit <strong>{formatCurrency(cand.safetyNettoRenteP10, 0)} / Mon.</strong>
-                    <InfoTip text={`90 % der simulierten Verläufe lagen über diesem monatlichen Netto-Wert (${cand.riskScoreMcPaths} Pfade).`} />
-                  </span>
-                  {/*
-                    Issue #67: show NET capital at retirement, not gross. For
-                    products with a forced annuity (Basisrente) we fall back to
-                    the contractual value at retirement and label it as
-                    annuitised so the user does not misread it as a usable
-                    lump sum.
-                   */}
-                  <span>
-                    Kapital bei Renteneinstieg{' '}
-                    <strong>{formatCurrency(cand.netCapitalAtRetirement, 0)}</strong>
-                    {cand.payoutOnly ? (
-                      <>
-                        {' '}
-                        <em className="recommender-candidate-metric-note">
-                          (annuitisiert, keine Kapitalauszahlung)
-                        </em>
-                      </>
-                    ) : (
-                      <InfoTip text="Netto verfügbar nach Steuern und ggf. KV/PV — Schätzwert auf Basis der aktuellen Annahmen." />
-                    )}
-                  </span>
-                  <span>Aufwand <strong>{EFFORT_LABEL[cand.effort.level]}</strong></span>
-                </div>
+                {/* Audit F02 / F16: every money figure comes from the shared
+                    figures module (today's euros, scope-labelled). The saved
+                    confirmation renders the same rows. */}
+                <CandidateFigureRows figures={figures} candidateLabel={cand.label}>
+                  <div className="recommender-figures__row">
+                    <dt>Flexibilität</dt>
+                    <dd>{FLEX_LABEL[cand.flexibilityScore]}</dd>
+                  </div>
+                  <div className="recommender-figures__row">
+                    <dt>Aufwand</dt>
+                    <dd>{EFFORT_LABEL[cand.effort.level]}</dd>
+                  </div>
+                </CandidateFigureRows>
                 <details className="recommender-candidate-details">
                   <summary>Flexibilität und Aufwand</summary>
                   <dl>
@@ -383,15 +397,23 @@ function detectProductId(inst: { instanceId: string }): ProductId {
   return productIdFromInstanceId(inst.instanceId) ?? 'etf'
 }
 
+/**
+ * Value behind the comparison meter. Whole-plan metrics are measured as the
+ * *gain over the baseline* (audit F16): comparing 4 055 € against 4 065 € for
+ * the whole plan reads as "96 % vs 100 %" and hides that one option buys
+ * twice the extra income of the other. The sort order is unchanged because the
+ * baseline is the same for every candidate.
+ */
 function rankingValue(
   cand: RecommendedCandidate,
   criterion: RecommenderRankingCriterion,
+  baselineNominal: number,
 ): number {
-  if (criterion === 'median_net_pension') return cand.medianNettoRente
+  if (criterion === 'median_net_pension') return Math.max(0, cand.medianNettoRente - baselineNominal)
   // Issue #67: meter normalisation tracks the net-capital metric to keep the
   // visual ranking consistent with the displayed figure.
   if (criterion === 'capital_at_retirement') return cand.netCapitalAtRetirement
-  if (criterion === 'safety') return cand.safetyNettoRenteP10
+  if (criterion === 'safety') return Math.max(0, cand.safetyNettoRenteP10 - baselineNominal)
   if (criterion === 'flexibility') return FLEX_RANK[cand.flexibilityScore]
   return cand.effort.score
 }
@@ -400,11 +422,26 @@ function relativeRankingPct(
   cand: RecommendedCandidate,
   criterion: RecommenderRankingCriterion,
   rankingMax: number,
+  baselineNominal: number,
 ): number {
   if (rankingMax <= 0) return 0
-  const raw = rankingValue(cand, criterion)
+  const raw = rankingValue(cand, criterion, baselineNominal)
   const pct = Math.max(0, Math.min(100, (raw / rankingMax) * 100))
   return Math.round(pct)
+}
+
+function rankingExplanation(criterion: RecommenderRankingCriterion): string {
+  const shared = '100 % ist der beste Vorschlag in dieser Liste, die anderen werden daran gemessen. Der Wert vergleicht nur die Vorschläge untereinander und sagt nichts über die Qualität deines Plans.'
+  if (criterion === 'median_net_pension') {
+    return `Gemessen wird die zusätzliche Netto-Rente, die das Budget kauft, nicht die Gesamtrente. ${shared}`
+  }
+  if (criterion === 'safety') {
+    return `Gemessen wird der Zuwachs im vereinfachten Risikoszenario. ${shared}`
+  }
+  if (criterion === 'capital_at_retirement') {
+    return `Gemessen wird das zusätzliche Kapital bei Renteneintritt. ${shared}`
+  }
+  return shared
 }
 
 // `buildWhatIfFromCandidate` is re-exported by the orchestration consumer

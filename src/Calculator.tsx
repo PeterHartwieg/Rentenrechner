@@ -16,6 +16,9 @@ import { useEffect, useMemo, useState } from 'react'
 // the per-pane Vergleich sidebar + its pane registry are likewise gone — the
 // compare-mode surface is now the linear Sober D `VergleichPage`.
 import { MeinPlanPage } from './features/mein-plan/MeinPlanPage'
+import type { PlanTopicIntent } from './features/mein-plan/PlanOverview'
+import { resolveTopicPreselection } from './seo/publicRouteRegistry'
+import { getProductMeta } from './app/productPresentation'
 import { VergleichPage } from './features/vergleich/VergleichPage'
 import type { ProductId } from './domain'
 import { computeBavMinimumEntitlement } from './engine/bavWarnings'
@@ -45,6 +48,7 @@ import { InventoryWizard } from './features/inventory/InventoryWizard'
 import { createFreshOnboardingScenario } from './features/inventory/onboardingDraft'
 import { useCombineSimulation } from './app/useCombineSimulation'
 import { LueckeSchliessenModal } from './features/dashboard/LueckeSchliessenModal'
+import { buildOfferActivationWhatIf } from './app/whatIfPreview'
 import { buildWhatIfFromCandidate } from './app/recommender'
 import { LegalFooter } from './features/legal/LegalFooter'
 import { ErrorStatePanel } from './ui/chrome/ErrorStatePanel'
@@ -115,6 +119,47 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
     dismissInvalidLink,
   } = useCalculatorState()
   const portfolioState = usePortfolioState()
+
+  // `?topic=<slug>` on an existing plan. `LandingPage` only auto-fires the
+  // preselection for first-time visitors, so a returning user who clicked a
+  // topic page's "jetzt berechnen" link used to land on the plain plan with
+  // the intent lost. Read once at mount, offered as a banner, cleared on use.
+  const [topicPreselection, setTopicPreselection] = useState(() => {
+    if (typeof window === 'undefined') return null
+    if (!hasStartedPlan(portfolioState.workspace)) return null
+    return resolveTopicPreselection(window.location.search)
+  })
+  const topicIntent = useMemo<PlanTopicIntent | undefined>(() => {
+    if (!topicPreselection) return undefined
+    const products = topicPreselection.visibleProducts ?? []
+    // Registry preselections pair the topic's product with ETF as the
+    // benchmark (`['etf', 'versicherung']`), so the topic product is the
+    // non-ETF one; a lone product is itself; two non-ETF products (Riester
+    // vs. AVD) name no single product.
+    const nonEtf = products.filter((id) => id !== 'etf')
+    const productId = nonEtf.length === 1 ? nonEtf[0] : products.length === 1 ? products[0] : undefined
+    const productLabel = productId ? getProductMeta(productId)?.label : undefined
+    const dismiss = () => {
+      setTopicPreselection(null)
+      const url = new URL(window.location.href)
+      url.searchParams.delete('topic')
+      window.history.replaceState(window.history.state, '', url)
+    }
+    return {
+      productLabel,
+      onAddProduct: productId
+        ? () => { dismiss(); navigate(ROUTES.vorsorgeNeu, `?produkt=${encodeURIComponent(productId)}`) }
+        : undefined,
+      onCompareExample: () => {
+        // The comparison owns its own state hook. Carry intent across the
+        // route transition instead of relying on this unmounting hook's save effect.
+        const topic = new URLSearchParams(window.location.search).get('topic')
+        dismiss()
+        navigate(ROUTES.vergleich, topic ? `?topic=${encodeURIComponent(topic)}` : undefined)
+      },
+      onDismiss: dismiss,
+    }
+  }, [topicPreselection, navigate])
 
   // Workspace-tabs collapse (this PR): the pre-existing `?view=<WorkspaceView>`
   // deep-link is gone — the tab strip it routed to was removed. Any legacy
@@ -454,6 +499,14 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
     navigate(ROUTES.vorsorgeNeu)
   }
   function handleEditSource(row: PlanSourceRow): void {
+    // The statutory row means "edit my pension figure", so it opens the same
+    // focused pension step the "Rentenangabe" link opens. Its `target`
+    // (`/eingaben`) is the general inputs page and stays the fallback for
+    // callers without the wizard.
+    if (row.key === 'statutory') {
+      handleEditPension()
+      return
+    }
     if (row.target) {
       navigate(row.target)
       return
@@ -522,6 +575,16 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
             onEditSource={handleEditSource}
             onEditProfile={handleEditProfile}
             onEditPension={handleEditPension}
+            onReviewOffer={(instanceId) => {
+              const offer = buildOfferActivationWhatIf(portfolioState.workspace, instanceId)
+              if (!offer) return
+              if (!portfolioState.workspace.whatIfs.some(saved => saved.id === offer.id)) {
+                portfolioState.addWhatIf(offer, { preserveUndo: true })
+              }
+              navigate(ROUTES.alternativen, `?id=${encodeURIComponent(offer.id)}`)
+            }}
+            topicIntent={topicIntent}
+            statutoryGrossMonthly={combineSimulation.statutoryPension.grossMonthlyPension}
             onSetTarget={(value) => portfolioState.patchBaseline({
               profile: { ...portfolioState.baseline.profile, desiredNetMonthlyPension: value },
             })}
@@ -573,6 +636,11 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
               onSaveAsPlan={(candidate) => {
                 const whatIf = buildWhatIfFromCandidate(portfolioState.baseline, candidate)
                 portfolioState.addWhatIf(whatIf)
+                return whatIf.id
+              }}
+              onOpenSaved={(id) => {
+                setShowLueckeModal(false)
+                navigate(ROUTES.alternativen, `?id=${encodeURIComponent(id)}`)
               }}
             />
           )}

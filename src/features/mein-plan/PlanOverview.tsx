@@ -1,10 +1,56 @@
-import type { ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 import type { PlanSummary, PlanSourceRow } from '../../app/planSummary'
 import type { ReadinessReason } from '../../app/resultReadiness'
 import { formatCurrency, formatPercent } from '../../utils/format'
 import { formatInputStatusForExport } from '../results/provenanceHelpers'
 import { PlanDurationText } from './PlanDurationSummary'
 import './PlanOverview.css'
+
+/**
+ * An unsigned offer in the workspace (`status: 'offered'`). Offers never count
+ * towards the household total, so they are listed apart from the source rows.
+ */
+export interface PlanOfferRow {
+  instanceId: string
+  label: string
+  productLabel: string
+  /** Quoted monthly contribution; `null` when unset. */
+  contributionMonthly: number | null
+  contributionLabel: string
+}
+
+/**
+ * A `?topic=<slug>` arrival on an existing plan. Returning users keep their
+ * data, so the intent is shown as a banner with the two useful next steps.
+ */
+export interface PlanTopicIntent {
+  /** Product the topic page was about, e.g. "Private Rentenversicherung". */
+  productLabel?: string
+  /** Add a contract or offer of that product. Absent when the topic has no product. */
+  onAddProduct?: () => void
+  /** Open the generic example comparison for the topic's products. */
+  onCompareExample: () => void
+  onDismiss: () => void
+}
+
+export interface PlanOverviewAssumptions {
+  age: number
+  grossSalaryYear: number
+  retirementAge: number
+  pensionMethodLabel: string
+  inflationRate: number
+  /** Expected annual return of the scenario the total is computed on. */
+  returnRate?: number
+  returnScenarioLabel?: string
+  /** Shared drawdown horizon for depots and Kapitalverzehr contracts. */
+  retirementEndAge?: number
+  /** Salary growth until retirement (EP-based statutory pension). */
+  salaryGrowthRate?: number
+  /** Growth of the Rentenwert until retirement. */
+  pensionValueGrowthRate?: number
+  /** Gross statutory pension in the retirement year, before tax and KV/PV. */
+  statutoryGrossMonthly?: number
+}
 
 export interface PlanOverviewProps {
   summary: PlanSummary | null
@@ -15,8 +61,14 @@ export interface PlanOverviewProps {
   moneyBasis: 'real' | 'nominal'
   onToggleMoneyBasis: () => void
   targetMonthly?: number
-  assumptions: { age: number; grossSalaryYear: number; retirementAge: number; pensionMethodLabel: string; inflationRate: number }
+  assumptions: PlanOverviewAssumptions
   notification?: { message: string; onUndo?: () => void }
+  /** Unsigned offers, listed apart from the counted sources. */
+  offers?: readonly PlanOfferRow[]
+  onEditOffer?: (offer: PlanOfferRow) => void
+  /** Opens the flow that evaluates the offer against the plan; hidden when absent. */
+  onReviewOffer?: (offer: PlanOfferRow) => void
+  topicIntent?: PlanTopicIntent
   onStart: () => void
   onAddContract: () => void
   onTryAlternative: () => void
@@ -38,7 +90,17 @@ export interface PlanOverviewProps {
 
 export function PlanOverview(props: PlanOverviewProps) {
   const { summary, retirementAge, hasStarted, hasContracts, moneyBasis, assumptions, notification } = props
+  const offers = props.offers ?? []
+  const detailsRef = useRef<HTMLDetailsElement>(null)
   const hasInflation = assumptions.inflationRate > 0
+  const statutoryRow = summary?.rows.find((row) => row.key === 'statutory')
+  const openAssumptions = () => {
+    const details = detailsRef.current
+    if (!details) return
+    details.open = true
+    details.scrollIntoView?.({ block: 'start' })
+    details.querySelector('summary')?.focus()
+  }
   const canShow = !!summary?.readiness.canShowHouseholdTotal
     && summary.readiness.status !== 'error' && summary.readiness.status !== 'incomplete'
   const total = summary && (moneyBasis === 'real' ? summary.netMonthlyTotalReal : summary.netMonthlyTotalNominal)
@@ -55,6 +117,18 @@ export function PlanOverview(props: PlanOverviewProps) {
       {notification && <div className="plan-overview__notice" role="status">
         <span>{notification.message}</span>
         {notification.onUndo && <button type="button" className="plan-overview__link" onClick={notification.onUndo}>Rückgängig</button>}
+      </div>}
+      {hasStarted && props.topicIntent && <div className="plan-overview__notice plan-overview__topic" role="status" data-testid="plan-topic-intent">
+        <p><strong>Du hast schon einen Plan.</strong>{' '}
+          {props.topicIntent.productLabel
+            ? `${props.topicIntent.productLabel}: ergänze ein Angebot oder einen Vertrag in deinem Plan, oder vergleiche ein Beispiel mit Muster-Sparformen.`
+            : 'Ergänze deine Vorsorge in deinem Plan, oder vergleiche ein Beispiel mit Muster-Sparformen.'}
+        </p>
+        <div className="plan-overview__actions">
+          {props.topicIntent.onAddProduct && props.topicIntent.productLabel && <button type="button" className="plan-overview__secondary" onClick={props.topicIntent.onAddProduct}>{props.topicIntent.productLabel} ergänzen</button>}
+          <button type="button" className="plan-overview__secondary" onClick={props.topicIntent.onCompareExample}>Beispiel vergleichen</button>
+          <button type="button" className="plan-overview__link" onClick={props.topicIntent.onDismiss}>Ausblenden</button>
+        </div>
       </div>}
       {!hasStarted ? <>
         <h1>Dein Plan beginnt hier.</h1>
@@ -78,6 +152,16 @@ export function PlanOverview(props: PlanOverviewProps) {
             <button type="button" className="plan-overview__link" onClick={props.onEditTarget}>Wunsch ändern</button>
           </aside>}
         </div>
+        {canShow && <p className="plan-overview__assumption-line" data-testid="plan-assumption-line">
+          <span>Annahmen dahinter:</span>
+          {assumptions.returnRate !== undefined && <span>Rendite {formatPercent(assumptions.returnRate, 1)} p. a.{assumptions.returnScenarioLabel ? ` (${assumptions.returnScenarioLabel})` : ''}</span>}
+          <span>Inflation {formatPercent(assumptions.inflationRate, 1)}</span>
+          <span>Rente ab {assumptions.retirementAge}</span>
+          {assumptions.retirementEndAge !== undefined && <span>Entnahme bis {assumptions.retirementEndAge}</span>}
+          <span>Einkommen {formatPercent(assumptions.salaryGrowthRate ?? 0, 1)} p. a.</span>
+          <span>Rentenwert {formatPercent(assumptions.pensionValueGrowthRate ?? 0, 1)} p. a.</span>
+          <button type="button" className="plan-overview__link" onClick={openAssumptions}>Alle Annahmen</button>
+        </p>}
         {!canShow && <div>
           <p>{summary?.readiness.status === 'error' ? 'Bitte prüfe deine Angaben und den Rechenweg.' : 'Für deine Gesamtrente fehlen noch Angaben.'}</p>
           <ul className="plan-overview__reasons">
@@ -120,6 +204,25 @@ export function PlanOverview(props: PlanOverviewProps) {
             </li>
           })}
         </ul>
+        {offers.length > 0 && <section className="plan-overview__offers" aria-labelledby="plan-overview-offers-title" data-testid="plan-offers">
+          <h2 id="plan-overview-offers-title">Angebote, noch nicht abgeschlossen</h2>
+          <p className="plan-overview__muted">Angebote zählen nicht zu deiner Rente oben. Prüfe, was sich ändern würde, bevor du unterschreibst.</p>
+          <ul className="plan-overview__sources">
+            {offers.map((offer) => <li key={offer.instanceId}>
+              <div className="plan-overview__offer">
+                <span>
+                  <strong>{offer.label}</strong>
+                  <small>{offer.productLabel} · Angebot</small>
+                  {offer.contributionMonthly !== null && <small>{offer.contributionLabel} lt. Angebot: {formatCurrency(offer.contributionMonthly)} / Monat</small>}
+                </span>
+                <span className="plan-overview__actions">
+                  {props.onReviewOffer && <button type="button" className="plan-overview__secondary" aria-label={`Angebot prüfen: ${offer.label}`} onClick={() => props.onReviewOffer?.(offer)}>Angebot prüfen</button>}
+                  <button type="button" className="plan-overview__link" aria-label={`Angebot bearbeiten: ${offer.label}`} onClick={() => props.onEditOffer?.(offer)}>Bearbeiten</button>
+                </span>
+              </div>
+            </li>)}
+          </ul>
+        </section>}
         <div className="plan-overview__actions">
           <button type="button" className="plan-overview__primary" onClick={props.onAddContract}>Vorsorge ergänzen</button>
           {hasContracts && <button type="button" className="plan-overview__secondary" onClick={props.onTryAlternative}>Änderung ausprobieren</button>}
@@ -132,11 +235,20 @@ export function PlanOverview(props: PlanOverviewProps) {
         </div>
         {props.targetEditor}
         <div className="plan-overview__disclosures">
-        <details className="plan-overview__details">
+        <details className="plan-overview__details" ref={detailsRef}>
           <summary>Angaben &amp; Annahmen prüfen</summary>
           <p>{assumptions.age} Jahre · {formatCurrency(assumptions.grossSalaryYear)} Jahreseinkommen vor Steuern · Rente ab {assumptions.retirementAge}.</p>
           <p>Rentenangabe: {assumptions.pensionMethodLabel}</p>
           <p>Inflation: {formatPercent(assumptions.inflationRate)} pro Jahr</p>
+          {assumptions.returnRate !== undefined && <p>Rendite: {formatPercent(assumptions.returnRate)} pro Jahr{assumptions.returnScenarioLabel ? ` (Szenario „${assumptions.returnScenarioLabel}“)` : ''}</p>}
+          <p>Einkommen bis zur Rente: {formatPercent(assumptions.salaryGrowthRate ?? 0)} pro Jahr · Rentenwert: {formatPercent(assumptions.pensionValueGrowthRate ?? 0)} pro Jahr{(assumptions.salaryGrowthRate ?? 0) === 0 && (assumptions.pensionValueGrowthRate ?? 0) === 0 ? ' (beides ohne Wachstum angesetzt)' : ''}</p>
+          {assumptions.retirementEndAge !== undefined && <p>Entnahme aus Depots und Kapitalverzehr geplant bis Alter {assumptions.retirementEndAge}.</p>}
+          {canShow && statutoryRow && assumptions.statutoryGrossMonthly !== undefined && assumptions.statutoryGrossMonthly > 0 && summary && <p className="plan-overview__muted" data-testid="plan-statutory-bridge">
+            {statutoryRow.label} zum Rentenbeginn: {formatCurrency(assumptions.statutoryGrossMonthly)} brutto
+            {' → '}{formatCurrency(statutoryRow.netMonthlyNominal)} netto nach Steuern und Kranken-/Pflegeversicherung
+            {hasInflation && <>{' → '}{formatCurrency(statutoryRow.netMonthlyReal)} in heutigen Euro</>}.
+            {' '}Deine Renteninformation nennt Bruttobeträge in Euro des Rentenbeginns; deshalb ist der Wert oben kleiner.
+          </p>}
           {hasInflation && <button type="button" className="plan-overview__link" onClick={props.onToggleMoneyBasis} aria-pressed={moneyBasis === 'nominal'}>Beträge zum Rentenbeginn (nominal) anzeigen</button>}
           <div className="plan-overview__actions">
             <button type="button" className="plan-overview__secondary" onClick={props.onOpenMethode}>Weitere Annahmen &amp; Rechenweg</button>

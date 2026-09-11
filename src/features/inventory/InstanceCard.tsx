@@ -34,6 +34,7 @@ import { estimateEpFromYears } from './inventoryHelpers'
 import { VintageChips } from './VintageChips'
 import type { Atom } from '../../app/recommendations'
 import { FeeSection, type FeeInputMode } from '../inputs/sections/FeeSection'
+import { hasNonAssetFees } from '../inputs/sections/feeModelHelpers'
 import { BeitragsdynamikField } from '../inputs/sections/BeitragsdynamikField'
 import { EvidenceBadge } from './EvidenceBadge'
 import { InvField, InvNumber, InvSelect, InvText } from './fields'
@@ -261,11 +262,12 @@ function Layer3Details({
   onBeitragsdynamikChange,
   bavSubsidy,
 }: Layer3Props) {
-  const [feeMode, setFeeMode] = useState<FeeInputMode>('effektivkosten')
+  const [feeMode, setFeeMode] = useState<FeeInputMode>(() => feeDetails && hasAccumulationExtras(feeDetails) ? 'aufgeschluesselt' : 'effektivkosten')
 
   // Adapter: preserve an edited Einzelposten split; otherwise derive the all-in fee from the scalar.
+  // No computed RIY exists at draft time, so FeeSection gets no `riy` and shows
+  // only the asset-charge sum (never labelled as Effektivkosten).
   const feesForInput = feeDetails ?? allInFeeDetails(effektivkostenPct)
-  const riy = feesForInput.wrapperAssetFee + feesForInput.fundAssetFee
   const handleFeesChange = (fees: FeeModel) => {
     const nextEffektivkostenPct = (fees.wrapperAssetFee + fees.fundAssetFee) * 100
     if (onFeeDetailsChange) {
@@ -290,7 +292,6 @@ function Layer3Details({
             fees={feesForInput}
             onChangeFees={handleFeesChange}
             presets={LAYER3_FEE_PRESETS}
-            riy={riy}
             feeInputMode={feeMode}
             setFeeInputMode={setFeeMode}
           />
@@ -391,15 +392,69 @@ function EtfLayer3Details({
   )
 }
 
-function allInFeeDetails(effektivkostenPct: number): FeeModel {
+/**
+ * Fee model for the Layer-1 cost field. What the scalar means depends on what
+ * the user already itemised under "Details":
+ *
+ * - With accumulation extras (fixed / contribution / acquisition charges) the
+ *   field is labelled "Laufende Kapitalgebühr (Mantel + Fonds)" and only that
+ *   asset charge is replaced (wrapper = pct, fund = 0). The itemised extras
+ *   and the Auszahlungsgebühr stay as entered.
+ * - Without extras the scalar is the quoted all-in Effektivkosten (mirrors
+ *   `FeeSection`'s all-in path): the accumulation-phase fields collapse to
+ *   the asset charge, and an existing Auszahlungsgebühr is carried over
+ *   because it is a payout-phase cost.
+ */
+function allInFeeDetails(effektivkostenPct: number, previous?: FeeModel): FeeModel {
+  const assetCharge = { wrapperAssetFee: effektivkostenPct / 100, fundAssetFee: 0 }
+  if (previous && hasAccumulationExtras(previous)) {
+    return { ...previous, ...assetCharge }
+  }
   return {
-    wrapperAssetFee: effektivkostenPct / 100,
-    fundAssetFee: 0,
+    ...assetCharge,
     contributionFee: 0,
     fixedMonthlyFee: 0,
     acquisitionCostPct: 0,
     acquisitionCostSpreadYears: 5,
-    pensionPayoutFeePct: 0,
+    pensionPayoutFeePct: previous?.pensionPayoutFeePct ?? 0,
+  }
+}
+
+/**
+ * True when accumulation-phase itemized charges exist (fixed, contribution,
+ * acquisition). A payout fee alone does not count: the all-in scalar is still
+ * the quoted accumulation Effektivkosten then, exactly as `FeeSection` treats
+ * it.
+ */
+function hasAccumulationExtras(feeDetails: FeeModel): boolean {
+  return hasNonAssetFees({ ...feeDetails, pensionPayoutFeePct: 0 })
+}
+
+/**
+ * Label + hint for the Layer-1 cost field. `effektivkostenPct` is the quoted
+ * all-in figure only while no accumulation-phase extras exist; once the user
+ * has entered fixed / contribution / acquisition charges under "Details", the
+ * scalar is just wrapper + fund and must not be called Effektivkosten.
+ */
+function effektivkostenFieldCopy(
+  feeDetails: FeeModel | undefined,
+  typicalRange?: string,
+): { label: string; hint: string } {
+  if (feeDetails && hasAccumulationExtras(feeDetails)) {
+    return {
+      label: 'Laufende Kapitalgebühr p.a. (Mantel + Fonds)',
+      hint:
+        'Aus den Einzelposten unter „Details" abgeleitet, ohne Fix-, Beitrags-, Abschluss- und Auszahlungskosten. ' +
+        'Nicht die Effektivkostenquote aus dem PIB. Eine Eingabe hier ändert nur die laufende Kapitalgebühr; ' +
+        'die Fix-, Beitrags-, Abschluss- und Auszahlungskosten unter „Details" bleiben erhalten.',
+    }
+  }
+  return {
+    label: 'Effektivkosten p.a. laut PIB/KID (all-in)',
+    hint:
+      'Renditeminderung aus dem Produktinformationsblatt, alle Kosten enthalten.' +
+      (typicalRange ? ` ${typicalRange}` : '') +
+      ' Einzelposten lassen sich unter „Details" erfassen.',
   }
 }
 
@@ -523,8 +578,7 @@ export function BavCard({
         </InvField>
 
         <InvField
-          label="Effektivkosten p.a. (aus PIB/KID)"
-          hint="Renditeminderung aus dem Produktinformationsblatt. Typisch 0,6–1,5 % für ETF-Nettotarife."
+          {...effektivkostenFieldCopy(draft.feeDetails, 'Typisch 0,6–1,5 % für ETF-Nettotarife.')}
         >
           <InvNumber
             value={draft.effektivkostenPct}
@@ -534,7 +588,7 @@ export function BavCard({
             suffix="% p.a."
             onChange={(n) => {
               setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
-              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n) })
+              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n, draft.feeDetails) })
             }}
           />
           {shouldRenderEvidenceBadge(draft, 'fees.wrapperAssetFee', draft.effektivkostenPct <= 0) && (
@@ -617,8 +671,7 @@ export function PavCard({
       <p className="inventory-instance-section-heading">pAV-spezifisch</p>
       <div className="inventory-field-grid">
         <InvField
-          label="Effektivkosten p.a. (aus PIB/KID)"
-          hint="Renditeminderung aus dem Produktinformationsblatt. Typisch 0,5–1,5 % für Nettotarife."
+          {...effektivkostenFieldCopy(draft.feeDetails, 'Typisch 0,5–1,5 % für Nettotarife.')}
         >
           <InvNumber
             value={draft.effektivkostenPct}
@@ -628,7 +681,7 @@ export function PavCard({
             suffix="% p.a."
             onChange={(n) => {
               setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
-              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n) })
+              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n, draft.feeDetails) })
             }}
           />
           {shouldRenderEvidenceBadge(draft, 'fees.wrapperAssetFee', draft.effektivkostenPct <= 0) && (
@@ -766,10 +819,7 @@ export function BasisrenteCard({ draft, onChange, setEvidence }: BaseProps<Basis
 
       <p className="inventory-instance-section-heading">Basisrente-spezifisch</p>
       <div className="inventory-field-grid">
-        <InvField
-          label="Effektivkosten p.a. (aus PIB/KID)"
-          hint="Renditeminderung aus dem Produktinformationsblatt."
-        >
+        <InvField {...effektivkostenFieldCopy(draft.feeDetails)}>
           <InvNumber
             value={draft.effektivkostenPct}
             min={0}
@@ -778,7 +828,7 @@ export function BasisrenteCard({ draft, onChange, setEvidence }: BaseProps<Basis
             suffix="% p.a."
             onChange={(n) => {
               setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
-              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n) })
+              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n, draft.feeDetails) })
             }}
           />
           {shouldRenderEvidenceBadge(draft, 'fees.wrapperAssetFee', draft.effektivkostenPct <= 0) && (

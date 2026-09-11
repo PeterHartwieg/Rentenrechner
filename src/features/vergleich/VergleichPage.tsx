@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import './VergleichPage.css'
 import type { ProductId, ScenarioAssumptions, PersonalProfile } from '../../domain'
 import type { SimulationResultBundle } from '../../app/useSimulationResult'
@@ -26,6 +26,8 @@ interface Props {
   selectedScenarioId: string
   onSelectScenario: (id: string) => void
   onEditSetup?: () => void
+  /** Which person the comparison runs on, and whether that matches the plan. Rendered under the H1. */
+  profileNote?: ReactNode
   navigate?: (target: Route, search?: string) => void
   onExportCsv?: () => void
   onCopyLink?: () => void
@@ -41,6 +43,7 @@ export function VergleichPage({
   selectedScenarioId,
   onSelectScenario,
   onEditSetup,
+  profileNote,
   navigate,
   onExportCsv,
   onCopyLink,
@@ -98,6 +101,7 @@ export function VergleichPage({
         <article className="vergleich-body">
           <div className="vergleich-kicker">Sparformen vergleichen</div>
           <h1 className="vergleich-headline" tabIndex={-1}>Sparformen im Vergleich</h1>
+          {profileNote}
           {rows.length === 0 ? (
             <div className="vergleich-empty">
               <h2>Noch keine Sparform ausgewählt</h2>

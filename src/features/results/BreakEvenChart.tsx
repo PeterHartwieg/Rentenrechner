@@ -308,7 +308,8 @@ export function BreakEvenChart({
               />
               <YAxis
                 tickFormatter={(value) => `${formatNumber(Number(value) / 1_000)}k`}
-                width={density.yAxisWidth}
+                width={Math.max(64, density.yAxisWidth)}
+                tick={{ fontSize: 12 }}
                 label={density.axisLabelsVisible ? {
                   value: 'EUR',
                   angle: -90,
@@ -505,20 +506,26 @@ export function BreakEvenChart({
               GRV Netto-Einzahlung kumuliert
             </span>
           )}
-          <span
-            className="lifecycle-legend__item"
-            {...qaTargetAttrs(qaEnabled, { id: 'results.breakEvenChart.legend.breakEven', label: 'Break-even', precision: 'exact' })}
-          >
-            <span className="lifecycle-legend__dot" />
-            Break-even
-          </span>
-          <span
-            className="lifecycle-legend__item"
-            {...qaTargetAttrs(qaEnabled, { id: 'results.breakEvenChart.legend.leibrenteCrossover', label: 'Leibrente überholt Kapitalverzehr', precision: 'exact' })}
-          >
-            <span className="lifecycle-legend__dot lifecycle-legend__dot--ring" />
-            Leibrente überholt Kapitalverzehr
-          </span>
+          {/* Marker entries only when the marker is actually drawn, so a
+              single ETF does not carry a "Leibrente überholt" legend row. */}
+          {breakEvenPoints.length > 0 && (
+            <span
+              className="lifecycle-legend__item"
+              {...qaTargetAttrs(qaEnabled, { id: 'results.breakEvenChart.legend.breakEven', label: 'Break-even', precision: 'exact' })}
+            >
+              <span className="lifecycle-legend__dot" />
+              Break-even
+            </span>
+          )}
+          {inFrameCrossovers.length > 0 && (
+            <span
+              className="lifecycle-legend__item"
+              {...qaTargetAttrs(qaEnabled, { id: 'results.breakEvenChart.legend.leibrenteCrossover', label: 'Leibrente überholt Kapitalverzehr', precision: 'exact' })}
+            >
+              <span className="lifecycle-legend__dot lifecycle-legend__dot--ring" />
+              Leibrente überholt Kapitalverzehr
+            </span>
+          )}
         </div>
       </div>
       {leibrenteCrossovers.length > 0 && (
@@ -715,7 +722,7 @@ function BreakEvenAccessibleTable({
       </thead>
       <tbody>
         <tr>
-          <td>Benchmark (alle Produkte)</td>
+          <td>Vergleichswert: eigene Beiträge</td>
           <td>{formatCurrency(totalPaidIn, 0)}</td>
           <td>-</td>
           <td>-</td>

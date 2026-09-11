@@ -138,3 +138,73 @@ describe('Compare-mode CSV export aligns with the comparison surface', () => {
     expect(screen.queryByText('Dein Plan beginnt hier.')).toBeNull()
   })
 })
+
+describe('plan navigation and topic arrival (audit F08 / F18)', () => {
+  function seedStartedCombinePlan(): void {
+    let seed: Workspace = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
+    seed = { ...seed, mode: 'combine' }
+    seed = addInstanceToWorkspace(seed, 'etf')
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+  }
+
+  it('opens the focused pension step when the statutory row is clicked', async () => {
+    seedStartedCombinePlan()
+    window.history.pushState(null, '', '/')
+    render(<App />)
+    await waitForCalculator()
+    fireEvent.click(await screen.findByRole('button', { name: 'Gesetzliche Rente bearbeiten' }))
+    expect((await screen.findAllByText('Deine Rentenangabe')).length).toBeGreaterThan(0)
+    expect(screen.queryByText('Deine Angaben')).toBeNull()
+  })
+
+  it('keeps a topic arrival as a banner for a returning user and clears it on dismiss', async () => {
+    seedStartedCombinePlan()
+    window.history.pushState(null, '', '/?topic=private-rentenversicherung-rechner')
+    render(<App />)
+    await waitForCalculator()
+    const banner = await screen.findByTestId('plan-topic-intent')
+    expect(banner).toHaveTextContent('Private Rentenversicherung')
+    expect(screen.getByText('Deine Rente im Überblick')).toBeDefined()
+    fireEvent.click(within(banner).getByRole('button', { name: 'Ausblenden' }))
+    expect(screen.queryByTestId('plan-topic-intent')).toBeNull()
+    expect(window.location.search).not.toContain('topic=')
+  })
+})
+
+
+it('reviews the clicked offer at its quoted contribution without activating the plan', async () => {
+  let seed: Workspace = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
+  seed = { ...seed, mode: 'combine' }
+  seed = addInstanceToWorkspace(seed, 'etf')
+  seed = addInstanceToWorkspace(seed, 'versicherung')
+  seed = addInstanceToWorkspace(seed, 'versicherung')
+  seed.baseline.assumptions.insurance[0].label = 'Erstes Angebot'
+  seed.baseline.assumptions.insurance[0].status = 'offered'
+  seed.baseline.assumptions.insurance[0].monthlyContribution = 270
+  seed.baseline.assumptions.insurance[1].label = 'Zweites Angebot'
+  seed.baseline.assumptions.insurance[1].status = 'offered'
+  seed.baseline.assumptions.insurance[1].monthlyContribution = 350
+  localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+  render(<App />)
+  await waitForCalculator()
+  fireEvent.click(await screen.findByRole('button', { name: 'Angebot prüfen: Zweites Angebot' }))
+  expect(await screen.findByText('Danach: 350 € / Monat')).toBeInTheDocument()
+  expect(window.location.pathname).toBe('/alternativen')
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_V2)!) as Workspace
+  expect(saved.baseline.assumptions.insurance.map(i => i.status)).toEqual(['offered', 'offered'])
+})
+
+it('carries the topic product pair across navigation to the comparison', async () => {
+  seedCompareModeWithEtfOnly()
+  let seed: Workspace = JSON.parse(JSON.stringify(defaultWorkspace)) as Workspace
+  seed = addInstanceToWorkspace({ ...seed, mode: 'combine' }, 'etf')
+  localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seed))
+  window.history.pushState(null, '', '/?topic=private-rentenversicherung-rechner')
+  render(<App />)
+  await waitForCalculator()
+  fireEvent.click(await screen.findByRole('button', { name: 'Beispiel vergleichen' }))
+  expect(await screen.findByRole('heading', { name: 'Private Rentenversicherung' })).toBeInTheDocument()
+  const savedComparison = JSON.parse(localStorage.getItem(STORAGE_KEY_V1)!)
+  expect(savedComparison.assumptions.visibleProducts).toEqual(['etf', 'versicherung'])
+  expect(screen.queryByRole('heading', { name: 'Betriebliche Altersvorsorge (bAV)' })).not.toBeInTheDocument()
+})

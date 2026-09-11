@@ -24,6 +24,7 @@ import { render, cleanup, fireEvent } from '@testing-library/react'
 import { defaultAssumptions } from '../../data/defaultScenario'
 import { isProductAllDefaults, buildProductDefaultsSummary } from './productDefaultsHelpers'
 import { ProductEditCards } from './ProductEditCards'
+import { RIY_UNAVAILABLE, RIY_UNAVAILABLE_REASON } from './riyAvailability'
 import type { ProductResult, ScenarioAssumptions } from '../../domain'
 
 afterEach(() => cleanup())
@@ -238,6 +239,35 @@ describe('ProductEditCards – defaults notice', () => {
     expect(queryByText('Monatsbeitrag')).toBeNull()
     expect(queryByText('Eigenbeitrag')).toBeNull()
     expect(getAllByText(/Netto-Beitrag/).length).toBeGreaterThan(0)
+  })
+
+  it('shows the Effektivkosten metric as unavailable when the RIY is zero but fees were charged', () => {
+    const legacyZero = { ...makeResult('versicherung'), accumulationRiy: 0, totalFees: 1_000 }
+    const { getByText, container } = render(
+      <ProductEditCards
+        selectedResults={[legacyZero]}
+        assumptions={defaultAssumptions}
+        onAssumptionsChange={vi.fn()}
+      />,
+    )
+    const value = getByText(RIY_UNAVAILABLE)
+    expect(value.getAttribute('title')).toBe(RIY_UNAVAILABLE_REASON)
+    expect(value.textContent).not.toContain('p.a.')
+    expect(container.textContent).not.toContain('0,00 %')
+  })
+
+  it('hides the Effektivkosten metric for a genuine zero-fee product and shows the rate otherwise', () => {
+    const feeFree = { ...makeResult('etf'), accumulationRiy: 0, totalFees: 0 }
+    const priced = { ...makeResult('bav'), accumulationRiy: 0.0125 }
+    const { queryByText, getByText } = render(
+      <ProductEditCards
+        selectedResults={[feeFree, priced]}
+        assumptions={defaultAssumptions}
+        onAssumptionsChange={vi.fn()}
+      />,
+    )
+    expect(queryByText(RIY_UNAVAILABLE)).toBeNull()
+    expect(getByText('1,25 % p.a.')).not.toBeNull()
   })
 
   it.each([

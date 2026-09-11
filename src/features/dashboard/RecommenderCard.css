@@ -193,29 +193,93 @@
   transition: width 160ms ease;
 }
 
-/* ---- Candidate metric row ---------------------------------------------- */
+/* ---- Money-basis note (today's euros + scenario) ----------------------- */
 
-.recommender-candidate-metrics {
+.recommender-basis-note {
+  margin: 0;
+  font-family: var(--rw-font-sans);
+  color: var(--rw-ink-soft);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.recommender-basis-note strong {
+  color: var(--rw-ink);
+  font-weight: 600;
+}
+
+.recommender-candidate-title {
   display: flex;
-  flex-wrap: wrap;
-  gap: 14px 22px;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recommender-candidate-product {
+  font-family: var(--rw-font-sans);
+  color: var(--rw-ink-faint);
+  font-size: 0.8rem;
+}
+
+/* ---- Candidate figure rows (shared with the saved-step confirmation) --- */
+
+.recommender-figures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 22px;
+  margin: 0;
+  padding: 10px 0 2px;
   font-family: var(--rw-font-sans);
   font-size: 0.86rem;
   color: var(--rw-ink-soft);
 }
 
-.recommender-candidate-metrics strong {
+.recommender-figures__row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.recommender-figures__row--lead {
+  grid-column: 1 / -1;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rw-rule-soft);
+}
+
+.recommender-figures__row dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--rw-font-mono);
+  color: var(--rw-ink-faint);
+  font-size: 0.7rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.recommender-figures__row dd {
+  margin: 0;
   font-family: var(--rw-font-mono);
   font-weight: 600;
   color: var(--rw-ink);
   font-variant-numeric: tabular-nums;
 }
 
-.recommender-candidate-metric-note {
-  margin-left: 4px;
+.recommender-figures__row--lead dd {
+  font-size: 1.15rem;
+}
+
+.recommender-figures__note {
+  font-family: var(--rw-font-sans);
   color: var(--rw-ink-faint);
   font-size: 0.78rem;
-  font-style: normal;
+  font-weight: 400;
+}
+
+@media (max-width: 639px) {
+  .recommender-figures {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ---- Atom disclosure (rule/legal copy, collapsed by default) ----------- */
