@@ -233,12 +233,14 @@ export function buildProductResult<
     fees: params.fees,
     policy: accumulationPolicy,
   })
+  // A tax-bearing accumulation also needs a like-for-like benchmark: comparing
+  // its capital with a tax-free annuity would report Vorabpauschale as fees.
   const zeroFeeProjection = !params.policy?.stochasticReturnPath
-    && hasCustomGrossReturnPath(
+    && (accumulationPolicy?.vorabpauschale || hasCustomGrossReturnPath(
       accumulationPolicy,
       params.scenario.annualReturn,
       monthsToRetirement,
-    )
+    ))
     ? projectAccumulation({
         productId: params.productId,
         currentAge: params.profile.age,
@@ -276,6 +278,16 @@ export function buildProductResult<
     payoutReturn,
   })
 
+  // The ETF RIY inversion models one opening balance and level monthly payments.
+  // A changing contribution or dated transfer has a different cashflow shape;
+  // returning 0 keeps fee-bearing results behind availableRiy's unavailable gate.
+  const unsupportedRiyCashflows = params.productId === 'etf' && !!(
+    accumulationPolicy?.contributionGrowth?.annualRate
+    || accumulationPolicy?.yearlyContributions
+    || accumulationPolicy?.capitalInjections?.length
+    || accumulationPolicy?.capitalWithdrawals?.length
+  )
+
   return {
     productId: params.productId,
     label: params.label,
@@ -305,12 +317,13 @@ export function buildProductResult<
       payout.afterTaxLumpSum !== null
         ? capitalMultipleAnnualized(payout.afterTaxLumpSum, effectiveProjection.totalUserCost, yearsToRetirement)
         : 0,
-    accumulationRiy: computeRIY(
+    accumulationRiy: unsupportedRiyCashflows ? 0 : computeRIY(
       params.monthlyProductContribution,
       monthsToRetirement,
       params.scenario.annualReturn,
       effectiveProjection.capital,
       zeroFeeProjection?.capital,
+      params.productId === 'etf' ? accumulationPolicy?.initialCapital : undefined,
     ),
     rows: effectiveProjection.rows,
     ...payout,

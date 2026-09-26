@@ -560,6 +560,8 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
       {isCombineMode && (
         <div className="mein-plan-host">
           <MeinPlanPage
+            moneyBasis={ui.moneyBasis}
+            onMoneyBasisChange={ui.setMoneyBasis}
             workspace={planWorkspace}
             perInstance={combineSimulation.perInstance}
             selectedScenarioId={combineBasisScenarioId}
@@ -655,6 +657,8 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
           link uses SPA navigation to `/vergleich/details`. */}
       {!isCombineMode && (
         <VergleichPage
+          moneyBasis={ui.moneyBasis}
+          onMoneyBasisChange={ui.setMoneyBasis}
           profile={profile}
           assumptions={assumptions}
           result={result}

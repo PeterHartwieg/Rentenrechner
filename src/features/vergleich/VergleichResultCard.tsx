@@ -4,8 +4,11 @@ import type { AnyWorkspaceInstance } from '../../app/resultReadiness'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { formatCurrency, formatPercent } from '../../utils/format'
 import type { VergleichTableRow } from './vergleichRows'
+import { displayAtMoneyBasis, type MoneyBasis } from '../../ui/moneyBasis'
 
 interface Props {
+  moneyBasis: MoneyBasis
+  deflator: number
   row: VergleichTableRow
   profile: PersonalProfile
   assumptions: ScenarioAssumptions
@@ -23,7 +26,7 @@ function durationLabel(duration: DurationDescriptor): string {
   }
 }
 
-export function VergleichResultCard({ row, profile, assumptions, ownMoneyMonthly, effectiveNetCost, scenarioId }: Props) {
+export function VergleichResultCard({ row, profile, assumptions, ownMoneyMonthly, effectiveNetCost, scenarioId, moneyBasis, deflator }: Props) {
   const entry = PRODUCT_REGISTRY.find((entry) => entry.metadata.id === row.productId)!
   const product = assumptions[entry.assumptionsKey]
   // The selector only reads payout fields. Compare assumptions have these same
@@ -42,7 +45,7 @@ export function VergleichResultCard({ row, profile, assumptions, ownMoneyMonthly
     <article className="vergleich-result-card" data-testid={`vergleich-result-${row.productId}`}
       aria-labelledby={`vergleich-result-title-${row.productId}`}>
       <h2 id={`vergleich-result-title-${row.productId}`}>{row.label}</h2>
-      <div className="vergleich-result-number" data-qa-sensitive="true">{formatCurrency(row.netMonthlyPayout)}</div>
+      <div className="vergleich-result-number" data-qa-sensitive="true">{formatCurrency(displayAtMoneyBasis(row.netMonthlyPayout, moneyBasis, deflator))}</div>
       <p className="vergleich-muted">Geschätzt · netto pro Monat</p>
       <p className="vergleich-result-duration"><strong>{durationLabel(duration)}</strong><br />
         <small>{duration.kind === 'lifelong' ? 'Auch wenn du älter wirst.' : 'Danach endet diese Auszahlung.'}</small>

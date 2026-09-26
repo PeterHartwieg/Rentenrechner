@@ -40,6 +40,7 @@ import { PrintReport } from '../results/PrintReport'
 import { VergleichPage } from './VergleichPage'
 import { VergleichJourneyView } from './VergleichJourneyView'
 import { profileDiffersFrom, type PlanProfileSummary } from './planProfileSummary'
+import type { MoneyBasis } from '../../ui/moneyBasis'
 
 /**
  * The control surface the `/vergleich` presentation layer consumes. Every
@@ -84,6 +85,8 @@ export interface VergleichJourneyControls {
 
 interface Props {
   navigate: (target: Route, search?: string) => void
+  moneyBasis?: MoneyBasis
+  onMoneyBasisChange?: (basis: MoneyBasis) => void
   /**
    * Landing-page choice forwarded from `App.tsx` when the user picked
    * "Vergleich" (or arrived via a `?topic=` preselection with
@@ -97,7 +100,7 @@ const ALL_PRODUCT_IDS: readonly ProductId[] = PRODUCT_REGISTRY.map(
   (entry) => entry.metadata.id as ProductId,
 )
 
-export function VergleichJourneyPage({ navigate, pendingChoice, onPendingChoiceConsumed }: Props) {
+export function VergleichJourneyPage({ navigate, pendingChoice, onPendingChoiceConsumed, moneyBasis, onMoneyBasisChange }: Props) {
   const {
     profile,
     setProfile,
@@ -237,6 +240,8 @@ export function VergleichJourneyPage({ navigate, pendingChoice, onPendingChoiceC
         onToggleProduct={toggleProduct}
         renderResult={(onEditSetup, profileNote) => (
           <VergleichPage
+            moneyBasis={moneyBasis}
+            onMoneyBasisChange={onMoneyBasisChange}
             onEditSetup={onEditSetup}
             profileNote={profileNote}
             profile={profile}

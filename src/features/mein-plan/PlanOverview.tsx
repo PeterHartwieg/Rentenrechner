@@ -2,6 +2,8 @@ import { useRef, type ReactNode } from 'react'
 import type { PlanSummary, PlanSourceRow } from '../../app/planSummary'
 import type { ReadinessReason } from '../../app/resultReadiness'
 import { formatCurrency, formatPercent } from '../../utils/format'
+import { MoneyBasisSelector } from '../../ui/MoneyBasisSelector'
+import type { MoneyBasis } from '../../ui/moneyBasis'
 import { formatInputStatusForExport } from '../results/provenanceHelpers'
 import { PlanDurationText } from './PlanDurationSummary'
 import './PlanOverview.css'
@@ -58,8 +60,8 @@ export interface PlanOverviewProps {
   hasStarted: boolean
   hasContracts: boolean
   savedAlternativeCount: number
-  moneyBasis: 'real' | 'nominal'
-  onToggleMoneyBasis: () => void
+  moneyBasis: MoneyBasis
+  onMoneyBasisChange: (basis: MoneyBasis) => void
   targetMonthly?: number
   assumptions: PlanOverviewAssumptions
   notification?: { message: string; onUndo?: () => void }
@@ -93,6 +95,7 @@ export function PlanOverview(props: PlanOverviewProps) {
   const offers = props.offers ?? []
   const detailsRef = useRef<HTMLDetailsElement>(null)
   const hasInflation = assumptions.inflationRate > 0
+  const canSwitchBasis = hasInflation && (summary?.deflator ?? 1) < 1
   const statutoryRow = summary?.rows.find((row) => row.key === 'statutory')
   const openAssumptions = () => {
     const details = detailsRef.current
@@ -136,6 +139,7 @@ export function PlanOverview(props: PlanOverviewProps) {
         <button type="button" className="plan-overview__primary" onClick={props.onStart}>Meine Rente einschätzen</button>
       </> : <>
         <h1>Deine Rente im Überblick</h1>
+        {canSwitchBasis && <MoneyBasisSelector value={moneyBasis} onChange={props.onMoneyBasisChange} />}
         <div className="plan-overview__hero">
           <div className="plan-overview__figure">
             <p className="plan-overview__kicker">{canShow ? 'Geschätzt aus deinen Angaben' : summary?.readiness.status === 'error' ? 'Berechnung nicht möglich' : 'Noch offen'}</p>
@@ -249,7 +253,6 @@ export function PlanOverview(props: PlanOverviewProps) {
             {hasInflation && <>{' → '}{formatCurrency(statutoryRow.netMonthlyReal)} in heutigen Euro</>}.
             {' '}Deine Renteninformation nennt Bruttobeträge in Euro des Rentenbeginns; deshalb ist der Wert oben kleiner.
           </p>}
-          {hasInflation && <button type="button" className="plan-overview__link" onClick={props.onToggleMoneyBasis} aria-pressed={moneyBasis === 'nominal'}>Beträge zum Rentenbeginn (nominal) anzeigen</button>}
           <div className="plan-overview__actions">
             <button type="button" className="plan-overview__secondary" onClick={props.onOpenMethode}>Weitere Annahmen &amp; Rechenweg</button>
             <button type="button" className="plan-overview__secondary" onClick={props.onOpenDuration}>Auszahlungen im Alter</button>

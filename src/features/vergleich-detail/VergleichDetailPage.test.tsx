@@ -60,6 +60,7 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
     const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
     expect(container.querySelector('.vd-kicker')).not.toBeNull()
     expect(container.querySelector('.vd-headline')).not.toBeNull()
+    expect(container.textContent).toContain('Kapital und Rentenbeträge zum Rentenbeginn (nominal), ohne Umrechnung in heutige Kaufkraft.')
     const grid = container.querySelector('.vd-card-grid')
     expect(grid).not.toBeNull()
     const cards = container.querySelectorAll('.vd-card')

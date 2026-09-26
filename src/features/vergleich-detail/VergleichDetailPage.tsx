@@ -267,6 +267,7 @@ export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScen
               Alter monatlich übrig bleibt.
             </p>
           )}
+          <p className="vd-lead">Kapital und Rentenbeträge zum Rentenbeginn (nominal), ohne Umrechnung in heutige Kaufkraft. Beiträge beziehen sich auf die Einzahlungen in die Sparform.</p>
 
           <div className="vd-backline">
             <a

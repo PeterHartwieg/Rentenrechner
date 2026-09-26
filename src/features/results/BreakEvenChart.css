@@ -47,7 +47,7 @@
   border: 1px solid var(--rw-rule-soft);
   border-radius: 6px;
   font-size: 11px;
-  color: var(--rw-ink-faint);
+  color: var(--rw-ink-soft);
   pointer-events: none;
 }
 
@@ -59,8 +59,8 @@
 }
 
 .lifecycle-legend__item--baseline {
-  opacity: 0.7;
-  font-style: italic;
+  color: var(--rw-ink-soft);
+  font-weight: 600;
 }
 
 .lifecycle-legend__line {
@@ -196,7 +196,8 @@
     padding: 0;
     background: transparent;
     border: none;
-    font-size: 12px;
+    font-size: 13px;
+    line-height: 1.4;
     pointer-events: auto;
   }
 

@@ -33,7 +33,7 @@ function props(overrides: Partial<PlanOverviewProps> = {}): PlanOverviewProps {
   return {
     summary, retirementAge: 67, hasStarted: true, hasContracts: true, savedAlternativeCount: 2,
     moneyBasis: 'real', assumptions: { age: 42, grossSalaryYear: 60000, retirementAge: 67, pensionMethodLabel: 'lt. Renteninformation', inflationRate: 0.02 },
-    onToggleMoneyBasis: vi.fn(), onStart: vi.fn(), onAddContract: vi.fn(), onTryAlternative: vi.fn(),
+    onMoneyBasisChange: vi.fn(), onStart: vi.fn(), onAddContract: vi.fn(), onTryAlternative: vi.fn(),
     onOpenSavedAlternatives: vi.fn(), onEditProfile: vi.fn(), onEditPension: vi.fn(), onEditTarget: vi.fn(),
     onEditSource: vi.fn(), onNavigateReason: vi.fn(), onOpenDuration: vi.fn(), onOpenKapital: vi.fn(),
     onOpenMethode: vi.fn(), onOpenEingaben: vi.fn(), ...overrides,
@@ -172,12 +172,11 @@ describe('PlanOverview', () => {
   it('switches displayed totals and rows through the controlled money-basis callback', () => {
     const p = props()
     const { rerender } = render(<PlanOverview {...p} />)
-    fireEvent.click(screen.getByText('Angaben & Annahmen prüfen'))
-    const toggle = screen.getByRole('button', { name: 'Beträge zum Rentenbeginn (nominal) anzeigen' })
+    const toggle = screen.getByRole('button', { name: 'Zum Rentenbeginn' })
     expect(screen.getByText('In heutigen Euro')).toBeVisible()
     expect(toggle).toHaveAttribute('aria-pressed', 'false')
     fireEvent.click(toggle)
-    expect(p.onToggleMoneyBasis).toHaveBeenCalledOnce()
+    expect(p.onMoneyBasisChange).toHaveBeenCalledWith('nominal')
     rerender(<PlanOverview {...p} moneyBasis="nominal" />)
     expect(toggle).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByText(money(2500))).toBeVisible()
@@ -190,8 +189,7 @@ describe('PlanOverview', () => {
     render(<PlanOverview {...p} assumptions={{ ...p.assumptions, inflationRate: 0 }} />)
     expect(screen.getByText('Ohne Inflationsannahme (nominal)')).toBeVisible()
     expect(screen.queryByText('In heutigen Euro')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByText('Angaben & Annahmen prüfen'))
-    expect(screen.queryByRole('button', { name: 'Beträge zum Rentenbeginn (nominal) anzeigen' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Beträge anzeigen' })).not.toBeInTheDocument()
   })
 
   it('keeps deeper sections collapsed and exposes notification undo', () => {

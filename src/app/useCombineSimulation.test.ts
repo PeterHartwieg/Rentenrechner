@@ -607,7 +607,7 @@ describe('PKV retirement deductions (#390, #400)', () => {
       combinedByScenarioId: { basis: combined }, scenarioLabels: { basis: 'Basis' },
       perInstance: bundle.perInstance, profile: ws.baseline.profile, rules: de2026Rules,
     })
-    expect(csv).toContain('Private KV/PV abzgl. Zuschuss §106 SGB VI mtl. (EUR)')
+    expect(csv).toContain('Private KV/PV abzgl. Zuschuss §106 SGB VI mtl. (EUR nominal)')
     expect(csv).toContain('412.50')
   })
 })

@@ -7,6 +7,9 @@ import { projectAccumulation } from '../accumulation'
 import { etfPayoutSchedule } from '../etfPayout'
 import { computeGrossMonthlyPayout, monthlyPayoutFromCapital } from '../payoutMath'
 import { simulateRetirementComparison } from '../simulate'
+import { buildEtfCalculationContext } from '../simulationContext'
+import { simulateEtf } from './etf'
+import { availableRiy } from '../../features/results/riyAvailability'
 
 describe('German 2026 tax helper', () => {
   it('keeps income below the basic allowance tax-free', () => {
@@ -299,15 +302,127 @@ describe('#56 pension payout fee — ETF non-effect', () => {
 })
 
 describe('#57 accumulationRiy — ETF', () => {
+  it('includes an opening balance when measuring the annual fee reduction', () => {
+    const result = simulateEtf(buildEtfCalculationContext({
+      profile: { ...defaultProfile, age: 57, retirementAge: 67 },
+      assumptions: {
+        ...defaultAssumptions,
+        etf: { ...defaultAssumptions.etf, annualAssetFee: 0.01 },
+      },
+      rules: de2026Rules,
+      monthlyUserCost: 100,
+      instanceCapitalPolicy: { initialCapital: 10_000 },
+      saverAllowanceOverride: () => 1_000_000,
+    }), { id: 'basis', label: 'Basis', annualReturn: 0.05 })
+
+    expect(result.totalFees).toBeGreaterThan(0)
+    expect(result.accumulationRiy).toBeCloseTo(0.05 - (1.05 * 0.99 - 1), 10)
+  })
+
+  it('reports zero costs for a fee-free ETF with an opening balance', () => {
+    const result = simulateEtf(buildEtfCalculationContext({
+      profile: { ...defaultProfile, age: 57, retirementAge: 67 },
+      assumptions: {
+        ...defaultAssumptions,
+        etf: { ...defaultAssumptions.etf, annualAssetFee: 0 },
+      },
+      rules: de2026Rules,
+      monthlyUserCost: 100,
+      instanceCapitalPolicy: { initialCapital: 10_000 },
+      saverAllowanceOverride: () => 1_000_000,
+    }), { id: 'basis', label: 'Basis', annualReturn: 0.05 })
+
+    expect(result.totalFees).toBe(0)
+    expect(availableRiy(result)).toBe(0)
+  })
+
+  it('measures fee drag on a paid-up ETF from its opening balance', () => {
+    const result = simulateEtf(buildEtfCalculationContext({
+      profile: { ...defaultProfile, age: 57, retirementAge: 67 },
+      assumptions: {
+        ...defaultAssumptions,
+        etf: { ...defaultAssumptions.etf, annualAssetFee: 0.01 },
+      },
+      rules: de2026Rules,
+      monthlyUserCost: 0,
+      instanceCapitalPolicy: { initialCapital: 10_000 },
+      saverAllowanceOverride: () => 1_000_000,
+    }), { id: 'basis', label: 'Basis', annualReturn: 0.05 })
+
+    expect(result.accumulationRiy).toBeCloseTo(0.0105, 10)
+  })
+
+  it('does not publish a misleading RIY for contribution growth or transfers', () => {
+    const common = {
+      profile: { ...defaultProfile, age: 57, retirementAge: 67 },
+      rules: de2026Rules,
+      monthlyUserCost: 100,
+      saverAllowanceOverride: () => 1_000_000,
+    }
+    const scenario = { id: 'basis', label: 'Basis', annualReturn: 0.05 } as const
+    const growing = simulateEtf(buildEtfCalculationContext({
+      ...common,
+      assumptions: {
+        ...defaultAssumptions,
+        etf: { ...defaultAssumptions.etf, annualAssetFee: 0.01, annualContributionGrowthRate: 0.03 },
+      },
+    }), scenario)
+    const transferred = simulateEtf(buildEtfCalculationContext({
+      ...common,
+      assumptions: {
+        ...defaultAssumptions,
+        etf: { ...defaultAssumptions.etf, annualAssetFee: 0.01 },
+      },
+      instanceCapitalPolicy: { initialCapital: 10_000, capitalInjections: [{ year: 3, amount: 2_000 }] },
+    }), scenario)
+
+    expect(growing.totalFees).toBeGreaterThan(0)
+    expect(transferred.totalFees).toBeGreaterThan(0)
+    expect(availableRiy(growing)).toBeUndefined()
+    expect(availableRiy(transferred)).toBeUndefined()
+  })
+
+  it('does not report accumulation taxes as costs when the ETF has no fees', () => {
+    const result = simulateEtf(buildEtfCalculationContext({
+      profile: { ...defaultProfile, age: 28, retirementAge: 65 },
+      assumptions: {
+        ...defaultAssumptions,
+        etf: { ...defaultAssumptions.etf, annualAssetFee: 0 },
+      },
+      rules: de2026Rules,
+      monthlyUserCost: 400,
+    }), { id: 'basis', label: 'Basis', annualReturn: 0.05 })
+
+    expect(result.rows.at(-1)!.cumulativeVorabpauschale).toBeGreaterThan(0)
+    expect(result.totalFees).toBe(0)
+    expect(result.accumulationRiy).toBe(0)
+  })
+
   it('accumulationRiy is near zero for ETF with only a small TER', () => {
     // Default ETF has annualAssetFee = 0.2% and no other fees → very small RIY
     const sim = simulateRetirementComparison(defaultProfile, defaultAssumptions, de2026Rules)
     const etf = sim.products.find((p) => p.productId === 'etf' && p.scenarioId === 'basis')!
     // 0.2% TER → RIY should be close to 0.2%
     expect(etf.accumulationRiy).toBeCloseTo(0.002, 2)
-    // Pin the pre-glidepath-fix value: products whose gross path is the
-    // scenario return must retain their established RIY.
-    expect(etf.accumulationRiy).toBe(0.0027719923033285437)
+    // The tax-bearing zero-fee benchmark isolates fees rather than counting
+    // Vorabpauschale as an additional product cost.
+    expect(etf.accumulationRiy).toBeGreaterThan(0.0019)
+    expect(etf.accumulationRiy).toBeLessThan(0.0022)
+  })
+
+  it('reports about the fund fee for the audited 400-euro ETF example', () => {
+    const result = simulateEtf(buildEtfCalculationContext({
+      profile: { ...defaultProfile, age: 28, retirementAge: 65 },
+      assumptions: {
+        ...defaultAssumptions,
+        etf: { ...defaultAssumptions.etf, annualAssetFee: 0.0015 },
+      },
+      rules: de2026Rules,
+      monthlyUserCost: 400,
+    }), { id: 'basis', label: 'Basis', annualReturn: 0.05 })
+
+    expect(result.accumulationRiy).toBeGreaterThan(0.0014)
+    expect(result.accumulationRiy).toBeLessThan(0.0017)
   })
 })
 

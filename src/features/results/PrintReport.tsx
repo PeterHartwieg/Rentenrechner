@@ -747,6 +747,7 @@ function CombinePrintReport({
 
       <section className="pr-section">
         <div className="pr-section-title">Kombiniertes Renteneinkommen je Szenario</div>
+        <p className="pr-note pr-table-note">Rentenbeträge zum Rentenbeginn (nominal).</p>
         <table className="pr-table">
           <thead>
             <tr>
@@ -793,6 +794,7 @@ function CombinePrintReport({
 
       <section className="pr-section">
         <div className="pr-section-title">Mein Plan — Detail je Vertrag</div>
+        <p className="pr-note pr-table-note">Kapital und Rentenbeträge zum Rentenbeginn (nominal). Beiträge und Kosten bleiben gesonderte Größen.</p>
         <table className="pr-table pr-main-table">
           <colgroup>
             <col style={{ width: '20%' }} />
@@ -915,7 +917,7 @@ function CombinePrintReport({
  * desc per R1. Replaces the legacy 9-column scenario-sweep summary.
  *
  * Column structure mirrors `VergleichComparisonTable.tsx`:
- *   Sparform | Wie es funktioniert | Kapital mit N | Kosten p. a. |
+ *   Sparform | Wie es funktioniert | Kapital mit N | Effektivkosten p. a. |
  *   Brutto-Rente | Abzüge | Netto pro Monat
  *
  * Visual treatment per Sober D conventions: oxblood (`var(--rw-accent)`) on
@@ -947,6 +949,7 @@ function VergleichSection({
         davon ab, was du gewichtest: Rendite, Sicherheit, Flexibilität.
         Diese Modellrechnung nennt keine Empfehlung.
       </p>
+      <p className="pr-note pr-table-note">Kapital und Rentenbeträge zum Rentenbeginn (nominal). Der Netto-Aufwand ist dein monatlicher Einsatz.</p>
       <table className="pr-table pr-main-table pr-vergleich-table">
         <colgroup>
           <col style={{ width: '18%' }} />
@@ -962,7 +965,7 @@ function VergleichSection({
             <th>Sparform</th>
             <th>Wie es funktioniert</th>
             <th className="pr-num">{`Kapital mit ${retirementAge}`}</th>
-            <th className="pr-num">Kosten p. a.</th>
+            <th className="pr-num">Effektivkosten p. a.</th>
             <th className="pr-num">Brutto-Rente</th>
             <th className="pr-num">Abzüge</th>
             <th className="pr-num">Netto pro Monat</th>

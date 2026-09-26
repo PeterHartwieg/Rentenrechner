@@ -357,6 +357,11 @@ export function AngabenPage({ navigate }: Props) {
           <span className="angaben-breadcrumb-cluster">Angaben</span>
         </nav>
 
+        <div className="angaben-step-header">
+          <div className="angaben-kicker">Mein Plan · Schritt 1 von 2</div>
+          <DStepIndicator current={1} />
+        </div>
+
         <div className="angaben-grid">
           {/* Left rail — TOC. Hidden on tablet + phone via CSS. */}
           <aside className="angaben-toc" aria-label="In diesem Dokument">
@@ -391,8 +396,6 @@ export function AngabenPage({ navigate }: Props) {
 
           {/* Center — the receipt body. */}
           <article className="angaben-body">
-            <div className="angaben-kicker">Mein Plan · Schritt 1 von 2</div>
-            <DStepIndicator current={1} />
             <h1 className="angaben-headline">{route.h1}</h1>
             <p className="angaben-summary">{route.summary}</p>
 
@@ -522,25 +525,22 @@ export function AngabenPage({ navigate }: Props) {
                 <li className="angaben-aside-list-item">
                   <span className="angaben-aside-list-key">§ Person</span>
                   <span className="angaben-aside-list-val">
-                    Geburtsjahr und Renteneintritt steuern Kohortenwerte
-                    (§ 22 Nr. 1, § 19 Abs. 2 EStG). Die Steuerklasse steuert
-                    die Lohnsteuer im Ansparzeitraum (§ 39b EStG).
+                    Dein Alter bestimmt, wie lange du noch bis zur Rente sparst.
+                    Die Steuerklasse beeinflusst deinen Nettolohn und die Förderung.
                   </span>
                 </li>
                 <li className="angaben-aside-list-item">
                   <span className="angaben-aside-list-key">§ Einkommen</span>
                   <span className="angaben-aside-list-val">
-                    Bruttogehalt entscheidet über Vorsorgepauschale (§ 39b EStG)
-                    und die § 3 Nr. 63 EStG / § 1 SvEV-Förderhöchstbeträge bei der
-                    bAV.
+                    Dein Bruttogehalt hilft uns, Nettolohn und mögliche Förderung
+                    deiner betrieblichen Altersvorsorge zu berechnen.
                   </span>
                 </li>
                 <li className="angaben-aside-list-item">
                   <span className="angaben-aside-list-key">§ Renteneintritt</span>
                   <span className="angaben-aside-list-val">
-                    Renteneintrittsalter und -jahr fixieren Besteuerungsanteil und
-                    Versorgungsfreibetrag — beides kohortengebunden. Der KV-Status
-                    in der Rente entscheidet zwischen § 226 SGB V und § 240 SGB V.
+                    Dein Rentenalter bestimmt die Sparzeit. Die Krankenversicherung
+                    beeinflusst, was von deinen Auszahlungen übrig bleibt.
                   </span>
                 </li>
                 <li className="angaben-aside-list-item">

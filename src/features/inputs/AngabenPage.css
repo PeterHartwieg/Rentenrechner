@@ -67,6 +67,33 @@
   align-items: start;
 }
 
+.angaben-step-header {
+  width: 100%;
+  min-width: 0;
+}
+
+.angaben-field-detail {
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: var(--rw-ink-soft);
+}
+
+.angaben-field-detail summary {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.angaben-field-detail .angaben-field-hint {
+  display: block;
+  margin-top: 6px;
+}
+
+.angaben-field-meta--detail {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
 /* --- Left rail (TOC) ------------------------------------------------- */
 .angaben-toc {
   position: sticky;

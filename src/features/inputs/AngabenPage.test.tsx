@@ -199,11 +199,10 @@ describe('AngabenPage — /eingaben route content', () => {
     // One bullet per § section (Person / Einkommen / Renteneintritt / Annahmen).
     expect(items.length).toBe(4)
     const text = Array.from(items).map((i) => i.textContent ?? '').join(' ')
-    expect(text).toContain('§ 22 Nr. 1')
-    // Steuerklasse drives the § 39b salary-phase Lohnsteuer — the aside no
-    // longer claims Familienstand activates Ehegattensplitting (§ 32a Abs. 5).
+    expect(text).toContain('bis zur Rente sparst')
+    // The aside explains the effect in everyday language.
     expect(text).toContain('Steuerklasse')
-    expect(text).toContain('§ 39b EStG')
+    expect(text).toContain('Nettolohn')
     expect(text).not.toContain('§ 32a Abs. 5')
     // #408: the right rail no longer names MSCI World — no dataset behind
     // the rates is recorded (docs/validation.md), so the orientation copy

@@ -13,7 +13,7 @@
 //   - a `?s=` share link on `/` still renders the comparison, as before.
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import App from './App'
 import { addInstanceToWorkspace } from './features/inventory/inventoryHelpers'
 import { buildStateJson, defaultWorkspace, STORAGE_KEY_V1, STORAGE_KEY_V2 } from './storage'
@@ -115,5 +115,20 @@ describe('/ — the personal plan', () => {
       timeout: 8000,
     })
     expect(document.querySelector('.mein-plan-shell')).toBeNull()
+  })
+
+  it('keeps the selected money basis when leaving a shared comparison', async () => {
+    const assumptions = { ...defaultAssumptions, inflationRate: 0.02 }
+    localStorage.setItem(STORAGE_KEY_V1, buildStateJson(defaultProfile, assumptions))
+    const url = new URL(buildShareUrl(defaultProfile, assumptions), 'http://localhost')
+    window.history.pushState(null, '', '/' + url.search)
+    render(<App />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Zum Rentenbeginn' }))
+    expect(screen.getByRole('button', { name: 'Zum Rentenbeginn' })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getAllByRole('link', { name: 'Vergleich' })[0])
+
+    await waitFor(() => expect(document.querySelector('.vergleich-journey')).not.toBeNull())
+    expect(screen.getByRole('button', { name: 'Zum Rentenbeginn' })).toHaveAttribute('aria-pressed', 'true')
   })
 })
