@@ -93,8 +93,8 @@ export function AngabenEinkommenSection({
         </h2>
       </div>
       <p className="angaben-section-lead">
-        Bruttogehalt steuert Lohnsteuer, Vorsorgepauschale und die
-        Förderhöchstbeträge der betrieblichen Altersvorsorge.
+        Gib dein jährliches Bruttogehalt und deine Krankenversicherungsbeiträge
+        an. Daraus schätzen wir dein verfügbares Einkommen und mögliche Förderung.
       </p>
 
       <div className="angaben-fields">
@@ -114,7 +114,7 @@ export function AngabenEinkommenSection({
           />
           <span className="angaben-field-meta">
             <span className="angaben-field-hint">
-              Vorsorgepauschale § 39b EStG; § 3 Nr. 63 EStG / § 1 SvEV
+              Dein Jahresgehalt vor Steuern und Abgaben.
             </span>
           </span>
         </div>
@@ -130,27 +130,33 @@ export function AngabenEinkommenSection({
               <span>{formatCurrency(derivedBavGross, 0)}</span>
               <span className="angaben-field-suffix">mtl.</span>
             </span>
-            <span className="angaben-field-meta">
+            <div className="angaben-field-meta angaben-field-meta--detail">
               <span className="angaben-field-hint">
-                Wird aus dem Netto-Beitrag (§ 4 Annahmen) abgeleitet — dort
-                änderst du den monatlichen Vergleichsbetrag. Steuerfrei bis{' '}
-                {formatCurrency(
-                  (activeRules.socialSecurity.pensionCapYear *
-                    activeRules.bav.taxFreePctOfPensionCap) /
-                    12,
-                  0,
-                )}
-                /Monat (§ 3 Nr. 63 EStG); SV-frei bis{' '}
-                {formatCurrency(
-                  (activeRules.socialSecurity.pensionCapYear *
-                    activeRules.bav.socialSecurityFreePctOfPensionCap) /
-                    12,
-                  0,
-                )}
-                /Monat (§ 1 SvEV). Beide Grenzen gelten für den Gesamtbeitrag
-                einschließlich Arbeitgeberzuschuss.
+                Wird aus deinem monatlichen Netto-Beitrag unter Annahmen berechnet.
+                Dort kannst du den Betrag ändern.
               </span>
-            </span>
+              <details className="angaben-field-detail">
+                <summary>Grenzen der bAV-Förderung</summary>
+                <div className="angaben-field-hint">
+                  Steuerfrei bis{' '}
+                  {formatCurrency(
+                    (activeRules.socialSecurity.pensionCapYear *
+                      activeRules.bav.taxFreePctOfPensionCap) /
+                      12,
+                    0,
+                  )}
+                  /Monat (§ 3 Nr. 63 EStG); SV-frei bis{' '}
+                  {formatCurrency(
+                    (activeRules.socialSecurity.pensionCapYear *
+                      activeRules.bav.socialSecurityFreePctOfPensionCap) /
+                      12,
+                    0,
+                  )}
+                  /Monat (§ 1 SvEV). Beide Grenzen gelten für den Gesamtbeitrag
+                  einschließlich Arbeitgeberzuschuss.
+                </div>
+              </details>
+            </div>
           </div>
         ) : (
           <p
@@ -186,7 +192,7 @@ export function AngabenEinkommenSection({
             />
             <span className="angaben-field-meta">
               <span className="angaben-field-hint">
-                Kassenindividuell; Lohnsteuer-PAP nutzt diesen Wert direkt
+                Den Zusatzbeitrag findest du bei deiner Krankenkasse.
               </span>
             </span>
           </div>
@@ -209,7 +215,7 @@ export function AngabenEinkommenSection({
             />
             <span className="angaben-field-meta">
               <span className="angaben-field-hint">
-                Beitragszuschuss § 257 SGB V; Teilbeträge gehen in die Vorsorgepauschale
+                Trage deinen monatlichen Beitrag zur privaten Krankenversicherung ein.
               </span>
             </span>
           </div>

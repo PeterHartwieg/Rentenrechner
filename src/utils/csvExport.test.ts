@@ -140,6 +140,13 @@ describe('buildExportCsv', () => {
     expect(headerRow).toContain('Datenqualität')
   })
 
+  it('labels retirement-year summary values as nominal without relabeling real cashflow columns', () => {
+    const csv = buildExportCsv(BASE_OPTS)
+    expect(csv).toContain('Detailvergleich — Kapital und Rentenbeträge zum Rentenbeginn (nominal)')
+    expect(csv).toContain('Reales Kapital (EUR)')
+    expect(csv).toContain('Real n. St. (EUR)')
+  })
+
   it('compare-mode singleton export is untouched by the combine suppression (#395)', () => {
     // Paired with the combine-mode blocked cases below: `buildExportCsv` has no
     // `householdTotalBlocked` option at all, so the compare path keeps writing a
@@ -829,6 +836,17 @@ describe('buildCombinePortfolioCsv — suppressed household total', () => {
     expect(cols[1]).toBe('2345.67')
   })
 
+  it('labels retirement income and per-instance retirement values as nominal', () => {
+    const csv = buildCombinePortfolioCsv(baseOpts)
+    const lines = csv.split('\n')
+    const incomeIdx = lines.indexOf('Kombiniertes Renteneinkommen')
+    const detailIdx = lines.indexOf('Mein Plan — Detail je Instanz')
+    expect(lines[incomeIdx + 1]).toContain('Netto-Einkommen mtl. (EUR nominal)')
+    expect(lines[detailIdx + 1]).toContain('Kapital zum Rentenbeginn (EUR nominal)')
+    expect(lines[detailIdx + 1]).toContain('Netto-Rente mtl. (EUR nominal)')
+    expect(csv).toContain('Reales Kapital (EUR)')
+  })
+
   it('emits an empty cell — not 0 — when the total is blocked', () => {
     const cols = incomeRow(
       buildCombinePortfolioCsv({
@@ -869,8 +887,8 @@ describe('buildCombinePortfolioCsv — suppressed household total', () => {
     const lines = csv.split('\n')
     const idx = lines.findIndex((l) => l === 'Mein Plan — Detail je Instanz')
     const header = lines[idx + 1].split(',')
-    const netCol = header.indexOf('Netto-Rente mtl. (EUR)')
-    const grossCol = header.indexOf('Brutto-Rente mtl. (EUR)')
+    const netCol = header.indexOf('Netto-Rente mtl. (EUR nominal)')
+    const grossCol = header.indexOf('Brutto-Rente mtl. (EUR nominal)')
     expect(netCol).toBeGreaterThan(-1)
 
     const rows = sectionRows(lines, idx)

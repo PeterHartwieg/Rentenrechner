@@ -8,10 +8,10 @@
  * policy + shared saver allowance) with NO neutralised unrelated-product
  * inputs and no `buildContext` funding pre-pass.
  *
- * Every expectation below is a FROZEN PRE-CHANGE value (see
- * `etfContextParity.fixture.ts`): captured from the engine BEFORE the
- * migration, with full float precision. These are internal regression
- * anchors — do not regenerate to make a failing test pass. The combined
+ * Every expectation except the documented ETF accumulation RIY corrections
+ * is a FROZEN PRE-CHANGE value (see `etfContextParity.fixture.ts`): captured
+ * from the engine BEFORE the migration, with full float precision. These are
+ * internal regression anchors — do not regenerate to make a failing test pass. The combined
  * fixtures cover the interaction cases the issue calls out: multi-ETF
  * allowance sharing, transfer events (certified + surrender_reinvest), a
  * paid-up instance, and a seeded Monte-Carlo path.

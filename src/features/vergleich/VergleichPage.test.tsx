@@ -93,7 +93,7 @@ describe('VergleichPage — R1 layout', () => {
     expect(getByRole('heading', { level: 1 }).textContent).toBe('Sparformen im Vergleich')
   })
 
-  it('lead and note cite the budget, retirement age and nominal money basis', () => {
+  it('lead and note cite the budget, retirement age and default present-value money basis', () => {
     const result = buildResult(defaultAssumptions)
     const { container } = render(
       inShell(

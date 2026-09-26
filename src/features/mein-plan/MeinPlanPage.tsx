@@ -22,6 +22,7 @@ import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { useViewport } from '../../ui/chrome/useViewport'
 import { RightRailAccordion } from '../../ui/chrome/RightRailAccordion'
 import { formatCurrency, formatPercent } from '../../utils/format'
+import type { MoneyBasis } from '../../ui/moneyBasis'
 import { largestTestedChange, summarizeContractEvidence } from './calculationContext'
 import {
   sensitivityIfReturnScenario,
@@ -60,6 +61,8 @@ const SECTION_SENSITIVITAET: { id: string; n: string; title: string } = {
 // ---------------------------------------------------------------------------
 
 export interface MeinPlanPageProps {
+  moneyBasis?: MoneyBasis
+  onMoneyBasisChange?: (basis: MoneyBasis) => void
   workspace: Workspace
   perInstance: Record<string, ProductResult[]>
   selectedScenarioId: string
@@ -134,7 +137,9 @@ function OverviewMeinPlanPage(props: MeinPlanPageProps & { summary: PlanSummary 
   const { workspace, navigate, planNotStarted, onSetTarget } = props
   const { profile, assumptions } = workspace.baseline
   const summary = props.readiness ? { ...props.summary, readiness: props.readiness } : props.summary
-  const [moneyBasis, setMoneyBasis] = useState<'real' | 'nominal'>('real')
+  const [localMoneyBasis, setLocalMoneyBasis] = useState<MoneyBasis>('real')
+  const moneyBasis = props.moneyBasis ?? localMoneyBasis
+  const setMoneyBasis = props.onMoneyBasisChange ?? setLocalMoneyBasis
   const [showDuration, setShowDuration] = useState(false)
   const [editingTarget, setEditingTarget] = useState(false)
   const [targetDraft, setTargetDraft] = useState('')
@@ -225,7 +230,7 @@ function OverviewMeinPlanPage(props: MeinPlanPageProps & { summary: PlanSummary 
       savedAlternativeCount={workspace.whatIfs.length}
       notification={props.notification}
       moneyBasis={moneyBasis}
-      onToggleMoneyBasis={() => setMoneyBasis((basis) => basis === 'real' ? 'nominal' : 'real')}
+      onMoneyBasisChange={setMoneyBasis}
       targetMonthly={profile.desiredNetMonthlyPension}
       assumptions={{ age: profile.age, grossSalaryYear: profile.grossSalaryYear,
         retirementAge: profile.retirementAge, inflationRate: assumptions.inflationRate, pensionMethodLabel,

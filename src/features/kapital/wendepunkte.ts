@@ -15,7 +15,7 @@ import { lifecycleLineKeys, type LifecycleSeriesResult } from '../results/breakE
 //   2. Renteneintritt — Auszahlung beginnt  (age = retirementAge)
 //   3. Break-even — Auszahlungen ≥ Einzahlungen  (first age where cumulative
 //      net payouts ≥ cumulative net paid-in)
-//   4. Voraussichtliches Vertragsende  (age = retirementEndAge)
+//   4. End of the selected payout plan or model window (retirementEndAge)
 //
 // Rows where the age is out of range or the data is unavailable are still
 // emitted (with a `capital`/`paidIn`/`payout` of `null`) so the table layout
@@ -60,7 +60,16 @@ const LABELS: Record<WendepunktKind, string> = {
   'halbzeit-anspar': 'Halbzeit der Ansparphase',
   renteneintritt: 'Renteneintritt — Auszahlung beginnt',
   'break-even': 'Break-even — Auszahlungen ≥ Einzahlungen',
-  'modell-ende': 'Voraussichtliches Vertragsende',
+  'modell-ende': 'Ende des betrachteten Zeitraums',
+}
+
+function modelEndLabel(results: LifecycleSeriesResult[], retirementEndAge: number): string {
+  if (!results.every((result) => result.payoutEndAge === retirementEndAge)) {
+    return LABELS['modell-ende']
+  }
+  return results.every((result) => result.productId === 'etf')
+    ? 'Ende der geplanten ETF-Entnahme'
+    : 'Ende der geplanten Auszahlungen'
 }
 
 /**
@@ -89,7 +98,10 @@ export function buildWendepunkte({
     rowAt('halbzeit-anspar', halfwayAge, selectedResults, data),
     rowAt('renteneintritt', renteneintrittAge, selectedResults, data),
     rowAt('break-even', breakEvenAge, selectedResults, data),
-    rowAt('modell-ende', modellEndeAge, selectedResults, data),
+    {
+      ...rowAt('modell-ende', modellEndeAge, selectedResults, data),
+      label: modelEndLabel(selectedResults, retirementEndAge),
+    },
   ]
 }
 

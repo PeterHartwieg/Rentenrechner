@@ -251,6 +251,8 @@ describe('PrintReport', () => {
     // Combine title
     expect(container.textContent).toContain('Mein Plan')
     expect(container.textContent).toContain('Kombiniertes Renteneinkommen')
+    expect(container.textContent).toContain('Rentenbeträge zum Rentenbeginn (nominal).')
+    expect(container.textContent).toContain('Kapital und Rentenbeträge zum Rentenbeginn (nominal).')
     // Per-instance label appears
     expect(container.textContent).toContain('bAV Direktversicherung A')
     // The compare-mode-only Vergleich mirror section title must not appear.
@@ -326,6 +328,7 @@ describe('PrintReport', () => {
     const text = container.textContent ?? ''
     // New R3 section titles must appear.
     expect(text).toContain('Sechs Wege, fürs Alter zu sparen')
+    expect(text).toContain('Kapital und Rentenbeträge zum Rentenbeginn (nominal).')
     expect(text).toContain('Wofür welche Sparform spricht — und wogegen')
     expect(text).toContain('Wohin geht das Geld')
     // Legacy scenario-sweep section must NOT appear.
@@ -752,7 +755,7 @@ describe('PrintReport', () => {
       expect(headers[0].textContent).toContain('Sparform')
       expect(headers[1].textContent).toContain('Wie es funktioniert')
       expect(headers[2].textContent).toContain(`Kapital mit ${defaultProfile.retirementAge}`)
-      expect(headers[3].textContent).toContain('Kosten p.')
+      expect(headers[3].textContent).toContain('Effektivkosten p. a.')
       expect(headers[4].textContent).toContain('Brutto-Rente')
       expect(headers[5].textContent).toContain('Abzüge')
       expect(headers[6].textContent).toContain('Netto pro Monat')
@@ -960,7 +963,7 @@ describe('PrintReport', () => {
       // The four wendepunkte labels from buildWendepunkte:
       expect(text).toContain('Halbzeit der Ansparphase')
       expect(text).toContain('Renteneintritt')
-      expect(text).toContain('Voraussichtliches Vertragsende')
+      expect(text).toContain('Ende des betrachteten Zeitraums')
     })
 
     it('renders the Vertrag im Detail section with one block per active instance', () => {

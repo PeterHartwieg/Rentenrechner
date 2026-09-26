@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { StrictMode } from 'react'
 import { cleanup, render } from '@testing-library/react'
 import { BreakEvenChart } from './BreakEvenChart'
+import { formatLifecycleAxisEuro } from '../../utils/format'
 import { lifecyclePickerLabel } from './lifecycleLabels'
 import type { LifecycleSeriesResult } from './breakEvenSeries'
 import { formatCurrency } from '../../utils/format'
@@ -25,6 +26,15 @@ function lifecycleResult(productId: string, label: string): LifecycleSeriesResul
     netMonthlyPayout: 0,
   }
 }
+
+describe('formatLifecycleAxisEuro', () => {
+  it('uses familiar euro labels across thousand and million ticks', () => {
+    expect(formatLifecycleAxisEuro(0)).toBe('0 €')
+    expect(formatLifecycleAxisEuro(250_000)).toBe('250 Tsd. €')
+    expect(formatLifecycleAxisEuro(1_000_000)).toBe('1 Mio. €')
+    expect(formatLifecycleAxisEuro(1_500_000)).toBe('1,5 Mio. €')
+  })
+})
 
 describe('lifecyclePickerLabel', () => {
   it('preserves grouped portfolio product labels with contract counts', () => {

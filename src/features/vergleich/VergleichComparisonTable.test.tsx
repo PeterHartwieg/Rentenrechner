@@ -17,11 +17,11 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { VergleichComparisonTable } from './VergleichComparisonTable'
 import type { VergleichTableRow } from './vergleichRows'
 import { RIY_UNAVAILABLE, RIY_UNAVAILABLE_REASON } from '../results/riyAvailability'
-import { formatPercent } from '../../utils/format'
+import { formatCurrency, formatPercent } from '../../utils/format'
 import { eachViewport, mockViewport } from '../../test/viewport'
 
 beforeEach(() => {
@@ -71,7 +71,7 @@ describe('VergleichComparisonTable — desktop', () => {
     expect(labels[0]).toBe('Sparform')
     expect(labels[1]).toBe('Wie es funktioniert')
     expect(labels[2]).toBe('Kapital mit 67')
-    expect(labels[3]).toBe('Kosten p. a.')
+    expect(labels[3]).toBe('Effektivkosten p. a.')
     expect(labels[4]).toBe('Brutto-Rente')
     expect(labels[5]).toBe('Abzüge')
     expect(labels[6]).toBe('Netto pro Monat')
@@ -153,9 +153,9 @@ describe('VergleichComparisonTable — cost column availability', () => {
       <VergleichComparisonTable rows={[unavailable, trueZero]} retirementAge={67} />,
     )
     const kosten = container.querySelectorAll('.vergleich-product-card__kosten')
-    expect(kosten[0].textContent).toBe(`Kosten: ${RIY_UNAVAILABLE}`)
+    expect(kosten[0].textContent).toBe(`Effektivkosten: ${RIY_UNAVAILABLE}`)
     expect(kosten[0].getAttribute('title')).toBe(RIY_UNAVAILABLE_REASON)
-    expect(kosten[1].textContent).toBe(`Kosten ${formatPercent(0, 2)}`)
+    expect(kosten[1].textContent).toBe(`Effektivkosten ${formatPercent(0, 2)} p. a.`)
   })
 })
 
@@ -175,7 +175,7 @@ describe('VergleichComparisonTable — phone variant', () => {
     const text = first.textContent ?? ''
     expect(text).toContain('ETF-Depot')
     expect(text).toContain('ETF')
-    expect(text).toContain('Kosten')
+    expect(text).toContain('Effektivkosten')
   })
 })
 
@@ -188,5 +188,27 @@ describe('VergleichComparisonTable — viewport sweep', () => {
       expect(container.firstChild).not.toBeNull()
       unmount()
     })
+  })
+})
+
+
+describe('VergleichComparisonTable — money basis', () => {
+  it.each(['desktop', 'phone'] as const)('converts every monetary field, but not costs, on %s', (viewport) => {
+    mockViewport(viewport)
+    const row = SAMPLE_ROWS[0]
+    const { container, rerender } = render(
+      <VergleichComparisonTable rows={[row]} retirementAge={67} moneyBasis="real" deflator={0.5} />,
+    )
+    for (const amount of [row.capitalAtRetirement, row.grossMonthlyPayout, row.deductionsMonthly, row.netMonthlyPayout]) {
+      expect(container.textContent).toContain(formatCurrency(amount * 0.5))
+    }
+    expect(container.textContent).toContain(formatPercent(row.effectiveAnnualCost!, 2))
+    expect(screen.getByText(/Beträge in heutigen Euro/)).toBeInTheDocument()
+
+    rerender(<VergleichComparisonTable rows={[row]} retirementAge={67} moneyBasis="nominal" deflator={0.5} />)
+    for (const amount of [row.capitalAtRetirement, row.grossMonthlyPayout, row.deductionsMonthly, row.netMonthlyPayout]) {
+      expect(container.textContent).toContain(formatCurrency(amount))
+    }
+    expect(screen.getByText(/Beträge zum Rentenbeginn/)).toBeInTheDocument()
   })
 })

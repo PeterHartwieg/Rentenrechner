@@ -15,7 +15,7 @@ import {
 import type { TooltipContentProps } from 'recharts/types/component/Tooltip'
 import { Hourglass } from 'lucide-react'
 import { getProductMeta } from '../../app/productPresentation'
-import { formatCurrency, formatNumber } from '../../utils/format'
+import { formatCurrency, formatLifecycleAxisEuro } from '../../utils/format'
 import { useChartDensity } from '../../ui/charts/useChartDensity'
 import {
   buildLifecycleLineSeries,
@@ -31,8 +31,8 @@ import type { PensionBaselineType } from '../../domain'
 
 const GRV_PAYOUT_KEY = 'grv__cumNetPayout'
 const GRV_CONTRIBUTION_KEY = 'grv__cumContribution'
-const GRV_COLOR = '#94a3b8'
-const GRV_CONTRIBUTION_COLOR = '#94a3b8'
+const GRV_COLOR = '#475569'
+const GRV_CONTRIBUTION_COLOR = '#475569'
 
 const BASELINE_PENSION_LABELS: Record<Exclude<PensionBaselineType, 'none'>, {
   legend: string
@@ -307,9 +307,9 @@ export function BreakEvenChart({
                 } : undefined}
               />
               <YAxis
-                tickFormatter={(value) => `${formatNumber(Number(value) / 1_000)}k`}
-                width={Math.max(64, density.yAxisWidth)}
-                tick={{ fontSize: 12 }}
+                tickFormatter={(value) => formatLifecycleAxisEuro(Number(value))}
+                width={density.tier === 'phone' ? 78 : Math.max(82, density.yAxisWidth)}
+                tick={{ fontSize: density.axisLabelFontSize, fill: '#475569' }}
                 label={density.axisLabelsVisible ? {
                   value: 'EUR',
                   angle: -90,
@@ -388,7 +388,7 @@ export function BreakEvenChart({
                   name={baselineLabel.legend}
                   dataKey={GRV_PAYOUT_KEY}
                   stroke={GRV_COLOR}
-                  strokeWidth={1.5}
+                  strokeWidth={2}
                   strokeDasharray="8 4 2 4"
                   dot={false}
                   activeDot={{ r: 3 }}
@@ -401,7 +401,7 @@ export function BreakEvenChart({
                   name="GRV Netto-Einzahlung kumuliert"
                   dataKey={GRV_CONTRIBUTION_KEY}
                   stroke={GRV_CONTRIBUTION_COLOR}
-                  strokeWidth={1.5}
+                  strokeWidth={2}
                   strokeDasharray="4 4"
                   dot={false}
                   activeDot={{ r: 3 }}
