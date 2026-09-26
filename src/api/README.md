@@ -537,6 +537,8 @@ Four standalone validators are exported for pre-flight input checking. Each retu
 | `totalUserCost` | `number` | Total user cost over accumulation phase. |
 | `totalFees` | `number` | Total fees over accumulation phase. |
 
+`accumulationRiy === 0` with `totalFees > 0` means the effective-cost estimate is **unavailable**, not that the product is fee-free. This includes ETF projections with changing contributions or dated capital transfers, which the RIY solver does not represent. Consumers should display “Nicht ermittelbar” for this combination. A zero RIY with zero total fees remains a valid zero-cost result.
+
 ---
 
 ## Error codes

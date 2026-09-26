@@ -93,7 +93,7 @@ describe('VergleichPage — R1 layout', () => {
     expect(getByRole('heading', { level: 1 }).textContent).toBe('Sparformen im Vergleich')
   })
 
-  it('lead and note cite the budget, retirement age and default present-value money basis', () => {
+  it('lead, note and table consistently use nominal labels without inflation', () => {
     const result = buildResult(defaultAssumptions)
     const { container } = render(
       inShell(
@@ -114,6 +114,8 @@ describe('VergleichPage — R1 layout', () => {
     const note = container.querySelector('.vergleich-result-note')!.textContent
     expect(note).toContain(`ab ${defaultProfile.retirementAge}, keine Gesamtrente`)
     expect(note).toContain('Beträge zum Rentenbeginn (nominal).')
+    expect(container.textContent).not.toContain('Beträge in heutigen Euro.')
+    expect(container.textContent?.match(/Beträge zum Rentenbeginn \(nominal\)\./g)).toHaveLength(2)
     // Beitrag should appear with the Euro currency sign.
     expect(text).toMatch(/€/)
   })

@@ -140,7 +140,7 @@ export function VergleichPage({
             </details>
             <details className="vergleich-disclosure vergleich-secondary">
               <summary>Kapital, Kosten und Abzüge vergleichen</summary>
-              <VergleichComparisonTable rows={rows} retirementAge={retirementAge} moneyBasis={moneyBasis} deflator={deflator} />
+              <VergleichComparisonTable rows={rows} retirementAge={retirementAge} moneyBasis={hasInflation ? moneyBasis : 'nominal'} deflator={deflator} />
             </details>
             <details className="vergleich-disclosure vergleich-secondary">
               <summary>Wofür welche Sparform spricht — und wogegen</summary>
