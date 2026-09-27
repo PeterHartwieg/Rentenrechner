@@ -454,6 +454,27 @@ describe('RecommenderCard — contract return caption (#372)', () => {
     expect(etfCard(container).querySelector('.recommender-candidate-return')).toBeNull()
     expect(container.textContent).not.toContain('Vertragsrendite')
   })
+
+  it('notes contracts with their own return next to the shared scenario caption', () => {
+    const ctx = setup()
+    const wsa = ctx.workspace.baseline.assumptions
+    expect(wsa.bav[0].status).toBe('active')
+    wsa.bav[0].expectedReturn = 0.07
+    expect(wsa.etf[0].expectedReturn).toBeUndefined()
+    const { container } = render(
+      <RecommenderCard {...ctx} marginalMonthlyEUR={400} onSaveAsPlan={() => {}} />,
+    )
+    expect(container.querySelector('.recommender-basis-note')?.textContent)
+      .toContain(' · 1 Vertrag mit eigener Rendite')
+  })
+
+  it('adds no annotation when no contract has its own return', () => {
+    const ctx = setup()
+    const { container } = render(
+      <RecommenderCard {...ctx} marginalMonthlyEUR={400} onSaveAsPlan={() => {}} />,
+    )
+    expect(container.querySelector('.recommender-basis-note')?.textContent).not.toContain('mit eigener Rendite')
+  })
 })
 
 function candidateLabel(card: Element): string {

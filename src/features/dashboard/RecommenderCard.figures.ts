@@ -29,6 +29,7 @@ import {
   type DurationDescriptor,
 } from '../../app/planSummary'
 import { listWorkspaceInstances } from '../../app/resultReadiness'
+import { ownReturnAnnotation } from '../../app/contractReturns'
 import { candidateAnnualReturn } from '../../app/recommenderCandidates/types'
 import { getProductMeta } from '../../engine/productRegistry'
 import { formatPercent } from '../../utils/format'
@@ -111,6 +112,23 @@ function candidateDuration(
     return { kind: 'drawdown-shared-horizon', endAge: wsa.retirementEndAge, sharedWith: [] }
   }
   return null
+}
+
+/**
+ * Rate caption for figures of one contract with its own return: that
+ * contract uses its rate, every other contract follows the selected scenario.
+ * `otherOwnReturnCount` counts the other contracts that also keep their own
+ * rate. "Dieser Vertrag: eigene Marktrendite 2,0 % p.a.; übrige Verträge:
+ * Szenario Basis (5,0 % p.a.)"
+ */
+export function contractAndScenarioLabel(
+  rate: number,
+  scenario: ScenarioTag,
+  otherOwnReturnCount = 0,
+): string {
+  return `Dieser Vertrag: eigene Marktrendite ${formatPercent(rate, 1)} p.a.; übrige Verträge: `
+    + `Szenario ${scenario.label} (${formatPercent(scenario.annualReturn, 1)} p.a.)`
+    + ownReturnAnnotation(otherOwnReturnCount)
 }
 
 /** "Vertragsrendite 2 % p.a. (eigene Annahme dieses Vertrags)" */

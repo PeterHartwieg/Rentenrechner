@@ -487,26 +487,46 @@ describe('LueckeSchliessenModal — contract return caption (#372)', () => {
     if (expectedReturn !== undefined) workspace.baseline.assumptions.etf[0].expectedReturn = expectedReturn
     return { ...ctx, workspace }
   }
-  const contractCaption = `Vertragsrendite ${formatPercent(0.02, 1)} p.a. (eigene Annahme dieses Vertrags)`
-
-  it('names the contract rate in the solver note when the ETF has its own return', () => {
-    const { container } = render(
-      <LueckeSchliessenModal {...withTarget(0.02)} onClose={() => {}} onSaveAsPlan={() => {}} />,
-    )
-    const note = container.querySelector('.luecke-modal__solver .luecke-modal__note')!.textContent
-    expect(note).toContain(contractCaption)
-    expect(note).not.toContain('im Szenario')
-  })
-
-  it('keeps the scenario in the solver note for a plain ETF', () => {
-    const ctx = withTarget()
+  function captions(ctx: ReturnType<typeof withTarget>) {
     const basis = ctx.workspace.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis')!
+    return {
+      contract: `Dieser Vertrag: eigene Marktrendite ${formatPercent(0.02, 1)} p.a.; übrige Verträge: Szenario ${basis.label} (${formatPercent(basis.annualReturn, 1)} p.a.)`,
+      scenario: `Rendite: Szenario ${basis.label} (${formatPercent(basis.annualReturn, 1)} p.a.)`,
+    }
+  }
+
+  it('names the contract rate and the scenario for the other contracts in the solver note', () => {
+    const ctx = withTarget(0.02)
+    const bav = ctx.workspace.baseline.assumptions.bav[0]
+    expect(bav.status).toBe('active')
+    expect(bav.expectedReturn).toBeUndefined()
     const { container } = render(
       <LueckeSchliessenModal {...ctx} onClose={() => {}} onSaveAsPlan={() => {}} />,
     )
     const note = container.querySelector('.luecke-modal__solver .luecke-modal__note')!.textContent
-    expect(note).toContain(`im Szenario ${basis.label} (${formatPercent(basis.annualReturn, 1)} p.a.)`)
-    expect(note).not.toContain('Vertragsrendite')
+    expect(note).toContain(captions(ctx).contract)
+    expect(note).not.toContain('mit eigener Rendite')
+    expect(note).not.toContain('Alle Beträge')
+  })
+
+  it('keeps the scenario in the solver note for a plain ETF', () => {
+    const ctx = withTarget()
+    const { container } = render(
+      <LueckeSchliessenModal {...ctx} onClose={() => {}} onSaveAsPlan={() => {}} />,
+    )
+    const note = container.querySelector('.luecke-modal__solver .luecke-modal__note')!.textContent
+    expect(note).toContain(`${captions(ctx).scenario}.`)
+    expect(note).not.toContain('Dieser Vertrag')
+  })
+
+  it('notes other contracts with their own return in the scenario-only solver note', () => {
+    const ctx = withTarget()
+    ctx.workspace.baseline.assumptions.bav[0].expectedReturn = 0.07
+    const { container } = render(
+      <LueckeSchliessenModal {...ctx} onClose={() => {}} onSaveAsPlan={() => {}} />,
+    )
+    const note = container.querySelector('.luecke-modal__solver .luecke-modal__note')!.textContent
+    expect(note).toContain(`${captions(ctx).scenario} · 1 Vertrag mit eigener Rendite.`)
   })
 
   function saveEtf(ctx: ReturnType<typeof withTarget>) {
@@ -520,10 +540,13 @@ describe('LueckeSchliessenModal — contract return caption (#372)', () => {
     return utils.container.querySelector('.luecke-modal__body--saved')!
   }
 
-  it('names the contract rate on the saved confirmation for an overridden target', () => {
-    const saved = saveEtf(withTarget(0.02))
-    expect(saved.textContent).toContain(contractCaption)
+  it('names the contract rate and the scenario for the other contracts on the saved confirmation', () => {
+    const ctx = withTarget(0.02)
+    const saved = saveEtf(ctx)
+    expect(saved.textContent).toContain(captions(ctx).contract)
     expect(saved.textContent).not.toContain('Rendite-Szenario')
+    expect(saved.textContent).not.toContain('mit eigener Rendite')
+    expect(saved.textContent).not.toContain('berechnet mit der')
   })
 
   it('keeps the scenario caption on the saved confirmation for a plain target', () => {
@@ -531,6 +554,6 @@ describe('LueckeSchliessenModal — contract return caption (#372)', () => {
     const basis = ctx.workspace.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis')!
     const saved = saveEtf(ctx)
     expect(saved.textContent).toContain(`Rendite-Szenario ${basis.label} (${formatPercent(basis.annualReturn, 1)} p.a.)`)
-    expect(saved.textContent).not.toContain('Vertragsrendite')
+    expect(saved.textContent).not.toContain('Dieser Vertrag')
   })
 })

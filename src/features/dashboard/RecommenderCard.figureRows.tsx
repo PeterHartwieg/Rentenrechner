@@ -10,7 +10,13 @@ import type { ReactNode } from 'react'
 import { PlanDurationText } from '../mein-plan/PlanDurationSummary'
 import { InfoTip } from '../../ui/InfoTip'
 import { formatCurrency, formatPercent } from '../../utils/format'
-import { contractReturnLabel, type CandidateFigures, type ScenarioTag } from './RecommenderCard.figures'
+import { ownReturnAnnotation } from '../../app/contractReturns'
+import {
+  contractAndScenarioLabel,
+  contractReturnLabel,
+  type CandidateFigures,
+  type ScenarioTag,
+} from './RecommenderCard.figures'
 
 function signed(value: number): string {
   const rounded = Math.round(value)
@@ -19,21 +25,25 @@ function signed(value: number): string {
 }
 
 /**
- * One line naming the money basis and the return behind the figures. A target
- * contract with its own return ignores the scenario, so `contractReturn`
- * replaces the scenario caption.
+ * One line naming the money basis and the return behind the figures. When the
+ * figures belong to a target contract with its own return (`contractReturn`),
+ * the line names that rate for the contract and the scenario for the rest of
+ * the plan. `ownReturnCount` counts contracts with their own return that the
+ * line does not name already (`countContractsWithOwnReturn`), so the
+ * scenario is never claimed for them.
  */
-export function FiguresBasisNote({ scenario, contractReturn = null, className }: {
+export function FiguresBasisNote({ scenario, contractReturn = null, ownReturnCount = 0, className }: {
   scenario: ScenarioTag
   contractReturn?: number | null
+  ownReturnCount?: number
   className?: string
 }) {
   return (
     <p className={className}>
       {contractReturn !== null
-        ? <>Alle Beträge in heutigen Euro (Kaufkraft), berechnet mit der {contractReturnLabel(contractReturn)}.</>
+        ? <>Alle Beträge in heutigen Euro (Kaufkraft). {contractAndScenarioLabel(contractReturn, scenario, ownReturnCount)}.</>
         : <>Alle Beträge in heutigen Euro (Kaufkraft), berechnet mit dem Rendite-Szenario{' '}
-          <strong>{scenario.label}</strong> ({formatPercent(scenario.annualReturn, 1)} p.a.).</>}
+          <strong>{scenario.label}</strong> ({formatPercent(scenario.annualReturn, 1)} p.a.){ownReturnAnnotation(ownReturnCount)}.</>}
       {' '}Die Vorschläge sind Modellrechnungen, keine Beratung und keine Garantie.
     </p>
   )

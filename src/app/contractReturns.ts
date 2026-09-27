@@ -13,11 +13,17 @@ import { isCountedInstance, listWorkspaceInstances } from './resultReadiness'
 /**
  * Active and paid-up contracts with an explicit `expectedReturn` (0 included).
  * Offers and surrendered contracts do not enter the household result, so
- * they are not counted.
+ * they are not counted. `excludeInstanceId` leaves out a contract whose rate
+ * the caption already names, so the count covers only the other contracts.
  */
-export function countContractsWithOwnReturn(assumptions: WorkspaceAssumptionsV2): number {
+export function countContractsWithOwnReturn(
+  assumptions: WorkspaceAssumptionsV2,
+  excludeInstanceId?: string,
+): number {
   return listWorkspaceInstances(assumptions).filter(({ instance }) =>
-    isCountedInstance(instance) && instance.expectedReturn !== undefined).length
+    isCountedInstance(instance)
+    && instance.expectedReturn !== undefined
+    && instance.instanceId !== excludeInstanceId).length
 }
 
 /** Suffix for a scenario-rate line: " · 2 Verträge mit eigener Rendite", or "" for none. */
