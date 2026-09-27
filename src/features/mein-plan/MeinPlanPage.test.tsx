@@ -869,4 +869,25 @@ describe('offers on the plan (audit F04)', () => {
     expect(line).toHaveTextContent(`Entnahme bis ${props.workspace.baseline.assumptions.retirementEndAge}`)
     expect(line).toHaveTextContent('(Basis)')
   })
+
+  it.each([
+    { label: 'two counted overrides', bavStatus: 'active', bavReturn: 0.07, etfStatus: 'paid_up', etfReturn: 0, annotation: ' · 2 Verträge mit eigener Rendite' },
+    { label: 'one counted override, offer ignored', bavStatus: 'active', bavReturn: 0.02, etfStatus: 'offered', etfReturn: 0.07, annotation: ' · 1 Vertrag mit eigener Rendite' },
+    { label: 'no overrides', bavStatus: 'active', bavReturn: undefined, etfStatus: 'active', etfReturn: undefined, annotation: '' },
+  ] as const)('annotates the live overview return with contract returns: $label', ({ bavStatus, bavReturn, etfStatus, etfReturn, annotation }) => {
+    const workspace = buildCombineWorkspace()
+    Object.assign(workspace.baseline.assumptions.bav[0], { status: bavStatus, expectedReturn: bavReturn })
+    Object.assign(workspace.baseline.assumptions.etf[0], { status: etfStatus, expectedReturn: etfReturn })
+    const props = buildProps(workspace)
+    // Production path: Calculator always passes a summary from selectPlanSummary.
+    const summary = selectPlanSummary(workspace, runCombineSimulation(workspace, de2026Rules), props.selectedScenarioId, { rules: de2026Rules })
+    render(<MeinPlanPage {...props} summary={summary} readiness={summary.readiness} planNotStarted={false} />)
+    const basis = workspace.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis')!
+    const line = screen.getByTestId('plan-assumption-line')
+    const returnSpan = Array.from(line.querySelectorAll('span')).find((el) => el.textContent?.startsWith('Rendite '))
+    expect(returnSpan?.textContent).toBe(`Rendite ${formatPercent(basis.annualReturn, 1)} p. a. (${basis.label})${annotation}`)
+    const detail = Array.from(document.querySelectorAll('.plan-overview__details p'))
+      .find((el) => el.textContent?.startsWith('Rendite: '))
+    expect(detail?.textContent).toBe(`Rendite: ${formatPercent(basis.annualReturn)} pro Jahr (Szenario „${basis.label}“)${annotation}`)
+  })
 })

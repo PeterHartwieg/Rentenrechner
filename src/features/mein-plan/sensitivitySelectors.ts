@@ -59,8 +59,7 @@ import type {
   Scenario,
 } from '../../domain/workspace'
 import type { CombinedResult } from '../../engine/portfolioCombine'
-import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
-import type { InstanceCommon } from '../../domain/instances'
+import { countContractsWithOwnReturn } from '../../app/contractReturns'
 import { runCombineSimulation } from '../../app/useCombineSimulation'
 
 // ---------------------------------------------------------------------------
@@ -277,11 +276,7 @@ export function sensitivityIfReturnScenario(
       note: 'unchanged',
     }
   }
-  const hasFixedReturns = PRODUCT_REGISTRY.some(({ assumptionsKey }) => {
-    const instances = workspace.baseline.assumptions[assumptionsKey] as InstanceCommon[]
-    return instances.some(inst => inst.status !== 'surrendered' && inst.status !== 'offered'
-      && inst.expectedReturn !== undefined)
-  })
+  const hasFixedReturns = countContractsWithOwnReturn(workspace.baseline.assumptions) > 0
   return {
     ...diffCombined(baselineCombined, perturbed),
     ...(hasFixedReturns ? { note: 'contract_returns_fixed' as const } : {}),

@@ -15,6 +15,7 @@ import type { PensionBaselineType } from '../../domain/products/grv'
 import type { Route } from '../../app/useRoute'
 import type { PlanSourceRow, PlanSummary } from '../../app/planSummary'
 import type { ResultReadiness } from '../../app/resultReadiness'
+import { countContractsWithOwnReturn, ownReturnAnnotation } from '../../app/contractReturns'
 import { ROUTES, routeToPath } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { getProductMeta } from '../../app/productPresentation'
@@ -235,6 +236,7 @@ function OverviewMeinPlanPage(props: MeinPlanPageProps & { summary: PlanSummary 
       assumptions={{ age: profile.age, grossSalaryYear: profile.grossSalaryYear,
         retirementAge: profile.retirementAge, inflationRate: assumptions.inflationRate, pensionMethodLabel,
         returnRate: selectedScenario?.annualReturn, returnScenarioLabel: selectedScenario?.label,
+        ownReturnContractCount: countContractsWithOwnReturn(assumptions),
         retirementEndAge: assumptions.retirementEndAge,
         salaryGrowthRate: assumptions.statutoryPension.annualSalaryGrowthRate,
         pensionValueGrowthRate: assumptions.statutoryPension.rentenwertGrowthRate,
@@ -711,14 +713,7 @@ function MeinPlanReceiptAside({ profile, assumptions, navigate }: MeinPlanReceip
   const basisReturn = basisScenario?.annualReturn
   // Active and paid-up contracts with their own return ignore the shared
   // scenario rate, so the receipt says how many do.
-  const ownReturnCount = PRODUCT_REGISTRY.reduce((count, { assumptionsKey }) => {
-    const instances = assumptions[assumptionsKey] as InstanceCommon[]
-    return count + instances.filter(inst => inst.status !== 'surrendered' && inst.status !== 'offered'
-      && inst.expectedReturn !== undefined).length
-  }, 0)
-  const ownReturnNote = ownReturnCount === 0
-    ? ''
-    : ` · ${ownReturnCount} ${ownReturnCount === 1 ? 'Vertrag' : 'Verträge'} mit eigener Rendite`
+  const ownReturnNote = ownReturnAnnotation(countContractsWithOwnReturn(assumptions))
 
   const rows: ReceiptRow[] = []
   rows.push({ key: 'alter', label: 'Alter', value: `${profile.age} Jahre` })

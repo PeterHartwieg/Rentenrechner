@@ -5,6 +5,7 @@ import { formatCurrency, formatPercent } from '../../utils/format'
 import { MoneyBasisSelector } from '../../ui/MoneyBasisSelector'
 import type { MoneyBasis } from '../../ui/moneyBasis'
 import { formatInputStatusForExport } from '../results/provenanceHelpers'
+import { ownReturnAnnotation } from '../../app/contractReturns'
 import { PlanDurationText } from './PlanDurationSummary'
 import './PlanOverview.css'
 
@@ -44,6 +45,11 @@ export interface PlanOverviewAssumptions {
   /** Expected annual return of the scenario the total is computed on. */
   returnRate?: number
   returnScenarioLabel?: string
+  /**
+   * Counted contracts whose own `expectedReturn` replaces `returnRate`
+   * (`countContractsWithOwnReturn`). Absent or 0 adds no annotation.
+   */
+  ownReturnContractCount?: number
   /** Shared drawdown horizon for depots and Kapitalverzehr contracts. */
   retirementEndAge?: number
   /** Salary growth until retirement (EP-based statutory pension). */
@@ -115,6 +121,7 @@ export function PlanOverview(props: PlanOverviewProps) {
     : null
   const targetGap = gap && (moneyBasis === 'real' ? gap.gapReal : gap.gapNominal)
   const targetBasis = moneyBasis === 'real' ? 'in heutigen Euro' : 'zum Rentenbeginn (nominal)'
+  const ownReturnNote = ownReturnAnnotation(assumptions.ownReturnContractCount ?? 0)
   return (
     <section className="plan-overview">
       {notification && <div className="plan-overview__notice" role="status">
@@ -158,7 +165,7 @@ export function PlanOverview(props: PlanOverviewProps) {
         </div>
         {canShow && <p className="plan-overview__assumption-line" data-testid="plan-assumption-line">
           <span>Annahmen dahinter:</span>
-          {assumptions.returnRate !== undefined && <span>Rendite {formatPercent(assumptions.returnRate, 1)} p. a.{assumptions.returnScenarioLabel ? ` (${assumptions.returnScenarioLabel})` : ''}</span>}
+          {assumptions.returnRate !== undefined && <span>Rendite {formatPercent(assumptions.returnRate, 1)} p. a.{assumptions.returnScenarioLabel ? ` (${assumptions.returnScenarioLabel})` : ''}{ownReturnNote}</span>}
           <span>Inflation {formatPercent(assumptions.inflationRate, 1)}</span>
           <span>Rente ab {assumptions.retirementAge}</span>
           {assumptions.retirementEndAge !== undefined && <span>Entnahme bis {assumptions.retirementEndAge}</span>}
@@ -244,7 +251,7 @@ export function PlanOverview(props: PlanOverviewProps) {
           <p>{assumptions.age} Jahre · {formatCurrency(assumptions.grossSalaryYear)} Jahreseinkommen vor Steuern · Rente ab {assumptions.retirementAge}.</p>
           <p>Rentenangabe: {assumptions.pensionMethodLabel}</p>
           <p>Inflation: {formatPercent(assumptions.inflationRate)} pro Jahr</p>
-          {assumptions.returnRate !== undefined && <p>Rendite: {formatPercent(assumptions.returnRate)} pro Jahr{assumptions.returnScenarioLabel ? ` (Szenario „${assumptions.returnScenarioLabel}“)` : ''}</p>}
+          {assumptions.returnRate !== undefined && <p>Rendite: {formatPercent(assumptions.returnRate)} pro Jahr{assumptions.returnScenarioLabel ? ` (Szenario „${assumptions.returnScenarioLabel}“)` : ''}{ownReturnNote}</p>}
           <p>Einkommen bis zur Rente: {formatPercent(assumptions.salaryGrowthRate ?? 0)} pro Jahr · Rentenwert: {formatPercent(assumptions.pensionValueGrowthRate ?? 0)} pro Jahr{(assumptions.salaryGrowthRate ?? 0) === 0 && (assumptions.pensionValueGrowthRate ?? 0) === 0 ? ' (beides ohne Wachstum angesetzt)' : ''}</p>
           {assumptions.retirementEndAge !== undefined && <p>Entnahme aus Depots und Kapitalverzehr geplant bis Alter {assumptions.retirementEndAge}.</p>}
           {canShow && statutoryRow && assumptions.statutoryGrossMonthly !== undefined && assumptions.statutoryGrossMonthly > 0 && summary && <p className="plan-overview__muted" data-testid="plan-statutory-bridge">
