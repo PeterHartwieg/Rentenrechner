@@ -8,6 +8,7 @@ import { buildAllProductsSimulation } from '../../app/buildAllProductsSimulation
 import { deriveTaxModes } from '../../app/simulationSelectors'
 import { de2026Rules } from '../../rules/de2026'
 import { formatCurrency } from '../../utils/format'
+import { realDeflator } from '../../app/planSummary'
 
 afterEach(cleanup)
 
@@ -43,17 +44,23 @@ describe('comparison card duration and real figures', () => {
     expect(card.getByText(lifelong ? 'Auch wenn du älter wirst.' : 'Danach endet diese Auszahlung.')).toBeInTheDocument()
   })
 
-  it('uses supplied nominal net, real fees and the effective fair-comparison anchor', () => {
-    const assumptions = { ...defaultAssumptions, visibleProducts: ['etf' as const], equalInputAmountEUR: 257,
+  it('deflates the supplied nominal net while retaining fee and contribution assumptions', () => {
+    const assumptions = { ...defaultAssumptions, inflationRate: 0.02, visibleProducts: ['etf' as const], equalInputAmountEUR: 257,
       etf: { ...defaultAssumptions.etf, annualAssetFee: 0.0037 } }
     const simulation = renderResult(assumptions)
     const product = simulation.products.find((product) => product.productId === 'etf' && product.scenarioId === 'basis')!
     const card = within(screen.getByTestId('vergleich-result-etf'))
-    expect(card.getByText(formatCurrency(product.netMonthlyPayout).replaceAll('\u00a0', ' '))).toBeInTheDocument()
+    const deflator = realDeflator(assumptions.inflationRate, defaultProfile.retirementAge - defaultProfile.age)
+    expect(card.getByText(formatCurrency(product.netMonthlyPayout * deflator).replaceAll('\u00a0', ' '))).toBeInTheDocument()
     fireEvent.click(card.getByText('Annahmen ansehen'))
     expect(card.getByText('Fondskosten 0,37 % p. a.')).toBeInTheDocument()
     expect(card.getByText(`${formatCurrency(simulation.bavFunding.monthlyNetCost, 2).replaceAll('\u00a0', ' ')} / Monat`)).toBeInTheDocument()
-    expect(screen.getByText(/Beträge zum Rentenbeginn \(nominal\)/)).toBeInTheDocument()
-    expect(screen.queryByText(/Beträge in heutigen Euro/)).not.toBeInTheDocument()
+    expect(document.querySelector('.vergleich-result-note')).toHaveTextContent('Auszahlungen in heutiger Kaufkraft.')
+    const nominalButton = screen.getByRole('button', { name: 'Zum Rentenbeginn' })
+    expect(nominalButton).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(nominalButton)
+    expect(nominalButton).toHaveAttribute('aria-pressed', 'true')
+    expect(card.getByText(formatCurrency(product.netMonthlyPayout).replaceAll('\u00a0', ' '))).toBeInTheDocument()
+    expect(document.querySelector('.vergleich-result-note')).toHaveTextContent('Beträge zum Rentenbeginn (nominal).')
   })
 })

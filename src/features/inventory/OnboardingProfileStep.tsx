@@ -62,11 +62,21 @@ export function OnboardingProfileStep({ draft, errors, mode, showErrors }: {
       </section>}
       <OnboardingDisclosure title="Rentenalter & weitere Angaben">
         {numberField('retirementAge', 'Rentenbeginn mit')}
-        <label className="onboarding-choice">
-          <input type="checkbox" checked={profile.churchTax}
-            onChange={(event) => patchProfile('churchTax', event.target.checked)} />
-          Kirchensteuer
-        </label>
+        <div>
+          <label className="onboarding-choice">
+            <input type="checkbox" checked={profile.churchTax}
+              aria-describedby={`${id}-church-tax-hint`}
+              onChange={(event) => patchProfile('churchTax', event.target.checked)} />
+            Kirchensteuer
+          </label>
+          {/* The engine has no church-tax path yet. The answer is stored so it
+              survives a future update, but it must not look like it changes
+              the result today. */}
+          <p className="onboarding-hint" id={`${id}-church-tax-hint`}>
+            Wird gespeichert, fließt aber noch nicht in die Berechnung ein. Alle
+            Ergebnisse gelten ohne Kirchensteuer.
+          </p>
+        </div>
         <div>
           <p>Kinder-Geburtsjahre</p>
           <p className="onboarding-hint">{profile.childBirthYears.length

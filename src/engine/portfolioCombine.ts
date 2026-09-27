@@ -116,6 +116,8 @@ export interface CombinedMonthlyGrossPayouts {
 export interface CombinedResult {
   /** Aggregate after-tax + KV/PV monthly retirement income (EUR/month). */
   monthlyNetIncome: number
+  /** Private KV/PV expense after the GRV subsidy; deducted once from the household. */
+  pkvRetirementMonthlyCost: number
   /** Aggregate gross monthly payouts split by source channel. */
   monthlyGrossPayouts: CombinedMonthlyGrossPayouts
   /** Aggregate retirement-tax breakdown (single `calculateRetirementTax` call). */
@@ -124,11 +126,11 @@ export interface CombinedResult {
   aggregateKvPv: RetirementKvPvBreakdown
   /**
    * Per-instance back-allocated values. Sum of `monthlyNet` across entries
-   * (plus the GRV / statutory pension net) equals `monthlyNetIncome` within
+   * (plus statutory pension net, less private KV/PV expense) equals `monthlyNetIncome` within
    * floating-point precision (better than 1 ct).
    */
   byInstance: Record<string, CombinedInstanceShare>
-  /** GRV / Versorgungswerk / Beamtenpension net contribution (EUR/month). */
+  /** Statutory pension income after tax/statutory KV/PV, before household private premiums. */
   statutoryPensionMonthlyNet: number
   /** Free-form notes (Sparerpauschbetrag deferral, multi-employer warnings, ...). */
   notes: string[]
@@ -171,6 +173,8 @@ export interface CombineContext {
    * 'none' = no KV/PV on statutory baseline (PKV holders w/ VW/Beamten).
    */
   statutoryPensionKvChannel: 'kvdr_half_rate' | 'versorgungsbezug_full_rate' | 'none'
+  bavKvChannel: 'bav_versorgungsbezug' | 'none'
+  pkvRetirementMonthlyCost: number
   /** Retirement health-insurance status — drives every per-instance KV/PV branch. */
   retirementHealthStatus: RetirementHealthStatus
   /**
@@ -252,7 +256,7 @@ function buildPerSourceLines(
         monthlyGross: grossMonthly,
         taxableAnnual: grossMonthly * 12,
         taxChannel: 'bav_pension',
-        kvPvChannel: 'bav_versorgungsbezug',
+        kvPvChannel: ctx.bavKvChannel,
         // Note: bAV always routes via `bav_versorgungsbezug` (§229 Abs. 1 Nr. 5
         // SGB V) regardless of kvdrMember. The `kvdrMember` flag affects whether
         // the §226(2) Freibetrag applies inside the aggregate KV/PV calc — done
@@ -745,7 +749,8 @@ export function combinePortfolio(
   // -------------------------------------------------------------------------
   const monthlyNetIncome =
     statutoryNetMonthly +
-    Object.values(byInstance).reduce((s, share) => s + share.monthlyNet, 0)
+    Object.values(byInstance).reduce((s, share) => s + share.monthlyNet, 0) -
+    ctx.pkvRetirementMonthlyCost
 
   // Gross-by-channel summary (for the dashboard waterfall)
   const monthlyGrossPayouts: CombinedMonthlyGrossPayouts = {
@@ -766,6 +771,7 @@ export function combinePortfolio(
 
   return {
     monthlyNetIncome,
+    pkvRetirementMonthlyCost: ctx.pkvRetirementMonthlyCost,
     monthlyGrossPayouts,
     aggregateTax,
     aggregateKvPv,

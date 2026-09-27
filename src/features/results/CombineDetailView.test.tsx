@@ -302,6 +302,7 @@ describe('CombineDetailView — back-allocated netto from combinedForScenario (#
     expect(bavPerInstanceResult?.netMonthlyPayout).not.toBeCloseTo(BAV_BACK_ALLOCATED_NET, 0)
 
     const syntheticCombined: CombinedResult = {
+      pkvRetirementMonthlyCost: 0,
       monthlyNetIncome: ETF_BACK_ALLOCATED_NET + BAV_BACK_ALLOCATED_NET,
       monthlyGrossPayouts: {
         statutoryPension: 0,
@@ -457,6 +458,7 @@ describe('CombineDetailView — back-allocated netto from combinedForScenario (#
     const scenarioId = scenario.id
 
     const syntheticCombined: CombinedResult = {
+      pkvRetirementMonthlyCost: 0,
       monthlyNetIncome: 900,
       monthlyGrossPayouts: {
         statutoryPension: 0, bav: 0, privateInsurance: 0,

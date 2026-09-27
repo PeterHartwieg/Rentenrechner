@@ -57,3 +57,12 @@ export function formatRelativeTime(elapsedMs: number): string {
   const weeks = Math.floor(days / 7)
   return weeks === 1 ? 'vor 1 Woche' : `vor ${weeks} Wochen`
 }
+
+/** Compact German euro amounts that keep million ticks readable on a phone. */
+export function formatLifecycleAxisEuro(value: number): string {
+  if (!Number.isFinite(value)) return '–'
+  const absolute = Math.abs(value)
+  if (absolute >= 1_000_000) return `${formatNumber(value / 1_000_000, 1)} Mio. €`
+  if (absolute >= 1_000) return `${formatNumber(value / 1_000, 0)} Tsd. €`
+  return `${formatNumber(value, 0)} €`
+}

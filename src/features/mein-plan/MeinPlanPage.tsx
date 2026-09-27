@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import './MeinPlanPage.css'
-import { PlanOverview } from './PlanOverview'
+import { PlanOverview, type PlanTopicIntent } from './PlanOverview'
 import { PlanDurationSummary } from './PlanDurationSummary'
+import { selectPlanOffers } from './planOffers'
 import { NumberField } from '../../ui/NumberField'
 import type { GermanRules } from '../../domain'
 import type { PersonalProfile } from '../../domain'
@@ -21,6 +22,7 @@ import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { useViewport } from '../../ui/chrome/useViewport'
 import { RightRailAccordion } from '../../ui/chrome/RightRailAccordion'
 import { formatCurrency, formatPercent } from '../../utils/format'
+import type { MoneyBasis } from '../../ui/moneyBasis'
 import { largestTestedChange, summarizeContractEvidence } from './calculationContext'
 import {
   sensitivityIfReturnScenario,
@@ -59,6 +61,8 @@ const SECTION_SENSITIVITAET: { id: string; n: string; title: string } = {
 // ---------------------------------------------------------------------------
 
 export interface MeinPlanPageProps {
+  moneyBasis?: MoneyBasis
+  onMoneyBasisChange?: (basis: MoneyBasis) => void
   workspace: Workspace
   perInstance: Record<string, ProductResult[]>
   selectedScenarioId: string
@@ -107,6 +111,16 @@ export interface MeinPlanPageProps {
    * `/vertrag/:id/bearbeiten` is still undoable after the redirect back here.
    */
   notification?: { message: string; onUndo?: () => void }
+  /**
+   * Evaluate an unsigned offer against the plan. The plan lists offers apart
+   * from counted sources; this opens whatever flow the host uses to price a
+   * candidate. Hidden when absent.
+   */
+  onReviewOffer?: (instanceId: string) => void
+  /** A `?topic=` arrival on an existing plan, rendered as a banner. */
+  topicIntent?: PlanTopicIntent
+  /** Gross statutory pension in the retirement year, for the brutto → netto bridge. */
+  statutoryGrossMonthly?: number
 }
 
 function kapitalSearch(selectedScenarioId: string): string {
@@ -123,7 +137,9 @@ function OverviewMeinPlanPage(props: MeinPlanPageProps & { summary: PlanSummary 
   const { workspace, navigate, planNotStarted, onSetTarget } = props
   const { profile, assumptions } = workspace.baseline
   const summary = props.readiness ? { ...props.summary, readiness: props.readiness } : props.summary
-  const [moneyBasis, setMoneyBasis] = useState<'real' | 'nominal'>('real')
+  const [localMoneyBasis, setLocalMoneyBasis] = useState<MoneyBasis>('real')
+  const moneyBasis = props.moneyBasis ?? localMoneyBasis
+  const setMoneyBasis = props.onMoneyBasisChange ?? setLocalMoneyBasis
   const [showDuration, setShowDuration] = useState(false)
   const [editingTarget, setEditingTarget] = useState(false)
   const [targetDraft, setTargetDraft] = useState('')
@@ -184,6 +200,8 @@ function OverviewMeinPlanPage(props: MeinPlanPageProps & { summary: PlanSummary 
     onSetTarget?.(value)
     setEditingTarget(false)
   }
+  const offers = useMemo(() => selectPlanOffers(workspace), [workspace])
+  const selectedScenario = assumptions.returnScenarios.find((s) => s.id === props.selectedScenarioId)
   const pensionMethod = assumptions.statutoryPension.pensionEntryMethod?.kind
   const pensionMethodLabel = assumptions.statutoryPension.pensionBaselineType === 'none'
     ? 'Keine Pflichtrente'
@@ -198,7 +216,8 @@ function OverviewMeinPlanPage(props: MeinPlanPageProps & { summary: PlanSummary 
     <div className="mein-plan-view-back">
       <button type="button" className="plan-overview__link" onClick={() => setShowDuration(false)}>← Zurück zum Plan</button>
     </div>
-    <PlanDurationSummary rows={summary.rows} onOpenKapital={openKapital}
+    <PlanDurationSummary rows={summary.rows} onOpenKapital={openKapital} canShowAmounts={canShow}
+      retirementAge={profile.retirementAge} targetMonthly={profile.desiredNetMonthlyPension}
       onEditSharedHorizon={() => navigate?.(ROUTES.eingaben, undefined, '#renteneintritt')} />
   </div>
 
@@ -211,10 +230,19 @@ function OverviewMeinPlanPage(props: MeinPlanPageProps & { summary: PlanSummary 
       savedAlternativeCount={workspace.whatIfs.length}
       notification={props.notification}
       moneyBasis={moneyBasis}
-      onToggleMoneyBasis={() => setMoneyBasis((basis) => basis === 'real' ? 'nominal' : 'real')}
+      onMoneyBasisChange={setMoneyBasis}
       targetMonthly={profile.desiredNetMonthlyPension}
       assumptions={{ age: profile.age, grossSalaryYear: profile.grossSalaryYear,
-        retirementAge: profile.retirementAge, inflationRate: assumptions.inflationRate, pensionMethodLabel }}
+        retirementAge: profile.retirementAge, inflationRate: assumptions.inflationRate, pensionMethodLabel,
+        returnRate: selectedScenario?.annualReturn, returnScenarioLabel: selectedScenario?.label,
+        retirementEndAge: assumptions.retirementEndAge,
+        salaryGrowthRate: assumptions.statutoryPension.annualSalaryGrowthRate,
+        pensionValueGrowthRate: assumptions.statutoryPension.rentenwertGrowthRate,
+        statutoryGrossMonthly: props.statutoryGrossMonthly }}
+      offers={offers}
+      onEditOffer={(offer) => navigate?.(ROUTES.vertragBearbeiten(offer.instanceId))}
+      onReviewOffer={props.onReviewOffer ? (offer) => props.onReviewOffer?.(offer.instanceId) : undefined}
+      topicIntent={props.topicIntent}
       onStart={editProfile}
       onAddContract={() => props.onAddContract ? props.onAddContract() : navigate?.(ROUTES.vorsorgeNeu)}
       onEditSource={(row) => {
@@ -797,7 +825,7 @@ interface ZusammenStatutoryRow extends ZusammenRowBase {
   kind: 'statutory'
 }
 
-type ZusammenRow = ZusammenInstanceRow | ZusammenStatutoryRow
+type ZusammenRow = ZusammenInstanceRow | ZusammenStatutoryRow | (ZusammenRowBase & { kind: 'pkv' })
 
 const STATUTORY_PENSION_COLOR = '#222222'
 const FALLBACK_PRODUCT_COLOR = '#888888'
@@ -894,6 +922,17 @@ function collectZusammenRows(
     monthlyNet: statutoryMonthly,
     color: STATUTORY_PENSION_COLOR,
   })
+
+  if ((combinedForScenario?.pkvRetirementMonthlyCost ?? 0) > 0) {
+    rows.push({
+      kind: 'pkv', key: 'pkv',
+      label: 'Private Kranken- und Pflegeversicherung, abzgl. Zuschuss § 106 SGB VI',
+      sublabel: 'Heutige Beiträge unverändert fortgeschrieben',
+      contributionMonthly: null,
+      monthlyNet: -combinedForScenario!.pkvRetirementMonthlyCost,
+      color: STATUTORY_PENSION_COLOR,
+    })
+  }
 
   const productSlots = buildProductSlots(wsa)
 

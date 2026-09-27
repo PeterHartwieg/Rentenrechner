@@ -40,40 +40,31 @@ export function LegalFooter({ navigate }: Props) {
 
   return (
     <footer className="app-footer" {...containerTargetProps}>
-      <ProjectSupport />
-      <div className="app-footer__method">
-        <span>[1] Annahme: 5 % Rendite p.a., 2 % Inflation</span>
-        <span>[2] Steuern nach Stand 2026 (§22 EStG)</span>
-        <span>[3] Rentenwert und Beitragsbemessungsgrenzen: BMAS, Stand 2026</span>
-        <a
-          href={routeToPath(ROUTES.methode)}
-          className="app-footer__method-link"
-          onClick={go(ROUTES.methode)}
-        >
-          ↗ Methode im Detail
+      <nav className="app-footer-nav" aria-label="Weitere Informationen">
+        <a href={routeToPath(ROUTES.methode)} onClick={go(ROUTES.methode)}>
+          Methode &amp; Quellen
         </a>
-      </div>
-      <div className="app-footer__legal">
-        <span className="app-footer-copy">
-          Modellrechnung. Keine Anlage-, Steuer- oder Rechtsberatung.
-        </span>
-        <nav className="app-footer-nav">
-          <a href="/impressum/" onClick={go(ROUTES.impressum)} {...impressumLinkProps}>
-            Impressum
-          </a>
-          <span aria-hidden="true">·</span>
-          <a href="/datenschutz/" onClick={go(ROUTES.datenschutz)} {...datenschutzLinkProps}>
-            Datenschutzerklärung
-          </a>
-          <span aria-hidden="true">·</span>
-          <span
-            title="PolyForm Noncommercial 1.0.0 — kommerzielle Nutzung lizenzpflichtig"
-            {...lizenzProps}
-          >
-            Lizenz: PolyForm Noncommercial 1.0.0
-          </span>
-        </nav>
-      </div>
+        <a href="/impressum/" onClick={go(ROUTES.impressum)} {...impressumLinkProps}>
+          Impressum
+        </a>
+        <a href="/datenschutz/" onClick={go(ROUTES.datenschutz)} {...datenschutzLinkProps}>
+          Datenschutz
+        </a>
+        <a
+          href="/impressum/#lizenz"
+          title="PolyForm Noncommercial 1.0.0 — kommerzielle Nutzung lizenzpflichtig"
+          {...lizenzProps}
+        >
+          Lizenz
+        </a>
+        <details className="app-footer-support">
+          <summary>Projekt unterstützen</summary>
+          <ProjectSupport />
+        </details>
+      </nav>
+      <span className="app-footer-copy">
+        Modellrechnung. Keine Anlage-, Steuer- oder Rechtsberatung.
+      </span>
     </footer>
   )
 }

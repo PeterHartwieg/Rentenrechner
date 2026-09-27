@@ -18,7 +18,6 @@
  *  - InventoryWizard.test.ts
  *  - portfolioState.ts (addInstanceToWorkspace, removeInstanceFromWorkspace — via workspaceIdentity)
  *  - contractDecisions.ts (avdDraftToInstance, newInstanceId)
- *  - CombineDashboardSidebar.tsx (bavOfferDraftToInstance)
  */
 
 import type {
@@ -124,6 +123,11 @@ const EP_INPUT_STATUS_KEY = 'statutoryPension.currentEntgeltpunkte'
  *    both `'entered'` (typed) and `'document'` (read off a Renteninformation)
  *    suppress it (`inputStatus`, resolved like `onboardingDraft.ts` does —
  *    absent means `assumed`, never user-owned).
+ *
+ * A manual gross-pension override suppresses detection in both shapes: while
+ * `manualMonthlyGross` is non-null (including zero), the projection ignores `currentEntgeltpunkte`
+ * entirely, so a stored seed behind an override cannot influence any number
+ * the user sees and a re-estimate would do nothing.
  */
 export function detectLegacyEpSeed({
   statutoryPension,
@@ -140,6 +144,12 @@ export function detectLegacyEpSeed({
   const method = statutoryPension.pensionEntryMethod
   const stored = statutoryPension.currentEntgeltpunkte
   const tolerance = 0.005
+
+  // Any non-null manual figure, including zero, wins in the projection —
+  // never offer a re-estimate that has no effect on the shown numbers.
+  if (statutoryPension.manualMonthlyGross !== null) {
+    return { legacy: false }
+  }
 
   // 'entered' and 'document' both mean the user owns the value (typed, or read
   // off a Renteninformation) — neither can be a wizard seed, in either branch.
@@ -315,49 +325,6 @@ export function countWorkspaceInstances(a: WorkspaceAssumptionsV2): number {
 
 export function bavDraftToInstance(d: BavDraft): BavInstance {
   return INVENTORY_PRODUCT_REGISTRY.bav.draftToInstance(d, newInstanceId)
-}
-
-export interface BavOfferDraft {
-  anbieter?: string
-  contractStartYear: number
-  contractualMatchPercent: number
-  contractualFixedMonthly: number
-  effektivkostenPct: number
-  rentenfaktor: number
-  durchfuehrungsweg: BavInstance['durchfuehrungsweg']
-  payoutMode: BavInstance['payoutMode']
-}
-
-export function bavOfferDraftToInstance(d: BavOfferDraft): BavInstance {
-  return {
-    instanceId: newInstanceId('bav'),
-    label: d.anbieter ? `bAV-Angebot ${d.anbieter}` : 'bAV-Angebot',
-    anbieter: d.anbieter,
-    status: 'offered',
-    contractStartYear: d.contractStartYear,
-    currentValueEUR: 0,
-    evidenceMap: {},
-    ownedBy: 'self',
-    monthlyGrossConversion: 0,
-    statutoryMinimumSubsidyEnabled: defaultAssumptions.bav.statutoryMinimumSubsidyEnabled,
-    contractualMatchPercent: d.contractualMatchPercent,
-    contractualFixedMonthly: d.contractualFixedMonthly,
-    fees: {
-      ...defaultAssumptions.bav.fees,
-      wrapperAssetFee: d.effektivkostenPct / 100,
-      fundAssetFee: 0,
-    },
-    monthlyOtherRetirementIncome: defaultAssumptions.bav.monthlyOtherRetirementIncome,
-    includeGrvReduction: defaultAssumptions.bav.includeGrvReduction,
-    kvdrMember: defaultAssumptions.bav.kvdrMember,
-    durchfuehrungsweg: d.durchfuehrungsweg,
-    pre2005EligibleTaxFree: defaultAssumptions.bav.pre2005EligibleTaxFree,
-    payoutMode: d.payoutMode,
-    rentenfaktor: d.rentenfaktor,
-    rentenfaktorConfirmed: false,
-    zeitrenteYears: defaultAssumptions.bav.zeitrenteYears,
-    annualContributionGrowthRate: 0,
-  }
 }
 
 export function pavDraftToInstance(d: PavDraft): InsuranceInstance {

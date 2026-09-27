@@ -1,12 +1,26 @@
 import { useViewport } from '../../ui/chrome/useViewport'
 import { formatCurrency, formatPercent } from '../../utils/format'
+import { RIY_UNAVAILABLE, RIY_UNAVAILABLE_REASON } from '../results/riyAvailability'
 import { productTaglines } from './productTaglines'
 import type { VergleichTableRow } from './vergleichRows'
+import { displayAtMoneyBasis, type MoneyBasis } from '../../ui/moneyBasis'
+
+const COST_EXPLANATION = 'Effektivkosten zeigen, um wie viele Prozentpunkte pro Jahr die Kosten deine Rendite in der Ansparphase mindern. Sie berücksichtigen alle angesetzten Gebühren; Steuern und Kosten während der Auszahlung sind nicht enthalten.'
+
+/** Cost cell content + hover reason. A genuine 0 % stays "0,00 %". */
+function costDisplay(row: VergleichTableRow): { text: string; title: string | undefined } {
+  if (row.effectiveAnnualCost === undefined) {
+    return { text: RIY_UNAVAILABLE, title: RIY_UNAVAILABLE_REASON }
+  }
+  return { text: formatPercent(row.effectiveAnnualCost, 2), title: undefined }
+}
 
 interface Props {
   rows: ReadonlyArray<VergleichTableRow>
   /** User's configured retirement age — used for the "Kapital mit N" column label. */
   retirementAge: number
+  moneyBasis?: MoneyBasis
+  deflator?: number
 }
 
 /**
@@ -28,7 +42,7 @@ interface Props {
  * cell. The Netto value stays in default ink — direction-d treats the table
  * as a sober register, not a headline figure.
  */
-export function VergleichComparisonTable({ rows, retirementAge }: Props) {
+export function VergleichComparisonTable({ rows, retirementAge, moneyBasis = 'nominal', deflator = 1 }: Props) {
   const viewport = useViewport()
 
   if (rows.length === 0) {
@@ -38,33 +52,48 @@ export function VergleichComparisonTable({ rows, retirementAge }: Props) {
   // Bar denominator uses the visible max; floor at 1 to keep the bar div
   // healthy even when every product produces a zero payout (synthetic test
   // edge case).
-  const maxNet = Math.max(1, ...rows.map((r) => r.netMonthlyPayout))
+  const displayRows = rows.map((row) => ({
+    ...row,
+    capitalAtRetirement: displayAtMoneyBasis(row.capitalAtRetirement, moneyBasis, deflator),
+    grossMonthlyPayout: displayAtMoneyBasis(row.grossMonthlyPayout, moneyBasis, deflator),
+    deductionsMonthly: displayAtMoneyBasis(row.deductionsMonthly, moneyBasis, deflator),
+    netMonthlyPayout: displayAtMoneyBasis(row.netMonthlyPayout, moneyBasis, deflator),
+  }))
+  const maxNet = Math.max(1, ...displayRows.map((r) => r.netMonthlyPayout))
+  const moneyLabel = moneyBasis === 'real' ? 'Beträge in heutigen Euro.' : 'Beträge zum Rentenbeginn (nominal).'
 
   if (viewport === 'phone') {
     return (
+      <>
+      <p>{moneyLabel} {COST_EXPLANATION}</p>
       <ul className="vergleich-product-cards" aria-label="Produktvergleich">
-        {rows.map((row) => (
+        {displayRows.map((row) => (
           <ProductCard key={row.productId} row={row} maxNet={maxNet} retirementAge={retirementAge} />
         ))}
       </ul>
+      </>
     )
   }
 
   return (
+    <>
+    <p>{moneyLabel} {COST_EXPLANATION}</p>
     <table className="vergleich-comparison-table" aria-label="Produktvergleich">
       <thead>
         <tr>
           <th scope="col">Sparform</th>
           <th scope="col" className="vergleich-col-tagline">Wie es funktioniert</th>
           <th scope="col" className="vergleich-cell--num">{`Kapital mit ${retirementAge}`}</th>
-          <th scope="col" className="vergleich-cell--num">Kosten p. a.</th>
+          <th scope="col" className="vergleich-cell--num">Effektivkosten p. a.</th>
           <th scope="col" className="vergleich-cell--num">Brutto-Rente</th>
           <th scope="col" className="vergleich-cell--num">Abzüge</th>
           <th scope="col" className="vergleich-cell--num vergleich-col-netto">Netto pro Monat</th>
         </tr>
       </thead>
       <tbody>
-        {rows.map((row) => (
+        {displayRows.map((row) => {
+          const cost = costDisplay(row)
+          return (
           <tr key={row.productId}>
             <td>
               <div className="vergleich-cell-product">
@@ -74,7 +103,7 @@ export function VergleichComparisonTable({ rows, retirementAge }: Props) {
             </td>
             <td className="vergleich-cell-tagline vergleich-col-tagline">{productTaglines[row.productId]}</td>
             <td className="vergleich-cell--num">{formatCurrency(row.capitalAtRetirement, 0)}</td>
-            <td className="vergleich-cell--num">{formatPercent(row.effectiveAnnualCost, 2)}</td>
+            <td className="vergleich-cell--num" title={cost.title}>{cost.text}</td>
             <td className="vergleich-cell--num">{formatCurrency(row.grossMonthlyPayout, 0)}</td>
             <td className="vergleich-cell--num vergleich-cell--abzuege">
               −{formatCurrency(row.deductionsMonthly, 0)}
@@ -91,9 +120,11 @@ export function VergleichComparisonTable({ rows, retirementAge }: Props) {
               </div>
             </td>
           </tr>
-        ))}
+          )
+        })}
       </tbody>
     </table>
+    </>
   )
 }
 
@@ -110,6 +141,7 @@ interface CardProps {
  * monetary-grid table columns.
  */
 function ProductCard({ row, maxNet, retirementAge }: CardProps) {
+  const cost = costDisplay(row)
   return (
     <li className="vergleich-product-card" data-product={row.productId}>
       <div className="vergleich-product-card__head">
@@ -119,8 +151,8 @@ function ProductCard({ row, maxNet, retirementAge }: CardProps) {
         </div>
         <div>
           <div className="vergleich-product-card__netto">{formatCurrency(row.netMonthlyPayout, 0)}</div>
-          <div className="vergleich-product-card__kosten">
-            Kosten {formatPercent(row.effectiveAnnualCost, 2)}
+          <div className="vergleich-product-card__kosten" title={cost.title}>
+            {row.effectiveAnnualCost === undefined ? `Effektivkosten: ${cost.text}` : `Effektivkosten ${cost.text} p. a.`}
           </div>
         </div>
       </div>

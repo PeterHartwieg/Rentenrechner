@@ -149,14 +149,6 @@
 
 /* ── App footer (rendered on the calculator home page) ─────────────────── */
 
-/* Two-row unified footer:
-   - Row 1 (.app-footer__method): methodology footnotes [1]/[2]/[3] +
-     right-aligned "↗ Methode im Detail" link. Hidden on phone (the page
-     body renders an inline Methode link instead).
-   - Row 2 (.app-footer__legal): disclaimer microcopy + Impressum /
-     Datenschutz / Lizenz pill (+ flag-gated QA activator).
-   Replaces the earlier `MethodFooter` + `LegalFooter` pair that stacked
-   as two separate <footer> elements. */
 .app-footer {
   display: flex;
   flex-direction: column;
@@ -173,13 +165,6 @@
      breathing room above the footer and the footer reaches the edge of
      the viewport even when the page content is short. */
   margin-top: auto;
-}
-
-.app-footer__method {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 32px;
-  align-items: center;
 }
 
 .project-support {
@@ -254,60 +239,54 @@
   outline-offset: 3px;
 }
 
-.app-footer__method-link {
-  margin-left: auto;
-  color: var(--rw-ink-soft);
-  text-decoration: none;
-  transition: color 0.1s;
-}
-
-.app-footer__method-link:hover {
-  color: var(--rw-ink);
-}
-
-.app-footer__legal {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-}
-
 .app-footer-copy {
-  flex: 1 1 auto;
-  min-width: 0;
+  line-height: 1.6;
 }
 
 .app-footer-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
+  gap: 4px 20px;
+  align-items: baseline;
 }
 
-.app-footer-nav a {
+.app-footer-nav a,
+.app-footer-support summary {
   color: var(--rw-ink-soft);
   text-decoration: none;
-  transition: color 0.1s;
+  cursor: pointer;
 }
 
-.app-footer-nav a:hover {
+.app-footer-nav a:hover,
+.app-footer-support summary:hover {
   color: var(--rw-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.app-footer-nav a:focus-visible,
+.app-footer-support summary:focus-visible {
+  outline: 2px solid var(--rw-accent);
+  outline-offset: 3px;
+}
+
+.app-footer-support[open] {
+  flex-basis: 100%;
+}
+
+.app-footer-support .project-support {
+  margin: 12px 0 0;
+  padding: 0;
+  border: 0;
 }
 
 /* ── Responsive ────────────────────────────────────────────────────────── */
 
 @media (max-width: 1023px) {
-  /* Tablet: tighter padding + smaller methodology gap, mirroring the
-     earlier `.rw-method-footer--tablet` rule. */
   .app-footer {
     padding: 10px 24px 12px;
   }
 
-  .app-footer__method {
-    gap: 22px;
-    font-size: 10.5px;
-  }
 }
 
 @media (max-width: 760px) {
@@ -320,26 +299,15 @@
     align-items: flex-start;
   }
 
-  .app-footer__legal {
-    flex-direction: column;
-    align-items: flex-start;
-  }
 
 }
 
 @media (max-width: 639px) {
-  /* Phone: tablet-width switch at 640 px — match the chrome's phone breakpoint.
-     The methodology row is suppressed here; page bodies render their own
-     inline "↗ Methode im Detail" link at content end (matches the prior
-     MethodFooter phone behaviour). */
   .app-footer {
     padding: 10px 14px;
     font-size: 10.5px;
   }
 
-  .app-footer__method {
-    display: none;
-  }
 }
 
 @media print {

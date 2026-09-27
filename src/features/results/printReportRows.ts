@@ -102,7 +102,8 @@ export interface PrintVergleichRow {
   readonly tagline: string
   /** Engine-precision euro / percent values forwarded from `vergleichRows.ts`. */
   readonly capitalAtRetirement: number
-  readonly effectiveAnnualCost: number
+  /** `undefined` when `availableRiy` rejects the engine RIY (see `vergleichRows.ts`). */
+  readonly effectiveAnnualCost: number | undefined
   readonly grossMonthlyPayout: number
   readonly deductionsMonthly: number
   readonly netMonthlyPayout: number
@@ -234,8 +235,8 @@ export interface PrintWohinRow {
     readonly heading: string
     readonly rows: ReadonlyArray<VergleichDetailRow>
   }>
-  /** Effektivkosten p. a. (decimal — 0.012 = 1.2 %). */
-  readonly effectiveAnnualCost: number
+  /** Effektivkosten p. a. (decimal — 0.012 = 1.2 %); `undefined` when not presentable. */
+  readonly effectiveAnnualCost: number | undefined
   /** "Verfügbar ab" copy resolved at build time. */
   readonly availabilityLabel: string
   /** Optional secondary line below the availability label. */
@@ -463,6 +464,16 @@ export function buildPrintZusammenRows({
     monthlyNet: statutoryMonthly,
     share: denom > 0 ? statutoryMonthly / denom : 0,
   })
+  const pkvCost = combinedForScenario?.pkvRetirementMonthlyCost ?? 0
+  if (pkvCost > 0) rows.push({
+    key: 'pkv',
+    label: 'Private Kranken- und Pflegeversicherung, abzgl. Zuschuss § 106 SGB VI',
+    sublabel: 'Heutige Beiträge unverändert fortgeschrieben',
+    contributionMonthly: null,
+    monthlyNet: -pkvCost,
+    share: denom > 0 ? -pkvCost / denom : 0,
+  })
+
 
   const slots = buildProductSlots(wsa)
   for (const slot of slots) {

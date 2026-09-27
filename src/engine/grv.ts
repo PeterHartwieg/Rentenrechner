@@ -27,7 +27,7 @@
  *   bAV GRV reduction NOT applied.
  *
  * 'none':
- *   No mandatory pension system. Returns zeros for all fields.
+ *   No mandatory pension system. Private insurance expense still applies.
  *
  * Modeled simplifications (see LEGAL_REVIEW.md):
  * - GRV assumes KVdR membership (§5 Abs. 1 Nr. 11 SGB V).
@@ -43,6 +43,7 @@ import type {
   StatutoryPensionAssumptions,
   StatutoryPensionResult,
 } from '../domain'
+import { legalConstants } from '../rules/legalConstants'
 import { careEmployeeRateForChildren } from './salary'
 import { calculateRetirementKvPv, calculateRetirementTax } from './retirementTax'
 
@@ -86,6 +87,27 @@ export function projectGrvContributionTimeline(
   return result
 }
 
+/** Current private premiums held constant; §106 applies only to a GRV pension.
+ * Source: https://www.gesetze-im-internet.de/sgb_6/__106.html
+ * No subsidy on private Pflegeversicherung; no employer subsidy in retirement.
+ */
+export function calculatePkvRetirementMonthlyCost(
+  profile: PersonalProfile,
+  rules: GermanRules,
+  pensionType: StatutoryPensionAssumptions['pensionBaselineType'],
+  grossMonthlyPension: number,
+): number {
+  if (profile.publicHealthInsurance) return 0
+  const kv = Math.max(0, profile.pkvMonthlyPremium ?? 0)
+  const pv = Math.max(0, profile.pPVMonthlyPremium ?? 0)
+  const share = legalConstants.retirementPkv.subsidyShare
+  const subsidy = pensionType === 'grv' || pensionType === undefined
+    ? Math.min(Math.max(0, grossMonthlyPension) *
+      (rules.socialSecurity.healthGeneralRate + rules.socialSecurity.healthAverageAdditionalRate) * share, kv * share)
+    : 0
+  return kv + pv - subsidy
+}
+
 export function projectStatutoryPension(
   profile: PersonalProfile,
   rules: GermanRules,
@@ -104,11 +126,12 @@ export function projectStatutoryPension(
     rentenwertGrowthRate = 0,
   } = assumptions
 
-  // 'none': all zeros — user has no mandatory pension system.
+  // No pension income, but private insurance remains a household expense.
   if (pensionBaselineType === 'none') {
     return {
       grossMonthlyPension: 0,
-      netMonthlyPension: 0,
+      netMonthlyPension: 0 - calculatePkvRetirementMonthlyCost(profile, rules, pensionBaselineType, 0),
+      pkvRetirementMonthlyCost: calculatePkvRetirementMonthlyCost(profile, rules, pensionBaselineType, 0),
       taxMonthly: 0,
       kvPvMonthly: 0,
       projectedEntgeltpunkte: 0,
@@ -222,9 +245,8 @@ export function projectStatutoryPension(
   // -------------------------------------------------------------------------
   let kvPvMonthly: number
 
-  if (!profile.publicHealthInsurance && pensionBaselineType !== 'grv') {
-    // PKV holders: no GKV contributions on VW or Beamtenpension income.
-    // (GRV stays as-is: KVdR is independent of PKV for GRV pensioners — documented simplification.)
+  if (!profile.publicHealthInsurance) {
+    // Private membership excludes statutory KV/PV on every baseline type.
     kvPvMonthly = 0
   } else if (pensionBaselineType === 'grv') {
     // §249a SGB V: KVdR members pay half healthRate on GRV pension; DRV pays the other half.
@@ -261,11 +283,13 @@ export function projectStatutoryPension(
     kvPvMonthly = kvPvResult.totalKvMonthly + kvPvResult.totalPvMonthly
   }
 
-  const netMonthlyPension = Math.max(0, grossMonthlyPension - taxMonthly - kvPvMonthly)
+  const pkvRetirementMonthlyCost = calculatePkvRetirementMonthlyCost(profile, rules, pensionBaselineType, grossMonthlyPension)
+  const netMonthlyPension = Math.max(0, grossMonthlyPension - taxMonthly - kvPvMonthly) - pkvRetirementMonthlyCost
 
   return {
     grossMonthlyPension,
     netMonthlyPension,
+    pkvRetirementMonthlyCost,
     taxMonthly,
     kvPvMonthly,
     projectedEntgeltpunkte,

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import './VergleichPage.css'
 import type { ProductId, ScenarioAssumptions, PersonalProfile } from '../../domain'
 import type { SimulationResultBundle } from '../../app/useSimulationResult'
@@ -15,8 +15,13 @@ import { VergleichRenditeStrip } from './VergleichRenditeStrip'
 import { VergleichComparisonTable } from './VergleichComparisonTable'
 import { rowFromResult, type VergleichTableRow } from './vergleichRows'
 import { VergleichProContraGrid } from './VergleichProContraGrid'
+import { realDeflator } from '../../app/planSummary'
+import { MoneyBasisSelector } from '../../ui/MoneyBasisSelector'
+import type { MoneyBasis } from '../../ui/moneyBasis'
 
 interface Props {
+  moneyBasis?: MoneyBasis
+  onMoneyBasisChange?: (basis: MoneyBasis) => void
   profile: PersonalProfile
   assumptions: ScenarioAssumptions
   result: SimulationResultBundle
@@ -26,6 +31,8 @@ interface Props {
   selectedScenarioId: string
   onSelectScenario: (id: string) => void
   onEditSetup?: () => void
+  /** Which person the comparison runs on, and whether that matches the plan. Rendered under the H1. */
+  profileNote?: ReactNode
   navigate?: (target: Route, search?: string) => void
   onExportCsv?: () => void
   onCopyLink?: () => void
@@ -33,20 +40,28 @@ interface Props {
   linkCopied?: boolean
 }
 
-/** Selected-product results, with nominal amounts from the shared comparison simulation. */
+/** Selected-product results, with a display-only conversion at the retirement-year anchor. */
 export function VergleichPage({
+  moneyBasis: controlledMoneyBasis,
+  onMoneyBasisChange,
   profile,
   assumptions,
   allProductsSimulation,
   selectedScenarioId,
   onSelectScenario,
   onEditSetup,
+  profileNote,
   navigate,
   onExportCsv,
   onCopyLink,
   onPrint,
   linkCopied,
 }: Props) {
+  const [localMoneyBasis, setLocalMoneyBasis] = useState<MoneyBasis>('real')
+  const moneyBasis = controlledMoneyBasis ?? localMoneyBasis
+  const setMoneyBasis = onMoneyBasisChange ?? setLocalMoneyBasis
+  const deflator = realDeflator(assumptions.inflationRate, profile.retirementAge - profile.age)
+  const hasInflation = deflator < 1
   const localAllProductsResult = useMemo(
     () => (allProductsSimulation ?? buildAllProductsSimulation(profile, assumptions)),
     [allProductsSimulation, profile, assumptions],
@@ -98,6 +113,7 @@ export function VergleichPage({
         <article className="vergleich-body">
           <div className="vergleich-kicker">Sparformen vergleichen</div>
           <h1 className="vergleich-headline" tabIndex={-1}>Sparformen im Vergleich</h1>
+          {profileNote}
           {rows.length === 0 ? (
             <div className="vergleich-empty">
               <h2>Noch keine Sparform ausgewählt</h2>
@@ -106,13 +122,15 @@ export function VergleichPage({
             </div>
           ) : <>
             <p className="vergleich-lead">Je {formatCurrency(monthlyContribution)} aus deinem eigenen Geld im Monat.</p>
+            {hasInflation && <MoneyBasisSelector value={moneyBasis} onChange={setMoneyBasis} />}
             <p className="vergleich-muted vergleich-result-note">
-              Gezeigt wird die Auszahlung je Sparform ab {retirementAge}, keine Gesamtrente. Beträge zum Rentenbeginn (nominal).
+              Gezeigt wird die Auszahlung je Sparform ab {retirementAge}, keine Gesamtrente. {hasInflation && moneyBasis === 'real' ? 'Auszahlungen in heutiger Kaufkraft.' : 'Beträge zum Rentenbeginn (nominal).'}
             </p>
             <div className="vergleich-result-grid">
               {rows.map((row) => <VergleichResultCard key={row.productId} row={row}
                 profile={profile} assumptions={assumptions} ownMoneyMonthly={monthlyContribution}
-                effectiveNetCost={allProductsResult.bavFunding.monthlyNetCost} scenarioId={effectiveScenarioId} />)}
+                effectiveNetCost={allProductsResult.bavFunding.monthlyNetCost} scenarioId={effectiveScenarioId}
+                moneyBasis={moneyBasis} deflator={deflator} />)}
             </div>
             {onEditSetup && <button type="button" className="vergleich-primary" onClick={onEditSetup}>Auswahl oder Betrag ändern</button>}
             <details className="vergleich-disclosure vergleich-secondary">
@@ -122,7 +140,7 @@ export function VergleichPage({
             </details>
             <details className="vergleich-disclosure vergleich-secondary">
               <summary>Kapital, Kosten und Abzüge vergleichen</summary>
-              <VergleichComparisonTable rows={rows} retirementAge={retirementAge} />
+              <VergleichComparisonTable rows={rows} retirementAge={retirementAge} moneyBasis={hasInflation ? moneyBasis : 'nominal'} deflator={deflator} />
             </details>
             <details className="vergleich-disclosure vergleich-secondary">
               <summary>Wofür welche Sparform spricht — und wogegen</summary>

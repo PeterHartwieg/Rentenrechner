@@ -37,6 +37,7 @@ export type ReadinessCode =
   | 'instance-capital-unknown'
   | 'instance-contribution-unknown'
   | 'pkv-premium-unknown'
+  | 'pkv-retirement-premium-assumed'
   | 'salary-unknown'
   | 'retirement-age-unknown'
   | 'simulation-error'
@@ -213,6 +214,15 @@ export function selectResultReadiness(
     const pkvUnknown =
       scenarioStatus('profile.pkvMonthlyPremium') === 'unknown' ||
       scenarioStatus('profile.pPVMonthlyPremium') === 'unknown'
+    if (scenarioStatus('profile.pkvMonthlyPremium') === 'assumed' ||
+        scenarioStatus('profile.pPVMonthlyPremium') === 'assumed') {
+      reasons.push({
+        code: 'pkv-retirement-premium-assumed',
+        severity: 'assumption',
+        label: 'PKV und Pflegeversicherung im Ruhestand: mindestens ein Beitrag ist angenommen. Heutige Beiträge werden ohne künftige Erhöhungen fortgeschrieben.',
+        target: { route: ROUTES.eingaben, anchor: 'profile-pkvMonthlyPremium' },
+      })
+    }
     if (pkvUnknown) {
       reasons.push({
         code: 'pkv-premium-unknown',

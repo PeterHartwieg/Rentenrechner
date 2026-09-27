@@ -1,4 +1,4 @@
-import type { GermanRules, InsuranceTaxMode, PersonalProfile, ProductResult } from '../domain'
+import type { GermanRules, InsuranceTaxMode, PersonalProfile, ProductResult, StatutoryPensionResult } from '../domain'
 import {
   buildCombineExportProjection,
   buildCompareExportProjection,
@@ -14,6 +14,7 @@ import { formatExportProvenance } from '../features/results/provenanceHelpers'
 export type { InstanceTaxModes } from '../engine/exportProjection'
 
 interface ExportOptions {
+  statutoryPension?: StatutoryPensionResult
   products: ProductResult[]
   bavAnnualTaxSvSavings: number
   bavProfile: PersonalProfile
@@ -87,6 +88,14 @@ export function buildExportCsv(opts: ExportOptions): string {
   lines.push('')
   addActiveAssumptions(lines, opts.inflationRate)
 
+  if (opts.statutoryPension && !opts.bavProfile.publicHealthInsurance) {
+    lines.push('Private Kranken- und Pflegeversicherung im Ruhestand')
+    lines.push(csvRow('PKV/PV abzgl. Zuschuss §106 SGB VI mtl. (EUR)', n(opts.statutoryPension.pkvRetirementMonthlyCost)))
+    lines.push(csvRow('Gesetzl. Rente netto nach privater KV/PV mtl. (EUR)', n(opts.statutoryPension.netMonthlyPension)))
+    lines.push('Heutige Beiträge unverändert fortgeschrieben; keine Beitragserhöhungen modelliert.')
+    lines.push('')
+  }
+
   const projection = buildCompareExportProjection({
     products: opts.products,
     bavAnnualTaxSvSavings: opts.bavAnnualTaxSvSavings,
@@ -102,7 +111,7 @@ export function buildExportCsv(opts: ExportOptions): string {
   })
 
   // Section 1: Summary
-  lines.push('Detailvergleich')
+  lines.push('Detailvergleich — Kapital und Rentenbeträge zum Rentenbeginn (nominal)')
   lines.push(csvRow('Produkt', 'Szenario', 'Nettoaufwand mtl. (EUR)', 'Beitrag mtl. (EUR)', 'Kapital (EUR)', 'Kapital nach Steuer (EUR)', 'Netto-Rente mtl. (EUR)', 'Kosten gesamt (EUR)', 'Wert-Faktor', 'Datenqualität'))
   for (const row of projection.summary) {
     lines.push(csvRow(
@@ -252,12 +261,13 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
   // selector blocks the household total, the Netto-Einkommen cell stays blank
   // rather than exporting a number that would read as reliable.
   lines.push('Kombiniertes Renteneinkommen')
-  lines.push(csvRow('Szenario', 'Netto-Einkommen mtl. (EUR)', 'Gesetzl. Rente netto mtl. (EUR)'))
+  lines.push(csvRow('Szenario', 'Netto-Einkommen mtl. (EUR nominal)', opts.profile?.publicHealthInsurance === false ? 'Gesetzl. Rente vor privater KV/PV mtl. (EUR nominal)' : 'Gesetzl. Rente netto mtl. (EUR nominal)', 'Private KV/PV abzgl. Zuschuss §106 SGB VI mtl. (EUR nominal)'))
   for (const [scenarioId, combined] of Object.entries(combinedByScenarioId)) {
     lines.push(csvRow(
       scenarioLabels[scenarioId] ?? scenarioId,
       blocked ? '' : n(combined.monthlyNetIncome),
       blocked ? '' : n(combined.statutoryPensionMonthlyNet),
+      blocked ? '' : n(combined.pkvRetirementMonthlyCost),
     ))
   }
 
@@ -274,7 +284,7 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
   // Section 2: Per-instance detail (one row per instance × scenario).
   lines.push('')
   lines.push('Mein Plan — Detail je Instanz')
-  lines.push(csvRow('Instanz', 'Produkt', 'Szenario', 'Nettoaufwand mtl. (EUR)', 'Beitrag mtl. (EUR)', 'Kapital (EUR)', 'Brutto-Rente mtl. (EUR)', 'Netto-Rente mtl. (EUR)', 'Kosten gesamt (EUR)', 'Datenqualität', 'Marktrendite p. a. (Annahme)'))
+  lines.push(csvRow('Instanz', 'Produkt', 'Szenario', 'Nettoaufwand mtl. (EUR)', 'Beitrag mtl. (EUR)', 'Kapital zum Rentenbeginn (EUR nominal)', 'Brutto-Rente mtl. (EUR nominal)', 'Netto-Rente mtl. (EUR nominal)', 'Kosten gesamt (EUR)', 'Datenqualität', 'Marktrendite p. a. (Annahme)'))
   for (const row of projection.summary) {
     lines.push(csvRow(
       row.instanceId,

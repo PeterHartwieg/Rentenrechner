@@ -34,8 +34,10 @@ const unknownCapital = () => screen.getByRole('checkbox', { name: 'Aktueller Wer
 const submit = () => fireEvent.click(screen.getByRole('button', { name: 'Zum Plan hinzufügen' }))
 const type = (element: HTMLElement, value: string) => fireEvent.change(element, { target: { value } })
 const documentLabel = 'Ich habe diesen Wert aus einem Beleg (z. B. Kontoauszug, Vertragsunterlagen) übernommen'
+// The accessible name carries the field name (audit F20); the visible sentence stays generic.
+const documentCheckboxName = /: Wert aus einem Beleg übernommen$/
 const documentCheckbox = (field: string) => within(screen.getByRole('group', { name: field }))
-  .getByRole('checkbox', { name: documentLabel })
+  .getByRole('checkbox', { name: `${field}: Wert aus einem Beleg übernommen` })
 
 afterEach(cleanup)
 
@@ -130,9 +132,10 @@ describe('contract editor with real draft hook', () => {
     const onSave = vi.fn()
     render(<Harness onSave={onSave} />)
     type(capital(), '0'); type(monthly(), '100')
-    for (const checkbox of screen.getAllByRole('checkbox', { name: documentLabel })) {
+    for (const checkbox of screen.getAllByRole('checkbox', { name: documentCheckboxName })) {
       expect(checkbox).not.toBeVisible()
     }
+    expect(screen.getAllByText(documentLabel).length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: 'Wert aus Beleg bestätigen' })).not.toBeInTheDocument()
     expect(monthly()).toHaveAccessibleDescription('von dir')
     fireEvent.click(screen.getByText('Kosten & Auszahlung'))

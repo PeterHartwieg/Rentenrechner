@@ -139,6 +139,7 @@ function emptyBundle(): CombineSimulationBundle {
     statutoryPension: {
       grossMonthlyPension: 0,
       netMonthlyPension: 0,
+      pkvRetirementMonthlyCost: 0,
       taxMonthly: 0,
       kvPvMonthly: 0,
       projectedEntgeltpunkte: 0,

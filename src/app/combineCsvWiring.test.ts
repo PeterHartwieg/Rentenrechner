@@ -155,6 +155,7 @@ describe('deriveCombinePerInstanceTaxModes — gh#86 production-flow regression'
 
     const fixtureCombined: CombinedResult = {
       monthlyNetIncome: 0,
+      pkvRetirementMonthlyCost: 0,
       statutoryPensionMonthlyNet: 0,
       monthlyGrossPayouts: {
         statutoryPension: 0,

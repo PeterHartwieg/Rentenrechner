@@ -315,6 +315,11 @@ export function KapitalPage({ navigate }: Props) {
                 activeId={activeChipId}
                 onSelect={setPickedChipId}
               />
+              <p className="kapital-scope" data-testid="kapital-scope">
+                Alle Beträge nominal, in Euro des jeweiligen Jahres, nicht in heutigen Euro.
+                {' '}Gezeigt wird die Auswahl oben{activeChip ? ` („${activeChip.label}“)` : ''}
+                {isCombine ? ', nicht dein ganzer Plan; jede Quelle ist hier für sich allein versteuert.' : ', jedes Produkt für sich allein versteuert.'}
+              </p>
 
               <div className="kapital-chart-wrap">
                 <BreakEvenChart
@@ -330,6 +335,13 @@ export function KapitalPage({ navigate }: Props) {
                   pensionBaselineType={pensionBaselineType}
                 />
               </div>
+
+              <p className="kapital-benchmark-note">
+                Bei Sparverträgen umfasst „Netto eingezahlt“ nur deine künftigen eigenen Beiträge ab heute.
+                Bereits vorhandenes Guthaben ist im Kapital enthalten, aber nicht in diesem Vergleichswert.
+                Der markierte Rückzahlungszeitpunkt bezieht sich auf diese künftigen Beiträge,
+                nicht auf die Rückzahlung deines gesamten bisher angelegten Vermögens.
+              </p>
 
               <section
                 className="kapital-section"

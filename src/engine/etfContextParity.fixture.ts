@@ -13,9 +13,13 @@
  * cross-platform drift (`FLOAT_ULP_TOLERANCE` in `etfContextParity.test.ts`).
  * Nothing here is rounded.
  *
- * Do not regenerate or hand-edit these values to make a test pass. If a
- * change intentionally alters engine math, the fixture must be re-frozen from
- * the old engine and the change justified in the PR.
+ * The only deliberate post-freeze updates are `accumulationRiy`: the ETF
+ * fee-only counterfactual preserves Vorabpauschale, and its return inversion
+ * includes opening capital. Non-level contributions and dated transfers use
+ * the existing zero sentinel (unavailable when fees were charged), rather
+ * than a misleading estimate. Paid-up ETF RIY now reflects its opening balance.
+ * Every capital, payout, tax, and row leaf remains at its original value.
+ * Do not regenerate the fixture for an unrelated change.
  *
  * Captured: 2026-09-09, rules year 2026, retirementEndAge 90,
  * inflationRate 0 (defaults).
@@ -45,7 +49,7 @@ export const ETF_PARITY_FIXTURE = {
         taxAndSvSavings: 0,
         valueMultipleOnUserCost: 1.765641064465724,
         capitalMultipleAnnualized: 0.014684044461159562,
-        accumulationRiy: 0.002284783139997776,
+        accumulationRiy: 0.002017047280046258,
         afterTaxLumpSum: 90867.65799809012,
         grossMonthlyPayout: 450.9574652780012,
         netMonthlyPayout: 450.9574652780013,
@@ -141,7 +145,7 @@ export const ETF_PARITY_FIXTURE = {
         taxAndSvSavings: 0,
         valueMultipleOnUserCost: 2.640741635172828,
         capitalMultipleAnnualized: 0.02521153738490578,
-        accumulationRiy: 0.0027719923033285437,
+        accumulationRiy: 0.0020517595961930812,
         afterTaxLumpSum: 135904.18380918892,
         grossMonthlyPayout: 858.0362142909211,
         netMonthlyPayout: 826.6949322987845,
@@ -237,7 +241,7 @@ export const ETF_PARITY_FIXTURE = {
         taxAndSvSavings: 0,
         valueMultipleOnUserCost: 4.120436181634551,
         capitalMultipleAnnualized: 0.036973777165824506,
-        accumulationRiy: 0.003240809401071465,
+        accumulationRiy: 0.0020980414136075876,
         afterTaxLumpSum: 212055.77582611388,
         grossMonthlyPayout: 1650.3178387155308,
         netMonthlyPayout: 1515.0950006345304,
@@ -1222,7 +1226,7 @@ export const ETF_PARITY_FIXTURE = {
         taxAndSvSavings: 0,
         valueMultipleOnUserCost: null,
         capitalMultipleAnnualized: 0,
-        accumulationRiy: 0,
+        accumulationRiy: 0.004978177610461154,
         afterTaxLumpSum: 68220.5531871219,
         grossMonthlyPayout: 350.1819092254524,
         netMonthlyPayout: 349.1804796980553,
@@ -1320,7 +1324,7 @@ export const ETF_PARITY_FIXTURE = {
         taxAndSvSavings: 0,
         valueMultipleOnUserCost: null,
         capitalMultipleAnnualized: 0,
-        accumulationRiy: 0,
+        accumulationRiy: 0.005118947929439788,
         afterTaxLumpSum: 137709.51145354513,
         grossMonthlyPayout: 888.0132746917003,
         netMonthlyPayout: 806.8822533289703,
@@ -1418,7 +1422,7 @@ export const ETF_PARITY_FIXTURE = {
         taxAndSvSavings: 0,
         valueMultipleOnUserCost: null,
         capitalMultipleAnnualized: 0,
-        accumulationRiy: 0,
+        accumulationRiy: 0.00524925303063295,
         afterTaxLumpSum: 278729.27364434546,
         grossMonthlyPayout: 2186.905493057796,
         netMonthlyPayout: 1927.8622817608612,

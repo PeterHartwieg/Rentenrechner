@@ -21,7 +21,9 @@
  * zero-fee capital, both projections keep the same tax accrual policy (including
  * Vorabpauschale): taxes remain on both sides so the reported reduction isolates fees.
  *
- * Method: bisection on the beginning-of-period annuity future-value formula.
+ * Method: bisection on the starting balance plus beginning-of-period annuity
+ * future-value formula. Dated transfers and changing contributions need a
+ * cashflow-specific solver; callers must mark those paths unavailable.
  * The closed-form FV is a good proxy for the simulation because the dominant fee
  * (asset management drag) is multiplicative and the formula captures it correctly.
  * Contribution-fee and fixed-fee effects are captured implicitly via the lower
@@ -38,15 +40,17 @@ export function computeRIY(
   grossAnnualReturn: number,
   capitalWithFees: number,
   capitalWithoutFees?: number,
+  initialCapital = 0,
 ): number {
-  if (months <= 0 || monthlyContribution <= 0 || capitalWithFees <= 0) return 0
+  if (months <= 0 || (monthlyContribution <= 0 && initialCapital <= 0) || capitalWithFees <= 0) return 0
 
-  // Beginning-of-period annuity FV at annual return r.
-  // Contributions are invested at the start of each month, then grow for the remaining months.
+  // Starting capital compounds for every month; contributions are invested at
+  // the start of each month and then grow for the remaining months.
   const fv = (r: number): number => {
     const r_m = Math.pow(1 + r, 1 / 12) - 1
-    if (Math.abs(r_m) < 1e-12) return monthlyContribution * months
-    return (monthlyContribution * (Math.pow(1 + r_m, months) - 1) / r_m) * (1 + r_m)
+    if (Math.abs(r_m) < 1e-12) return initialCapital + monthlyContribution * months
+    return initialCapital * Math.pow(1 + r_m, months)
+      + (monthlyContribution * (Math.pow(1 + r_m, months) - 1) / r_m) * (1 + r_m)
   }
 
   const solveAnnualReturn = (targetCapital: number, upperBound: number): number | null => {

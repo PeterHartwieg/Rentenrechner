@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { StatutoryPensionAssumptions } from '../../domain'
 import type { InputStatus, PensionEntryMethod } from '../../domain/inputStatus'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { de2026Rules } from '../../rules/de2026'
@@ -15,9 +16,18 @@ describe('detectLegacyEpSeed', () => {
     { kind: 'career', careerStartAge: 22, pauseYears: 3 },
   ]
 
-  function detect(currentEntgeltpunkte: number, pensionEntryMethod: PensionEntryMethod | undefined = methods[0]) {
+  function detect(
+    currentEntgeltpunkte: number,
+    pensionEntryMethod: PensionEntryMethod | undefined = methods[0],
+    overrides: Partial<StatutoryPensionAssumptions> = {},
+  ) {
     return detectLegacyEpSeed({
-      statutoryPension: { ...defaultAssumptions.statutoryPension, pensionEntryMethod, currentEntgeltpunkte },
+      statutoryPension: {
+        ...defaultAssumptions.statutoryPension,
+        pensionEntryMethod,
+        currentEntgeltpunkte,
+        ...overrides,
+      },
       profile,
       rules: de2026Rules,
     })
@@ -25,6 +35,18 @@ describe('detectLegacyEpSeed', () => {
 
   it.each(methods)('detects an exact old seed for $kind', (method) => {
     expect(detect(oldSeed, method)).toEqual({ legacy: true, freshEstimate })
+  })
+
+  it.each(methods)('ignores a seed behind a manual gross override for $kind', (method) => {
+    // The projection ignores Entgeltpunkte while manualMonthlyGross is in
+    // effect, so a re-estimate would change nothing the user sees.
+    expect(detect(oldSeed, method, { manualMonthlyGross: 1500 })).toEqual({ legacy: false })
+  })
+
+  it.each(methods)('ignores a seed behind an explicit zero manual gross for $kind', (method) => {
+    // Manual mode keys off `!== null`, not `> 0` — selecting "Manuell
+    // eingegeben" stores 0, so the projection still ignores Entgeltpunkte.
+    expect(detect(oldSeed, method, { manualMonthlyGross: 0 })).toEqual({ legacy: false })
   })
 
   it.each(methods)('ignores a fresh seed for $kind', (method) => {
@@ -90,6 +112,7 @@ describe('detectLegacyEpSeed', () => {
 
     interface LegacyOverrides {
       currentEntgeltpunkte?: number
+      manualMonthlyGross?: number | null
       pensionBaselineType?: 'beamtenpension'
     }
 
@@ -124,6 +147,16 @@ describe('detectLegacyEpSeed', () => {
         legacy: true,
         freshEstimate: estimateEpFromYears(years, 50_000, de2026Rules),
       })
+    })
+
+    it('ignores a seed behind a manual gross override even without a recorded method', () => {
+      // Same guard as the recorded-method branch: the manual figure wins in
+      // the projection, so the stored seed cannot influence any shown number.
+      expect(detectAbsent(50_000, { manualMonthlyGross: 1500 })).toEqual({ legacy: false })
+    })
+
+    it('ignores a seed behind an explicit zero manual gross even without a recorded method', () => {
+      expect(detectAbsent(50_000, { manualMonthlyGross: 0 })).toEqual({ legacy: false })
     })
 
     it('recovers the year count for salaries above the legacy cap', () => {

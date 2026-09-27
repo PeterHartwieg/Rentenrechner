@@ -75,9 +75,8 @@ export function AngabenPersonSection({
         </h2>
       </div>
       <p className="angaben-section-lead">
-        Alter, Steuerklasse und Krankenversicherung. Das Alter fixiert die
-        Kohortenwerte für Versorgungsfreibetrag und Besteuerungsanteil, die
-        Steuerklasse die Lohnsteuer in der Ansparphase.
+        Gib dein Alter, deine Steuerklasse und Krankenversicherung an. Damit
+        schätzen wir deine Zeit bis zur Rente und dein verfügbares Einkommen.
       </p>
 
       <div className="angaben-fields">
@@ -101,7 +100,7 @@ export function AngabenPersonSection({
           />
           <span className="angaben-field-meta">
             <span className="angaben-field-hint">
-              Geburtsjahr fixiert Kohortenwerte (§ 22 Nr. 1, § 19 Abs. 2 EStG)
+              So viele Jahre bist du heute alt.
             </span>
           </span>
         </div>
@@ -128,8 +127,7 @@ export function AngabenPersonSection({
           </span>
           <span className="angaben-field-meta">
             <span className="angaben-field-hint">
-              Wirkt auf die Lohnsteuer in der Ansparphase (§ 39b EStG) und damit
-              auf Nettolohn und Förderwirkung. Sie wählt keine gemeinsame
+              Beeinflusst deinen Nettolohn und die Förderwirkung. Sie wählt keine gemeinsame
               Veranlagung für die Besteuerung im Ruhestand.
             </span>
           </span>
@@ -186,7 +184,7 @@ export function AngabenPersonSection({
           />
           <span className="angaben-field-meta">
             <span className="angaben-field-hint">
-              Pflegebeiträge-Zuschlag (§ 55 SGB XI) und Riester-Kinderzulagen
+              Kann Pflegebeiträge und Riester-Zulagen verändern.
             </span>
           </span>
         </div>

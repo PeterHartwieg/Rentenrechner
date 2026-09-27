@@ -16,6 +16,8 @@
 
 import type { ProductId } from '../domain'
 import type { Scenario, WhatIfScenario, Workspace } from '../domain/workspace'
+import { resolveInputStatus } from '../features/results/provenanceHelpers'
+import { scenarioDiff } from './scenarioDiff'
 import { formatCurrency } from '../utils/format'
 import { applyContractDecision, beitragsfreiWhatIf } from './contractDecisions'
 import {
@@ -52,6 +54,21 @@ function contributionOf(
   const field = CONTRIBUTION_FIELD_BY_PRODUCT[productId]
   const value = (instance as unknown as Record<string, unknown>)[field]
   return typeof value === 'number' ? value : null
+}
+
+/** Review the named offer at its quoted contribution; never activate the baseline. */
+export function buildOfferActivationWhatIf(workspace: Workspace, instanceId: string): WhatIfScenario | null {
+  const entry = findEntry(workspace, instanceId)
+  if (!entry || entry.instance.status !== 'offered') return null
+  const alternative = forkBaselineScenario(workspace.baseline, `${entry.instance.label}: Angebot aufnehmen`, 'manual')
+  const target = listWorkspaceInstances(alternative.assumptions).find(item => item.instance.instanceId === instanceId)
+  if (!target) return null
+  target.instance.status = 'active'
+  // Reopening an unchanged quote should reuse its current comparison.
+  const existing = workspace.whatIfs.find(saved => !whatIfIsStale(saved, workspace.baseline)
+    && scenarioDiff(saved.derivedFromBaselineSnapshot, workspace.baseline).length === 0
+    && scenarioDiff(saved, alternative).length === 0)
+  return existing ?? alternative
 }
 
 /** German label for a preview, per the §4 copy table. */
@@ -112,7 +129,7 @@ export function buildContributionWhatIf(
 // Describing a saved alternative
 // ---------------------------------------------------------------------------
 
-export type WhatIfDecisionKind = 'contribution' | 'paid_up' | 'other'
+export type WhatIfDecisionKind = 'contribution' | 'paid_up' | 'activate_offer' | 'new_contract' | 'other'
 
 export interface WhatIfDescription {
   instanceId: string | null
@@ -130,6 +147,8 @@ export interface WhatIfDescription {
   beforeContributionMonthly: number | null
   /** Monthly contribution inside the alternative. */
   afterContributionMonthly: number | null
+  /** Original quoted contribution when activating an unsigned offer. */
+  quotedContributionMonthly?: number | null
   /**
    * The plan revision the frozen before/after was computed on — the
    * "Stand beim Speichern" the saved-alternatives list shows.
@@ -165,6 +184,13 @@ function findSubject(
   before: Map<string, { productId: ProductId; instance: AnyWorkspaceInstance }>,
   after: Map<string, { productId: ProductId; instance: AnyWorkspaceInstance }>,
 ): WhatIfSubject | null {
+  for (const [instanceId, entry] of after) {
+    const previous = before.get(instanceId)
+    if (!previous) return { instanceId, instanceLabel: entry.instance.label ?? null, decision: 'new_contract' }
+    if (previous.instance.status === 'offered' && entry.instance.status === 'active') {
+      return { instanceId, instanceLabel: entry.instance.label ?? null, decision: 'activate_offer' }
+    }
+  }
   for (const [instanceId, entry] of after) {
     const previous = before.get(instanceId)
     if (!previous) continue
@@ -238,12 +264,19 @@ export function describeWhatIf(whatIf: WhatIfScenario): WhatIfDescription {
   // has a before and an after to show, it just has not changed anything.
   const previous = before.get(subject.instanceId) ?? null
   const current = after.get(subject.instanceId) ?? null
-  const beforeContribution = previous
+  const beforeContribution = subject.decision === 'activate_offer' || subject.decision === 'new_contract'
+    ? 0 : previous
     ? contributionOf(previous.productId, previous.instance)
     : null
   const afterContribution = current ? contributionOf(current.productId, current.instance) : null
+  const contributionField = previous ? CONTRIBUTION_FIELD_BY_PRODUCT[previous.productId] : null
+  const quoteStatus = previous && contributionField ? resolveInputStatus(previous.instance.inputStatus,
+    previous.instance.evidenceMap[contributionField], contributionField) : 'unknown'
+  const knownQuote = subject.decision === 'activate_offer' && previous
+    && (quoteStatus === 'entered' || quoteStatus === 'document')
+    ? contributionOf(previous.productId, previous.instance) : null
   const changed =
-    subject.decision === 'paid_up' ||
+    subject.decision === 'paid_up' || subject.decision === 'activate_offer' || subject.decision === 'new_contract' ||
     (beforeContribution !== null &&
       afterContribution !== null &&
       beforeContribution !== afterContribution)
@@ -257,6 +290,7 @@ export function describeWhatIf(whatIf: WhatIfScenario): WhatIfDescription {
     changed,
     beforeContributionMonthly: beforeContribution,
     afterContributionMonthly: afterContribution,
+    ...(knownQuote !== null && knownQuote >= 0 ? { quotedContributionMonthly: knownQuote } : {}),
     sourceRevision,
   }
 }
@@ -281,7 +315,7 @@ export function whatIfStatus(
 ): 'current' | 'stale' | 'shape-drift' | 'missing-source' {
   const baseline: Scenario = workspace.baseline
   const description = describeWhatIf(whatIf)
-  if (description.instanceId !== null && findEntry(workspace, description.instanceId) === null) {
+  if (description.decision !== 'new_contract' && description.instanceId !== null && findEntry(workspace, description.instanceId) === null) {
     return 'missing-source'
   }
   if (!productArrayShapeMatches(whatIf.derivedFromBaselineSnapshot, baseline)) {

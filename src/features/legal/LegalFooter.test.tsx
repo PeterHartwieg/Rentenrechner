@@ -26,9 +26,9 @@ describe('LegalFooter', () => {
     renderFooter()
 
     expect(screen.getByText('Impressum')).toBeTruthy()
-    expect(screen.getByText('Datenschutzerklärung')).toBeTruthy()
-    expect(screen.getByText('Lizenz: PolyForm Noncommercial 1.0.0')).toBeTruthy()
-    expect(screen.getByText('↗ Methode im Detail')).toBeTruthy()
+    expect(screen.getByText('Datenschutz')).toBeTruthy()
+    expect(screen.getByText('Lizenz')).toBeTruthy()
+    expect(screen.getByText('Methode & Quellen')).toBeTruthy()
   })
 
   it('does not expose the retired soft-launch QA activator', () => {
@@ -43,21 +43,14 @@ describe('LegalFooter', () => {
     eachViewport(() => {
       const { container, unmount } = renderFooter()
       expect(container.textContent ?? '').toContain('Impressum')
-      expect(container.textContent ?? '').toContain('Datenschutzerklärung')
+      expect(container.textContent ?? '').toContain('Datenschutz')
       unmount()
     })
   })
 
-  it('renders all methodology footnotes', () => {
-    renderFooter()
-    expect(screen.getByText(/Annahme: 5 % Rendite/)).toBeInTheDocument()
-    expect(screen.getByText(/Steuern nach Stand 2026/)).toBeInTheDocument()
-    expect(screen.getByText(/Rentenwert und Beitragsbemessungsgrenzen: BMAS, Stand 2026/)).toBeInTheDocument()
-  })
-
   it('renders the methodology destination as a real link', () => {
     renderFooter()
-    const link = screen.getByText(/Methode im Detail/)
+    const link = screen.getByText(/Methode & Quellen/)
     expect(link.tagName).toBe('A')
     expect(link.getAttribute('href')).toBe('/methode')
   })
@@ -69,7 +62,7 @@ describe('LegalFooter', () => {
         <LegalFooter navigate={navigate} />
       </QaFeedbackProvider>,
     )
-    fireEvent.click(screen.getByText(/Methode im Detail/))
+    fireEvent.click(screen.getByText(/Methode & Quellen/))
     expect(navigate).toHaveBeenCalledWith(expect.objectContaining({ kind: 'methode' }))
   })
 })

@@ -197,6 +197,31 @@
   min-width: 0;
   max-width: 100%;
   overflow-x: auto;
+  /* Scroll cue: a soft shadow on the overflowing edge, which disappears once
+     the user has scrolled to it (`background-attachment: local` moves the
+     cover layer with the content). */
+  background:
+    linear-gradient(to right, var(--rw-bg-paper) 30%, rgba(255, 255, 255, 0)) left / 40px 100% no-repeat local,
+    linear-gradient(to left, var(--rw-bg-paper) 30%, rgba(255, 255, 255, 0)) right / 40px 100% no-repeat local,
+    linear-gradient(to right, rgba(15, 23, 42, 0.12), rgba(15, 23, 42, 0)) left / 14px 100% no-repeat scroll,
+    linear-gradient(to left, rgba(15, 23, 42, 0.12), rgba(15, 23, 42, 0)) right / 14px 100% no-repeat scroll;
+}
+
+.vertrag-table-scroll:focus-visible {
+  outline: 2px solid var(--rw-accent);
+  outline-offset: 2px;
+}
+
+.vertrag-scenario-scope,
+.vertrag-kpi-scope {
+  margin: 0 0 10px;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--rw-ink-soft);
+}
+
+.vertrag-kpi-scope {
+  margin: 10px 0 0;
 }
 
 /* These tables wrap independently of the shared comparison-table nowrap. */
@@ -471,5 +496,25 @@
   .vertrag-scenario-row td {
     border-bottom: none;
     padding: 4px 0;
+  }
+
+  /* Phone: each value cell repeats its column heading, since the thead is
+     hidden. The first cell is the scenario label and needs no prefix. */
+  .vertrag-scenario-row td[data-label] {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    text-align: right;
+  }
+
+  .vertrag-scenario-row td[data-label]::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    font-family: var(--rw-font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--rw-ink-faint);
+    text-align: left;
   }
 }

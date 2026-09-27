@@ -15,7 +15,7 @@ import {
 import type { TooltipContentProps } from 'recharts/types/component/Tooltip'
 import { Hourglass } from 'lucide-react'
 import { getProductMeta } from '../../app/productPresentation'
-import { formatCurrency, formatNumber } from '../../utils/format'
+import { formatCurrency, formatLifecycleAxisEuro } from '../../utils/format'
 import { useChartDensity } from '../../ui/charts/useChartDensity'
 import {
   buildLifecycleLineSeries,
@@ -31,8 +31,8 @@ import type { PensionBaselineType } from '../../domain'
 
 const GRV_PAYOUT_KEY = 'grv__cumNetPayout'
 const GRV_CONTRIBUTION_KEY = 'grv__cumContribution'
-const GRV_COLOR = '#94a3b8'
-const GRV_CONTRIBUTION_COLOR = '#94a3b8'
+const GRV_COLOR = '#475569'
+const GRV_CONTRIBUTION_COLOR = '#475569'
 
 const BASELINE_PENSION_LABELS: Record<Exclude<PensionBaselineType, 'none'>, {
   legend: string
@@ -307,8 +307,9 @@ export function BreakEvenChart({
                 } : undefined}
               />
               <YAxis
-                tickFormatter={(value) => `${formatNumber(Number(value) / 1_000)}k`}
-                width={density.yAxisWidth}
+                tickFormatter={(value) => formatLifecycleAxisEuro(Number(value))}
+                width={density.tier === 'phone' ? 78 : Math.max(82, density.yAxisWidth)}
+                tick={{ fontSize: density.axisLabelFontSize, fill: '#475569' }}
                 label={density.axisLabelsVisible ? {
                   value: 'EUR',
                   angle: -90,
@@ -387,7 +388,7 @@ export function BreakEvenChart({
                   name={baselineLabel.legend}
                   dataKey={GRV_PAYOUT_KEY}
                   stroke={GRV_COLOR}
-                  strokeWidth={1.5}
+                  strokeWidth={2}
                   strokeDasharray="8 4 2 4"
                   dot={false}
                   activeDot={{ r: 3 }}
@@ -400,7 +401,7 @@ export function BreakEvenChart({
                   name="GRV Netto-Einzahlung kumuliert"
                   dataKey={GRV_CONTRIBUTION_KEY}
                   stroke={GRV_CONTRIBUTION_COLOR}
-                  strokeWidth={1.5}
+                  strokeWidth={2}
                   strokeDasharray="4 4"
                   dot={false}
                   activeDot={{ r: 3 }}
@@ -505,20 +506,26 @@ export function BreakEvenChart({
               GRV Netto-Einzahlung kumuliert
             </span>
           )}
-          <span
-            className="lifecycle-legend__item"
-            {...qaTargetAttrs(qaEnabled, { id: 'results.breakEvenChart.legend.breakEven', label: 'Break-even', precision: 'exact' })}
-          >
-            <span className="lifecycle-legend__dot" />
-            Break-even
-          </span>
-          <span
-            className="lifecycle-legend__item"
-            {...qaTargetAttrs(qaEnabled, { id: 'results.breakEvenChart.legend.leibrenteCrossover', label: 'Leibrente überholt Kapitalverzehr', precision: 'exact' })}
-          >
-            <span className="lifecycle-legend__dot lifecycle-legend__dot--ring" />
-            Leibrente überholt Kapitalverzehr
-          </span>
+          {/* Marker entries only when the marker is actually drawn, so a
+              single ETF does not carry a "Leibrente überholt" legend row. */}
+          {breakEvenPoints.length > 0 && (
+            <span
+              className="lifecycle-legend__item"
+              {...qaTargetAttrs(qaEnabled, { id: 'results.breakEvenChart.legend.breakEven', label: 'Break-even', precision: 'exact' })}
+            >
+              <span className="lifecycle-legend__dot" />
+              Break-even
+            </span>
+          )}
+          {inFrameCrossovers.length > 0 && (
+            <span
+              className="lifecycle-legend__item"
+              {...qaTargetAttrs(qaEnabled, { id: 'results.breakEvenChart.legend.leibrenteCrossover', label: 'Leibrente überholt Kapitalverzehr', precision: 'exact' })}
+            >
+              <span className="lifecycle-legend__dot lifecycle-legend__dot--ring" />
+              Leibrente überholt Kapitalverzehr
+            </span>
+          )}
         </div>
       </div>
       {leibrenteCrossovers.length > 0 && (
@@ -715,7 +722,7 @@ function BreakEvenAccessibleTable({
       </thead>
       <tbody>
         <tr>
-          <td>Benchmark (alle Produkte)</td>
+          <td>Vergleichswert: eigene Beiträge</td>
           <td>{formatCurrency(totalPaidIn, 0)}</td>
           <td>-</td>
           <td>-</td>

@@ -13,6 +13,7 @@ import {
 import { formatCurrency, formatPercent } from '../../utils/format'
 import { defaultAssumptions } from '../../data/defaultScenario'
 import { FieldWithProv, ProvLabel } from './provenance'
+import { availableRiy, RIY_UNAVAILABLE, RIY_UNAVAILABLE_REASON } from './riyAvailability'
 import {
   isProductAllDefaults,
   buildProductDefaultsSummary,
@@ -138,6 +139,8 @@ function ProductCard({
 }) {
   const meta = getProductMeta(result.productId)
   const color = meta?.color ?? '#94a3b8'
+  // `undefined` = engine RIY not presentable (zero next to charged fees).
+  const riy = availableRiy(result)
   const showRentenfaktorHint = hasUnconfirmedRentenfaktor(result.productId, assumptions)
   const allDefaults = isProductAllDefaults(result.productId, assumptions)
   const defaultsSummary = allDefaults
@@ -172,19 +175,23 @@ function ProductCard({
           <span className="pec-metric">
             <span className="pec-metric-label">
               Netto-Rente
-              <InfoTip text={TIP_NETTO_RENTE} />
+              <InfoTip label="Netto-Rente erklären" text={TIP_NETTO_RENTE} />
             </span>
             <span className="pec-metric-value">
               {formatCurrency(result.netMonthlyPayout, 0)} /Mon.
             </span>
           </span>
-          {result.accumulationRiy > 0 && (
+          {(riy === undefined || riy > 0) && (
             <span className="pec-metric">
               <span className="pec-metric-label">
                 Effektivkosten
-                <InfoTip text={TIP_EFFEKTIVKOSTEN} />
+                <InfoTip label="Effektivkosten erklären" text={TIP_EFFEKTIVKOSTEN} />
               </span>
-              <span className="pec-metric-value">{formatPercent(result.accumulationRiy, 2)} p.a.</span>
+              {riy === undefined ? (
+                <span className="pec-metric-value" title={RIY_UNAVAILABLE_REASON}>{RIY_UNAVAILABLE}</span>
+              ) : (
+                <span className="pec-metric-value">{formatPercent(riy, 2)} p.a.</span>
+              )}
             </span>
           )}
         </div>
@@ -277,7 +284,7 @@ function EtfFields({ assumptions, onAssumptionsChange }: FieldProps) {
         <label className="field">
           <span>
             Fondstyp (Teilfreistellung)
-            <InfoTip text={TIP_TEILFREISTELLUNG} />
+            <InfoTip label="Teilfreistellung erklären" text={TIP_TEILFREISTELLUNG} />
           </span>
           <select
             value={etf.equityPartialExemption}
@@ -342,7 +349,7 @@ function BavFields({ assumptions, onAssumptionsChange }: FieldProps) {
         >
           <NumberField
             label="Rentenfaktor"
-            labelSuffix={<InfoTip text={TIP_RENTENFAKTOR} />}
+            labelSuffix={<InfoTip label="Rentenfaktor erklären" text={TIP_RENTENFAKTOR} />}
             value={bav.rentenfaktor}
             min={10}
             max={50}
@@ -424,7 +431,7 @@ function InsuranceFields({ assumptions, onAssumptionsChange }: FieldProps) {
         >
           <NumberField
             label="Rentenfaktor"
-            labelSuffix={<InfoTip text={TIP_RENTENFAKTOR} />}
+            labelSuffix={<InfoTip label="Rentenfaktor erklären" text={TIP_RENTENFAKTOR} />}
             value={insurance.rentenfaktor}
             min={10}
             max={50}
@@ -490,7 +497,7 @@ function BasisrenteFields({ assumptions, onAssumptionsChange }: FieldProps) {
       >
         <NumberField
           label="Rentenfaktor"
-          labelSuffix={<InfoTip text={TIP_RENTENFAKTOR} />}
+          labelSuffix={<InfoTip label="Rentenfaktor erklären" text={TIP_RENTENFAKTOR} />}
           value={basisrente.rentenfaktor}
           min={10}
           max={50}
@@ -590,7 +597,7 @@ function RiesterFields({ assumptions, onAssumptionsChange }: FieldProps) {
         >
           <NumberField
             label="Rentenfaktor"
-            labelSuffix={<InfoTip text={TIP_RENTENFAKTOR} />}
+            labelSuffix={<InfoTip label="Rentenfaktor erklären" text={TIP_RENTENFAKTOR} />}
             value={riester.rentenfaktor}
             min={10}
             max={50}

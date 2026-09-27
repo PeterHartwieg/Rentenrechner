@@ -167,7 +167,7 @@ export const publicRouteRegistry = {
       'Modellrechner für die deutsche Altersvorsorge mit Werten 2026. Vergleicht alle ' +
       'Schicht-1- bis Schicht-3-Wege unter denselben Annahmen, ermittelt Rentenlücke und ' +
       'Nettoauszahlung.',
-    dateModified: '2026-05-06',
+    dateModified: '2026-09-11',
     datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,

@@ -286,6 +286,14 @@
 
 /* ---- Empty state ------------------------------------------------------- */
 
+.kapital-scope {
+  margin: 8px 0 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--kapital-ink-soft);
+}
+
+.kapital-benchmark-note,
 .kapital-empty {
   padding: 24px 0;
   font-size: 14px;

@@ -178,6 +178,10 @@ export const werbungskostenPauschalRenten = 102
 export const sonderausgabenPauschbetrag = { single: 36, married: 72 }
 
 export const legalConstants = {
+  retirementPkv: {
+    /** §106(3) SGB VI: half the rate and at most half the actual KV premium. */
+    subsidyShare: 0.5,
+  },
   insurance: {
     /** Boundary year for old-contract tax-free treatment per §52 Abs. 28 EStG a.F. */
     pre2005YearBoundary: 2005,

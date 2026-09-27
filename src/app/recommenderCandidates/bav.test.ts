@@ -293,7 +293,7 @@ describe('makeBavCandidate — materialized what-if effects', () => {
         contractStartYear: de2026Rules.year,
         currentValueEUR: 0,
         evidenceMap: {},
-        monthlyGrossConversion: 0,
+        monthlyGrossConversion: 200,
         contractualMatchPercent: 0.5,
         contractualFixedMonthly: 0,
       }

@@ -104,10 +104,13 @@ export function AngabenProduktePage({ navigate, workspaceUi }: Props) {
           <span className="angaben-breadcrumb-cluster">Verträge</span>
         </nav>
 
+        <div className="angaben-step-header">
+          <div className="angaben-kicker">Mein Plan · Schritt 2 von 2</div>
+          <DStepIndicator current={2} />
+        </div>
+
         <div className="angaben-grid angaben-grid--produkte">
           <article className="angaben-body">
-            <div className="angaben-kicker">Mein Plan · Schritt 2 von 2</div>
-            <DStepIndicator current={2} />
             <h1 className="angaben-headline">Deine Verträge und Sparformen</h1>
             <p className="angaben-summary">
               Erfasse hier alle Verträge, die du heute schon hast — gesetzliche

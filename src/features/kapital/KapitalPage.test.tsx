@@ -309,3 +309,14 @@ describe('KapitalPage — scenario query and picker', () => {
     expect(screen.getByRole('button', { name: /Rendite-Annahme: Basis/ })).toHaveAttribute('aria-pressed', 'true')
   })
 })
+
+describe('units and scope on the capital page (audit F06)', () => {
+  it('states that every amount is nominal and names the selection, not the whole plan', () => {
+    seedCompareMode()
+    render(inShell(<KapitalPage navigate={() => {}} />))
+    const scope = screen.getByTestId('kapital-scope')
+    expect(scope).toHaveTextContent('Alle Beträge nominal')
+    expect(scope).toHaveTextContent('nicht in heutigen Euro')
+    expect(scope).toHaveTextContent('für sich allein versteuert')
+  })
+})

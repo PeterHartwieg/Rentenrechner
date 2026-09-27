@@ -252,7 +252,7 @@ describe('makeInsuranceCandidate — materialized what-if effects', () => {
         status: 'offered',
         contractStartYear: de2026Rules.year,
         evidenceMap: {},
-        monthlyContribution: 0,
+        monthlyContribution: 200,
       },
     ]
     const candidates = recommendNextEuro(buildInput(ws, 200))

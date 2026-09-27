@@ -136,7 +136,7 @@ export interface SavedAlternative {
 
 export type AlternativenApplyResult =
   | { ok: true; undo: WorkspaceUndo }
-  | { ok: false; reason: WhatIfApplyFailure; message: string }
+  | { ok: false; reason: WhatIfApplyFailure | 'unreviewable'; message: string }
 
 export type AlternativenRebaseResult =
   | { ok: true; undo: WorkspaceUndo }
@@ -612,16 +612,17 @@ export function useAlternativenFlow({
         }
       })
       const status = whatIfStatus(whatIf, workspace)
+      const description = describeWhatIf(whatIf)
       return {
         id: whatIf.id,
         label: whatIf.label,
         savedAt: whatIf.createdAt,
         status,
-        description: describeWhatIf(whatIf),
+        description,
         before: frozen.before,
         after: frozen.after,
-        canApply: status === 'current',
-        blockReason: blockReasonFor(status),
+        canApply: status === 'current' && description.decision !== 'other',
+        blockReason: description.decision === 'other' ? 'Diese Änderung lässt sich nicht vollständig darstellen. Bitte erstelle eine neue Alternative.' : blockReasonFor(status),
       }
     })
   }, [rules, scenarioId, workspace])
@@ -663,6 +664,10 @@ export function useAlternativenFlow({
 
   const apply = useCallback(
     (id: string): AlternativenApplyResult => {
+      const scenario = portfolioState.workspace.whatIfs.find(item => item.id === id)
+      if (scenario && describeWhatIf(scenario).decision === 'other') {
+        return { ok: false, reason: 'unreviewable', message: 'Diese Änderung lässt sich nicht vollständig darstellen. Bitte erstelle eine neue Alternative.' }
+      }
       const result = portfolioState.applyWhatIf(id)
       setUndoneHandleId(null)
       if (result.ok) return result

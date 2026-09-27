@@ -13,6 +13,7 @@ import { INVENTORY_PRODUCT_REGISTRY } from '../features/inventory/inventoryProdu
 import { deepCloneScenario, forkBaselineScenario } from './portfolioState'
 import {
   buildContributionWhatIf,
+  buildOfferActivationWhatIf,
   describeWhatIf,
   whatIfLabel,
   whatIfStatus,
@@ -258,4 +259,48 @@ describe('compare-mode singleton path', () => {
     ).toBeNull()
     expect(ws).toEqual(before)
   })
+})
+
+
+describe('audit: offer activation description', () => {
+  it('identifies an offered contract even when its quoted contribution stays the same', () => {
+    const ws = workspace()
+    ws.baseline.assumptions.bav[0].status = 'offered'
+    const alternative = forkBaselineScenario(ws.baseline, 'Angebot nutzen', 'recommender')
+    alternative.assumptions.bav[0].status = 'active'
+    expect(describeWhatIf(alternative)).toMatchObject({
+      decision: 'activate_offer', instanceId: 'bav-cccc3333', instanceLabel: 'Betriebsrente',
+      beforeContributionMonthly: 0, afterContributionMonthly: 100, changed: true,
+    })
+  })
+})
+
+
+it('reviews the selected offer at its quoted amount without changing another offer or the baseline', () => {
+  const ws = workspace()
+  ws.baseline.assumptions.bav = [
+    { ...bav('bav-first001', 100), status: 'offered' },
+    { ...bav('bav-second01', 350), status: 'offered', inputStatus: { monthlyGrossConversion: 'entered' } },
+  ]
+  const original = structuredClone(ws)
+  const reviewed = buildOfferActivationWhatIf(ws, 'bav-second01')!
+  expect(reviewed.assumptions.bav[0].status).toBe('offered')
+  expect(reviewed.assumptions.bav[1]).toEqual({ ...original.baseline.assumptions.bav[1], status: 'active' })
+  expect(describeWhatIf(reviewed)).toMatchObject({ decision: 'activate_offer', beforeContributionMonthly: 0, afterContributionMonthly: 350 })
+  expect(ws).toEqual(original)
+  expect(describeWhatIf(reviewed).quotedContributionMonthly).toBe(350)
+  ws.whatIfs.push(reviewed)
+  expect(buildOfferActivationWhatIf(ws, 'bav-second01')?.id).toBe(reviewed.id)
+  expect(buildOfferActivationWhatIf(ws, 'missing')).toBeNull()
+})
+
+
+it('does not invent a broker quote from a legacy zeroed, assumed offer', () => {
+  const ws = workspace()
+  ws.baseline.assumptions.bav[0].status = 'offered'
+  ws.baseline.assumptions.bav[0].monthlyGrossConversion = 0
+  ws.baseline.assumptions.bav[0].inputStatus = { monthlyGrossConversion: 'assumed' }
+  const offer = buildOfferActivationWhatIf(ws, ws.baseline.assumptions.bav[0].instanceId)!
+  offer.assumptions.bav[0].monthlyGrossConversion = 100
+  expect(describeWhatIf(offer).quotedContributionMonthly).toBeUndefined()
 })

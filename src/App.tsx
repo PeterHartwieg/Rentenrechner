@@ -297,6 +297,8 @@ function App() {
       // plan) and `/vergleich` cannot overwrite each other.
       body = (
         <VergleichJourneyPage
+          moneyBasis={workspaceUi.moneyBasis}
+          onMoneyBasisChange={workspaceUi.setMoneyBasis}
           navigate={navigate}
           pendingChoice={pendingChoice}
           onPendingChoiceConsumed={() => setPendingChoice(null)}

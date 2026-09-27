@@ -97,4 +97,30 @@ describe('computeRIY (#57)', () => {
 
     expect(riy).toBeCloseTo(0.005, 10)
   })
+
+  it('inverts a starting balance and level payments together', () => {
+    const monthlyContribution = 100
+    const months = 120
+    const initialCapital = 10_000
+    const futureValue = (annualReturn: number) => {
+      const monthlyFactor = Math.pow(1 + annualReturn, 1 / 12)
+      let capital = initialCapital
+      for (let month = 0; month < months; month += 1) {
+        capital = (capital + monthlyContribution) * monthlyFactor
+      }
+      return capital
+    }
+    const grossReturn = 0.05
+    const netReturn = 1.05 * 0.99 - 1
+
+    expect(computeRIY(
+      monthlyContribution, months, grossReturn,
+      futureValue(netReturn), futureValue(grossReturn), initialCapital,
+    )).toBeCloseTo(grossReturn - netReturn, 10)
+  })
+
+  it('inverts a paid-up balance without monthly payments', () => {
+    expect(computeRIY(0, 120, 0.05, 10_000 * Math.pow(1.05 * 0.99, 10),
+      10_000 * Math.pow(1.05, 10), 10_000)).toBeCloseTo(0.0105, 10)
+  })
 })

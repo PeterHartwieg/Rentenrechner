@@ -338,6 +338,9 @@ function extractCombinedResult(sink: StageSink, scenarioId: string, combined: Co
   }
   sink.addNumbered(`net.${scenarioId}.statutoryPensionMonthlyNet`, combined.statutoryPensionMonthlyNet)
   sink.addNumbered(`net.${scenarioId}.monthlyNetIncome`, combined.monthlyNetIncome)
+  if (combined.pkvRetirementMonthlyCost > 0) {
+    sink.addNumbered(`net.${scenarioId}.pkvRetirementMonthlyCost`, combined.pkvRetirementMonthlyCost)
+  }
 }
 
 export function extractCombineStages(

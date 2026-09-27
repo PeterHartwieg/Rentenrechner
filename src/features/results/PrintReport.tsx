@@ -1,3 +1,4 @@
+import { availableRiy, RIY_UNAVAILABLE } from './riyAvailability'
 /**
  * PrintReport — Sober D port (PR 4.1, H4).
  *
@@ -401,9 +402,10 @@ export function PrintReport({
               <table className="pr-kv">
                 <tbody>
                   <KvRow label="Bruttorente">{formatCurrency(grv.grossMonthlyPension, 0)}/Monat</KvRow>
-                  <KvRow label="Nettorente">
+                  <KvRow label={profile.publicHealthInsurance ? "Nettorente" : "Nettorente nach privater KV/PV"}>
                     <strong>{formatCurrency(grv.netMonthlyPension, 0)}/Monat</strong>
                   </KvRow>
+                  {grv.pkvRetirementMonthlyCost > 0 && <KvRow label="Private KV/PV abzgl. Zuschuss §106 (bereits abgezogen)">{formatCurrency(grv.pkvRetirementMonthlyCost, 0)}/Monat</KvRow>}
                   <KvRow label="Entgeltpunkte">{formatNumber(grv.projectedEntgeltpunkte, 1)} EP</KvRow>
                   <KvRow label="bAV Nettoaufwand">{formatCurrency(bav.monthlyNetCost, 0)}/Monat</KvRow>
                   <KvRow label="bAV Gesamtbeitrag">
@@ -703,11 +705,14 @@ function CombinePrintReport({
                   <KvRow label="Bruttorente">
                     {householdTotalBlocked ? '—' : `${formatCurrency(grv.grossMonthlyPension, 0)}/Monat`}
                   </KvRow>
-                  <KvRow label="Nettorente">
+                  <KvRow label={profile.publicHealthInsurance ? "Nettorente" : "Nettorente nach privater KV/PV"}>
                     <strong>
                       {householdTotalBlocked ? '—' : `${formatCurrency(grv.netMonthlyPension, 0)}/Monat`}
                     </strong>
                   </KvRow>
+                  {!profile.publicHealthInsurance && <KvRow label="Private KV/PV abzgl. Zuschuss §106 (bereits abgezogen)">
+                    {householdTotalBlocked ? '—' : `${formatCurrency(grv.pkvRetirementMonthlyCost, 0)}/Monat`}
+                  </KvRow>}
                   <KvRow label="Entgeltpunkte">
                     {householdTotalBlocked ? '—' : `${formatNumber(grv.projectedEntgeltpunkte, 1)} EP`}
                   </KvRow>
@@ -750,12 +755,14 @@ function CombinePrintReport({
 
       <section className="pr-section">
         <div className="pr-section-title">Kombiniertes Renteneinkommen je Szenario</div>
+        <p className="pr-note pr-table-note">Rentenbeträge zum Rentenbeginn (nominal).</p>
         <table className="pr-table">
           <thead>
             <tr>
               <th>Szenario</th>
               <th className="pr-num">Netto-Einkommen mtl.</th>
-              <th className="pr-num">Gesetzl. Rente netto mtl.</th>
+              <th className="pr-num">{profile.publicHealthInsurance ? 'Gesetzl. Rente netto mtl.' : 'Gesetzl. Rente vor privater KV/PV'}</th>
+              <th className="pr-num">Private KV/PV abzgl. Zuschuss §106</th>
             </tr>
           </thead>
           <tbody>
@@ -775,6 +782,7 @@ function CombinePrintReport({
                       ? '—'
                       : `${formatCurrency(c.statutoryPensionMonthlyNet, 0)}/Monat`}
                   </td>
+                  <td className="pr-num">{householdTotalBlocked ? '—' : `${formatCurrency(c.pkvRetirementMonthlyCost, 0)}/Monat`}</td>
                 </tr>
               )
             })}
@@ -788,11 +796,13 @@ function CombinePrintReport({
         <p className="pr-note pr-table-note">
           Aggregierte Steuer- und Sozialversicherungsabgaben über alle Verträge nach §32a EStG
           und §240 SGB V (KV/PV). Fettgedruckte Zeile = Basisszenario.
+          {!profile.publicHealthInsurance && ' Die gesetzliche Rente in dieser Tabelle ist vor privater KV/PV ausgewiesen. Die private KV/PV wird einmal vom Gesamtbetrag abgezogen; heutige Beiträge werden ohne künftige Erhöhungen fortgeschrieben.'}
         </p>
       </section>
 
       <section className="pr-section">
         <div className="pr-section-title">Mein Plan — Detail je Vertrag</div>
+        <p className="pr-note pr-table-note">Kapital und Rentenbeträge zum Rentenbeginn (nominal). Beiträge und Kosten bleiben gesonderte Größen.</p>
         <table className="pr-table pr-main-table">
           <colgroup>
             <col style={{ width: '20%' }} />
@@ -839,7 +849,7 @@ function CombinePrintReport({
                     {householdTotalBlocked ? '—' : formatCurrency(netMonthly, 0)}
                     <ConfidenceIndicator state={r.inputConfidence} />
                   </td>
-                  <td className="pr-num">{formatPercent(r.accumulationRiy, 2)}</td>
+                  <td className="pr-num">{availableRiy(r) === undefined ? RIY_UNAVAILABLE : formatPercent(availableRiy(r)!, 2)}</td>
                 </tr>
               )
             })}
@@ -915,7 +925,7 @@ function CombinePrintReport({
  * desc per R1. Replaces the legacy 9-column scenario-sweep summary.
  *
  * Column structure mirrors `VergleichComparisonTable.tsx`:
- *   Sparform | Wie es funktioniert | Kapital mit N | Kosten p. a. |
+ *   Sparform | Wie es funktioniert | Kapital mit N | Effektivkosten p. a. |
  *   Brutto-Rente | Abzüge | Netto pro Monat
  *
  * Visual treatment per Sober D conventions: oxblood (`var(--rw-accent)`) on
@@ -947,6 +957,7 @@ function VergleichSection({
         davon ab, was du gewichtest: Rendite, Sicherheit, Flexibilität.
         Diese Modellrechnung nennt keine Empfehlung.
       </p>
+      <p className="pr-note pr-table-note">Kapital und Rentenbeträge zum Rentenbeginn (nominal). Der Netto-Aufwand ist dein monatlicher Einsatz.</p>
       <table className="pr-table pr-main-table pr-vergleich-table">
         <colgroup>
           <col style={{ width: '18%' }} />
@@ -962,7 +973,7 @@ function VergleichSection({
             <th>Sparform</th>
             <th>Wie es funktioniert</th>
             <th className="pr-num">{`Kapital mit ${retirementAge}`}</th>
-            <th className="pr-num">Kosten p. a.</th>
+            <th className="pr-num">Effektivkosten p. a.</th>
             <th className="pr-num">Brutto-Rente</th>
             <th className="pr-num">Abzüge</th>
             <th className="pr-num">Netto pro Monat</th>
@@ -979,7 +990,11 @@ function VergleichSection({
               </td>
               <td className="pr-vergleich-cell-tagline">{row.tagline}</td>
               <td className="pr-num">{formatCurrency(row.capitalAtRetirement, 0)}</td>
-              <td className="pr-num">{formatPercent(row.effectiveAnnualCost, 1)}</td>
+              <td className="pr-num">
+                {row.effectiveAnnualCost === undefined
+                  ? RIY_UNAVAILABLE
+                  : formatPercent(row.effectiveAnnualCost, 1)}
+              </td>
               <td className="pr-num">{formatCurrency(row.grossMonthlyPayout, 0)}</td>
               <td className="pr-num pr-vergleich-cell-abzuege">
                 −{formatCurrency(row.deductionsMonthly, 0)}
