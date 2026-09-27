@@ -108,7 +108,7 @@ export function VertragScenarioTable({
 
       {marketReturnAssumption !== undefined && (
         <p className="vertrag-scenario-detail">
-          Rendite {formatPercent(marketReturnAssumption, 1)} p. a. ({instance.expectedReturn !== undefined ? 'vertragsspezifisch' : 'Szenario'})
+          Marktrendite {formatPercent(marketReturnAssumption, 1)} p. a. (Annahme, {instance.expectedReturn !== undefined ? 'vertragsspezifisch' : 'Szenario'})
         </p>
       )}
       {rows.length > 0 ? (

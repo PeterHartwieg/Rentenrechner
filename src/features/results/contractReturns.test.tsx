@@ -28,7 +28,7 @@ it('discloses fixed contract returns in the print assumptions, contract block an
     <VertragScenarioTable workspace={workspace} instance={instance} productId="etf"
       rules={de2026Rules} scenarioId="basis" combinedForScenario={bundle.combinedByScenarioId.basis} />
   </>)
-  const caption = `Rendite ${formatPercent(0.025, 1)} p. a. (vertragsspezifisch)`
+  const caption = `Marktrendite ${formatPercent(0.025, 1)} p. a. (Annahme, vertragsspezifisch)`
   expect(container.querySelector('.pr-vertrag-block')?.parentElement?.textContent).toContain(caption)
   expect(container.querySelector('.vertrag-section')?.textContent).toContain(caption)
   const scenarioSection = Array.from(container.querySelectorAll('.pr-section'))
@@ -57,7 +57,7 @@ it.each([0.07, undefined])('discloses the AVD market assumption %s instead of it
     <VertragScenarioTable workspace={workspace} instance={instance} productId="altersvorsorgedepot"
       rules={de2026Rules} scenarioId="basis" combinedForScenario={bundle.combinedByScenarioId.basis} />
   </>)
-  const caption = `Rendite ${formatPercent(expectedReturn ?? 0.05, 1)} p. a. (${expectedReturn === undefined ? 'Szenario' : 'vertragsspezifisch'})`
+  const caption = `Marktrendite ${formatPercent(expectedReturn ?? 0.05, 1)} p. a. (Annahme, ${expectedReturn === undefined ? 'Szenario' : 'vertragsspezifisch'})`
   const block = Array.from(container.querySelectorAll('.pr-vertrag-block')).find(el => el.textContent?.startsWith('Mein Garantie-AVD'))
   expect(block?.textContent).toContain(caption)
   expect(container.querySelector('.vertrag-section')?.textContent).toContain(caption)

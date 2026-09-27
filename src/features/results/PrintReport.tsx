@@ -1495,7 +1495,7 @@ function VertragBlockView({ block }: { block: PrintVertragBlock }) {
         </span>
       </div>
       {block.marketReturnAssumption !== undefined && (
-        <p className="pr-note">Rendite {formatPercent(block.marketReturnAssumption, 1)} p. a. ({block.expectedReturn !== undefined ? 'vertragsspezifisch' : 'Szenario'})</p>
+        <p className="pr-note">Marktrendite {formatPercent(block.marketReturnAssumption, 1)} p. a. (Annahme, {block.expectedReturn !== undefined ? 'vertragsspezifisch' : 'Szenario'})</p>
       )}
       <table className="pr-table pr-vertrag-kpi-table">
         <thead>
