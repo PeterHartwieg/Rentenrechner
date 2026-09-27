@@ -53,7 +53,7 @@ describe('MethodePage — /methode route content', () => {
       'Rendite des Sicherheitsanteils und den gesetzlichen Glidepath',
     )
     expect(table.nextElementSibling?.textContent).toContain(
-      'In Mein Plan kannst du in den Vertragsdetails unter „Erwartete Rendite“ eine eigene Vertragsrendite festlegen, die den Szenariowert für diesen Vertrag in allen drei Szenarien ersetzt.',
+      'In Mein Plan kannst du in den Vertragsdetails unter „Erwartete Marktrendite vor Kosten“ eine eigene Vertragsrendite festlegen, die den Szenariowert für diesen Vertrag in allen drei Szenarien ersetzt.',
     )
     expect(table.nextElementSibling?.textContent).toContain(
       'Diese vertragsspezifische Rendite wird in den Vertragsdetails, im Druckbericht und im CSV-Export ausgewiesen.',

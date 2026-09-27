@@ -268,7 +268,7 @@ it('saves a contract return as a ratio and clearing it restores the scenario val
   render(<Harness onSave={onSave} />)
   type(capital(), '10000')
   type(monthly(), '100')
-  const input = screen.getByRole('spinbutton', { name: 'Erwartete Rendite (optional) (%)' })
+  const input = screen.getByRole('spinbutton', { name: 'Erwartete Marktrendite vor Kosten (optional) (%)' })
   expect(input).toHaveValue(null)
   type(input, '2.5')
   submit()
@@ -288,7 +288,7 @@ it('clears an existing return through the saved plan and keeps its neighbour unc
   ]
   saveWorkspace(workspace)
   render(<VertragBearbeitenPage instanceId="etf-return" navigate={vi.fn()} />)
-  const input = screen.getByRole('spinbutton', { name: 'Erwartete Rendite (optional) (%)' })
+  const input = screen.getByRole('spinbutton', { name: 'Erwartete Marktrendite vor Kosten (optional) (%)' })
   expect(input).toHaveValue(2.5)
   type(input, '')
   fireEvent.click(screen.getByRole('button', { name: 'Änderungen übernehmen' }))
@@ -312,7 +312,7 @@ it('labels an empty contract return as the scenario value and saves no unknown s
   const saved = onSave.mock.lastCall![0] as ContractDraftPatch
   expect(saved.inputStatus).not.toHaveProperty('expectedReturn')
   expect(saved.inputStatus.currentValueEUR).toBe('unknown')
-  const input = screen.getByRole('spinbutton', { name: 'Erwartete Rendite (optional) (%)' })
+  const input = screen.getByRole('spinbutton', { name: 'Erwartete Marktrendite vor Kosten (optional) (%)' })
   type(input, '2')
   type(input, '')
   expect(status()).toHaveTextContent(/^Szenariowert$/)
@@ -329,7 +329,7 @@ it('drops a stale unknown status for a cleared contract return on save', () => {
   }]
   saveWorkspace(workspace)
   render(<VertragBearbeitenPage instanceId="etf-stale" navigate={vi.fn()} />)
-  type(screen.getByRole('spinbutton', { name: 'Erwartete Rendite (optional) (%)' }), '')
+  type(screen.getByRole('spinbutton', { name: 'Erwartete Marktrendite vor Kosten (optional) (%)' }), '')
   fireEvent.click(screen.getByRole('button', { name: 'Änderungen übernehmen' }))
   const saved = loadSavedWorkspace()!.baseline.assumptions.etf[0]
   expect(saved).not.toHaveProperty('expectedReturn')

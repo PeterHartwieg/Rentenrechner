@@ -431,6 +431,12 @@ describe('compare-mode singleton path is untouched', () => {
 
 
 describe('optional contract expected return', () => {
+  it('asks for the market return before costs, since the calculator deducts costs itself', () => {
+    const spec = CONTRACT_FIELD_SPECS.etf.find((f) => f.id === 'expectedReturn')!
+    expect(spec.label).toBe('Erwartete Marktrendite vor Kosten (optional)')
+    expect(spec.hint).toBe('vor Vertrags- und Fondskosten, die der Rechner selbst abzieht; leer = Szenariowert')
+  })
+
   it.each(Object.keys(INVENTORY_PRODUCT_REGISTRY) as (keyof typeof INVENTORY_PRODUCT_REGISTRY)[])(
     '%s defaults to the scenario, saves zero, clears a previous override, and validates bounds', (productId) => {
       const base = INVENTORY_PRODUCT_REGISTRY[productId].createDefault(2026, 1, () => `${productId}-return`)
