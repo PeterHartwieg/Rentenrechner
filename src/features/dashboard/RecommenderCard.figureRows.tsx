@@ -10,7 +10,7 @@ import type { ReactNode } from 'react'
 import { PlanDurationText } from '../mein-plan/PlanDurationSummary'
 import { InfoTip } from '../../ui/InfoTip'
 import { formatCurrency, formatPercent } from '../../utils/format'
-import type { CandidateFigures, ScenarioTag } from './RecommenderCard.figures'
+import { contractReturnLabel, type CandidateFigures, type ScenarioTag } from './RecommenderCard.figures'
 
 function signed(value: number): string {
   const rounded = Math.round(value)
@@ -18,13 +18,37 @@ function signed(value: number): string {
   return `${rounded > 0 ? '+' : '−'}${formatCurrency(Math.abs(value))}`
 }
 
-/** One line naming the money basis and the return scenario behind the figures. */
-export function FiguresBasisNote({ scenario, className }: { scenario: ScenarioTag; className?: string }) {
+/**
+ * One line naming the money basis and the return behind the figures. A target
+ * contract with its own return ignores the scenario, so `contractReturn`
+ * replaces the scenario caption.
+ */
+export function FiguresBasisNote({ scenario, contractReturn = null, className }: {
+  scenario: ScenarioTag
+  contractReturn?: number | null
+  className?: string
+}) {
   return (
     <p className={className}>
-      Alle Beträge in heutigen Euro (Kaufkraft), berechnet mit dem Rendite-Szenario{' '}
-      <strong>{scenario.label}</strong> ({formatPercent(scenario.annualReturn, 1)} p.a.).
-      Die Vorschläge sind Modellrechnungen, keine Beratung und keine Garantie.
+      {contractReturn !== null
+        ? <>Alle Beträge in heutigen Euro (Kaufkraft), berechnet mit der {contractReturnLabel(contractReturn)}.</>
+        : <>Alle Beträge in heutigen Euro (Kaufkraft), berechnet mit dem Rendite-Szenario{' '}
+          <strong>{scenario.label}</strong> ({formatPercent(scenario.annualReturn, 1)} p.a.).</>}
+      {' '}Die Vorschläge sind Modellrechnungen, keine Beratung und keine Garantie.
+    </p>
+  )
+}
+
+/**
+ * Per-candidate line in a list whose shared caption names the scenario: this
+ * candidate's target keeps its own return instead. Renders nothing otherwise.
+ */
+export function CandidateReturnNote({ figures }: { figures: CandidateFigures }) {
+  if (figures.contractReturn === null) return null
+  return (
+    <p className="recommender-candidate-return">
+      Für diesen Vertrag gilt die {contractReturnLabel(figures.contractReturn)} statt des
+      Rendite-Szenarios {figures.scenario.label}.
     </p>
   )
 }

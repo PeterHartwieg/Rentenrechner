@@ -421,6 +421,41 @@ describe('RecommenderCard — audit F16 / F20: risk label, ranking explanation, 
   })
 })
 
+describe('RecommenderCard — contract return caption (#372)', () => {
+  function etfCard(container: HTMLElement): Element {
+    const card = Array.from(container.querySelectorAll('.recommender-candidate'))
+      .find((el) => candidateLabel(el).startsWith('Zusatz auf bestehendes ETF-Depot'))
+    expect(card).toBeTruthy()
+    return card!
+  }
+
+  it('names the contract rate on a candidate whose target has its own return', () => {
+    const ctx = setup()
+    ctx.workspace.baseline.assumptions.etf[0].expectedReturn = 0.02
+    const { container } = render(
+      <RecommenderCard {...ctx} marginalMonthlyEUR={400} onSaveAsPlan={() => {}} />,
+    )
+    expect(etfCard(container).querySelector('.recommender-candidate-return')?.textContent)
+      .toContain(`Vertragsrendite ${formatPercent(0.02, 1)} p.a. (eigene Annahme dieses Vertrags)`)
+    // Candidates without an override keep only the scenario caption.
+    const others = Array.from(container.querySelectorAll('.recommender-candidate')).filter((el) => el !== etfCard(container))
+    expect(others.length).toBeGreaterThan(0)
+    for (const el of others) expect(el.querySelector('.recommender-candidate-return')).toBeNull()
+  })
+
+  it('keeps the scenario caption for a plain target', () => {
+    const ctx = setup()
+    const basis = ctx.workspace.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis')!
+    const { container } = render(
+      <RecommenderCard {...ctx} marginalMonthlyEUR={400} onSaveAsPlan={() => {}} />,
+    )
+    expect(container.querySelector('.recommender-basis-note')?.textContent)
+      .toContain(`Rendite-Szenario ${basis.label} (${formatPercent(basis.annualReturn, 1)} p.a.)`)
+    expect(etfCard(container).querySelector('.recommender-candidate-return')).toBeNull()
+    expect(container.textContent).not.toContain('Vertragsrendite')
+  })
+})
+
 function candidateLabel(card: Element): string {
   return card.querySelector('.recommender-candidate-title strong')?.textContent ?? ''
 }

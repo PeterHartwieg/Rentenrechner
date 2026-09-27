@@ -29,7 +29,9 @@ import {
   type DurationDescriptor,
 } from '../../app/planSummary'
 import { listWorkspaceInstances } from '../../app/resultReadiness'
+import { candidateAnnualReturn } from '../../app/recommenderCandidates/types'
 import { getProductMeta } from '../../engine/productRegistry'
+import { formatPercent } from '../../utils/format'
 
 export interface FiguresContext {
   workspace: Workspace
@@ -67,6 +69,11 @@ export interface CandidateFigures {
   /** Remaining gap after the candidate, today's euros; negative = above target. */
   remainingGapReal: number | null
   scenario: ScenarioTag
+  /**
+   * The target contract's own `expectedReturn` when it replaces the scenario
+   * rate for this candidate (`candidateAnnualReturn`); `null` otherwise.
+   */
+  contractReturn: number | null
   /** Payout duration read from the real instance / offer, when known. */
   duration: DurationDescriptor | null
   /** Registry label of the product ("Altersvorsorgedepot (ab 2027)"). */
@@ -106,6 +113,27 @@ function candidateDuration(
   return null
 }
 
+/** "Vertragsrendite 2 % p.a. (eigene Annahme dieses Vertrags)" */
+export function contractReturnLabel(rate: number): string {
+  return `Vertragsrendite ${formatPercent(rate, 1)} p.a. (eigene Annahme dieses Vertrags)`
+}
+
+/**
+ * Existing targets (offers included) keep their absolute contract return;
+ * new contracts carry no target and follow the scenario.
+ */
+function candidateContractReturn(
+  cand: RecommendedCandidate,
+  ctx: FiguresContext,
+  scenario: ScenarioTag,
+): number | null {
+  if (!cand.targetInstanceId) return null
+  const target = listWorkspaceInstances(ctx.workspace.baseline.assumptions)
+    .find((e) => e.instance.instanceId === cand.targetInstanceId)?.instance
+  if (target?.expectedReturn === undefined) return null
+  return candidateAnnualReturn({ scenarioId: scenario.id, annualReturn: scenario.annualReturn }, target)
+}
+
 export function candidateFigures(cand: RecommendedCandidate, ctx: FiguresContext): CandidateFigures {
   const wsa = ctx.workspace.baseline.assumptions
   const profile = ctx.workspace.baseline.profile
@@ -116,6 +144,7 @@ export function candidateFigures(cand: RecommendedCandidate, ctx: FiguresContext
   const targetMonthly = (profile.desiredNetMonthlyPension ?? 0) > 0
     ? (profile.desiredNetMonthlyPension as number)
     : null
+  const scenario = selectedScenario(ctx.workspace, ctx.selectedScenarioId)
   const productStartYear =
     cand.isNewInstance && cand.productId === 'altersvorsorgedepot'
       ? ctx.rules.altersvorsorgedepot.productStartYear
@@ -132,7 +161,8 @@ export function candidateFigures(cand: RecommendedCandidate, ctx: FiguresContext
     safetyPaths: cand.riskScoreMcPaths,
     targetMonthly,
     remainingGapReal: targetMonthly === null ? null : targetMonthly - wholePlanReal,
-    scenario: selectedScenario(ctx.workspace, ctx.selectedScenarioId),
+    scenario,
+    contractReturn: candidateContractReturn(cand, ctx, scenario),
     duration: candidateDuration(cand, ctx),
     productLabel: getProductMeta(cand.productId)?.label ?? cand.productId,
     productStartYear,

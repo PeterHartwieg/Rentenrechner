@@ -22,6 +22,7 @@ function figures(overrides: Partial<CandidateFigures> = {}): CandidateFigures {
     targetMonthly: null,
     remainingGapReal: null,
     scenario: { id: 'basis', label: 'Basis', annualReturn: 0.05 },
+    contractReturn: null,
     duration: null,
     productLabel: 'Altersvorsorgedepot (ab 2027)',
     productStartYear: 2027,

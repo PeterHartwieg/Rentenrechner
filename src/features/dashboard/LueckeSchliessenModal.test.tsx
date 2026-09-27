@@ -11,7 +11,7 @@ import { de2026Rules } from '../../rules/de2026'
 import { eachViewport, mockViewport } from '../../test/viewport'
 import { realDeflator } from '../../app/planSummary'
 import { solveTargetContribution } from '../../app/targetContribution'
-import { formatCurrency } from '../../utils/format'
+import { formatCurrency, formatPercent } from '../../utils/format'
 
 afterEach(() => {
   cleanup()
@@ -472,5 +472,65 @@ describe('LueckeSchliessenModal — viewport', () => {
       expect(container.querySelector('input[type="number"]')).not.toBeNull()
       unmount()
     })
+  })
+})
+
+
+describe('LueckeSchliessenModal — contract return caption (#372)', () => {
+  function withTarget(expectedReturn?: number) {
+    const ctx = setup()
+    const workspace = structuredClone(ctx.workspace)
+    const profile = workspace.baseline.profile
+    const deflator = realDeflator(workspace.baseline.assumptions.inflationRate, profile.retirementAge - profile.age)
+    workspace.baseline.profile.desiredNetMonthlyPension =
+      Math.round(ctx.baselineCombined.monthlyNetIncome * deflator) + 300
+    if (expectedReturn !== undefined) workspace.baseline.assumptions.etf[0].expectedReturn = expectedReturn
+    return { ...ctx, workspace }
+  }
+  const contractCaption = `Vertragsrendite ${formatPercent(0.02, 1)} p.a. (eigene Annahme dieses Vertrags)`
+
+  it('names the contract rate in the solver note when the ETF has its own return', () => {
+    const { container } = render(
+      <LueckeSchliessenModal {...withTarget(0.02)} onClose={() => {}} onSaveAsPlan={() => {}} />,
+    )
+    const note = container.querySelector('.luecke-modal__solver .luecke-modal__note')!.textContent
+    expect(note).toContain(contractCaption)
+    expect(note).not.toContain('im Szenario')
+  })
+
+  it('keeps the scenario in the solver note for a plain ETF', () => {
+    const ctx = withTarget()
+    const basis = ctx.workspace.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis')!
+    const { container } = render(
+      <LueckeSchliessenModal {...ctx} onClose={() => {}} onSaveAsPlan={() => {}} />,
+    )
+    const note = container.querySelector('.luecke-modal__solver .luecke-modal__note')!.textContent
+    expect(note).toContain(`im Szenario ${basis.label} (${formatPercent(basis.annualReturn, 1)} p.a.)`)
+    expect(note).not.toContain('Vertragsrendite')
+  })
+
+  function saveEtf(ctx: ReturnType<typeof withTarget>) {
+    const utils = render(<LueckeSchliessenModal {...ctx} onClose={() => {}} onSaveAsPlan={() => {}} />)
+    fireEvent.click(utils.getByText('Weiter'))
+    fireEvent.click(utils.getByText('Nein, Standardannahmen nutzen'))
+    fireEvent.click(utils.getByText('Optionen anzeigen'))
+    const card = Array.from(utils.container.querySelectorAll('.recommender-candidate'))
+      .find((el) => el.querySelector('.recommender-candidate-title strong')?.textContent?.startsWith('Zusatz auf bestehendes ETF-Depot'))!
+    fireEvent.click(card.querySelector('.recommender-candidate-save')!)
+    return utils.container.querySelector('.luecke-modal__body--saved')!
+  }
+
+  it('names the contract rate on the saved confirmation for an overridden target', () => {
+    const saved = saveEtf(withTarget(0.02))
+    expect(saved.textContent).toContain(contractCaption)
+    expect(saved.textContent).not.toContain('Rendite-Szenario')
+  })
+
+  it('keeps the scenario caption on the saved confirmation for a plain target', () => {
+    const ctx = withTarget()
+    const basis = ctx.workspace.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis')!
+    const saved = saveEtf(ctx)
+    expect(saved.textContent).toContain(`Rendite-Szenario ${basis.label} (${formatPercent(basis.annualReturn, 1)} p.a.)`)
+    expect(saved.textContent).not.toContain('Vertragsrendite')
   })
 })

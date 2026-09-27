@@ -195,7 +195,8 @@
 
 /* ---- Money-basis note (today's euros + scenario) ----------------------- */
 
-.recommender-basis-note {
+.recommender-basis-note,
+.recommender-candidate-return {
   margin: 0;
   font-family: var(--rw-font-sans);
   color: var(--rw-ink-soft);
