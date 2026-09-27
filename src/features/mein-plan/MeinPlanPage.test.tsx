@@ -8,7 +8,7 @@ import { pathToRoute, ROUTES } from '../../app/useRoute'
 import { MeinPlanPage } from './MeinPlanPage'
 import { selectPlanOffers } from './planOffers'
 import { selectPlanSummary } from '../../app/planSummary'
-import { formatCurrency } from '../../utils/format'
+import { formatCurrency, formatPercent } from '../../utils/format'
 import { defaultWorkspace, STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../../storage'
 import { addInstanceToWorkspace } from '../inventory/inventoryHelpers'
 import { runCombineSimulation } from '../../app/useCombineSimulation'
@@ -296,6 +296,24 @@ describe('MeinPlanPage — Sober D combine-mode surface', () => {
     expect(drawer).not.toBeNull()
     const receipt = drawer!.querySelector('[data-testid="mein-plan-receipt"]')
     expect(receipt).not.toBeNull()
+  })
+
+  it.each([
+    { label: 'every active contract overrides', bavStatus: 'active', bavReturn: 0.07, etfStatus: 'active', etfReturn: 0, annotation: ' · 2 Verträge mit eigener Rendite' },
+    { label: 'paid-up zero override counts, offered does not', bavStatus: 'paid_up', bavReturn: 0, etfStatus: 'offered', etfReturn: 0.07, annotation: ' · 1 Vertrag mit eigener Rendite' },
+    { label: 'surrendered override does not count', bavStatus: 'surrendered', bavReturn: 0.07, etfStatus: 'active', etfReturn: undefined, annotation: '' },
+    { label: 'no overrides stays unchanged', bavStatus: 'active', bavReturn: undefined, etfStatus: 'active', etfReturn: undefined, annotation: '' },
+  ] as const)('annotates the receipt basis return: $label', ({ bavStatus, bavReturn, etfStatus, etfReturn, annotation }) => {
+    const workspace = buildCombineWorkspace()
+    Object.assign(workspace.baseline.assumptions.bav[0], { status: bavStatus, expectedReturn: bavReturn })
+    Object.assign(workspace.baseline.assumptions.etf[0], { status: etfStatus, expectedReturn: etfReturn })
+    const props = buildProps(workspace)
+    const { container } = render(<MeinPlanPage {...props} />)
+    const row = Array.from(container.querySelectorAll('.mein-plan-receipt-row'))
+      .find(el => el.querySelector('.mein-plan-receipt-key')?.textContent === 'Rendite (Basis)')
+    const basisReturn = workspace.baseline.assumptions.returnScenarios.find(s => s.id === 'basis')!.annualReturn
+    expect(row?.querySelector('.mein-plan-receipt-val')?.textContent)
+      .toBe(`${formatPercent(basisReturn, 1)} p. a.${annotation}`)
   })
 
   it('renders the right-rail receipt inline (aside, not strip) at desktop', () => {

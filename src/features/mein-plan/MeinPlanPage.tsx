@@ -677,8 +677,8 @@ interface MeinPlanReceiptAsideProps {
   /**
    * Live workspace assumptions from `workspace.baseline.assumptions`, threaded
    * through from `MeinPlanPage`. Only scalar workspace-level fields are
-   * consumed (inflationRate, returnScenarios, retirementEndAge); per-instance
-   * arrays are not accessed.
+   * consumed (inflationRate, returnScenarios, retirementEndAge), plus a count
+   * of contracts that carry their own `expectedReturn`.
    */
   assumptions: WorkspaceAssumptionsV2
   /** SPA navigator for the "Angaben bearbeiten" link. */
@@ -709,6 +709,16 @@ function MeinPlanReceiptAside({ profile, assumptions, navigate }: MeinPlanReceip
   // Resolve scenario annualReturn by id, never by index (CLAUDE.md gotcha).
   const basisScenario = assumptions.returnScenarios.find((s) => s.id === 'basis')
   const basisReturn = basisScenario?.annualReturn
+  // Active and paid-up contracts with their own return ignore the shared
+  // scenario rate, so the receipt says how many do.
+  const ownReturnCount = PRODUCT_REGISTRY.reduce((count, { assumptionsKey }) => {
+    const instances = assumptions[assumptionsKey] as InstanceCommon[]
+    return count + instances.filter(inst => inst.status !== 'surrendered' && inst.status !== 'offered'
+      && inst.expectedReturn !== undefined).length
+  }, 0)
+  const ownReturnNote = ownReturnCount === 0
+    ? ''
+    : ` · ${ownReturnCount} ${ownReturnCount === 1 ? 'Vertrag' : 'Verträge'} mit eigener Rendite`
 
   const rows: ReceiptRow[] = []
   rows.push({ key: 'alter', label: 'Alter', value: `${profile.age} Jahre` })
@@ -737,7 +747,7 @@ function MeinPlanReceiptAside({ profile, assumptions, navigate }: MeinPlanReceip
     rows.push({
       key: 'rendite-basis',
       label: 'Rendite (Basis)',
-      value: `${formatPercent(basisReturn, 1)} p. a.`,
+      value: `${formatPercent(basisReturn, 1)} p. a.${ownReturnNote}`,
     })
   }
   rows.push({
