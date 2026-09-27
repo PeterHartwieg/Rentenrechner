@@ -15,6 +15,7 @@ import type { PensionBaselineType } from '../../domain/products/grv'
 import type { Route } from '../../app/useRoute'
 import type { PlanSourceRow, PlanSummary } from '../../app/planSummary'
 import type { ResultReadiness } from '../../app/resultReadiness'
+import { countContractsWithOwnReturn, ownReturnAnnotation } from '../../app/contractReturns'
 import { ROUTES, routeToPath } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { getProductMeta } from '../../app/productPresentation'
@@ -235,6 +236,7 @@ function OverviewMeinPlanPage(props: MeinPlanPageProps & { summary: PlanSummary 
       assumptions={{ age: profile.age, grossSalaryYear: profile.grossSalaryYear,
         retirementAge: profile.retirementAge, inflationRate: assumptions.inflationRate, pensionMethodLabel,
         returnRate: selectedScenario?.annualReturn, returnScenarioLabel: selectedScenario?.label,
+        ownReturnContractCount: countContractsWithOwnReturn(assumptions),
         retirementEndAge: assumptions.retirementEndAge,
         salaryGrowthRate: assumptions.statutoryPension.annualSalaryGrowthRate,
         pensionValueGrowthRate: assumptions.statutoryPension.rentenwertGrowthRate,
@@ -677,8 +679,8 @@ interface MeinPlanReceiptAsideProps {
   /**
    * Live workspace assumptions from `workspace.baseline.assumptions`, threaded
    * through from `MeinPlanPage`. Only scalar workspace-level fields are
-   * consumed (inflationRate, returnScenarios, retirementEndAge); per-instance
-   * arrays are not accessed.
+   * consumed (inflationRate, returnScenarios, retirementEndAge), plus a count
+   * of contracts that carry their own `expectedReturn`.
    */
   assumptions: WorkspaceAssumptionsV2
   /** SPA navigator for the "Angaben bearbeiten" link. */
@@ -709,6 +711,9 @@ function MeinPlanReceiptAside({ profile, assumptions, navigate }: MeinPlanReceip
   // Resolve scenario annualReturn by id, never by index (CLAUDE.md gotcha).
   const basisScenario = assumptions.returnScenarios.find((s) => s.id === 'basis')
   const basisReturn = basisScenario?.annualReturn
+  // Active and paid-up contracts with their own return ignore the shared
+  // scenario rate, so the receipt says how many do.
+  const ownReturnNote = ownReturnAnnotation(countContractsWithOwnReturn(assumptions))
 
   const rows: ReceiptRow[] = []
   rows.push({ key: 'alter', label: 'Alter', value: `${profile.age} Jahre` })
@@ -737,7 +742,7 @@ function MeinPlanReceiptAside({ profile, assumptions, navigate }: MeinPlanReceip
     rows.push({
       key: 'rendite-basis',
       label: 'Rendite (Basis)',
-      value: `${formatPercent(basisReturn, 1)} p. a.`,
+      value: `${formatPercent(basisReturn, 1)} p. a.${ownReturnNote}`,
     })
   }
   rows.push({
@@ -1323,6 +1328,8 @@ function formatNote(note: SensitivityRowResult['note']): string | null {
       return 'ETF-Vertrag vorhanden, aber beitragsfrei — Aufstockung würde einen neuen aktiven Vertrag erfordern.'
     case 'retirement_age_clamped':
       return 'Renteneintritt auf das Modell-Endalter − 1 begrenzt.'
+    case 'contract_returns_fixed':
+      return 'Vertragsspezifische Renditen bleiben in allen Szenarien unverändert; nur Verträge ohne eigene Rendite folgen dem Szenariowert.'
     case 'unchanged':
       // 'unchanged' has no extra copy; the ±0 €/Mon. delta chip is
       // self-explanatory adjacent to the condition text.

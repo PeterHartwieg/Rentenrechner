@@ -359,3 +359,35 @@ describe('applyCrossInstanceSparerpauschbetrag', () => {
     expect(hasBindingYear).toBe(true)
   })
 })
+
+
+describe('contract returns through the shared ETF allowance re-run', () => {
+  it('preserves two different absolute rates in all scenarios while sharing one allowance', () => {
+    const workspace = makeBaseWorkspace()
+    const base = { ...workspace.baseline.assumptions.etf[0], monthlyContribution: 800 }
+    workspace.baseline.assumptions.etf = [
+      { ...base, instanceId: 'etf-low', expectedReturn: 0.02 },
+      { ...base, instanceId: 'etf-high', expectedReturn: 0.07 },
+    ]
+    const { perInstance } = simulatePortfolio(workspace, de2026Rules)
+    for (const scenario of workspace.baseline.assumptions.returnScenarios) {
+      const low = perInstance['etf-low'].find(r => r.scenarioId === scenario.id)!
+      const high = perInstance['etf-high'].find(r => r.scenarioId === scenario.id)!
+      expect(low.annualReturn).toBe(0.02)
+      expect(high.annualReturn).toBe(0.07)
+      expect(high.capitalAtRetirement).toBeGreaterThan(low.capitalAtRetirement)
+      if (low.productId !== 'etf' || high.productId !== 'etf') throw new Error('Expected ETFs')
+      expect(low.etfPayoutRows.length).toBeGreaterThan(0)
+      for (const [i, row] of low.etfPayoutRows.entries()) {
+        expect(row.saverAllowanceUsed + high.etfPayoutRows[i].saverAllowanceUsed)
+          .toBeLessThanOrEqual(de2026Rules.capitalGains.saverAllowance + 1e-8)
+      }
+      expect(low.etfPayoutRows.some((row, i) =>
+        Math.abs(row.saverAllowanceUsed + high.etfPayoutRows[i].saverAllowanceUsed
+          - de2026Rules.capitalGains.saverAllowance) < 1e-8)).toBe(true)
+    }
+    for (const results of Object.values(perInstance).filter(rs => rs[0].productId === 'etf')) {
+      expect(new Set(results.map(r => r.capitalAtRetirement)).size).toBe(1)
+    }
+  })
+})

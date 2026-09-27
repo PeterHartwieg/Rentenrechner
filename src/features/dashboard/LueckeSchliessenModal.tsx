@@ -10,7 +10,8 @@ import { ModalSlot } from '../../ui/chrome/ModalSlot'
 import { NumberField } from '../../ui/NumberField'
 import { formatCurrency, formatPercent } from '../../utils/format'
 import { RecommenderCard } from './RecommenderCard'
-import { candidateFigures, selectedScenario } from './RecommenderCard.figures'
+import { countContractsWithOwnReturn, ownReturnAnnotation } from '../../app/contractReturns'
+import { candidateFigures, contractAndScenarioLabel, selectedScenario } from './RecommenderCard.figures'
 import { CandidateFigureRows, FiguresBasisNote } from './RecommenderCard.figureRows'
 import './RecommenderCard.css'
 import './LueckeSchliessenModal.css'
@@ -171,6 +172,7 @@ export function LueckeSchliessenModal({
     () => ({ workspace, baselineCombined, rules: de2026Rules, selectedScenarioId }),
     [workspace, baselineCombined, selectedScenarioId],
   )
+  const savedFigures = savedCandidate ? candidateFigures(savedCandidate, figuresContext) : null
 
   return (
     <ModalSlot
@@ -225,9 +227,13 @@ export function LueckeSchliessenModal({
                 <>
                   <p className="luecke-modal__note">
                     Rechnet für ein bestehendes ETF-Depot aus, welche Sparrate deine Wunschrente von{' '}
-                    {formatCurrency(targetMonthly)} netto im Monat (heutige Euro) im Szenario{' '}
-                    <strong>{scenario.label}</strong> ({formatPercent(scenario.annualReturn, 1)} p.a.)
-                    erreicht. Andere Verträge bleiben unverändert.
+                    {formatCurrency(targetMonthly)} netto im Monat (heutige Euro) erreicht.{' '}
+                    {solverEtf?.expectedReturn !== undefined
+                      ? <>{contractAndScenarioLabel(solverEtf.expectedReturn, scenario,
+                        countContractsWithOwnReturn(wsa, solverEtf.instanceId))}.</>
+                      : <>Rendite: Szenario <strong>{scenario.label}</strong> ({formatPercent(scenario.annualReturn, 1)} p.a.)
+                        {ownReturnAnnotation(countContractsWithOwnReturn(wsa))}.</>}
+                    {' '}Andere Verträge bleiben unverändert.
                   </p>
                   {activeEtfs.length > 1 && (
                     <label className="field luecke-modal__solver-select">
@@ -470,11 +476,14 @@ export function LueckeSchliessenModal({
                 card, so the numbers a user just saw cannot change here. */}
             <div className="luecke-modal__saved-figures">
               <CandidateFigureRows
-                figures={candidateFigures(savedCandidate, figuresContext)}
+                figures={savedFigures!}
                 candidateLabel={savedCandidate.label}
               />
             </div>
-            <FiguresBasisNote scenario={scenario} className="luecke-modal__note" />
+            <FiguresBasisNote scenario={scenario} contractReturn={savedFigures!.contractReturn}
+              ownReturnCount={countContractsWithOwnReturn(wsa,
+                savedFigures!.contractReturn !== null ? savedCandidate.targetInstanceId : undefined)}
+              className="luecke-modal__note" />
             <p className="luecke-modal__note">
               Dein Hauptplan bleibt unverändert. Die Alternative wird erst Teil des Hauptplans,
               wenn du sie dort aktiv übernimmst.

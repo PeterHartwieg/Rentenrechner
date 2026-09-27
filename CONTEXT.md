@@ -194,7 +194,17 @@ should be flagged in review.
   npm package, internal docs, ADRs, and design notes — never in user-facing
   page titles, marketing copy, OG tags, or share-URL slugs.
 - **Fair-comparison invariant** applies to compare-mode only (see
-  `CLAUDE.md` → "Non-obvious architecture").
+  `CLAUDE.md` → "Non-obvious architecture"). In combine mode,
+  ETF and insurance honor independent per-instance monthly contributions.
+  All six contract types may set optional `InstanceCommon.expectedReturn`
+  (decimal ratio, −0.5 to 0.5). `scenarioForInstance` in
+  `portfolioProjection.ts` replaces the scenario market return absolutely,
+  preserving scenario ids/labels in all three scenarios and the ETF shared
+  allowance re-run. Clearing it restores the scenario rate. The AVD safety
+  allocation/glidepath still applies to its risky-market return. Singleton
+  projections strip the field, leaving comparison and its Monte Carlo on one
+  shared return; combine-mode Monte Carlo remains out of scope. Contract
+  details, sensitivity captions, PDF and combine CSV disclose these overrides.
 - **Combine context is shared.** Recommender and combine simulation both call
   `buildCombineContext`. If you find tax / KV/PV routing being rebuilt
   somewhere else, fold it into `combineContext.ts`.

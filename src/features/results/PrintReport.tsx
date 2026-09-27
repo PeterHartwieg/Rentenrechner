@@ -611,6 +611,8 @@ function CombinePrintReport({
       })
     : []
 
+  const returnOverrides = vertragBlocks.filter(block => block.expectedReturn !== undefined)
+
   // Per-instance Kapital & Auszahlungen wendepunkte. The lifecycle line
   // series is built per instance so the print table renders one block per
   // contract; combine-mode users expect to see the trajectory of each
@@ -743,6 +745,12 @@ function CombinePrintReport({
             ))}
           </tbody>
         </table>
+        {returnOverrides.length > 0 && (
+          <p className="pr-note">
+            Vertragsspezifische Renditen (in allen Szenarien):{' '}
+            {returnOverrides.map(block => `${block.title}: ${formatPercent(block.expectedReturn!, 1)} p. a.`).join('; ')}.
+          </p>
+        )}
       </section>
 
       <section className="pr-section">
@@ -1486,6 +1494,9 @@ function VertragBlockView({ block }: { block: PrintVertragBlock }) {
           {block.anbieter ? ` · ${block.anbieter}` : ''}
         </span>
       </div>
+      {block.marketReturnAssumption !== undefined && (
+        <p className="pr-note">Marktrendite {formatPercent(block.marketReturnAssumption, 1)} p. a. (Annahme, {block.expectedReturn !== undefined ? 'vertragsspezifisch' : 'Szenario'})</p>
+      )}
       <table className="pr-table pr-vertrag-kpi-table">
         <thead>
           <tr>

@@ -61,3 +61,6 @@ export const ACQUISITION_COST_SPREAD_YEARS_BOUNDS: NumericBound = {
   max: 50,
   integer: true,
 }
+
+/** Optional contract return, matching the shared scenario return range. */
+export const EXPECTED_RETURN_BOUNDS: NumericBound = { min: -0.5, max: 0.5 }

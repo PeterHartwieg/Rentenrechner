@@ -232,6 +232,7 @@ export function applyCrossInstanceSparerpauschbetrag(
     for (const inst of activeEtf) {
       const schedule = allowanceByInstance.get(inst.instanceId)
       if (!schedule) continue
+      // The injected simulate function owns the per-contract return substitution.
       const tagged = resimulateEtfInstance(inst, scenario, (yearIdx: number) =>
         schedule[yearIdx] ?? rules.capitalGains.saverAllowance,
       )

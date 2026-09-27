@@ -302,6 +302,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
       combinedByScenarioId: combineSimulation.combinedByScenarioId,
       scenarioLabels,
       perInstanceTaxModes,
+      assumptions: wa,
       inflationRate: wa.inflationRate,
     }
   }, [

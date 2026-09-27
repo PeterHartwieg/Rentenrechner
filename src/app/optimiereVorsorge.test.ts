@@ -186,7 +186,6 @@ function makeRiesterAvdWorkspace(): Workspace {
       careerStarterBonusUsed: true,
     },
     riskAllocationPct: 0.8,
-    riskAnnualReturn: 0.05,
     lowRiskAnnualReturn: 0.02,
     fees: {
       wrapperAssetFee: 0.003,

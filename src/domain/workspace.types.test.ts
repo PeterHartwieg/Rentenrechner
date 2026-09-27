@@ -117,7 +117,6 @@ const minAltersvorsorgedepotInstance: AltersvorsorgedepotInstance = {
     careerStarterBonusUsed: false,
   },
   riskAllocationPct: 1,
-  riskAnnualReturn: 0.07,
   lowRiskAnnualReturn: 0.02,
   fees: { ...minFees, fundAssetFee: 0.002 },
   payoutMode: 'certified_payout_plan',

@@ -937,9 +937,17 @@ export function usePortfolioState(): UsePortfolioStateApi {
         // different one would silently orphan every transfer event and pin
         // pointing at this contract.
         const merged = { ...existing, ...patch, instanceId } as AnyInstance
+        // Undefined clears the optional contract return in a shallow editor patch.
+        if (merged.expectedReturn === undefined) delete merged.expectedReturn
         const updated = status
           ? { ...merged, inputStatus: { ...(existing.inputStatus ?? {}), ...status } }
           : merged
+        // A cleared override is not an unknown answer, so its status key goes too.
+        if (updated.expectedReturn === undefined && updated.inputStatus?.expectedReturn !== undefined) {
+          const inputStatus = { ...updated.inputStatus }
+          delete inputStatus.expectedReturn
+          return { ...updated, inputStatus }
+        }
         // Offer status controls inclusion in the baseline simulation. Keep the
         // quoted contribution and its provenance for comparison/reactivation.
         return updated

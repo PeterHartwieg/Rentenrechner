@@ -88,6 +88,7 @@ describe('printReportRows static content', () => {
     ]
     const bullet = renditeBullet(withCustom)
     expect(bullet?.body).toContain(', ergänzt um ein eigenes Szenario')
+    expect(bullet?.body).toContain('im Plan ersetzt eine eigene Vertragsrendite den Szenariowert in allen drei Szenarien.')
     // The clause sits inside the lead-in, before the nominal framing.
     const body = bullet!.body
     expect(body.indexOf('ergänzt um ein eigenes Szenario')).toBeLessThan(

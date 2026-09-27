@@ -24,13 +24,14 @@ import {
 import { confidenceLanguage } from '../../app/evidence'
 import { confidenceForResult } from '../../app/evidence'
 import { de2026Rules } from '../../rules/de2026'
+import { countContractsWithOwnReturn } from '../../app/contractReturns'
 import { InfoTip } from '../../ui/InfoTip'
 import { formatCurrency } from '../../utils/format'
 import { renderAtom } from '../../content/recommendationCopy'
 import { productIdFromInstanceId } from '../../utils/scenarioSchema'
 import { getProductMeta, type ProductId } from '../../engine/productRegistry'
 import { candidateFigures, selectedScenario } from './RecommenderCard.figures'
-import { CandidateFigureRows, FiguresBasisNote } from './RecommenderCard.figureRows'
+import { CandidateFigureRows, CandidateReturnNote, FiguresBasisNote } from './RecommenderCard.figureRows'
 
 const FLEX_LABEL: Record<RecommendedCandidate['flexibilityScore'], string> = {
   high: 'Hoch',
@@ -144,6 +145,7 @@ export function RecommenderCard({
     [workspace, baselineCombined, selectedScenarioId],
   )
   const scenario = selectedScenario(workspace, selectedScenarioId)
+  const ownReturnCount = countContractsWithOwnReturn(workspace.baseline.assumptions)
 
   function toggleAtomDetails(candidateId: string) {
     setExpandedAtomIds((prev) => {
@@ -200,7 +202,8 @@ export function RecommenderCard({
           <p className="recommender-intro">
             {confidence.prefix} diese Rangliste für deine zusätzliche Sparrate:
           </p>
-          <FiguresBasisNote scenario={scenario} className="recommender-basis-note" />
+          <FiguresBasisNote scenario={scenario} ownReturnCount={ownReturnCount}
+            className="recommender-basis-note" />
 
           <div className="recommender-sort-row">
             {/* PR 6: dropped the "Beste Option für …" indicator span. The
@@ -304,6 +307,7 @@ export function RecommenderCard({
                     <dd>{EFFORT_LABEL[cand.effort.level]}</dd>
                   </div>
                 </CandidateFigureRows>
+                <CandidateReturnNote figures={figures} />
                 <details className="recommender-candidate-details">
                   <summary>Flexibilität und Aufwand</summary>
                   <dl>

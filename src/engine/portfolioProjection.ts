@@ -28,6 +28,7 @@ import type {
   InsuranceAssumptions,
   RiesterAssumptions,
   ScenarioAssumptions,
+  ReturnScenario,
 } from '../domain'
 import type { Workspace, WorkspaceAssumptionsV2 } from '../domain/workspace'
 import type {
@@ -143,7 +144,6 @@ export const NEUTRALISED_ALTERSVORSORGEDEPOT: AltersvorsorgedepotAssumptions = {
     careerStarterBonusUsed: true,
   },
   riskAllocationPct: 0,
-  riskAnnualReturn: 0,
   lowRiskAnnualReturn: 0,
   fees: {
     wrapperAssetFee: 0,
@@ -238,6 +238,7 @@ export function paidUpFeeModel(fees: FeeModel): FeeModel {
  * singleton can use this list to drop them.
  */
 export const INSTANCE_COMMON_KEYS = [
+  'expectedReturn',
   'instanceId',
   'label',
   'anbieter',
@@ -604,4 +605,15 @@ export function singletonViewOfWorkspace(
     ...slotProjection(avdInst),
     ...slotProjection(riesterInst),
   }
+}
+
+
+/** Absolute contract return override; scenario identity and shared inputs stay intact. */
+export function scenarioForInstance(
+  scenario: ReturnScenario,
+  instance: InstanceCommon,
+): ReturnScenario {
+  return instance.expectedReturn === undefined
+    ? scenario
+    : { ...scenario, annualReturn: instance.expectedReturn }
 }

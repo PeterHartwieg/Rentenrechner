@@ -24,6 +24,7 @@ import {
   NEUTRALISED_ALTERSVORSORGEDEPOT,
   NEUTRALISED_RIESTER,
   INSTANCE_COMMON_KEYS,
+  scenarioForInstance,
   paidUpFeeModel,
   stripInstanceCommonKeys,
   detectProductSlot,
@@ -718,5 +719,29 @@ describe('portfolioProjection — legacy singleton compatibility', () => {
     expect(result.riester).toEqual(NEUTRALISED_RIESTER)
     // bAV differs (not the neutralised default).
     expect(result.bav).not.toEqual(NEUTRALISED_BAV)
+  })
+})
+
+
+describe('scenarioForInstance — contract-specific expected return', () => {
+  it.each(defaultAssumptions.returnScenarios)('replaces $id absolutely and preserves its identity', (scenario) => {
+    const original = { ...scenario }
+    const instance = { ...makeEtfInstance(), expectedReturn: 0 }
+    expect(scenarioForInstance(scenario, instance)).toEqual({ ...scenario, annualReturn: 0 })
+    expect(scenario).toEqual(original)
+  })
+
+  it('passes the scenario through unchanged without an override', () => {
+    const scenario = defaultAssumptions.returnScenarios[0]
+    expect(scenarioForInstance(scenario, makeEtfInstance())).toBe(scenario)
+  })
+
+  it('strips the contract return from singleton projections', () => {
+    const instance = { ...makeEtfInstance(), expectedReturn: 0.02 }
+    const workspace = makeWorkspace()
+    workspace.baseline.assumptions.etf = [instance]
+    expect(projectInstanceToScenarioAssumptions(instance, workspace.baseline.assumptions).etf)
+      .not.toHaveProperty('expectedReturn')
+    expect(singletonViewOfWorkspace(workspace, SINGLETON_DEFAULTS).etf).not.toHaveProperty('expectedReturn')
   })
 })

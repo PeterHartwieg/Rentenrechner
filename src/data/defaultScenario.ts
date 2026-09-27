@@ -49,7 +49,6 @@ export const defaultAvdAssumptions: AltersvorsorgedepotAssumptions = {
   riskAllocationPct: 0.80,
   // High-risk sleeve return matches the user's selected return scenario in simulate.ts.
   // Low-risk sleeve: 2% p.a. market-typical for bond / money-market OGAW (SRI 1–2).
-  riskAnnualReturn: 0.05,   // placeholder; overridden by scenario in simulate.ts
   lowRiskAnnualReturn: 0.02,
   fees: {
     // Standarddepot cost cap = 1.0 pp Effektivkosten. Defaults to a competitive provider.

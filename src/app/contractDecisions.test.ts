@@ -124,7 +124,6 @@ function makeRiesterAvdWorkspace(): Workspace {
     monthlyOwnContribution: 50,
     eligibility: { directlyEligible: true, indirectSpouseEligible: false, eligibleChildren: 0, ageAtContractStart: 35, careerStarterBonusUsed: false },
     riskAllocationPct: 1,
-    riskAnnualReturn: 0.07,
     lowRiskAnnualReturn: 0.02,
     fees: { wrapperAssetFee: 0.005, fundAssetFee: 0, contributionFee: 0, fixedMonthlyFee: 0, acquisitionCostPct: 0, acquisitionCostSpreadYears: 5, pensionPayoutFeePct: 0 },
     payoutMode: 'certified_payout_plan',

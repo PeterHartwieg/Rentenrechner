@@ -59,6 +59,7 @@ import type {
   Scenario,
 } from '../../domain/workspace'
 import type { CombinedResult } from '../../engine/portfolioCombine'
+import { countContractsWithOwnReturn } from '../../app/contractReturns'
 import { runCombineSimulation } from '../../app/useCombineSimulation'
 
 // ---------------------------------------------------------------------------
@@ -89,6 +90,8 @@ import { runCombineSimulation } from '../../app/useCombineSimulation'
  *   when the clamped value coincides with the user's current retirement age
  *   (delta = 0) so the row does not silently render "±0 €/Mon." without
  *   explanation.
+ * - `'contract_returns_fixed'`: active or paid-up contracts have an absolute
+ *   expected return; changing scenarios leaves those rates unchanged.
  * - `'unchanged'`: the perturbation produced no observable change (e.g. the
  *   scenario id requested already matches the baseline, or the retirement age
  *   target equals the current age without any clamping). The row still
@@ -99,6 +102,7 @@ export type SensitivityNote =
   | 'etf_paid_up_only'
   | 'retirement_age_clamped'
   | 'unchanged'
+  | 'contract_returns_fixed'
 
 export interface SensitivityRowResult {
   /** EUR/Monat. perturbed.monthlyNetIncome − baseline.monthlyNetIncome. */
@@ -272,7 +276,11 @@ export function sensitivityIfReturnScenario(
       note: 'unchanged',
     }
   }
-  return diffCombined(baselineCombined, perturbed)
+  const hasFixedReturns = countContractsWithOwnReturn(workspace.baseline.assumptions) > 0
+  return {
+    ...diffCombined(baselineCombined, perturbed),
+    ...(hasFixedReturns ? { note: 'contract_returns_fixed' as const } : {}),
+  }
 }
 
 // ---------------------------------------------------------------------------
