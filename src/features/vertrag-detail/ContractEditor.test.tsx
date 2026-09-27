@@ -296,3 +296,42 @@ it('clears an existing return through the saved plan and keeps its neighbour unc
   expect(saved[0]).not.toHaveProperty('expectedReturn')
   expect(saved[1]).toEqual(workspace.baseline.assumptions.etf[1])
 })
+
+
+it('labels an empty contract return as the scenario value and saves no unknown status for it', () => {
+  const onSave = vi.fn()
+  render(<Harness onSave={onSave} />)
+  const status = () => document.querySelector('[data-contract-field="expectedReturn"] small[id$="-status"]')
+  expect(status()).toHaveTextContent(/^Szenariowert$/)
+  // A core field left unknown keeps the "Unbekannt" label.
+  fireEvent.click(unknownCapital())
+  expect(document.querySelector('[data-contract-field="currentValueEUR"] small[id$="-status"]'))
+    .not.toHaveTextContent('Szenariowert')
+  type(monthly(), '100')
+  submit()
+  const saved = onSave.mock.lastCall![0] as ContractDraftPatch
+  expect(saved.inputStatus).not.toHaveProperty('expectedReturn')
+  expect(saved.inputStatus.currentValueEUR).toBe('unknown')
+  const input = screen.getByRole('spinbutton', { name: 'Erwartete Rendite (optional) (%)' })
+  type(input, '2')
+  type(input, '')
+  expect(status()).toHaveTextContent(/^Szenariowert$/)
+  submit()
+  expect(onSave.mock.lastCall![0].inputStatus).not.toHaveProperty('expectedReturn')
+})
+
+
+it('drops a stale unknown status for a cleared contract return on save', () => {
+  const workspace = structuredClone(defaultWorkspace)
+  const base = INVENTORY_PRODUCT_REGISTRY.etf.createDefault(2026, 1, () => 'etf-stale')
+  workspace.baseline.assumptions.etf = [{
+    ...base, expectedReturn: 0.02, inputStatus: { ...base.inputStatus, expectedReturn: 'unknown' },
+  }]
+  saveWorkspace(workspace)
+  render(<VertragBearbeitenPage instanceId="etf-stale" navigate={vi.fn()} />)
+  type(screen.getByRole('spinbutton', { name: 'Erwartete Rendite (optional) (%)' }), '')
+  fireEvent.click(screen.getByRole('button', { name: 'Änderungen übernehmen' }))
+  const saved = loadSavedWorkspace()!.baseline.assumptions.etf[0]
+  expect(saved).not.toHaveProperty('expectedReturn')
+  expect(saved.inputStatus ?? {}).not.toHaveProperty('expectedReturn')
+})

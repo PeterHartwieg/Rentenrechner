@@ -52,7 +52,8 @@ export function ContractEditorField({ draft, spec, patchField, setFieldUnknown, 
 
   const statusText = pending ? 'Bitte eintragen oder „Weiß ich nicht“ wählen.'
     : state === 'assumed' ? 'Angenommen' : state === 'document' ? 'lt. Beleg'
-      : state === 'unknown' ? 'Unbekannt' : 'Von dir angegeben'
+      // An empty optional override is not an unknown answer: the scenario applies.
+      : state === 'unknown' ? spec.clearOnUnknown ? 'Szenariowert' : 'Unbekannt' : 'Von dir angegeben'
   const step = (spec.step ?? 1) * scale
   const decimals = spec.unit === 'EUR' || spec.unit === 'EUR/Monat' ? 2
     : spec.unit === 'ratio' ? 3 : step < 1 ? 2 : 0
