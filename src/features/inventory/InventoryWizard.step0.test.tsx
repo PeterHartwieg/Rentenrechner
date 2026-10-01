@@ -1,406 +1,195 @@
 // @vitest-environment jsdom
-/**
- * Tests for wizard step 0 — personal details (QA issue #06, #36).
- *
- * Coverage:
- *  - Step 0 renders the five required fields.
- *  - Submitting step 0 (clicking Weiter) advances to the product checklist.
- *  - End-to-end: completing the wizard with step-0 data persists profile fields
- *    (age, retirementAge, grossSalaryYear, ehegattensplitting) in the workspace.
- *  - Validation errors are rendered inline when invalid data is submitted (#36).
- */
-
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { render, cleanup, fireEvent, screen } from '@testing-library/react'
-import { InventoryWizard } from './InventoryWizard'
-import type { Workspace } from '../../domain/workspace'
-import { eachViewport, mockViewport } from '../../test/viewport'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { InventoryWizard, type InventoryWizardProps } from './InventoryWizard'
+import { createFreshOnboardingScenario } from './onboardingDraft'
+import { hasStartedPlan } from '../../app/portfolioState'
+import { defaultWorkspace } from '../../storage'
 
-afterEach(() => {
-  cleanup()
-  mockViewport('desktop')
-})
-
-function makeProps(overrides?: Partial<Parameters<typeof InventoryWizard>[0]>) {
-  return {
-    grossSalaryYear: 60_000,
-    childBirthYears: [] as readonly number[],
-    age: 35,
-    retirementAge: 67,
-    publicHealthInsurance: true,
-    onComplete: vi.fn<(workspace: Workspace) => void>(),
-    onDismiss: vi.fn(),
-    ...overrides,
-  }
+afterEach(cleanup)
+function setup(overrides: Partial<Omit<InventoryWizardProps, 'onComplete' | 'onDismiss'>> = {}) {
+  const props = { scenario: createFreshOnboardingScenario(), mode: 'onboarding' as const, onComplete: vi.fn(), onDismiss: vi.fn(), ...overrides }
+  render(<InventoryWizard {...props} />)
+  return props
 }
+function change(label: string, value: string) { fireEvent.change(screen.getByLabelText(label), { target: { value } }) }
+function next() { fireEvent.click(screen.getByRole('button', { name: 'Weiter' })) }
+function complete() { fireEvent.click(screen.getByRole('button', { name: 'Meinen Plan ansehen' })) }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function getNextButton(container: HTMLElement) {
-  return Array.from(container.querySelectorAll<HTMLButtonElement>('button[type="button"]'))
-    .find((b) => b.textContent?.includes('Weiter zu deinen Verträgen'))
-}
-
-function getFinishButton(container: HTMLElement) {
-  return Array.from(container.querySelectorAll<HTMLButtonElement>('button[type="button"]'))
-    .find((b) => b.textContent?.includes('Fertig') || b.textContent?.includes('Weiter ohne'))
-}
-
-const CURRENT_YEAR = new Date().getFullYear()
-const MAX_PLANNED_CHILD_YEAR = CURRENT_YEAR + 20
-
-// ---------------------------------------------------------------------------
-// Step 0 renders the five required fields
-// ---------------------------------------------------------------------------
-
-describe('InventoryWizard step 0 — personal details fields', () => {
-  it('renders the personal-details step on initial mount (before any interaction)', () => {
-    const { container } = render(<InventoryWizard {...makeProps()} />)
-    expect(container.querySelector('[data-testid="personal-details-step"]')).not.toBeNull()
+describe('two-step onboarding', () => {
+  it('commits age, income and a career estimate as a Scenario with provenance and no contracts', () => {
+    const props = setup()
+    expect(screen.getByText('1 von 2 · Über dich')).toBeDefined()
+    change('Dein Alter', '40')
+    change('Jahreseinkommen brutto (€)', '65000')
+    next()
+    expect(props.onComplete).not.toHaveBeenCalled()
+    expect(screen.getByText('2 von 2 · Deine Rente')).toBeDefined()
+    fireEvent.click(screen.getByLabelText('Ohne Unterlagen grob schätzen'))
+    change('Mit welchem Alter hast du angefangen zu arbeiten?', '21')
+    complete()
+    const result = props.onComplete.mock.calls[0][0]
+    expect(result.profile.age).toBe(40)
+    expect(result.profile.grossSalaryYear).toBe(65000)
+    expect(result.assumptions.statutoryPension.pensionEntryMethod).toEqual({ kind: 'career', careerStartAge: 21, pauseYears: 0 })
+    expect(result.assumptions.inputStatus).toMatchObject({ 'profile.age': 'entered', 'profile.grossSalaryYear': 'entered', 'statutoryPension.currentEntgeltpunkte': 'assumed' })
+    expect(result.assumptions.etf).toEqual([])
+    expect(hasStartedPlan({ ...defaultWorkspace, baseline: result })).toBe(true)
   })
 
-  it('renders the birth-year field', () => {
-    const { container } = render(<InventoryWizard {...makeProps()} />)
-    // NumberField renders a label with "Geburtsjahr" and an input
-    expect(container.textContent).toContain('Geburtsjahr')
+  it('requires fresh profile answers and a career start before completing onboarding', () => {
+    const props = setup()
+    expect(screen.getByPlaceholderText('z. B. 35')).toHaveValue(null)
+    expect(screen.getByPlaceholderText('z. B. 60000')).toHaveValue(null)
+    expect(screen.queryByText('Bitte eintragen.')).not.toBeInTheDocument()
+    expect(document.querySelector('[aria-invalid="true"]')).toBeNull()
+    next()
+    expect(screen.getByRole('alert')).toHaveTextContent('Bitte eintragen.')
+    expect(screen.getByRole('alert')).toHaveFocus()
+    for (const label of ['Dein Alter', 'Jahreseinkommen brutto (€)']) {
+      expect(within(screen.getByRole('group', { name: `Angabe: ${label}` })).getByText('Bitte eintragen.')).toBeVisible()
+    }
+    expect(screen.queryByTestId('onboarding-pension-step')).not.toBeInTheDocument()
+    expect(props.onComplete).not.toHaveBeenCalled()
+    change('Dein Alter', '35')
+    change('Jahreseinkommen brutto (€)', '60000')
+    next()
+    expect(screen.getByPlaceholderText('z. B. 22')).toHaveValue(null)
+    expect(screen.queryByText('Bitte eintragen.')).not.toBeInTheDocument()
+    expect(document.querySelector('[aria-invalid="true"]')).toBeNull()
+    complete()
+    expect(screen.getByRole('alert')).toHaveTextContent('Bitte eintragen.')
+    expect(screen.getByRole('alert')).toHaveFocus()
+    expect(props.onComplete).not.toHaveBeenCalled()
+    change('Mit welchem Alter hast du angefangen zu arbeiten?', '22')
+    complete()
+    expect(props.onComplete).toHaveBeenCalledOnce()
   })
 
-  it('renders the gross-salary field', () => {
-    const { container } = render(<InventoryWizard {...makeProps()} />)
-    expect(container.textContent).toContain('Bruttogehalt')
+  it('reveals only a populated blurred field before submit, including an entered zero', () => {
+    setup()
+    const age = screen.getByLabelText('Dein Alter')
+    const ageGroup = screen.getByRole('group', { name: 'Angabe: Dein Alter' })
+    fireEvent.blur(age)
+    expect(ageGroup).not.toHaveAttribute('aria-invalid')
+    change('Dein Alter', '0')
+    expect(ageGroup).not.toHaveAttribute('aria-invalid')
+    fireEvent.blur(age)
+    expect(ageGroup).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('group', { name: 'Angabe: Jahreseinkommen brutto (€)' })).not.toHaveAttribute('aria-invalid')
+    expect(screen.queryByText('Bitte eintragen.')).not.toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    change('Dein Alter', '35')
+    expect(ageGroup).not.toHaveAttribute('aria-invalid')
   })
 
-  it('renders the Krankenversicherung field', () => {
-    const { container } = render(<InventoryWizard {...makeProps()} />)
-    const kvField = container.querySelector('[data-testid="field-public-health-insurance"]')
-    expect(kvField).not.toBeNull()
-    expect(kvField!.textContent).toContain('Krankenversicherung')
+  it('waits for a populated pension blur and keeps newly selected fields pristine', () => {
+    setup()
+    change('Dein Alter', '35')
+    change('Jahreseinkommen brutto (€)', '60000')
+    next()
+    const label = 'Mit welchem Alter hast du angefangen zu arbeiten?'
+    const career = screen.getByLabelText(label)
+    const careerGroup = screen.getByRole('group', { name: `Angabe: ${label}` })
+    fireEvent.blur(career)
+    expect(careerGroup).not.toHaveAttribute('aria-invalid')
+    change(label, '40')
+    expect(careerGroup).not.toHaveAttribute('aria-invalid')
+    fireEvent.blur(career)
+    expect(careerGroup).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText('Renteninformation liegt vor'))
+    expect(document.querySelector('[aria-invalid="true"]')).toBeNull()
+    expect(screen.queryByText('Bitte eintragen.')).not.toBeInTheDocument()
+    complete()
+    expect(screen.getByRole('alert')).toHaveFocus()
+    expect(screen.getByRole('group', { name: 'Angabe: Monatsrente aus deiner Renteninformation (€ brutto)' })).toHaveAttribute('aria-invalid', 'true')
   })
 
-  it('renders the Rentenbasis dropdown', () => {
-    const { container } = render(<InventoryWizard {...makeProps()} />)
-    const baseField = container.querySelector('[data-testid="field-pension-baseline"]')
-    expect(baseField).not.toBeNull()
-    expect(baseField!.textContent).toContain('Gesetzliche Rente')
+  it('shows stored assumed values in edit mode', () => {
+    const { scenario } = setup({ mode: 'edit' })
+    expect(screen.getByLabelText('Dein Alter')).toHaveValue(scenario.profile.age)
+    expect(screen.getByLabelText('Jahreseinkommen brutto (€)')).toHaveValue(scenario.profile.grossSalaryYear)
   })
 
-  it('renames the statutory section to Gesetzliche Altersvorsorge', () => {
-    const { container } = render(<InventoryWizard {...makeProps()} />)
-    expect(container.textContent).toContain('Gesetzliche Altersvorsorge')
-    expect(container.textContent).not.toContain('Mandatorische Altersversorgung')
+  it('skipped pension keeps engine values and marks the pension inputs unknown', () => {
+    const props = setup()
+    change('Dein Alter', '35')
+    change('Jahreseinkommen brutto (€)', '60000')
+    next()
+    fireEvent.click(screen.getByLabelText('Später ergänzen'))
+    expect(screen.getByText(/Die Gesamtrente bleibt offen/)).toBeDefined()
+    complete()
+    const result = props.onComplete.mock.calls[0][0]
+    expect(result.assumptions.statutoryPension.pensionEntryMethod).toEqual({ kind: 'skipped' })
+    expect(result.assumptions.inputStatus).toMatchObject({ 'statutoryPension.currentEntgeltpunkte': 'unknown', 'statutoryPension.manualMonthlyGross': 'unknown' })
+    expect(result.assumptions.statutoryPension.currentEntgeltpunkte).toBe(props.scenario.assumptions.statutoryPension.currentEntgeltpunkte)
   })
 
-  it('renders the Kinder section', () => {
-    const { container } = render(<InventoryWizard {...makeProps()} />)
-    const childrenField = container.querySelector('[data-testid="field-children"]')
-    expect(childrenField).not.toBeNull()
-    expect(childrenField!.textContent).toContain('Kinder')
+  it('saves an unknown PKV premium without replacing its engine value with zero', () => {
+    const props = setup()
+    change('Dein Alter', '35')
+    change('Jahreseinkommen brutto (€)', '60000')
+    change('Krankenversicherung', 'pkv')
+    fireEvent.click(screen.getByLabelText('Private Krankenversicherung (€/Monat): Weiß ich nicht'))
+    fireEvent.click(screen.getByLabelText('Private Pflegeversicherung (€/Monat): Weiß ich nicht'))
+    expect(screen.getByText('Ohne Beitrag bleibt dein Netto-Ergebnis offen.')).toBeDefined()
+    next()
+    fireEvent.click(screen.getByLabelText('Später ergänzen'))
+    complete()
+    const result = props.onComplete.mock.calls[0][0]
+    expect(result.profile.publicHealthInsurance).toBe(false)
+    expect(result.profile.pkvMonthlyPremium).toBe(props.scenario.profile.pkvMonthlyPremium)
+    expect(result.assumptions.inputStatus).toMatchObject({ 'profile.pkvMonthlyPremium': 'unknown', 'profile.pPVMonthlyPremium': 'unknown' })
   })
 
-  it('renders the Ehegattensplitting toggle', () => {
-    const { container } = render(<InventoryWizard {...makeProps()} />)
-    const field = container.querySelector('[data-testid="field-ehegattensplitting"]')
-    expect(field).not.toBeNull()
-    expect(field!.textContent).toContain('Ehegattensplitting')
+  it('typing zero after unknown restores an entered value', () => {
+    const props = setup()
+    change('Dein Alter', '35')
+    fireEvent.click(screen.getByLabelText('Jahreseinkommen brutto (€): Weiß ich nicht'))
+    change('Jahreseinkommen brutto (€)', '0')
+    next()
+    fireEvent.click(screen.getByLabelText('Später ergänzen'))
+    complete()
+    expect(props.onComplete.mock.calls[0][0].assumptions.inputStatus['profile.grossSalaryYear']).toBe('entered')
+    expect(props.onComplete.mock.calls[0][0].profile.grossSalaryYear).toBe(0)
   })
 
-  it('renders the retirement-age field', () => {
-    const { container } = render(<InventoryWizard {...makeProps()} />)
-    expect(container.textContent).toContain('Renteneintrittsalter')
+  it('preserves raw profile values on back and switches the self-employed income label', () => {
+    setup()
+    change('Dein Alter', '35')
+    change('Deine Tätigkeit', 'self_employed')
+    change('Gewinn vor Steuern pro Jahr (€)', '72000')
+    next()
+    expect(screen.getByLabelText('Deine Altersversorgung')).toBeDefined()
+    fireEvent.click(screen.getByRole('button', { name: 'Zurück zu deinen Angaben' }))
+    expect((screen.getByLabelText('Gewinn vor Steuern pro Jahr (€)') as HTMLInputElement).value).toBe('72000')
   })
 
-  it('shows "Schritt 1 von 2" eyebrow on step 0', () => {
-    const { container } = render(<InventoryWizard {...makeProps()} />)
-    expect(container.textContent).toContain('Schritt 1 von 2')
+  it('rejects blank age without confirming it as zero', () => {
+    const props = setup()
+    change('Dein Alter', '')
+    next()
+    expect(screen.getByRole('alert')).toBe(document.activeElement)
+    expect(props.onComplete).not.toHaveBeenCalled()
+    expect(screen.queryByText('2 von 2 · Deine Rente')).toBeNull()
+    expect((screen.getByLabelText('Dein Alter') as HTMLInputElement).value).toBe('')
   })
 
-  it('shows "Weiter zu deinen Verträgen" button', () => {
-    const { container } = render(<InventoryWizard {...makeProps()} />)
-    expect(getNextButton(container)).not.toBeUndefined()
-  })
-})
-
-describe('InventoryWizard step 0 — planned children and empty numeric drafts', () => {
-  it('labels future child birth years as geplant and accepts them up to current year + 20', () => {
-    const { container } = render(
-      <InventoryWizard
-        {...makeProps({ childBirthYears: [CURRENT_YEAR + 1] })}
-      />,
-    )
-
-    expect(container.textContent).toContain('(geplant)')
-    fireEvent.click(getNextButton(container)!)
-
-    expect(container.querySelector('[data-testid="personal-details-errors"]')).toBeNull()
-    expect(container.querySelector('#inventory-check-grv')).not.toBeNull()
-  })
-
-  it('rejects child birth years beyond current year + 20', () => {
-    const { container } = render(
-      <InventoryWizard
-        {...makeProps({ childBirthYears: [MAX_PLANNED_CHILD_YEAR + 1] })}
-      />,
-    )
-
-    fireEvent.click(getNextButton(container)!)
-
-    const errorList = container.querySelector('[data-testid="personal-details-errors"]')
-    expect(errorList).not.toBeNull()
-    expect(errorList!.textContent).toContain(String(MAX_PLANNED_CHILD_YEAR))
-    expect(container.querySelector('#inventory-check-grv')).toBeNull()
-  })
-
-  it('allows clearing a personal-details 0 while focused without writing NaN', () => {
-    const onComplete = vi.fn<(workspace: Workspace) => void>()
-    const { container } = render(
-      <InventoryWizard {...makeProps({ grossSalaryYear: 0, onComplete })} />,
-    )
-    const inputs = Array.from(container.querySelectorAll<HTMLInputElement>(
-      '[data-testid="personal-details-step"] input[type="number"]',
-    ))
-    const salaryInput = inputs[1]
-    expect(salaryInput.value).toBe('0')
-
-    fireEvent.change(salaryInput, { target: { value: '' } })
-    expect(salaryInput.value).toBe('')
-
-    fireEvent.blur(salaryInput)
-    expect(salaryInput.value).toBe('0')
-
-    fireEvent.click(getNextButton(container)!)
-    fireEvent.click(getFinishButton(container)!)
-
-    const workspace: Workspace = onComplete.mock.calls[0][0]
-    expect(Number.isNaN(workspace.baseline.profile.grossSalaryYear)).toBe(false)
-    expect(workspace.baseline.profile.grossSalaryYear).toBe(0)
-  })
-})
-
-describe('InventoryWizard step 1 — GRV input mode', () => {
-  it('shows an explicit either/or mode and only the selected GRV fields', () => {
-    const { container } = render(<InventoryWizard {...makeProps()} />)
-    fireEvent.click(getNextButton(container)!)
-
-    expect(screen.getByText('Wie möchtest du deine gesetzliche Rente erfassen?')).toBeDefined()
-    expect(screen.getByLabelText('Schätzen aus Arbeitsjahren und Gehalt')).toBeDefined()
-    expect(screen.getByLabelText('Entgeltpunkte aus Renteninformation eingeben')).toBeDefined()
-    expect(screen.getByText(/Wie viele Jahre arbeitest du schon/i)).toBeDefined()
-    expect(screen.queryByText(/^Entgeltpunkte \(aus Renteninformation\)$/i)).toBeNull()
-
-    fireEvent.click(screen.getByLabelText('Entgeltpunkte aus Renteninformation eingeben'))
-
-    expect(screen.queryByText(/Wie viele Jahre arbeitest du schon/i)).toBeNull()
-    expect(screen.getByText(/^Entgeltpunkte \(aus Renteninformation\)$/i)).toBeDefined()
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Submitting step 0 advances to the product checklist
-// ---------------------------------------------------------------------------
-
-describe('InventoryWizard step 0 — Weiter button advances to product step', () => {
-  it('clicking Weiter shows the product checklist (GRV checkbox appears)', () => {
-    const { container } = render(<InventoryWizard {...makeProps()} />)
-
-    // Step 0: product checkboxes are NOT yet visible
-    expect(container.querySelector('#inventory-check-grv')).toBeNull()
-
-    // Click Weiter
-    fireEvent.click(getNextButton(container)!)
-
-    // Step 1: product checklist is now visible
-    expect(container.querySelector('#inventory-check-grv')).not.toBeNull()
-  })
-
-  it('clicking Weiter shows "Schritt 2 von 2" eyebrow', () => {
-    const { container } = render(<InventoryWizard {...makeProps()} />)
-    fireEvent.click(getNextButton(container)!)
-    expect(container.textContent).toContain('Schritt 2 von 2')
-  })
-
-  it('clicking Weiter hides the personal-details step', () => {
-    const { container } = render(<InventoryWizard {...makeProps()} />)
-    fireEvent.click(getNextButton(container)!)
-    expect(container.querySelector('[data-testid="personal-details-step"]')).toBeNull()
-  })
-
-  it('after advancing, the Fertig/Weiter-ohne button is visible', () => {
-    const { container } = render(<InventoryWizard {...makeProps()} />)
-    fireEvent.click(getNextButton(container)!)
-    expect(getFinishButton(container)).not.toBeUndefined()
-  })
-})
-
-// ---------------------------------------------------------------------------
-// End-to-end: profile fields persist in workspace after wizard completes
-// ---------------------------------------------------------------------------
-
-describe('InventoryWizard step 0 — end-to-end profile persistence', () => {
-  it('completing the wizard writes grossSalaryYear from step 0 into baseline.profile', () => {
-    const onComplete = vi.fn<(workspace: Workspace) => void>()
-    const { container } = render(<InventoryWizard {...makeProps({ onComplete })} />)
-
-    // The birth year input is seeded from age prop (35 → birthYear = CURRENT_YEAR - 35)
-    // Advance past step 0
-    fireEvent.click(getNextButton(container)!)
-
-    // Complete wizard
-    fireEvent.click(getFinishButton(container)!)
-
-    expect(onComplete).toHaveBeenCalledOnce()
-    const workspace: Workspace = onComplete.mock.calls[0][0]
-    expect(workspace.baseline.profile.grossSalaryYear).toBe(60_000)
-  })
-
-  it('completing the wizard writes age (derived from birthYear) into baseline.profile', () => {
-    const onComplete = vi.fn<(workspace: Workspace) => void>()
-    const { container } = render(<InventoryWizard {...makeProps({ age: 40, onComplete })} />)
-
-    fireEvent.click(getNextButton(container)!)
-    fireEvent.click(getFinishButton(container)!)
-
-    const workspace: Workspace = onComplete.mock.calls[0][0]
-    // age is derived as CURRENT_YEAR - birthYear; birthYear was seeded as CURRENT_YEAR - 40
-    expect(workspace.baseline.profile.age).toBe(40)
-  })
-
-  it('completing the wizard writes retirementAge into baseline.profile', () => {
-    const onComplete = vi.fn<(workspace: Workspace) => void>()
-    const { container } = render(<InventoryWizard {...makeProps({ retirementAge: 65, onComplete })} />)
-
-    fireEvent.click(getNextButton(container)!)
-    fireEvent.click(getFinishButton(container)!)
-
-    const workspace: Workspace = onComplete.mock.calls[0][0]
-    expect(workspace.baseline.profile.retirementAge).toBe(65)
-  })
-
-  it('Ehegattensplitting unchecked (default): no partner on baseline', () => {
-    const onComplete = vi.fn<(workspace: Workspace) => void>()
-    const { container } = render(<InventoryWizard {...makeProps({ onComplete })} />)
-
-    fireEvent.click(getNextButton(container)!)
-    fireEvent.click(getFinishButton(container)!)
-
-    const workspace: Workspace = onComplete.mock.calls[0][0]
-    expect((workspace.baseline as unknown as Record<string, unknown>).partner).toBeUndefined()
-  })
-
-  it('Ehegattensplitting checked: baseline.partner is set', () => {
-    const onComplete = vi.fn<(workspace: Workspace) => void>()
-    const { container } = render(<InventoryWizard {...makeProps({ onComplete })} />)
-
-    // Tick the Ehegattensplitting checkbox
-    const splittingCheckbox = container.querySelector<HTMLInputElement>(
-      '[data-testid="field-ehegattensplitting"] input[type="checkbox"]',
-    )
-    expect(splittingCheckbox).not.toBeNull()
-    fireEvent.click(splittingCheckbox!)
-
-    fireEvent.click(getNextButton(container)!)
-    fireEvent.click(getFinishButton(container)!)
-
-    const workspace: Workspace = onComplete.mock.calls[0][0]
-    expect((workspace.baseline as unknown as Record<string, unknown>).partner).toBeDefined()
-  })
-
-  it('workspace is mode: combine after wizard completes', () => {
-    const onComplete = vi.fn<(workspace: Workspace) => void>()
-    const { container } = render(<InventoryWizard {...makeProps({ onComplete })} />)
-
-    fireEvent.click(getNextButton(container)!)
-    fireEvent.click(getFinishButton(container)!)
-
-    const workspace: Workspace = onComplete.mock.calls[0][0]
-    expect(workspace.mode).toBe('combine')
-  })
-})
-
-// ---------------------------------------------------------------------------
-// QA #36 — validation errors must be visible, not silent
-// ---------------------------------------------------------------------------
-
-describe('InventoryWizard step 0 — validation errors surface on invalid submit (#36)', () => {
-  /**
-   * Commit an invalid retirement-age value: change the retirement-age input to
-   * a number below the user's current age, blur to commit, then click Weiter.
-   * The error banner must appear without advancing to step 1.
-   */
-  function setRetirementAgeInput(container: HTMLElement, value: number) {
-    // The retirement-age NumberField is the last <input type="number"> in step 0
-    const inputs = Array.from(container.querySelectorAll<HTMLInputElement>(
-      '[data-testid="personal-details-step"] input[type="number"]',
-    ))
-    const retirementInput = inputs[inputs.length - 1]
-    expect(retirementInput).not.toBeNull()
-    fireEvent.change(retirementInput, { target: { value: String(value) } })
-    fireEvent.blur(retirementInput)
-  }
-
-  it('clicking Weiter with an invalid retirement age shows the validation-error banner', () => {
-    // age=35 → retirementAge must be > 35. Setting it to 30 is invalid.
-    const { container } = render(<InventoryWizard {...makeProps({ age: 35, retirementAge: 67 })} />)
-
-    setRetirementAgeInput(container, 30)
-
-    // Click Weiter — wizard must NOT advance
-    fireEvent.click(getNextButton(container)!)
-
-    // Error banner must be present in the DOM
-    const errorList = container.querySelector('[data-testid="personal-details-errors"]')
-    expect(errorList).not.toBeNull()
-    expect(errorList!.textContent).toContain('Wunschrente-Alter')
-  })
-
-  it('the step does NOT advance when validation fails', () => {
-    const { container } = render(<InventoryWizard {...makeProps({ age: 35, retirementAge: 67 })} />)
-
-    setRetirementAgeInput(container, 30)
-    fireEvent.click(getNextButton(container)!)
-
-    // Still on step 0 — personal-details step still visible
-    expect(container.querySelector('[data-testid="personal-details-step"]')).not.toBeNull()
-    // Product checklist (step 1) is NOT visible yet
-    expect(container.querySelector('#inventory-check-grv')).toBeNull()
-  })
-
-  it('onComplete is NOT called when Weiter is blocked by validation', () => {
-    const onComplete = vi.fn<(workspace: Workspace) => void>()
-    const { container } = render(<InventoryWizard {...makeProps({ age: 35, retirementAge: 67, onComplete })} />)
-
-    setRetirementAgeInput(container, 30)
-    fireEvent.click(getNextButton(container)!)
-
-    expect(onComplete).not.toHaveBeenCalled()
-  })
-
-  it('fixing the invalid field and clicking Weiter clears errors and advances', () => {
-    const { container } = render(<InventoryWizard {...makeProps({ age: 35, retirementAge: 67 })} />)
-
-    // First make it invalid
-    setRetirementAgeInput(container, 30)
-    fireEvent.click(getNextButton(container)!)
-    expect(container.querySelector('[data-testid="personal-details-errors"]')).not.toBeNull()
-
-    // Now fix it
-    setRetirementAgeInput(container, 67)
-    // Errors are cleared immediately on draft change
-    expect(container.querySelector('[data-testid="personal-details-errors"]')).toBeNull()
-
-    // Clicking Weiter now advances
-    fireEvent.click(getNextButton(container)!)
-    expect(container.querySelector('#inventory-check-grv')).not.toBeNull()
-  })
-})
-
-describe('InventoryWizard step 0 — viewport sweep (PR 11)', () => {
-  it('renders step 0 with the personal-details panel at phone / tablet / desktop', () => {
-    eachViewport(() => {
-      const { container, unmount } = render(<InventoryWizard {...makeProps()} />)
-      expect(container.querySelector('[data-testid="personal-details-step"]')).not.toBeNull()
-      unmount()
-    })
+  it('retains partner, tax and children pass-throughs when editing a profile', async () => {
+    const scenario = createFreshOnboardingScenario()
+    scenario.profile.childBirthYears = [2010, 2015]
+    scenario.profile.taxClass = 3
+    scenario.partner = { ...scenario.profile, grossSalaryYear: 20000 }
+    const props = setup({ scenario, mode: 'edit' })
+    fireEvent.click(screen.getByText('Rentenalter & weitere Angaben'))
+    await waitFor(() => expect(screen.getByLabelText('Kirchensteuer')).toBeDefined())
+    fireEvent.click(screen.getByLabelText('Kirchensteuer'))
+    fireEvent.click(screen.getByRole('button', { name: 'Angaben übernehmen' }))
+    const result = props.onComplete.mock.calls[0][0]
+    expect(result.profile.childBirthYears).toEqual([2010, 2015])
+    expect(result.profile.taxClass).toBe(3)
+    expect(result.partner).toEqual(scenario.partner)
+    expect(result.profile.churchTax).toBe(!scenario.profile.churchTax)
   })
 })

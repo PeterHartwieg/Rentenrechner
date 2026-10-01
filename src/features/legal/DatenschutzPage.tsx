@@ -63,12 +63,12 @@ export function DatenschutzPage({ navigate }: Props) {
       </section>
 
       <section {...bodyProps}>
-        <h2>2. Grundsatz: keine Erhebung personenbezogener Daten</h2>
+        <h2>2. Grundsatz: Berechnungsdaten bleiben lokal</h2>
         <p>
           Diese Anwendung ist ein <strong>rein clientseitig laufender
           Rechner</strong>. Sämtliche Berechnungen finden ausschließlich im
           Browser des Nutzers statt. Es werden{' '}
-          <strong>keine personenbezogenen Daten</strong> an den Anbieter
+          <strong>keine Eingaben oder Berechnungsergebnisse</strong> an den Anbieter
           übertragen, gespeichert oder ausgewertet. Es gibt:
         </p>
         <ul>
@@ -197,7 +197,7 @@ export function DatenschutzPage({ navigate }: Props) {
         <h2>7. Rechte der betroffenen Person</h2>
         <p>
           Soweit überhaupt personenbezogene Daten verarbeitet werden (siehe
-          Abschnitt 3), haben Sie nach DSGVO insbesondere das Recht auf:
+          Abschnitte 3, 9 und 10), haben Sie nach DSGVO insbesondere das Recht auf:
         </p>
         <ul>
           <li>Auskunft (Art. 15 DSGVO);</li>
@@ -339,6 +339,49 @@ export function DatenschutzPage({ navigate }: Props) {
             Datenschutzerklärung von Cloudflare
           </a>
           . Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO.
+        </p>
+      </section>
+      <section id="projekt-unterstuetzen">
+        <h2>10. Freiwillige Unterstützung über PayPal</h2>
+        <p>
+          Der Link „Projekt unterstützen“ öffnet eine externe Zahlungsseite
+          von PayPal. Auf RentenWiki.de sind weder ein Zahlungsformular noch
+          PayPal-Skripte eingebunden. Erst wenn Sie dem Link folgen, wird
+          eine Verbindung zu PayPal hergestellt. Eingaben, Ergebnisse und
+          gespeicherte Szenarien des Rechners werden nicht übermittelt;
+          der Link überträgt auch keinen Referrer.
+        </p>
+        <p>
+          Auf der Zahlungsseite verarbeitet PayPal die dort eingegebenen
+          Kontakt- und Zahlungsdaten sowie technische Verbindungsdaten.
+          Als Zahlungsempfänger kann Peter Hartwieg Angaben zur Zahlung
+          einsehen, etwa Name, E-Mail-Adresse, Betrag und Zahlungsstatus.
+          Diese werden zur Abwicklung und Dokumentation der Unterstützung
+          verwendet, nicht für Werbung oder zur Verknüpfung mit Ihren
+          Berechnungsdaten.
+        </p>
+        <p>
+          Dienstleister ist PayPal (Europe) S.à r.l. et Cie, S.C.A.,
+          22–24 Boulevard Royal, L-2449 Luxemburg.
+          Die Verarbeitung zur Abwicklung Ihrer Unterstützung erfolgt auf
+          Grundlage von Art. 6 Abs. 1 lit. b DSGVO; gesetzlich vorgeschriebene
+          Aufbewahrung erfolgt auf Grundlage von Art. 6 Abs. 1 lit. c DSGVO.
+          Zahlungsdaten werden nur so lange aufbewahrt, wie sie für die
+          Abwicklung und gesetzliche Nachweispflichten erforderlich sind.
+          Soweit Zahlungsbelege einer Aufbewahrungspflicht nach § 147 AO
+          unterliegen, beträgt diese grundsätzlich acht Jahre ab Ende des
+          Kalenderjahres ihrer Entstehung; gesetzliche Verlängerungen bleiben
+          unberührt. Danach werden die Daten gelöscht, sofern kein weiterer
+          Aufbewahrungsgrund besteht.
+        </p>
+        <p>
+          Weitere Informationen zu PayPal, zur Datenaufbewahrung und zu
+          internationalen Datenübermittlungen finden Sie in der{' '}
+          <a href="https://www.paypal.com/de/legalhub/paypal/privacy-full" target="_blank" rel="noopener noreferrer">
+            Datenschutzerklärung von PayPal
+          </a>
+          . Die Unterstützung ist unabhängig von der Nutzung des Rechners
+          und vollständig freiwillig.
         </p>
       </section>
     </LegalLayout>

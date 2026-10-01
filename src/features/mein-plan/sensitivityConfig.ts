@@ -20,11 +20,14 @@
  * `id` against `WorkspaceAssumptionsV2.returnScenarios` — never by array index
  * (positional indexing of `returnScenarios` is a documented anti-pattern per
  * CLAUDE.md "returnScenarios[0] is not necessarily 'basis'"). The default
- * scenario array ships `[konservativ, basis, optimistisch]`; konservativ is the
- * 10th-percentile-bound conservative return used by Sober D Methode references
- * (~3 % p.a. on MSCI World rolling 30-year history per defaultScenario).
+ * scenario array ships `[konservativ, basis, optimistisch]`; konservativ is
+ * the conservative return scenario (~3 % p.a.) referenced by the Sober D
+ * Methode surfaces. The rate is an unverified orientation value, not a
+ * derived percentile — no dataset or period behind it is recorded; see
+ * docs/validation.md ("Return Scenarios (Modelling Assumptions, Not
+ * Externally Validated)").
  *
- * The row surfaces "what if equity markets deliver the lower-quantile path you
+ * The row surfaces "what if equity markets deliver the conservative path you
  * already see as a Renditeannahme on /eingaben?" — it's a pure
  * scenario-substitution, no fee or tax assumption touched.
  */

@@ -105,6 +105,54 @@ function makeV1Json(
 // ---------------------------------------------------------------------------
 
 describe('A — valid v2 workspace load', () => {
+  it('loads current compare edits without overwriting the older workspace', () => {
+    const ws = makeValidV2Workspace()
+    ws.mode = 'compare'
+    saveWorkspace(ws)
+    const workspaceJson = mem.store[STORAGE_KEY_V2]
+    mem.store[STORAGE_KEY_V1] = makeV1Json(
+      { ...defaultProfile, age: 42 },
+      { ...defaultAssumptions, equalInputAmountEUR: 500 },
+    )
+    expect(loadSavedState()?.assumptions.equalInputAmountEUR).toBe(500)
+    expect(loadSavedState()?.profile.age).toBe(42)
+    expect(mem.store[STORAGE_KEY_V2]).toBe(workspaceJson)
+  })
+
+  it('never lets a saved combine plan overwrite existing comparison state', () => {
+    // `/vergleich` seeds from the plan only through the explicit "Angaben aus
+    // meinem Plan verwenden" action. The load path must not do it silently, so
+    // the V1 comparison save wins even while a combine plan exists — the
+    // workspace itself stays untouched and authoritative for the plan.
+    const ws = makeValidV2Workspace()
+    ws.mode = 'combine'
+    ws.baseline.profile.age = 39
+    saveWorkspace(ws)
+    mem.store[STORAGE_KEY_V1] = makeV1Json({ ...defaultProfile, age: 42 })
+    expect(loadSavedState()?.profile.age).toBe(42)
+    expect(loadSavedWorkspace()?.baseline.profile.age).toBe(39)
+  })
+
+  // Both workspace modes are covered: the fallback is about a missing or
+  // unusable V1 save, not about which mode the workspace is in.
+  it.each(
+    (['combine', 'compare'] as const).flatMap((mode) =>
+      [undefined, 'not json', makeV1Json({ ...defaultProfile, age: -1 })].map(
+        (rawV1) => [mode, rawV1] as const,
+      ),
+    ),
+  )(
+    'derives the comparison singleton from a %s workspace when no valid V1 save exists (%s)',
+    (mode, rawV1) => {
+      const ws = makeValidV2Workspace()
+      ws.mode = mode
+      ws.baseline.profile.age = 39
+      saveWorkspace(ws)
+      if (rawV1 !== undefined) mem.store[STORAGE_KEY_V1] = rawV1
+      expect(loadSavedState()?.profile.age).toBe(39)
+    },
+  )
+
   it('parseWorkspaceJson returns a valid Workspace for a well-formed v2 JSON', () => {
     const ws = makeValidV2Workspace()
     const json = buildWorkspaceJson(ws)
@@ -309,7 +357,7 @@ describe('D — malformed share-URL v2 workspace returns null (not defaults)', (
     expect(parseWorkspaceJson(v3Payload)).toBeNull()
   })
 
-  it('parseWorkspaceJson returns null for a workspace with an invalid transfer-event target', () => {
+  it('parseWorkspaceJson drops an invalid transfer-event target without losing the workspace', () => {
     const ws = migrateV1ToV2(
       defaultProfile as unknown as Record<string, unknown>,
       defaultAssumptions as unknown as Record<string, unknown>,
@@ -326,8 +374,9 @@ describe('D — malformed share-URL v2 workspace returns null (not defaults)', (
       },
     ]
     const json = buildWorkspaceJson(ws)
-    // Validation must reject this workspace (target instance doesn't exist).
-    expect(parseWorkspaceJson(json)).toBeNull()
+    const parsed = parseWorkspaceJson(json)
+    expect(parsed).not.toBeNull()
+    expect(parsed!.baseline.assumptions.etf[0].transferEvents).toEqual([])
   })
 
   it('parseWorkspaceJson returns null for corrupt JSON', () => {
@@ -362,7 +411,7 @@ describe('D2 — what-if validation runs before transfer-event backfill', () => 
     }
   }
 
-  it('returns null when a what-if has a malformed product instance (invalid status enum)', () => {
+  it('drops a malformed product instance (invalid status enum) but keeps the what-if', () => {
     const ws = makeValidV2Workspace()
     const wi = makeValidWhatIf(ws.baseline)
     // Add a bav instance with an invalid status enum.
@@ -379,7 +428,13 @@ describe('D2 — what-if validation runs before transfer-event backfill', () => 
     ]
     ws.whatIfs = [wi]
     const json = buildWorkspaceJson(ws)
-    expect(parseWorkspaceJson(json)).toBeNull()
+    const parsed = parseWorkspaceJson(json)
+    // A single bad instance is dropped, not fatal: rejecting the workspace here
+    // would replace every contract, profile answer and alternative with
+    // defaults, which the write-through store then persists.
+    expect(parsed).not.toBeNull()
+    expect(parsed!.whatIfs[0].assumptions.bav.map((b) => b.instanceId)).not.toContain('bav-bad')
+    expect(parsed!.baseline.assumptions.bav).toHaveLength(ws.baseline.assumptions.bav.length)
   })
 
   it('returns null when a what-if has a malformed assumptions field (out-of-range inflationRate)', () => {
@@ -445,7 +500,7 @@ describe('D2 — what-if validation runs before transfer-event backfill', () => 
 // ---------------------------------------------------------------------------
 
 describe('D3 — transfer events require both source and target instances to exist', () => {
-  it('parseWorkspaceJson returns null for a transfer with a missing sourceInstanceId', () => {
+  it('parseWorkspaceJson drops a transfer with a missing sourceInstanceId', () => {
     const ws = migrateV1ToV2(
       defaultProfile as unknown as Record<string, unknown>,
       {
@@ -465,7 +520,9 @@ describe('D3 — transfer events require both source and target instances to exi
       },
     ]
     const json = buildWorkspaceJson(ws)
-    expect(parseWorkspaceJson(json)).toBeNull()
+    const parsed = parseWorkspaceJson(json)
+    expect(parsed).not.toBeNull()
+    expect(parsed!.baseline.assumptions.etf[0].transferEvents).toEqual([])
   })
 })
 // ---------------------------------------------------------------------------

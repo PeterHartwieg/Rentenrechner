@@ -10,6 +10,7 @@ import { getProductMeta } from '../../app/productPresentation'
 import { ProvLabel } from './provenance'
 import { evidenceStateToProvKind } from './provenanceHelpers'
 import { formatCurrency, formatPercent } from '../../utils/format'
+import { availableRiy, RIY_UNAVAILABLE, RIY_UNAVAILABLE_REASON } from './riyAvailability'
 
 /**
  * Per-instance row used by the combine-mode details view (Group G issue 28).
@@ -58,6 +59,14 @@ interface CombineDetailViewProps {
    * a result for the selected scenario (renders the per-instance fallback).
    */
   combinedForScenario?: CombinedResult | undefined
+  /**
+   * `true` when `selectResultReadiness` suppressed the household total. The
+   * "Netto-Rente mtl." column then renders '—': every value in it is a share of
+   * that blocked total, back-allocated from the aggregate tax + KV/PV pipeline,
+   * so printing one is the same approximation the total was withheld to avoid
+   * (issue #395). Every other column is per-contract and stays.
+   */
+  householdTotalBlocked?: boolean
   onExportCsv: () => void
   onPrint: () => void
 }
@@ -83,6 +92,7 @@ export function CombineDetailView({
   selectedScenarioId,
   selectedScenarioLabel,
   combinedForScenario,
+  householdTotalBlocked = false,
   onExportCsv,
   onPrint,
 }: CombineDetailViewProps) {
@@ -132,7 +142,11 @@ export function CombineDetailView({
             </thead>
             <tbody>
               {rows.map((row) => (
-                <CombineDetailRowView key={row.instanceId} row={row} />
+                <CombineDetailRowView
+                  key={row.instanceId}
+                  row={row}
+                  householdTotalBlocked={householdTotalBlocked}
+                />
               ))}
             </tbody>
           </table>
@@ -142,7 +156,13 @@ export function CombineDetailView({
   )
 }
 
-function CombineDetailRowView({ row }: { row: CombineDetailRow }) {
+function CombineDetailRowView({
+  row,
+  householdTotalBlocked,
+}: {
+  row: CombineDetailRow
+  householdTotalBlocked: boolean
+}) {
   // `getProductMeta` is typed as `T | undefined` against an arbitrary string,
   // but `row.productId` is the registry-derived `ProductId` union — every
   // member of which has a metadata entry. Fall back defensively so a future
@@ -154,7 +174,7 @@ function CombineDetailRowView({ row }: { row: CombineDetailRow }) {
   const statusClass = `combine-detail-status combine-detail-status--${row.status}`
 
   const capital = result?.capitalAtRetirement
-  const riy = result?.accumulationRiy
+  const riy = availableRiy(result)
   // Use the back-allocated `monthlyNet` from the aggregate progressive
   // tax + KV/PV pipeline when available. This is the correct contract-level
   // net whenever multiple taxable sources interact (combine mode). Fall back
@@ -179,7 +199,7 @@ function CombineDetailRowView({ row }: { row: CombineDetailRow }) {
   // this contract. Only rendered when the combined share is available.
   const combinedShare = row.combinedShare
   const netCellTitle = combinedShare != null
-    ? `Steuer ${formatCurrency(combinedShare.taxShareAnnual / 12, 0)} €/mo (${formatCurrency(combinedShare.taxShareAnnual, 0)} €/Jahr) · KV/PV ${formatCurrency(combinedShare.kvPvShare, 0)} €/mo`
+    ? `Steuer ${formatCurrency(combinedShare.taxShareAnnual / 12, 0)}/mo (${formatCurrency(combinedShare.taxShareAnnual, 0)}/Jahr) · KV/PV ${formatCurrency(combinedShare.kvPvShare, 0)}/mo`
     : undefined
 
   // Provenance pill: lowest-confidence input across all consumed fields for this
@@ -206,9 +226,13 @@ function CombineDetailRowView({ row }: { row: CombineDetailRow }) {
         <span className={statusClass}>{statusLabel}</span>
       </td>
       <td>{capital !== undefined ? formatCurrency(capital, 0) : '–'}</td>
-      <td>{riy !== undefined ? formatPercent(riy, 2) : '–'}</td>
+      <td title={riy === undefined && result ? RIY_UNAVAILABLE_REASON : undefined}>{riy !== undefined ? formatPercent(riy, 2) : result ? RIY_UNAVAILABLE : '–'}</td>
       <td title={netCellTitle} aria-label={netCellTitle}>
-        {monthlyNet !== undefined ? formatCurrency(monthlyNet, 0) : '–'}
+        {householdTotalBlocked
+          ? '—'
+          : monthlyNet !== undefined
+            ? formatCurrency(monthlyNet, 0)
+            : '–'}
         {breakEvenAge !== undefined && (
           <span className="break-even-note">
             {' '}(Break-even Alter {Math.round(breakEvenAge)})

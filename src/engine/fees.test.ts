@@ -77,4 +77,50 @@ describe('computeRIY (#57)', () => {
     const riyHigh = computeRIY(c, months, grossReturn, capitalHighFee)
     expect(riyHigh).toBeGreaterThan(riyLow)
   })
+
+  it('uses the product zero-fee capital instead of counting return-path drag as cost', () => {
+    const c = 300
+    const months = 12 * 39
+    const scenarioReturn = 0.05
+    const productGrossReturn = 0.04
+    const productNetReturn = 0.035
+    const r_m = (r: number) => Math.pow(1 + r, 1 / 12) - 1
+    const fv = (r: number) => (c * (Math.pow(1 + r_m(r), months) - 1) / r_m(r)) * (1 + r_m(r))
+
+    const riy = computeRIY(
+      c,
+      months,
+      scenarioReturn,
+      fv(productNetReturn),
+      fv(productGrossReturn),
+    )
+
+    expect(riy).toBeCloseTo(0.005, 10)
+  })
+
+  it('inverts a starting balance and level payments together', () => {
+    const monthlyContribution = 100
+    const months = 120
+    const initialCapital = 10_000
+    const futureValue = (annualReturn: number) => {
+      const monthlyFactor = Math.pow(1 + annualReturn, 1 / 12)
+      let capital = initialCapital
+      for (let month = 0; month < months; month += 1) {
+        capital = (capital + monthlyContribution) * monthlyFactor
+      }
+      return capital
+    }
+    const grossReturn = 0.05
+    const netReturn = 1.05 * 0.99 - 1
+
+    expect(computeRIY(
+      monthlyContribution, months, grossReturn,
+      futureValue(netReturn), futureValue(grossReturn), initialCapital,
+    )).toBeCloseTo(grossReturn - netReturn, 10)
+  })
+
+  it('inverts a paid-up balance without monthly payments', () => {
+    expect(computeRIY(0, 120, 0.05, 10_000 * Math.pow(1.05 * 0.99, 10),
+      10_000 * Math.pow(1.05, 10), 10_000)).toBeCloseTo(0.0105, 10)
+  })
 })

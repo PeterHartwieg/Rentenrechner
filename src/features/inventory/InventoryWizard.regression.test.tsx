@@ -1,154 +1,114 @@
 // @vitest-environment jsdom
-
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render } from '@testing-library/react'
-import { InventoryWizard } from './InventoryWizard'
-import type { Workspace } from '../../domain/workspace'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { InventoryWizard, type InventoryWizardProps } from './InventoryWizard'
+import { createFreshOnboardingScenario } from './onboardingDraft'
 
-afterEach(() => {
-  cleanup()
-  localStorage.clear()
-  sessionStorage.clear()
-})
-
-function makeProps(overrides?: Partial<Parameters<typeof InventoryWizard>[0]>) {
-  return {
-    grossSalaryYear: 75_000,
-    childBirthYears: [] as readonly number[],
-    age: 35,
-    retirementAge: 67,
-    publicHealthInsurance: true,
-    onComplete: vi.fn(),
-    onDismiss: vi.fn(),
-    ...overrides,
-  }
+afterEach(cleanup)
+function setup(overrides: Partial<Omit<InventoryWizardProps, 'onComplete' | 'onDismiss'>> = {}) {
+  const props = { scenario: createFreshOnboardingScenario(), mode: 'edit' as const, initialStep: 'pension' as const, onComplete: vi.fn(), onDismiss: vi.fn(), ...overrides }
+  const view = render(<InventoryWizard {...props} />)
+  return { ...props, ...view }
+}
+function change(label: string, value: string) { fireEvent.change(screen.getByLabelText(label), { target: { value } }) }
+function save() { fireEvent.click(screen.getByRole('button', { name: 'Angaben übernehmen' })) }
+async function disclose(title: string, fieldLabel: string) {
+  fireEvent.click(screen.getByText(title))
+  await waitFor(() => expect(screen.getByLabelText(fieldLabel)).toBeDefined())
 }
 
-function advanceToProductStep(container: HTMLElement) {
-  const nextBtn = Array.from(container.querySelectorAll<HTMLButtonElement>('button[type="button"]'))
-    .find((b) => b.textContent?.includes('Weiter zu deinen'))
-  if (!nextBtn) throw new Error('Could not find step-0 next button')
-  fireEvent.click(nextBtn)
-}
-
-function checkProduct(container: HTMLElement, productId: string) {
-  const checkbox = container.querySelector<HTMLInputElement>(`#inventory-check-${productId}`)
-  if (!checkbox) throw new Error(`Could not find product checkbox ${productId}`)
-  fireEvent.click(checkbox)
-}
-
-function completeWizard(container: HTMLElement) {
-  const doneBtn = Array.from(container.querySelectorAll<HTMLButtonElement>('button[type="button"]'))
-    .find((b) => b.textContent?.includes('Fertig') || b.textContent?.includes('Weiter ohne'))
-  if (!doneBtn) throw new Error('Could not find wizard completion button')
-  fireEvent.click(doneBtn)
-}
-
-function findInventoryField(container: HTMLElement, label: RegExp): HTMLElement {
-  const labelNode = Array.from(container.querySelectorAll<HTMLElement>('.inventory-field > span, .inventory-field label'))
-    .find((node) => label.test(node.textContent ?? ''))
-  if (!labelNode) throw new Error(`Could not find inventory field ${label}`)
-  const field = labelNode.closest<HTMLElement>('.inventory-field')
-  if (!field) throw new Error(`Could not find .inventory-field ancestor for ${label}`)
-  return field
-}
-
-function numberInput(field: HTMLElement): HTMLInputElement {
-  const input = field.querySelector<HTMLInputElement>('input[type="number"]')
-  if (!input) throw new Error('Expected numeric input in field')
-  return input
-}
-
-function findGenericNumberInput(container: HTMLElement, label: RegExp): HTMLInputElement {
-  const labelNode = Array.from(container.querySelectorAll<HTMLElement>('.field > span'))
-    .find((node) => label.test(node.textContent ?? ''))
-  if (!labelNode) throw new Error(`Could not find generic field ${label}`)
-  const field = labelNode.closest<HTMLElement>('.field')
-  const input = field?.querySelector<HTMLInputElement>('input[type="number"]')
-  if (!input) throw new Error(`Expected generic numeric input in ${label}`)
-  return input
-}
-
-describe('InventoryWizard regressions for fresh issue sessions', () => {
-  it('promotes bAV Effektivkosten evidence when the user edits the field', () => {
-    const { container } = render(<InventoryWizard {...makeProps()} />)
-    advanceToProductStep(container)
-    checkProduct(container, 'bav')
-
-    const feeField = findInventoryField(container, /Effektivkosten p\.a\./)
-    expect(feeField.querySelector('.evidence-badge--estimate')).not.toBeNull()
-
-    fireEvent.change(numberInput(feeField), { target: { value: '2.7' } })
-
-    expect(feeField.querySelector('.evidence-badge--confirmed')).not.toBeNull()
-    expect(feeField.querySelector('.evidence-badge--estimate')).toBeNull()
+describe('profile and pension editing', () => {
+  it.each(['profile', 'pension'] as const)('opens %s as a single edit step; dismiss leaves the scenario untouched', (initialStep) => {
+    const props = setup({ initialStep })
+    const before = JSON.stringify(props.scenario)
+    expect(screen.queryByText(/von 2/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Weiter' })).toBeNull()
+    if (initialStep === 'profile') change('Dein Alter', '42')
+    else { fireEvent.click(screen.getByLabelText('Renteninformation liegt vor')); change('Monatsrente aus deiner Renteninformation (€ brutto)', '2400') }
+    fireEvent.click(screen.getByRole('button', { name: 'Zurück zum Plan' }))
+    expect(props.onDismiss).toHaveBeenCalledOnce()
+    expect(props.onComplete).not.toHaveBeenCalled()
+    expect(JSON.stringify(props.scenario)).toBe(before)
   })
 
-  it('persists confirmed bAV fee evidence when completing after an edit', () => {
-    const onComplete = vi.fn<(workspace: Workspace) => void>()
-    const { container } = render(<InventoryWizard {...makeProps({ onComplete })} />)
-    advanceToProductStep(container)
-    checkProduct(container, 'bav')
-
-    const feeField = findInventoryField(container, /Effektivkosten p\.a\./)
-    fireEvent.change(numberInput(feeField), { target: { value: '2.7' } })
-    completeWizard(container)
-
-    const workspace = onComplete.mock.calls[0]?.[0]
-    expect(workspace).toBeDefined()
-    expect(workspace.baseline.assumptions.bav[0].fees.wrapperAssetFee).toBeCloseTo(0.027)
-    expect(workspace.baseline.assumptions.bav[0].evidenceMap['fees.wrapperAssetFee'])
-      .toBe('user_confirmed')
+  it('commits the document method and provides checked DRV help', async () => {
+    const props = setup()
+    fireEvent.click(screen.getByLabelText('Renteninformation liegt vor'))
+    change('Monatsrente aus deiner Renteninformation (€ brutto)', '2345')
+    fireEvent.click(screen.getByText('Welche Zahl ist gemeint?'))
+    await waitFor(() => expect(screen.getByText(/als zweiten Betrag/)).toBeDefined())
+    save()
+    const result = props.onComplete.mock.calls[0][0]
+    expect(result.assumptions.statutoryPension.pensionEntryMethod).toEqual({ kind: 'document', monthlyGrossEUR: 2345 })
+    expect(result.assumptions.inputStatus['statutoryPension.manualMonthlyGross']).toBe('document')
   })
 
-  it('promotes pAV Effektivkosten evidence when the user edits Einzelposten details', () => {
-    const { container } = render(<InventoryWizard {...makeProps()} />)
-    advanceToProductStep(container)
-    checkProduct(container, 'versicherung')
-
-    const feeField = findInventoryField(container, /Effektivkosten p\.a\./)
-    expect(feeField.querySelector('.evidence-badge--estimate')).not.toBeNull()
-
-    fireEvent.click(container.querySelector('.inv-layer3-summary')!)
-    const einzelpostenTab = Array.from(container.querySelectorAll<HTMLButtonElement>('button'))
-      .find((button) => button.textContent?.trim() === 'Einzelposten')
-    if (!einzelpostenTab) throw new Error('Could not find Einzelposten tab')
-    fireEvent.click(einzelpostenTab)
-
-    const fundInput = findGenericNumberInput(container, /Fondskosten/)
-    fireEvent.change(fundInput, { target: { value: '0.3' } })
-    fireEvent.blur(fundInput)
-
-    expect(feeField.querySelector('.evidence-badge--confirmed')).not.toBeNull()
-    expect(feeField.querySelector('.evidence-badge--estimate')).toBeNull()
+  it('blocks negative career pauses, keeps the invalid value and focuses the summary', async () => {
+    const props = setup()
+    fireEvent.click(screen.getByLabelText('Ohne Unterlagen grob schätzen'))
+    await disclose('Pausen berücksichtigen', 'Jahre ohne Arbeit (grob)')
+    change('Jahre ohne Arbeit (grob)', '-3')
+    save()
+    expect(props.onComplete).not.toHaveBeenCalled()
+    expect((screen.getByLabelText('Jahre ohne Arbeit (grob)') as HTMLInputElement).value).toBe('-3')
+    expect(screen.getByRole('alert')).toBe(document.activeElement)
+    expect(screen.getAllByText('Pausen können nicht negativ sein.')).toHaveLength(2)
+    change('Jahre ohne Arbeit (grob)', '1')
+    save()
+    expect(props.onComplete).toHaveBeenCalledOnce()
   })
 
-  it.each([
-    ['bav', 'bav'],
-    ['versicherung', 'insurance'],
-    ['basisrente', 'basisrente'],
-  ] as const)('does not save a zero onboarding fee default for %s', (productId, slot) => {
-    const onComplete = vi.fn<(workspace: Workspace) => void>()
-    const { container } = render(<InventoryWizard {...makeProps({ onComplete })} />)
-    advanceToProductStep(container)
-    checkProduct(container, productId)
-    completeWizard(container)
-
-    const workspace = onComplete.mock.calls[0]?.[0]
-    expect(workspace).toBeDefined()
-    const assumptions = workspace.baseline.assumptions
-    const first = assumptions[slot][0]
-    expect(first.fees.wrapperAssetFee + first.fees.fundAssetFee).toBeGreaterThan(0)
+  it('rejects a start after current age and negative direct years without clipping', async () => {
+    const props = setup()
+    fireEvent.click(screen.getByLabelText('Ohne Unterlagen grob schätzen'))
+    change('Mit welchem Alter hast du angefangen zu arbeiten?', String(props.scenario.profile.age + 1))
+    save()
+    expect(props.onComplete).not.toHaveBeenCalled()
+    change('Mit welchem Alter hast du angefangen zu arbeiten?', '20')
+    fireEvent.click(screen.getByText('Ich kenne meine Beitragsjahre'))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Beitragsjahre direkt eingeben' })).toBeDefined())
+    fireEvent.click(screen.getByRole('button', { name: 'Beitragsjahre direkt eingeben' }))
+    change('Bisherige Beitragsjahre', '-2')
+    save()
+    expect(props.onComplete).not.toHaveBeenCalled()
+    expect((screen.getByLabelText('Bisherige Beitragsjahre') as HTMLInputElement).value).toBe('-2')
   })
 
-  it('renders add-instance buttons without a duplicate literal plus', () => {
-    const { container } = render(<InventoryWizard {...makeProps()} />)
-    advanceToProductStep(container)
-    checkProduct(container, 'bav')
+  it('retains career and document raw values when switching methods', () => {
+    setup()
+    fireEvent.click(screen.getByLabelText('Ohne Unterlagen grob schätzen'))
+    change('Mit welchem Alter hast du angefangen zu arbeiten?', '19')
+    fireEvent.click(screen.getByLabelText('Renteninformation liegt vor'))
+    change('Monatsrente aus deiner Renteninformation (€ brutto)', '1900')
+    fireEvent.click(screen.getByLabelText('Ohne Unterlagen grob schätzen'))
+    expect((screen.getByLabelText('Mit welchem Alter hast du angefangen zu arbeiten?') as HTMLInputElement).value).toBe('19')
+    fireEvent.click(screen.getByLabelText('Renteninformation liegt vor'))
+    expect((screen.getByLabelText('Monatsrente aus deiner Renteninformation (€ brutto)') as HTMLInputElement).value).toBe('1900')
+  })
 
-    const addButton = container.querySelector<HTMLButtonElement>('.inv-add-instance-btn')
-    expect(addButton).not.toBeNull()
-    expect(addButton?.textContent?.trim()).toMatch(/^weitere bAV/)
-    expect(addButton?.textContent?.trim()).not.toMatch(/^\+/)
+  it.each(['beamtenpension', 'versorgungswerk', 'none'] as const)('supports %s for an employee without forcing GRV', async (system) => {
+    const props = setup()
+    await disclose('Andere Altersversorgung', 'Deine Altersversorgung')
+    change('Deine Altersversorgung', system)
+    if (system !== 'none') change('Voraussichtliche Monatsversorgung (€ brutto)', '2700')
+    if (system === 'versorgungswerk') {
+      change('Eigener Beitrag zum Versorgungswerk (€/Monat)', '600')
+      change('Arbeitgeberbeitrag zum Versorgungswerk (€/Monat)', '300')
+    }
+    save()
+    const pension = props.onComplete.mock.calls[0][0].assumptions.statutoryPension
+    expect(pension.pensionBaselineType).toBe(system)
+    if (system === 'none') expect(pension.pensionEntryMethod).toBeUndefined()
+    else expect(pension.pensionEntryMethod).toEqual({ kind: 'projected-gross', monthlyGrossEUR: 2700 })
+    if (system === 'versorgungswerk') expect(pension).toMatchObject({ versorgungswerkMonthlyContribution: 600, versorgungswerkEmployerMonthly: 300 })
+  })
+
+  it('does not reseed an in-flight draft when the same scenario id rerenders', () => {
+    const props = setup({ initialStep: 'profile' })
+    change('Dein Alter', '48')
+    props.rerender(<InventoryWizard scenario={{ ...props.scenario }} mode="edit" initialStep="profile" onComplete={props.onComplete} onDismiss={vi.fn()} />)
+    expect((screen.getByLabelText('Dein Alter') as HTMLInputElement).value).toBe('48')
+    save()
+    expect(props.onComplete.mock.calls[0][0].profile.age).toBe(48)
   })
 })

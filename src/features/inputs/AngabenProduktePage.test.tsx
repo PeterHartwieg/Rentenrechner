@@ -48,6 +48,8 @@ import { addInstanceToWorkspace } from '../inventory/inventoryHelpers'
 // ---------------------------------------------------------------------------
 
 const mockWorkspaceUiState: WorkspaceUiState = {
+  moneyBasis: 'real',
+  setMoneyBasis: vi.fn(),
   selectedScenarioId: 'optimistisch',
   setSelectedScenarioId: vi.fn(),
   showRealValues: false,

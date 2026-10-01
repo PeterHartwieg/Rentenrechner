@@ -1,0 +1,166 @@
+{
+  "bav-to-avd": {
+    "kind": "combine",
+    "workspace": {
+      "schemaVersion": 2,
+      "mode": "combine",
+      "baseline": {
+        "id": "baseline",
+        "label": "Baseline",
+        "profile": {
+          "age": 40,
+          "retirementAge": 67,
+          "grossSalaryYear": 60000,
+          "taxClass": 1,
+          "childBirthYears": [],
+          "churchTax": false,
+          "publicHealthInsurance": true,
+          "healthAdditionalContributionPct": 2.9,
+          "pkvMonthlyPremium": 0,
+          "pPVMonthlyPremium": 0,
+          "desiredNetMonthlyPension": 0
+        },
+        "assumptions": {
+          "bav": [
+            {
+              "monthlyGrossConversion": 200,
+              "statutoryMinimumSubsidyEnabled": true,
+              "contractualMatchPercent": 0,
+              "contractualFixedMonthly": 0,
+              "monthlyOtherRetirementIncome": 0,
+              "includeGrvReduction": false,
+              "kvdrMember": true,
+              "durchfuehrungsweg": "direktversicherung_3_63",
+              "pre2005EligibleTaxFree": false,
+              "payoutMode": "leibrente",
+              "rentenfaktor": 30,
+              "rentenfaktorConfirmed": false,
+              "zeitrenteYears": 20,
+              "annualContributionGrowthRate": 0,
+              "fees": {
+                "wrapperAssetFee": 0.003,
+                "fundAssetFee": 0.005,
+                "contributionFee": 0.03,
+                "fixedMonthlyFee": 0,
+                "acquisitionCostPct": 0.025,
+                "acquisitionCostSpreadYears": 5,
+                "pensionPayoutFeePct": 0
+              },
+              "instanceId": "bav-1",
+              "label": "bAV Umzugswagen",
+              "status": "active",
+              "contractStartYear": 2018,
+              "currentValueEUR": 18000,
+              "evidenceMap": {},
+              "transferEvents": [
+                {
+                  "type": "certified",
+                  "year": 2029,
+                  "sourceInstanceId": "bav-1",
+                  "targetInstanceId": "avd-1",
+                  "amountEUR": 18000
+                }
+              ]
+            }
+          ],
+          "etf": [],
+          "insurance": [],
+          "basisrente": [],
+          "altersvorsorgedepot": [
+            {
+              "subtype": "standarddepot",
+              "monthlyOwnContribution": 100,
+              "eligibility": {
+                "directlyEligible": true,
+                "indirectSpouseEligible": false,
+                "eligibleChildren": 0,
+                "ageAtContractStart": 28,
+                "careerStarterBonusUsed": true
+              },
+              "riskAllocationPct": 0.8,
+              "riskAnnualReturn": 0.05,
+              "lowRiskAnnualReturn": 0.02,
+              "fees": {
+                "wrapperAssetFee": 0.003,
+                "fundAssetFee": 0.002,
+                "contributionFee": 0,
+                "fixedMonthlyFee": 0,
+                "acquisitionCostPct": 0,
+                "acquisitionCostSpreadYears": 5,
+                "pensionPayoutFeePct": 0
+              },
+              "payoutMode": "certified_payout_plan",
+              "payoutPlanEndAge": 85,
+              "partialCapitalPct": 0,
+              "transferCostEUR": 0,
+              "riesterTransferCapital": 0,
+              "monthlyOtherRetirementIncome": 0,
+              "rentenfaktor": 28,
+              "instanceId": "avd-1",
+              "label": "AVD Zielvertrag",
+              "status": "active",
+              "contractStartYear": 2026,
+              "currentValueEUR": 0,
+              "evidenceMap": {},
+              "transferEvents": [
+                {
+                  "type": "certified",
+                  "year": 2029,
+                  "sourceInstanceId": "bav-1",
+                  "targetInstanceId": "avd-1",
+                  "amountEUR": 18000
+                }
+              ]
+            }
+          ],
+          "riester": [],
+          "statutoryPension": {
+            "pensionBaselineType": "grv",
+            "manualMonthlyGross": null,
+            "currentEntgeltpunkte": 18,
+            "includeGrvReduction": false,
+            "annualSalaryGrowthRate": 0,
+            "rentenwertGrowthRate": 0,
+            "versorgungswerkMonthlyContribution": 0,
+            "versorgungswerkEmployerMonthly": 0,
+            "retirementHealthStatus": "kvdr"
+          },
+          "inflationRate": 0,
+          "retirementEndAge": 90,
+          "returnScenarios": [
+            {
+              "id": "konservativ",
+              "label": "Konservativ",
+              "annualReturn": 0.03
+            },
+            {
+              "id": "basis",
+              "label": "Basis",
+              "annualReturn": 0.05
+            },
+            {
+              "id": "optimistisch",
+              "label": "Optimistisch",
+              "annualReturn": 0.07
+            }
+          ],
+          "monteCarlo": {
+            "enabled": false,
+            "runs": 200,
+            "annualVolatility": 0.15,
+            "seed": 20260908
+          },
+          "visibleProducts": [
+            "bav",
+            "altersvorsorgedepot"
+          ],
+          "equalInputAmountEUR": 200
+        },
+        "createdAt": "2026-09-08T00:00:00.000Z",
+        "origin": "baseline"
+      },
+      "whatIfs": [],
+      "pinnedComparisonIds": []
+    }
+  }
+}

@@ -21,7 +21,7 @@ import {
   type ContractDecision,
 } from '../../app/contractDecisions'
 import { createDecisionSimulationCache } from '../../app/optimiereVorsorge'
-import { formatCurrency } from '../../utils/format'
+import { formatCurrency, formatPercent } from '../../utils/format'
 
 interface Props {
   workspace: Workspace
@@ -94,6 +94,9 @@ export function VertragScenarioTable({
     })
   }, [workspace, instance, productId, rules, scenarioId, combinedForScenario, cache])
 
+  const marketReturnAssumption = instance.expectedReturn ??
+    workspace.baseline.assumptions.returnScenarios.find(s => s.id === scenarioId)?.annualReturn
+
   return (
     <section className="vertrag-section" aria-labelledby="vertrag-section-was-waere">
       <div className="vertrag-section-head">
@@ -103,22 +106,32 @@ export function VertragScenarioTable({
         </h2>
       </div>
 
+      {marketReturnAssumption !== undefined && (
+        <p className="vertrag-scenario-detail">
+          Marktrendite {formatPercent(marketReturnAssumption, 1)} p. a. (Annahme, {instance.expectedReturn !== undefined ? 'vertragsspezifisch' : 'Szenario'})
+        </p>
+      )}
       {rows.length > 0 ? (
-        <table className="vertrag-scenario-table">
-          <thead>
-            <tr>
-              <th>Szenario</th>
-              <th>Was sich ändert</th>
-              <th className="vertrag-num">Netto-Rente</th>
-              <th className="vertrag-num">Δ ggü. heute</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <ScenarioRowView key={row.id} row={row} />
-            ))}
-          </tbody>
-        </table>
+        <div className="vertrag-table-scroll" role="region" aria-label="Vertragsszenarien" tabIndex={0}>
+          <p className="vertrag-scenario-scope" data-testid="vertrag-scenario-scope">
+            Netto-Rente hier: dein ganzer Plan, alle Quellen zusammen, pro Monat in Euro des Rentenbeginns (nominal). Die Kennzahlen oben gelten nur für diesen Vertrag.
+          </p>
+          <table className="vertrag-scenario-table">
+            <thead>
+              <tr>
+                <th>Szenario</th>
+                <th>Was sich ändert</th>
+                <th className="vertrag-num">Netto-Rente gesamt</th>
+                <th className="vertrag-num">Δ ggü. heute</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <ScenarioRowView key={row.id} row={row} />
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <p className="vertrag-scenario-empty">
           Für diesen Vertrag stehen derzeit keine Szenarien zur Verfügung — vermutlich ist er bereits gekündigt oder das Angebot ist noch nicht aktiviert.
@@ -305,13 +318,13 @@ function ScenarioRowView({ row }: { row: ScenarioRow }) {
         {row.isCurrent && <span className="vertrag-scenario-marker" aria-hidden="true">▸</span>}
         <span className="vertrag-scenario-label">{row.label}</span>
       </td>
-      <td className="vertrag-scenario-detail">{row.detail}</td>
-      <td className="vertrag-num">
+      <td className="vertrag-scenario-detail" data-label="Was sich ändert">{row.detail}</td>
+      <td className="vertrag-num" data-label="Netto-Rente gesamt">
         {row.resultingNetMonthly === null
           ? '—'
           : formatCurrency(row.resultingNetMonthly, 0)}
       </td>
-      <td className={`vertrag-num vertrag-scenario-delta vertrag-scenario-delta--${sign}`}>
+      <td className={`vertrag-num vertrag-scenario-delta vertrag-scenario-delta--${sign}`} data-label="Δ ggü. heute">
         {deltaText}
       </td>
     </tr>

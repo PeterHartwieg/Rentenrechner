@@ -11,10 +11,10 @@ import type { ProductId } from '../../domain'
  * tone — describe the mechanism, not its quality.
  */
 export const productTaglines: Record<ProductId, string> = {
-  etf: 'Wertpapierdepot mit Auszahlplan — Abgeltungsteuer auf Gewinne.',
-  bav: 'Entgeltumwandlung mit Arbeitgeber-Zuschuss — voll steuerpflichtig im Alter.',
-  versicherung: 'Lebenslange Rente aus dem Versicherungsmantel — Halbeinkünfte oder Ertragsanteil.',
-  basisrente: 'Steuerersparnis heute (§ 10 EStG) — nachgelagerte Volle Besteuerung im Alter.',
-  altersvorsorgedepot: 'Geförderter ETF-Mantel — Auszahlplan ab 65, nachgelagerte Besteuerung.',
-  riester: 'Zulagen plus Steuerersparnis — staatlich gefördert, voll steuerpflichtig im Alter.',
+  etf: 'Dein selbst angelegtes Vermögen im Wertpapierdepot.',
+  bav: 'Betriebliche Vorsorge über deinen Arbeitgeber.',
+  versicherung: 'Dein privater Versicherungsvertrag mit eigener Kosten- und Auszahlungsregelung.',
+  basisrente: 'Auch als Rürup-Rente bekannt.',
+  altersvorsorgedepot: 'Gefördertes Depot mit hinterlegten Modellannahmen.',
+  riester: 'Dein Riester-Vertrag mit Zulagen und möglicher Steuerersparnis.',
 }

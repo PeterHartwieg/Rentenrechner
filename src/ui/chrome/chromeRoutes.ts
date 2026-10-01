@@ -2,14 +2,16 @@ import type { AppView, Route } from '../../app/useRoute'
 import { appViewFromUrl } from '../../app/useRoute'
 
 /**
- * Chrome nav tab ids. PR 5 promotes the previously-placeholder "plan" tab to
- * "angaben" (= Deine Angaben at `/eingaben`); the Annahmen tab is removed
- * from the chrome (it now folds into Section 4 of /eingaben).
+ * Chrome nav tab ids.
  *
- * The `compare` id covers both the "Vergleich" and "Mein Plan" labels — the
- * label is chosen at render-time based on saved mode (see AppHeader).
+ * Simplification 2D splits the old shared dashboard tab in two. `plan`
+ * ("Mein Plan", `/`) and `compare` ("Vergleich", `/vergleich`) are now
+ * separate, always-distinct destinations with fixed labels; the previous
+ * mode-dependent relabelling of one shared tab is gone, because a single tab
+ * whose destination changed with saved mode is exactly what let the two
+ * surfaces overwrite each other.
  */
-export type ChromeNavId = 'home' | 'angaben' | 'compare' | 'artikel' | 'method'
+export type ChromeNavId = 'home' | 'angaben' | 'plan' | 'compare' | 'artikel' | 'method'
 
 /**
  * Map a current `Route` to the chrome nav tab id it should highlight.
@@ -31,12 +33,19 @@ export function routeToNavId(route: Route): ChromeNavId | null {
       // resolved `appView`. Fall back to Startseite when called directly.
       return 'home'
     case 'vertrag':
+    case 'vertrag-bearbeiten':
+    case 'vorsorge-neu':
+    case 'alternativen':
     case 'kapital':
+      // Plan drill-ins: the read-only contract detail, its editable sibling,
+      // the add-contract picker, the saved-alternatives surface, and the
+      // full-page Kapital & Auszahlungen lifecycle view. All are reached from
+      // Mein Plan, so the plan tab stays lit and the chrome reads as "I'm
+      // still on my plan".
+      return 'plan'
+    case 'vergleich':
     case 'vergleich-detail':
-      // Drill-ins from the saved-mode dashboard (per-contract Vertrag-Detail,
-      // full-page Kapital & Auszahlungen, per-product Wohin geht das Geld).
-      // The `compare` tab owns the dashboard — its label flips to "Mein Plan"
-      // in combine mode — so highlighting it keeps the chrome coherent.
+      // The comparison journey and its per-product drill-in.
       return 'compare'
     case 'methode':
       return 'method'
@@ -79,8 +88,9 @@ export function routeToNavId(route: Route): ChromeNavId | null {
  * Rules for the `/` route:
  *   - `?view=landing` in the URL → Startseite ('home'). The override always
  *     forces the landing page; the chrome reflects that destination.
- *   - `appView === 'compare'` or `'combine'` → the dashboard tab ('compare'),
- *     which renders as "Vergleich" / "Mein Plan" respectively.
+ *   - `appView === 'compare'` or `'combine'` → the plan tab ('plan'). `/` is
+ *     the personal plan for every saved mode; the comparison has its own
+ *     route and its own tab.
  *   - `appView === 'landing'` (fresh user with no saved state) → Startseite.
  *   - `appView === undefined` (legacy callers / tests without the prop) →
  *     Startseite, preserving the pre-thread default.
@@ -95,7 +105,9 @@ export function activeChromeNavId(
 ): ChromeNavId | null {
   if (route.kind === 'home') {
     if (appViewFromUrl(search) === 'landing') return 'home'
-    if (appView === 'compare' || appView === 'combine') return 'compare'
+    // `/` is the personal plan for every saved mode now — a saved-compare user
+    // lands on the plan's not-started state, not on the comparison.
+    if (appView === 'compare' || appView === 'combine') return 'plan'
     return 'home'
   }
   return routeToNavId(route)

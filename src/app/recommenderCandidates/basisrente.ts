@@ -16,7 +16,6 @@
 import type { BasisrenteInstance } from '../../domain/instances'
 import { defaultAssumptions } from '../../data/defaultScenario'
 import { calculateBasisrenteFunding, solveBasisrenteGrossFromNet } from '../../engine/basisrente'
-import { calculateSalaryResult } from '../../engine/salary'
 import { newInstanceId } from '../workspaceIdentity'
 import {
   type CandidateDraft,
@@ -26,12 +25,10 @@ import {
 } from './types'
 
 export function makeBasisrenteCandidate(g: GeneratorContext): CandidateDraft | null {
-  const profile = g.workspace.baseline.profile
   // Build a synthetic Basisrente assumption block from the default plus a
-  // typical fee profile. The funding helper needs a SalaryResult — recompute
-  // from the profile (no bAV conversion baked in; the recommender's bAV
-  // candidate is independent).
-  const salary = calculateSalaryResult(profile, g.rules, 0)
+  // typical fee profile. Use the same post-bAV salary and Schicht-1 headroom
+  // snapshot as combine simulation.
+  const salary = g.portfolioFunding.salaryForOtherFunding
   const synthetic = {
     monthlyGrossContribution: 0,
     payoutMode: 'leibrente' as const,
@@ -49,11 +46,7 @@ export function makeBasisrenteCandidate(g: GeneratorContext): CandidateDraft | n
   if (isolatedGross <= 0) return null
 
   // Clamp to remaining Schicht-1 cap.
-  const fundingAtFull = calculateBasisrenteFunding(g.rules, salary, {
-    ...synthetic,
-    monthlyGrossContribution: isolatedGross,
-  })
-  const remainingMonthly = fundingAtFull.remainingSchicht1Cap / 12
+  const remainingMonthly = g.portfolioFunding.headroom.basisrente.remainingAnnual / 12
   const cappedToRemaining = isolatedGross > remainingMonthly
   const gross = Math.min(isolatedGross, Math.max(0, remainingMonthly))
   if (gross <= 0) return null

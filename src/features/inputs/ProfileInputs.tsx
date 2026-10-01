@@ -57,7 +57,7 @@ export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, 
           min={0}
           step={500}
           suffix="EUR"
-          onChange={(value) => updateNumber(onProfileChange, 'grossSalaryYear', value)}
+          onChange={(value) => updateNumber(onProfileChange, 'grossSalaryYear', String(value))}
         />
         {profile.publicHealthInsurance && (
           <NumberField
@@ -69,7 +69,7 @@ export function ProfileInputs({ profile, onProfileChange, pkv257SubsidyMonthly, 
             step={0.1}
             suffix="%"
             onChange={(value) =>
-              updateNumber(onProfileChange, 'healthAdditionalContributionPct', value)
+              updateNumber(onProfileChange, 'healthAdditionalContributionPct', String(value))
             }
           />
         )}

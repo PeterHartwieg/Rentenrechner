@@ -11,9 +11,13 @@
 import { describe, it, expect } from 'vitest'
 import { buildCombinePortfolioCsv, buildExportCsv, type InstanceTaxModes } from './csvExport'
 import { de2026Rules } from '../rules/de2026'
-import { defaultProfile } from '../data/defaultScenario'
+import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import type { EtfProductResult, ProductResult, YearlyProjection } from '../domain'
 import type { CombinedResult } from '../engine/portfolioCombine'
+
+import { migrateV1ToV2 } from '../storage'
+import { simulatePortfolio } from '../engine/portfolioAdapter'
+import { buildCombineExportProjection } from '../engine/exportProjection'
 
 // Minimal ProductResult fixture — only the fields csvExport reads.
 const FIXTURE_PRODUCT: ProductResult = {
@@ -138,6 +142,27 @@ describe('buildExportCsv', () => {
     expect(headerLineIdx).toBeGreaterThanOrEqual(0)
     const headerRow = lines[headerLineIdx + 1]
     expect(headerRow).toContain('Datenqualität')
+  })
+
+  it('labels retirement-year summary values as nominal without relabeling real cashflow columns', () => {
+    const csv = buildExportCsv(BASE_OPTS)
+    expect(csv).toContain('Detailvergleich — Kapital und Rentenbeträge zum Rentenbeginn (nominal)')
+    expect(csv).toContain('Reales Kapital (EUR)')
+    expect(csv).toContain('Real n. St. (EUR)')
+  })
+
+  it('compare-mode singleton export is untouched by the combine suppression (#395)', () => {
+    // Paired with the combine-mode blocked cases below: `buildExportCsv` has no
+    // `householdTotalBlocked` option at all, so the compare path keeps writing a
+    // Netto-Rente for every product.
+    const csv = buildExportCsv(BASE_OPTS)
+    const lines = csv.split('\n')
+    const headerIdx = lines.findIndex((l) => l.startsWith('Detailvergleich')) + 1
+    const netCol = lines[headerIdx].split(',').indexOf('Netto-Rente mtl. (EUR)')
+    expect(netCol).toBeGreaterThan(-1)
+    const dataRow = lines[headerIdx + 1].split(',')
+    expect(dataRow[netCol]).not.toBe('')
+    expect(Number(dataRow[netCol])).toBeGreaterThan(0)
   })
 
   it('discloses the active inflation assumption', () => {
@@ -297,6 +322,7 @@ const FIXTURE_BAV_INSTANCE_RESULT: ProductResult = {
 } as unknown as ProductResult
 
 const FIXTURE_COMBINED: CombinedResult = {
+  pkvRetirementMonthlyCost: 0,
   monthlyNetIncome: 2345.67,
   monthlyGrossPayouts: {
     statutoryPension: 1200,
@@ -697,6 +723,7 @@ describe('buildCombinePortfolioCsv — gh#59 byInstance net regression', () => {
   } as unknown as ProductResult
 
   const combinedWithByInstance: CombinedResult = {
+    pkvRetirementMonthlyCost: 0,
     monthlyNetIncome: BAV_AGGREGATE_NET + ETF_PER_INSTANCE_NET + 1100,
     monthlyGrossPayouts: {
       statutoryPension: 1200,
@@ -778,5 +805,187 @@ describe('buildCombinePortfolioCsv — gh#59 byInstance net regression', () => {
     const nettoRente = Number(cols[7])
     // Falls back to per-instance value (400) when byInstance has no entry.
     expect(nettoRente).toBeCloseTo(BAV_PER_INSTANCE_NET, 1)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Blocked household total (simplification project, lead decision §10.3):
+// the Netto-Einkommen cell is blank — never 0, never a placeholder — and one
+// Hinweis line names the missing inputs.
+// ---------------------------------------------------------------------------
+
+describe('buildCombinePortfolioCsv — suppressed household total', () => {
+  const baseOpts = {
+    perInstance: { 'bav-1': [FIXTURE_BAV_INSTANCE_RESULT] },
+    combinedByScenarioId: { basis: FIXTURE_COMBINED },
+    scenarioLabels: { basis: 'Basis' },
+  }
+
+  /** Data rows of the section whose title sits at `titleIndex` (header + rows). */
+  function sectionRows(lines: string[], titleIndex: number): string[] {
+    const out: string[] = []
+    for (let i = titleIndex + 2; i < lines.length && lines[i] !== ''; i++) out.push(lines[i])
+    return out
+  }
+
+  function incomeRow(csv: string): string[] {
+    const lines = csv.split('\n')
+    const idx = lines.findIndex((l) => l === 'Kombiniertes Renteneinkommen')
+    expect(idx).toBeGreaterThanOrEqual(0)
+    return lines[idx + 2].split(',')
+  }
+
+  it('emits the aggregated net when nothing blocks', () => {
+    const cols = incomeRow(buildCombinePortfolioCsv(baseOpts))
+    expect(cols[1]).toBe('2345.67')
+  })
+
+  it('labels retirement income and per-instance retirement values as nominal', () => {
+    const csv = buildCombinePortfolioCsv(baseOpts)
+    const lines = csv.split('\n')
+    const incomeIdx = lines.indexOf('Kombiniertes Renteneinkommen')
+    const detailIdx = lines.indexOf('Mein Plan — Detail je Instanz')
+    expect(lines[incomeIdx + 1]).toContain('Netto-Einkommen mtl. (EUR nominal)')
+    expect(lines[detailIdx + 1]).toContain('Kapital zum Rentenbeginn (EUR nominal)')
+    expect(lines[detailIdx + 1]).toContain('Netto-Rente mtl. (EUR nominal)')
+    expect(csv).toContain('Reales Kapital (EUR)')
+  })
+
+  it('emits an empty cell — not 0 — when the total is blocked', () => {
+    const cols = incomeRow(
+      buildCombinePortfolioCsv({
+        ...baseOpts,
+        householdTotalBlocked: { reasonLabels: ['Aktueller Wert von „ETF" ist unbekannt.'] },
+      }),
+    )
+    expect(cols[1]).toBe('')
+    expect(cols[1]).not.toBe('0.00')
+    // Issue #395: the statutory net is a component of the same blocked total,
+    // so it is blanked too — never exported as an approximated figure.
+    expect(cols[2]).toBe('')
+  })
+
+  it('names the missing inputs in the Hinweis block', () => {
+    const csv = buildCombinePortfolioCsv({
+      ...baseOpts,
+      householdTotalBlocked: { reasonLabels: ['Gesetzliche Rente unbekannt.'] },
+    })
+    const lines = csv.split('\n')
+    expect(lines[0]).toBe('Hinweis')
+    expect(csv).toContain(
+      'Netto-Gesamtrente nicht berechnet – fehlende Angaben: Gesetzliche Rente unbekannt.',
+    )
+  })
+
+  it('blanks every per-instance Netto-Rente cell in a multi-contract plan (#395)', () => {
+    // Combine, two contracts, statutory-pension step skipped: the per-contract
+    // nets are back-allocated shares of the blocked household total, so they are
+    // blank too. Beitrag / Kapital / Brutto-Rente stay — they are per-contract
+    // figures the user did supply.
+    const csv = buildCombinePortfolioCsv({
+      ...TWO_INSTANCE_OPTS,
+      householdTotalBlocked: {
+        reasonLabels: ['Die Angaben zu deiner gesetzlichen Rente stehen noch aus.'],
+      },
+    })
+    const lines = csv.split('\n')
+    const idx = lines.findIndex((l) => l === 'Mein Plan — Detail je Instanz')
+    const header = lines[idx + 1].split(',')
+    const netCol = header.indexOf('Netto-Rente mtl. (EUR nominal)')
+    const grossCol = header.indexOf('Brutto-Rente mtl. (EUR nominal)')
+    expect(netCol).toBeGreaterThan(-1)
+
+    const rows = sectionRows(lines, idx)
+    expect(rows).toHaveLength(2)
+    for (const row of rows) {
+      const cols = row.split(',')
+      expect(cols[netCol]).toBe('')
+      expect(cols[grossCol]).not.toBe('')
+    }
+    // And the combined section's statutory column.
+    const incomeIdx = lines.findIndex((l) => l === 'Kombiniertes Renteneinkommen')
+    expect(lines[incomeIdx + 2].split(',')[2]).toBe('')
+    expect(csv).toContain('Netto-Gesamtrente nicht berechnet')
+  })
+
+  it('keeps every per-instance Netto-Rente cell when nothing blocks', () => {
+    const csv = buildCombinePortfolioCsv(TWO_INSTANCE_OPTS)
+    const lines = csv.split('\n')
+    const idx = lines.findIndex((l) => l === 'Mein Plan — Detail je Instanz')
+    const netCol = lines[idx + 1].split(',').indexOf('Netto-Rente mtl. (EUR)')
+    const rows = sectionRows(lines, idx)
+    expect(rows).toHaveLength(2)
+    for (const row of rows) expect(row.split(',')[netCol]).not.toBe('')
+  })
+
+  it('exports "Keine Angabe" for a row without any evidence metadata', () => {
+    const csv = buildCombinePortfolioCsv({
+      ...baseOpts,
+      perInstance: {
+        'bav-1': [{ ...FIXTURE_BAV_INSTANCE_RESULT, inputConfidence: undefined }],
+      },
+    })
+    const lines = csv.split('\n')
+    const idx = lines.findIndex((l) => l === 'Mein Plan — Detail je Instanz')
+    const row = lines.slice(idx + 2).find((l) => l.startsWith('bav-1,'))
+    expect(row).toBeDefined()
+    expect(row!.split(',')[9]).toBe('Keine Angabe')
+  })
+})
+
+
+describe.each(['guarantee_80', 'standarddepot', 'etf'] as const)('%s market-return disclosure', (product) => {
+  it.each([0.07, undefined, 0])('exports the contract assumption %s in both combine sheets', (expectedReturn) => {
+    const workspace = migrateV1ToV2(
+      defaultProfile as unknown as Record<string, unknown>,
+      { ...defaultAssumptions, visibleProducts: ['altersvorsorgedepot', 'etf'] } as unknown as Record<string, unknown>,
+    )
+    const assumptions = workspace.baseline.assumptions
+    assumptions.returnScenarios = [
+      { id: 'basis', label: 'Basis', annualReturn: 0.05 },
+      { id: 'optimistisch', label: 'Optimistisch', annualReturn: 0.08 },
+    ]
+    const instance = product === 'etf' ? assumptions.etf[0] : assumptions.altersvorsorgedepot[0]
+    instance.expectedReturn = expectedReturn
+    if (product !== 'etf') {
+      Object.assign(instance, { subtype: product, riskAllocationPct: 0.8, lowRiskAnnualReturn: 0.02 })
+    }
+    const { perInstance } = simulatePortfolio(workspace, de2026Rules)
+    const opts = {
+      assumptions,
+      perInstance: { [instance.instanceId]: perInstance[instance.instanceId] },
+      combinedByScenarioId: {},
+      scenarioLabels: Object.fromEntries(assumptions.returnScenarios.map(s => [s.id, s.label])),
+    }
+    if (product === 'guarantee_80' && expectedReturn === 0.07) {
+      expect(perInstance[instance.instanceId][0].annualReturn).toBeCloseTo(0.06, 12)
+    }
+    const projection = buildCombineExportProjection(opts)
+    for (const row of [...projection.summary, ...projection.yearly]) {
+      const scenario = assumptions.returnScenarios.find(s => s.id === row.scenarioId)!
+      expect(row.marketReturnAssumption).toBe(expectedReturn ?? scenario.annualReturn)
+    }
+    if (product === 'guarantee_80' && expectedReturn === 0.07) {
+      expect(projection.summary[0].annualReturn).toBeCloseTo(0.06, 12)
+    }
+    const lines = buildCombinePortfolioCsv(opts).split('\n')
+    for (const [section, projectedRows] of [
+      ['Mein Plan — Detail je Instanz', projection.summary],
+      ['Jahres-Cashflows je Instanz', projection.yearly],
+    ] as const) {
+      const start = lines.indexOf(section)
+      // The return disclosure is the final column in both sheets.
+      const rows = lines.slice(start + 2).slice(0, projectedRows.length).map(line => line.split(','))
+      expect(rows.length).toBeGreaterThan(0)
+      for (const scenario of assumptions.returnScenarios) {
+        const scenarioRows = rows.filter(row => row[2] === scenario.label)
+        expect(scenarioRows.length).toBeGreaterThan(0)
+        for (const row of scenarioRows) {
+          expect(row.at(-1)).toBe(`${((expectedReturn ?? scenario.annualReturn) * 100).toFixed(2)} %`)
+          expect(row.at(-1)).not.toBe('6.00 %')
+        }
+      }
+      expect(lines[start + 1].split(',').at(-1)).toBe('Marktrendite p. a. (Annahme)')
+    }
   })
 })

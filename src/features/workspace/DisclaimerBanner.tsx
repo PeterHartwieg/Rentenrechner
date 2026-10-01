@@ -60,7 +60,8 @@ export function DisclaimerBanner() {
       <button
         type="button"
         className="disclaimer-btn"
-        aria-label="Weitere Details anzeigen"
+        aria-label="Modellrechnung. Keine Anlage-, Steuer- oder Rechtsberatung. Weitere Details anzeigen."
+        aria-expanded={showPopup}
         onClick={() => setShowPopup((v) => !v)}
       >
         <Info size={14} aria-hidden="true" />

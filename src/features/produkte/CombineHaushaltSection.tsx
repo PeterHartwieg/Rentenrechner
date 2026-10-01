@@ -48,7 +48,7 @@ export function CombineHaushaltSection({
         <CombineField
           label="Ehegattensplitting"
           labelSuffix={
-            <InfoTip text="Bei aktiviertem Splitting wird das gemeinsam zu versteuernde Einkommen nach §32a Abs. 5 EStG halbiert besteuert. Eine Steuerklassen-Auswahl ist bei Zusammenveranlagung nicht erforderlich. Die Auswirkungen erscheinen automatisch in den Ergebnissen unten." />
+            <InfoTip label="Ehegattensplitting erklären" text="Bei aktiviertem Splitting wird das gemeinsam zu versteuernde Einkommen nach §32a Abs. 5 EStG halbiert besteuert. Eine Steuerklassen-Auswahl ist bei Zusammenveranlagung nicht erforderlich. Die Auswirkungen erscheinen automatisch in den Ergebnissen unten." />
           }
         >
           <label className="combine-checkbox-field">

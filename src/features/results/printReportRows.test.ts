@@ -16,9 +16,23 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { buildPrintProContraRows } from './printReportRows'
+import {
+  buildPrintMethodeBullets,
+  buildPrintProContraRows,
+  type PrintMethodeBullet,
+} from './printReportRows'
+import { defaultAssumptions } from '../../data/defaultScenario'
 import { PRODUCT_IDS } from '../../engine/productRegistry'
-import type { ProductId } from '../../domain'
+import type { ProductId, ScenarioAssumptions } from '../../domain'
+
+/** The Renditeannahmen bullet for a given live scenario set. */
+function renditeBullet(
+  returnScenarios: ScenarioAssumptions['returnScenarios'],
+): PrintMethodeBullet | undefined {
+  return buildPrintMethodeBullets(returnScenarios).find(
+    (entry) => entry.label === 'Renditeannahmen',
+  )
+}
 
 // Read the source file via a project-rooted relative path so the test
 // works under vitest (which runs source as ESM, where `import.meta.url`
@@ -47,6 +61,43 @@ function stripComments(source: string): string {
 const CODE = stripComments(SOURCE)
 
 describe('printReportRows static content', () => {
+  it('names the three standard scenarios without a derivation claim (#408)', () => {
+    const bullet = renditeBullet(defaultAssumptions.returnScenarios)
+    // #408: the bullet must word the defaults as the standard set, not as
+    // the live list — the Rentenszenarien table already lists that.
+    expect(bullet?.body).toContain('Drei Standardszenarien (')
+    expect(bullet?.body).toContain('konservativ')
+    expect(bullet?.body).toContain('basis')
+    expect(bullet?.body).toContain('optimistisch')
+    // Default set has no `custom` scenario → no own-scenario clause.
+    expect(bullet?.body).not.toContain('eigenes Szenario')
+  })
+
+  it('describes return scenarios as nominal modelling assumptions without an external derivation', () => {
+    const bullet = renditeBullet(defaultAssumptions.returnScenarios)
+    expect(bullet?.body).toContain('nominal')
+    expect(bullet?.body).toContain('nicht extern validiert')
+    expect(bullet?.body).not.toContain('MSCI')
+    expect(bullet?.body).not.toContain('Hergeleitet')
+  })
+
+  it('appends the own-scenario clause only when the live set contains a custom scenario (#408)', () => {
+    const withCustom: ScenarioAssumptions['returnScenarios'] = [
+      ...defaultAssumptions.returnScenarios,
+      { id: 'custom', label: 'Eigenes', annualReturn: 0.06 },
+    ]
+    const bullet = renditeBullet(withCustom)
+    expect(bullet?.body).toContain(', ergänzt um ein eigenes Szenario')
+    expect(bullet?.body).toContain('im Plan ersetzt eine eigene Vertragsrendite den Szenariowert in allen drei Szenarien.')
+    // The clause sits inside the lead-in, before the nominal framing.
+    const body = bullet!.body
+    expect(body.indexOf('ergänzt um ein eigenes Szenario')).toBeLessThan(
+      body.indexOf('nominal'),
+    )
+    // The bullet still lists only the three standard rates, not the live set.
+    expect(body).not.toContain('Eigenes 6')
+  })
+
   it('does not import per-product after-tax lump-sum helpers (no tax-mode dispatch)', () => {
     // These four helpers are the canonical compare-mode tax routing
     // primitives. They are dispatched once in `exportProjection.ts` and

@@ -22,8 +22,7 @@ interface AppHeaderProps {
   editorial?: boolean
   /**
    * The resolved in-app view for route `/` (passed down from App.tsx's
-   * `calculatorView` state). Drives the "Vergleich" / "Mein Plan" label
-   * swap and disambiguates which tab lights up on `/` (dashboard vs
+   * `calculatorView` state). Disambiguates which tab lights up on `/` (plan vs
    * landing). Optional so the component renders for tests / SSR that
    * don't yet thread it through — defaults to Startseite-highlighted.
    */
@@ -33,25 +32,26 @@ interface AppHeaderProps {
 }
 
 const NAV_ITEM_IDS: ReadonlyArray<ChromeNavId> = [
+  'plan',
+  'compare',
   'home',
   'angaben',
-  'compare',
   'artikel',
   'method',
 ]
 
 /**
- * Render-time label for a nav tab id. The `compare` tab swaps between
- * "Vergleich" (compare-mode dashboard) and "Mein Plan" (combine-mode
- * dashboard) so the label always describes the destination the user is
- * about to land on. For a fresh user (`appView === 'landing'` or
- * undefined) it defaults to "Vergleich", since that is the more familiar
- * entry point and combine-mode users haven't picked their plan yet.
+ * Render-time label for a nav tab id. Every label is fixed: "Mein Plan" is
+ * always `/` and "Vergleich" is always `/vergleich`, whatever the saved mode.
+ * The pre-2D behaviour — one tab that renamed itself and changed destination
+ * with saved mode — is gone, because a label that means two different things
+ * cannot promise where a click lands.
  */
-function navItemLabel(id: ChromeNavId, appView: AppView | null | undefined): string {
+function navItemLabel(id: ChromeNavId): string {
   if (id === 'home') return 'Startseite'
   if (id === 'angaben') return 'Angaben'
-  if (id === 'compare') return appView === 'combine' ? 'Mein Plan' : 'Vergleich'
+  if (id === 'plan') return 'Mein Plan'
+  if (id === 'compare') return 'Vergleich'
   if (id === 'artikel') return 'Artikel'
   return 'Methode'
 }
@@ -64,10 +64,12 @@ function navItemLabel(id: ChromeNavId, appView: AppView | null | undefined): str
  *     dashboard. Without the override App.tsx would fall through to
  *     `appViewFromMode(detectSavedMode())` and show the saved dashboard —
  *     which contradicts the label.
- *   - `compare` (Vergleich / Mein Plan) routes to bare `/` with no
- *     override so App.tsx's saved-mode logic chooses between the compare
- *     dashboard, the combine dashboard, or the landing page for fresh
- *     users.
+ *   - `plan` (Mein Plan) routes to bare `/`, which renders the personal plan
+ *     (or its not-started state) for every saved mode.
+ *   - `compare` (Vergleich) routes to `/vergleich`, the independent
+ *     comparison journey. It reads compare-mode singleton state and never
+ *     writes the plan's workspace, so the two destinations cannot clobber
+ *     each other.
  *   - 'angaben', 'method', 'artikel' route to their dedicated paths.
  */
 function clickableTarget(id: ChromeNavId): NavTarget {
@@ -75,15 +77,16 @@ function clickableTarget(id: ChromeNavId): NavTarget {
   if (id === 'angaben') return { route: ROUTES.eingaben }
   if (id === 'method') return { route: ROUTES.methode }
   if (id === 'artikel') return { route: ROUTES.artikel }
-  // 'compare' — defer to saved-mode resolution in App.tsx.
+  if (id === 'compare') return { route: ROUTES.vergleich }
+  // 'plan'
   return { route: ROUTES.home }
 }
 
 /**
  * Top page chrome. Three internal viewport variants:
- *   - desktop: kicker + H1 + horizontal 5-tab nav.
+ *   - desktop: kicker + H1 + six destinations, plan and comparison first.
  *   - tablet:  same layout, smaller type + tighter padding.
- *   - phone:   brand + hamburger row only (bottom tab bar handles the 5-way
+ *   - phone:   brand + hamburger row only (bottom tab bar handles the two-way
  *              nav; hamburger opens MobileSheet for overflow links).
  *
  * R1.1: every nav tab now routes to a real target. The active-tab visual
@@ -135,6 +138,7 @@ export function AppHeader({ route, kicker, title, editorial, appView, navigate }
           onClose={() => setSheetOpen(false)}
           navigate={navigate}
           route={route}
+          appView={appView}
         />
       </>
     )
@@ -161,7 +165,7 @@ export function AppHeader({ route, kicker, title, editorial, appView, navigate }
                 key={id}
                 href={href}
                 aria-current={isActive ? 'page' : undefined}
-                className={`rw-app-header__nav-item${isActive ? ' rw-app-header__nav-item--active' : ''}`}
+                className={`rw-app-header__nav-item${id === 'plan' || id === 'compare' ? ' rw-app-header__nav-item--primary' : ''}${isActive ? ' rw-app-header__nav-item--active' : ''}`}
                 onClick={(event) => {
                   if (!shouldUseSpaNavigation(event)) return
                   event.preventDefault()
@@ -172,7 +176,7 @@ export function AppHeader({ route, kicker, title, editorial, appView, navigate }
                   }
                 }}
               >
-                {navItemLabel(id, appView)}
+                {navItemLabel(id)}
               </a>
             )
           })}

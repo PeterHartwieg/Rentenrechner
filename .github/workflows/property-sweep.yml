@@ -1,0 +1,101 @@
+name: property-sweep
+
+# Broader-than-PR property suite (issue #378). The PR suite runs inside
+# `npm run verify` with authored run counts and fixed seed base 378; this
+# workflow re-runs the SAME properties with a bounded larger multiplier for
+# extra confidence, plus the focused Stryker mutation pilot — deliberately
+# separate from verify, which never runs mutation testing.
+#
+# Every run echoes its effective configuration via `npm run properties:config`
+# (seed base + runs multiplier), so a failing property is replayable exactly:
+#   PROPERTY_RUNS_MULTIPLIER=<n> PROPERTY_SEED=<base> npm run test:properties
+
+on:
+  schedule:
+    # Weekly, Monday 04:37 UTC (off the hour to avoid the CI rush).
+    - cron: "37 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      runs_multiplier:
+        description: "Run-count multiplier (1 = PR suite, max 8)"
+        required: false
+        default: "5"
+      seed:
+        description: "Seed base (default 378; any integer 0..2147483647)"
+        required: false
+        default: "378"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: property-sweep-${{ github.event.schedule || 'manual' }}
+  cancel-in-progress: false
+
+jobs:
+  properties:
+    name: Property suite (broader sweep)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install deps
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+
+      - name: Report effective run configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROPERTY_RUNS_MULTIPLIER="${{ github.event.inputs.runs_multiplier || '5' }}" \
+          PROPERTY_SEED="${{ github.event.inputs.seed || '378' }}" \
+            npm run properties:config
+
+      - name: Run property suite (scaled)
+        shell: bash
+        run: |
+          set -euo pipefail
+          PROPERTY_RUNS_MULTIPLIER="${{ github.event.inputs.runs_multiplier || '5' }}" \
+          PROPERTY_SEED="${{ github.event.inputs.seed || '378' }}" \
+            npm run test:properties
+
+  mutation:
+    name: Mutation pilot (Stryker)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Separate job, separate runtime budget: mutation testing never runs as
+    # part of `npm run verify` or the property sweep.
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install deps
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci
+
+      - name: Run focused mutation pilot
+        run: npm run mutation:pilot
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: reports/mutation/
+          retention-days: 30

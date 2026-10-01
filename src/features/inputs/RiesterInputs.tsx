@@ -1,3 +1,4 @@
+import { CHILD_ALLOWANCE_CLAIM_HINT } from '../../content/terms'
 import '../../ui/forms.css'
 import type React from 'react'
 import type {
@@ -7,8 +8,11 @@ import type {
   RiesterFundingResult,
   ScenarioAssumptions,
 } from '../../domain'
+import { InfoTip } from '../../ui/InfoTip'
 import { NumberField } from '../../ui/NumberField'
 import { formatCurrency, formatPercent } from '../../utils/format'
+import { isSection10aEligible } from '../../engine/salaryPhaseFunding'
+import { activeRules } from '../../rules'
 import { useFeedbackTarget } from '../qa-feedback'
 
 type Props = {
@@ -24,6 +28,7 @@ export function RiesterInputs({
   assumptions,
   onAssumptionsChange,
   onSyncMonthlyContribution,
+  profile,
   riesterFunding,
   riesterProductResult,
 }: Props) {
@@ -32,6 +37,13 @@ export function RiesterInputs({
     label: 'Auszahlungsform (Riester)',
     precision: 'exact',
   })
+  // #363: outside the begünstigter Personenkreis there is no Zulage and no
+  // §10a deduction; the hint line says so instead of listing zero allowances.
+  const section10aEligible = isSection10aEligible(
+    assumptions.riester.eligibility,
+    riesterFunding.annualOwnContribution,
+    activeRules.riester.sockelbetrag,
+  )
   const erweitertParts: string[] = []
   if (assumptions.riester.eligibility.careerStarterBonusUsed) erweitertParts.push('Berufseinsteiger-Bonus erhalten')
   if (assumptions.riester.partialCapitalPct > 0) erweitertParts.push(`${(assumptions.riester.partialCapitalPct * 100).toFixed(0)} % Einmalbetrag`)
@@ -120,12 +132,41 @@ export function RiesterInputs({
           />
           <span>Mittelbar berechtigt (über Ehegatte)</span>
         </label>
+        {profile.childBirthYears.length > 0 && (
+          <div className="field field-inline">
+            <label className="field-inline">
+              <input
+                type="checkbox"
+                checked={assumptions.riester.eligibility.claimsChildAllowance ?? true}
+                onChange={(event) => {
+                  const checked = event.target.checked
+                  onAssumptionsChange((current) => ({
+                    ...current,
+                    riester: {
+                      ...current.riester,
+                      eligibility: {
+                        ...current.riester.eligibility,
+                        claimsChildAllowance: checked,
+                      },
+                    },
+                  }))
+                }}
+              />
+              <span>Kinderzulage in diesem Vertrag berücksichtigen</span>
+            </label>
+            <InfoTip text={CHILD_ALLOWANCE_CLAIM_HINT} />
+          </div>
+        )}
       </div>
 
       {riesterFunding.annualOwnContribution > 0 ? (
         <p className="field-hint">
           Eigenbeitrag: <strong>{formatCurrency(riesterFunding.monthlyOwnContribution, 0)}/Monat</strong>
-          {' '}· Grundzulage: <strong>{formatCurrency(riesterFunding.grundzulageAnnual, 0)}/Jahr</strong>
+          {' '}· {section10aEligible ? (
+            <>Grundzulage: <strong>{formatCurrency(riesterFunding.grundzulageAnnual, 0)}/Jahr</strong></>
+          ) : (
+            <span className="field-warning">Nicht förderberechtigt — keine Zulage, kein Steuervorteil (§10a)</span>
+          )}
           {riesterFunding.childAllowanceAnnual > 0 && (
             <> · Kinderzulage: <strong>{formatCurrency(riesterFunding.childAllowanceAnnual, 0)}/Jahr</strong></>
           )}
@@ -135,7 +176,7 @@ export function RiesterInputs({
           {riesterFunding.guenstigerpruefungBenefitAnnual > 0 && (
             <> · Günstigerprüfung: <strong>+{formatCurrency(riesterFunding.guenstigerpruefungBenefitAnnual, 0)}/Jahr</strong></>
           )}
-          {!riesterFunding.meetsMinContribution && (
+          {section10aEligible && !riesterFunding.meetsMinContribution && (
             <> · <span className="field-warning">
               Eigenbeitrag unter Mindesteigenbeitrag ({formatCurrency(riesterFunding.minEigenbeitragAnnual, 0)}/Jahr) — Zulagen werden anteilig ({formatPercent(riesterFunding.prorationFactor, 0)}) gewährt.
             </span></>
@@ -212,6 +253,27 @@ export function RiesterInputs({
           <span className="erweitert-assumption">{erweitertSummary}</span>
         </summary>
         <div className="erweitert-content">
+          <NumberField
+            label="Alter zu Beginn des ersten Beitragsjahres"
+            feedbackTargetId="inputs.riester.ageAtContractStart"
+            value={assumptions.riester.eligibility.ageAtContractStart}
+            min={0}
+            max={100}
+            step={1}
+            suffix="Jahre"
+            onChange={(value) =>
+              onAssumptionsChange((current) => ({
+                ...current,
+                riester: {
+                  ...current.riester,
+                  eligibility: {
+                    ...current.riester.eligibility,
+                    ageAtContractStart: Math.max(0, Math.round(Number(value))),
+                  },
+                },
+              }))
+            }
+          />
           <label className="field field-inline">
             <input
               type="checkbox"

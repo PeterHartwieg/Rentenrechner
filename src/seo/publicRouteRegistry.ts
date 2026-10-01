@@ -167,7 +167,7 @@ export const publicRouteRegistry = {
       'Modellrechner für die deutsche Altersvorsorge mit Werten 2026. Vergleicht alle ' +
       'Schicht-1- bis Schicht-3-Wege unter denselben Annahmen, ermittelt Rentenlücke und ' +
       'Nettoauszahlung.',
-    dateModified: '2026-05-06',
+    dateModified: '2026-09-11',
     datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,
@@ -329,7 +329,7 @@ export const publicRouteRegistry = {
     summary:
       'Modelliert Riester-Förderung (Zulagen plus Sonderausgabenabzug § 10a EStG mit ' +
       'Günstigerprüfung) und die Auszahlung nach § 22 Nr. 5 EStG. Werte 2026.',
-    dateModified: '2026-05-06',
+    dateModified: '2026-08-02',
     datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,
@@ -360,7 +360,7 @@ export const publicRouteRegistry = {
       'Modelliert das Altersvorsorgedepot (AVD), das neue Schicht-2-Depotprodukt ohne ' +
       'Versicherungsmantel: Anlage, eigener Förderpfad nach Altersvorsorgereformgesetz, ' +
       'nachgelagerte Auszahlung.',
-    dateModified: '2026-05-06',
+    dateModified: '2026-08-02',
     datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,
@@ -390,7 +390,7 @@ export const publicRouteRegistry = {
     summary:
       'Stellt Riester und Altersvorsorgedepot (AVD) gegenüber: Förderstruktur, Produktform ' +
       '(Versicherung oder Depot), Übertragungsmöglichkeiten und nachgelagerte Auszahlung.',
-    dateModified: '2026-05-06',
+    dateModified: '2026-08-02',
     datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,
@@ -528,7 +528,7 @@ export const publicRouteRegistry = {
     summary:
       'Portfolio-Modus für mehrere Vorsorgeverträge gleichzeitig (ETF, bAV, Riester, ' +
       'Basisrente, AVD, private Rente) mit Transfer-Ereignissen und Haushaltsperspektive.',
-    dateModified: '2026-05-06',
+    dateModified: '2026-08-02',
     datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: true,
@@ -586,6 +586,42 @@ export const publicRouteRegistry = {
   // C6, Q4); the demo seeds `visibleProducts` with the three primary products
   // (ETF + bAV + private Rente) so crawlers index a real, populated grid.
   // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Simplification 2C — `/vergleich`, the independent comparison journey.
+  // Setup and result on one page. Public and prerendered: it is the surface a
+  // "ETF oder bAV?" search should land on, and it works without any saved
+  // state (the page falls back to model defaults). `/` stays the personal
+  // plan; neither route writes the other's data.
+  // ---------------------------------------------------------------------------
+  '/vergleich': {
+    canonical: '/vergleich',
+    title: 'Sparformen vergleichen 2026 | RentenWiki.de',
+    metaDescription:
+      'Sparformen für die Altersvorsorge direkt vergleichen: ETF, bAV, Riester, ' +
+      'Basisrente, Altersvorsorgedepot und private Rente bei gleichem Eigenanteil. ' +
+      'Lokal im Browser, kein Account, Werte 2026.',
+    h1: 'Sparformen vergleichen',
+    summary:
+      'Vergleicht die gewählten Sparformen bei gleichem eigenem Monatsbeitrag und zeigt ' +
+      'für jede, was nach Kosten, Steuern und Krankenversicherung im Alter übrig bleibt. ' +
+      'Der Vergleich ist eigenständig — dein persönlicher Plan bleibt unverändert.',
+    dateModified: '2026-09-09',
+    datePublished: '2026-09-09',
+    robots: 'index,follow',
+    inSitemap: true,
+    jsonLdType: 'WebApplication',
+    relatedRoutes: [
+      '/',
+      '/vergleich/details',
+      '/altersvorsorgeprodukte-vergleichen',
+      '/etf-vs-bav',
+      '/methode',
+    ],
+    calculatorCta: {
+      label: 'Vergleich öffnen',
+      href: '/vergleich',
+    },
+  },
   '/vergleich/details': {
     canonical: '/vergleich/details',
     title: 'Wohin geht das Geld? Vergleich im Detail | RentenWiki.de',
@@ -703,12 +739,12 @@ export const publicRouteRegistry = {
     title: 'Datenschutzerklärung | RentenWiki.de',
     metaDescription:
       'Datenschutzerklärung von RentenWiki.de: lokale Speicherung im Browser, ' +
-      'keine Server-seitige Datenverarbeitung, kein Tracking, keine Cookies.',
+      'freiwillige Projektunterstützung und optionales QA-Feedback. Kein Tracking.',
     h1: 'Datenschutzerklärung',
     summary:
       'Beschreibt die Datenverarbeitung von RentenWiki.de: lokale Speicherung ' +
-      'im Browser, keine Server-Verarbeitung, kein Tracking, keine Cookies.',
-    dateModified: '2026-05-05',
+      'im Browser, freiwillige Projektunterstützung und optionales QA-Feedback.',
+    dateModified: '2026-09-09',
     datePublished: '2026-05-05',
     robots: 'index,follow',
     inSitemap: false,
@@ -756,6 +792,47 @@ export const PUBLIC_ROUTE_ENTRIES: readonly PublicRoute[] = Object.values(public
  * `sitemap.xml` (filtered by `inSitemap`).
  */
 export const PUBLIC_ROUTE_IDS = Object.keys(publicRouteRegistry) as readonly PublicRouteId[]
+
+/**
+ * Prerendered routes whose static HTML is guaranteed to equal the client's
+ * FIRST render, so `scripts/prerender.mjs` may stamp
+ * `data-rentenwiki-prerendered="1"` on `<div id="root">` and `main.tsx` may
+ * call `hydrateRoot` instead of `createRoot`.
+ *
+ * A route belongs here only when nothing in its rendered output depends on
+ * `localStorage`, the share-URL, the viewport or the clock. Excluded on
+ * purpose:
+ *
+ *   - `/` — `App` reads saved mode to pick LandingPage vs dashboard.
+ *   - `/eingaben`, `/eingaben/produkte` — `useCalculatorState` reads the
+ *     persisted compare profile/assumptions in its lazy initializer.
+ *   - `/vergleich` — `VergleichJourneyPage` renders the saved compare
+ *     selection (`assumptions.visibleProducts`), the saved budget anchor and
+ *     the saved profile trio; the prerender renders the defaults.
+ *   - `/vergleich/details` — filters by the saved `visibleProducts` and reads
+ *     `detectSavedMode()` for its demo/empty state.
+ *
+ * The list is exported (rather than inlined in the prerender script) so
+ * `src/prerenderHydration.test.tsx` can hydrate exactly the routes the build
+ * marks, and so the two can never drift apart.
+ */
+export const HYDRATE_STABLE_ROUTE_IDS: readonly PublicRouteId[] = [
+  '/404',
+  '/artikel',
+  '/methode',
+  '/rentenluecke-rechner',
+  '/bav-rechner',
+  '/etf-vs-bav',
+  '/riester-rechner',
+  '/altersvorsorgedepot-rechner',
+  '/riester-vs-altersvorsorgedepot',
+  '/basisrente-rechner',
+  '/private-rentenversicherung-rechner',
+  '/rente-netto-berechnen',
+  '/altersvorsorgeprodukte-vergleichen',
+  '/impressum',
+  '/datenschutz',
+] as const
 
 /**
  * Look up a registry entry by canonical path. Returns undefined for unknown

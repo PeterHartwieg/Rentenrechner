@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "Focused mutation-testing pilot (issue #378). Two engine modules only: §32a income-tax classification (tax.ts) and §20 Abs. 9 EStG Sparerpauschbetrag apportionment (portfolioAllowance.ts). Test runs are narrowed to their covering files via vitest.stryker.config.ts. This is deliberately NOT part of `npm run verify` — run it with `npm run mutation:pilot`.",
+  "packageManager": "npm",
+  "testRunner": "vitest",
+  "coverageAnalysis": "perTest",
+  "mutate": [
+    "src/engine/tax.ts",
+    "src/engine/portfolioAllowance.ts"
+  ],
+  "concurrency": 2,
+  "reporters": ["clear-text", "progress", "json"],
+  "vitest": {
+    "configFile": "vitest.stryker.config.ts"
+  },
+  "timeoutMS": 30000
+}

@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest'
 import { runComparison } from './comparison'
 import type { ComparisonResponse } from './comparison'
+import type { ScenarioAssumptions } from '../domain'
 import { defaultProfile, defaultAssumptions, DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR } from '../data/defaultScenario'
 import { normalizeMonthlyNettoBelastung, syncMonthlyContributions } from '../app/syncContributions'
 import { simulateRetirementComparison } from '../engine/simulate'
@@ -139,6 +140,33 @@ describe('runComparison', () => {
     expect(higherEtf).toBeDefined()
     expect(higherEtf!.capitalAtRetirement).toBeGreaterThan(defaultEtf!.capitalAtRetirement)
     expect(higherEtf!.netMonthlyPayout).toBeGreaterThan(defaultEtf!.netMonthlyPayout)
+  })
+
+  it('reports the derived anchor when AVD Eigenbeitrag is the contribution input', () => {
+    const monthlyOwn = 150
+    const originalTargetNet = 999
+    const assumptions: Pick<ScenarioAssumptions, 'visibleProducts' | 'contributionInput'> = {
+      visibleProducts: ['etf', 'bav', 'altersvorsorgedepot'],
+      contributionInput: { kind: 'avd-own' as const, monthlyOwn },
+    }
+    const ruleResult = resolveRuleYear()
+    if (!ruleResult.ok) throw new Error('resolveRuleYear failed')
+    const expected = syncMonthlyContributions(
+      originalTargetNet,
+      { ...defaultAssumptions, ...assumptions },
+      defaultProfile,
+      ruleResult.data.rules,
+    ).equalInputAmountEUR
+
+    const result = runComparison({
+      monthlyNettoBelastungEur: originalTargetNet,
+      assumptions,
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(expected).not.toBe(originalTargetNet)
+    expect(result.data.effectiveMonthlyNettoBelastungEur).toBe(expected)
   })
 
   // ---------------------------------------------------------------------------

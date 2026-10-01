@@ -1,0 +1,13 @@
+.contract-picker__choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.contract-picker__choice {
+  position: relative; display: flex; flex-direction: column; gap: 8px;
+  width: 100%; min-width: 0; padding: 22px 44px 22px 22px;
+  text-align: left; border: 1px solid var(--rw-rule); border-radius: 0;
+  color: var(--rw-ink); background: var(--rw-bg-paper);
+}
+.contract-picker__choice > span { font-size: 0.85rem; color: var(--rw-ink-soft); }
+.contract-picker__choice:hover { border-color: var(--rw-accent); background: var(--rw-bg-paper-soft); }
+.contract-picker__arrow { position: absolute; top: 22px; right: 18px; }
+@media (max-width: 650px) {
+  .contract-picker__choices { grid-template-columns: minmax(0, 1fr); }
+}

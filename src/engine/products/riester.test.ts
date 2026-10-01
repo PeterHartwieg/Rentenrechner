@@ -183,6 +183,66 @@ describe('calculateRiesterFunding — dated child allowance timing', () => {
   })
 })
 
+describe('calculateRiesterFunding — §85 Abs. 2 EStG Kinderzulage opt-out (#371)', () => {
+  // Two children: 2005 (pre-2008 rate) + 2010 (post-2007 rate), both under 25
+  // in the contribution year. 60 000 EUR salary: min(4% × 60 000, 2 100) = 2 100
+  // for both cases, so the Mindesteigenbeitrag delta is exactly the removed Zulage.
+  const profile = {
+    ...defaultProfile,
+    grossSalaryYear: 60_000,
+    childBirthYears: [2005, 2010],
+  }
+  const eligibility = {
+    directlyEligible: true,
+    ageAtContractStart: 30,
+    careerStarterBonusUsed: true,
+  }
+
+  function funding(claimsChildAllowance?: boolean) {
+    const riester = {
+      ...defaultRiesterAssumptions,
+      monthlyOwnContribution: 200, // 2 400 EUR/year ≥ Mindesteigenbeitrag in both cases
+      eligibility:
+        claimsChildAllowance === undefined
+          ? eligibility
+          : { ...eligibility, claimsChildAllowance },
+    }
+    return calculateRiesterFunding(
+      rules,
+      calculateSalaryResult(profile, rules),
+      riester,
+      profile,
+    )
+  }
+
+  it('grants the full Kinderzulage when the flag is undefined (default)', () => {
+    const rf = funding()
+    expect(rf.childAllowanceAnnual).toBe(
+      r.childAllowancePre2008 + r.childAllowancePost2007,
+    )
+  })
+
+  it('drops only the Kinderzulage when another parent holds the claim', () => {
+    const rf = funding(false)
+    expect(rf.childAllowanceAnnual).toBe(0)
+    expect(rf.grundzulageAnnual).toBe(r.grundzulage)
+    expect(rf.careerStarterBonusAnnual).toBe(0)
+    expect(rf.totalAllowanceAnnual).toBe(r.grundzulage)
+  })
+
+  it('raises the Mindesteigenbeitrag by exactly the removed Kinderzulage', () => {
+    const withClaim = funding()
+    const withoutClaim = funding(false)
+    const removed = withClaim.childAllowanceAnnual
+    expect(removed).toBeGreaterThan(0)
+    // Neither case hits the Sockelbetrag floor or prorates, so the §86
+    // requirement rises one-to-one with the lost allowance claim.
+    expect(withoutClaim.minEigenbeitragAnnual - withClaim.minEigenbeitragAnnual).toBeCloseTo(removed, 8)
+    expect(withClaim.meetsMinContribution).toBe(true)
+    expect(withoutClaim.meetsMinContribution).toBe(true)
+  })
+})
+
 describe('calculateRiesterFunding — proration when contribution below minimum', () => {
   // Profile: 75k EUR salary. minRequired = 1925 EUR/year.
   // annualOwnContribution = 600 EUR (50 EUR/month * 12) < 1925 -> proration applies.
@@ -250,6 +310,45 @@ describe('calculateRiesterFunding — career-starter bonus in first year', () =>
   it('total allowances include the bonus', () => {
     // grundzulage (175) + bonus (200) = 375 (no children in default profile)
     expect(rf.totalAllowanceAnnual).toBeCloseTo(375, 2)
+  })
+
+  it('compare-mode singleton applies the one-time bonus only in year one', () => {
+    const lowIncomeProfile = { ...defaultProfile, grossSalaryYear: 10_000 }
+    const comparison = simulateRetirementComparison(
+      lowIncomeProfile,
+      {
+        ...allVisibleAssumptions,
+        riester: riesterWithBonus,
+      },
+      rules,
+    )
+    const product = comparison.products.find(
+      (entry) => entry.productId === 'riester' && entry.scenarioId === 'basis',
+    )!
+    const yearTwoFunding = calculateRiesterFunding(
+      rules,
+      comparison.bavFunding.salaryWithBav,
+      riesterWithBonus,
+      lowIncomeProfile,
+      { contributionYear: rules.year + 1, isFirstContributionYear: false },
+    )
+
+    expect(comparison.riesterFunding.careerStarterBonusAnnual).toBe(
+      rules.riester.careerStarterBonus,
+    )
+    expect(yearTwoFunding.careerStarterBonusAnnual).toBe(0)
+    expect(product.rows[0].yearlyProductContribution).toBeCloseTo(
+      comparison.riesterFunding.annualOwnContribution +
+        comparison.riesterFunding.totalAllowanceAnnual +
+        comparison.riesterFunding.guenstigerpruefungBenefitAnnual,
+      8,
+    )
+    expect(product.rows[1].yearlyProductContribution).toBeCloseTo(
+      yearTwoFunding.annualOwnContribution +
+        yearTwoFunding.totalAllowanceAnnual +
+        yearTwoFunding.guenstigerpruefungBenefitAnnual,
+      8,
+    )
   })
 })
 
@@ -402,6 +501,66 @@ describe('calculateRiesterFunding — mittelbare Zulageberechtigung (§79 Satz 2
     const result = calculateRiesterFunding(rules, salary, noFlag, lowIncomeProfile)
     expect(result.grundzulageAnnual).toBe(0)
     expect(result.totalAllowanceAnnual).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// §10a eligibility gate (#363) — the Sonderausgabenabzug requires the saver to
+// belong to the begünstigter Personenkreis (§10a / §79 EStG). The §86
+// Mindesteigenbeitrag gates only the Zulage for directly eligible savers;
+// indirect eligibility itself requires the own-contribution minimum (§79 Satz 2 Nr. 4).
+// ---------------------------------------------------------------------------
+
+describe('calculateRiesterFunding — §10a eligibility gate (#363)', () => {
+  const riester = {
+    ...defaultRiesterAssumptions,
+    monthlyOwnContribution: 150, // 1 800 EUR/year
+    eligibility: {
+      directlyEligible: false,
+      ageAtContractStart: 30,
+      careerStarterBonusUsed: true,
+    },
+  }
+
+  it('grants no §10a deduction or Günstigerprüfung refund outside the begünstigter Personenkreis', () => {
+    const result = calculateRiesterFunding(rules, calculateSalaryResult(defaultProfile, rules), riester, defaultProfile)
+    expect(result.totalAllowanceAnnual).toBe(0)
+    expect(result.specialExpenseDeductibleAnnual).toBe(0)
+    expect(result.guenstigerpruefungBenefitAnnual).toBe(0)
+    expect(result.monthlyNetCost).toBe(riester.monthlyOwnContribution)
+  })
+
+  it.each([
+    { annualOwnContribution: 2.5 * 12, eligible: false },
+    { annualOwnContribution: rules.riester.sockelbetrag - 0.01, eligible: false },
+    { annualOwnContribution: rules.riester.sockelbetrag, eligible: true },
+  ])('gates mittelbar §10a at the own-contribution minimum: $annualOwnContribution/year', ({ annualOwnContribution, eligible }) => {
+    const contribution = {
+      ...riester,
+      monthlyOwnContribution: annualOwnContribution / 12,
+      eligibility: { ...riester.eligibility, indirectSpouseEligible: true },
+    }
+    const result = calculateRiesterFunding(rules, calculateSalaryResult(defaultProfile, rules), contribution, defaultProfile)
+    if (eligible) {
+      expect(result.specialExpenseDeductibleAnnual).toBeCloseTo(annualOwnContribution + result.totalAllowanceAnnual, 8)
+      expect(result.totalAllowanceAnnual).toBeGreaterThan(0)
+    } else {
+      expect(result.specialExpenseDeductibleAnnual).toBe(0)
+      expect(result.guenstigerpruefungBenefitAnnual).toBe(0)
+      expect(result.totalAllowanceAnnual).toBe(0)
+      expect(result.monthlyNetCost).toBe(contribution.monthlyOwnContribution)
+    }
+  })
+
+  it('keeps the mittelbar spouse inside the gate (§79 Satz 2)', () => {
+    const mittelbar = {
+      ...riester,
+      eligibility: { ...riester.eligibility, indirectSpouseEligible: true },
+    }
+    const result = calculateRiesterFunding(rules, calculateSalaryResult(defaultProfile, rules), mittelbar, defaultProfile)
+    // base = min(1 800 + 175 Grundzulage, 2 100) = 1 975
+    expect(result.specialExpenseDeductibleAnnual).toBeCloseTo(1_975, 4)
+    expect(result.guenstigerpruefungBenefitAnnual).toBeGreaterThan(0)
   })
 })
 

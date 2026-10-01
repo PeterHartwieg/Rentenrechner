@@ -102,6 +102,29 @@ describe('buildWendepunkte', () => {
     expect(rows.find((row) => row.kind === 'modell-ende')?.age).toBe(85)
   })
 
+  it('names an ETF drawdown end as a planned withdrawal rather than a contract expiry', () => {
+    const r = lifecycleResult('etf', { payoutEndAge: 90 })
+    const data = buildLifecycleLineSeries([r], 40, 67, 90)
+    const rows = buildWendepunkte({ selectedResults: [r], data, startAge: 40, retirementAge: 67, retirementEndAge: 90 })
+    expect(rows.find((row) => row.kind === 'modell-ende')?.label).toBe('Ende der geplanten ETF-Entnahme')
+  })
+
+  it('calls a lifelong pension endpoint the end of the viewed period', () => {
+    const r = lifecycleResult('basisrente')
+    const data = buildLifecycleLineSeries([r], 40, 67, 90)
+    const rows = buildWendepunkte({ selectedResults: [r], data, startAge: 40, retirementAge: 67, retirementEndAge: 90 })
+    expect(rows.find((row) => row.kind === 'modell-ende')?.label).toBe('Ende des betrachteten Zeitraums')
+  })
+
+  it('calls a finite payout endpoint the planned end only when it matches the selected age', () => {
+    const r = lifecycleResult('versicherung', { payoutEndAge: 85 })
+    const data = buildLifecycleLineSeries([r], 40, 67, 90)
+    const rows = buildWendepunkte({ selectedResults: [r], data, startAge: 40, retirementAge: 67, retirementEndAge: 90 })
+    expect(rows.find((row) => row.kind === 'modell-ende')?.label).toBe('Ende des betrachteten Zeitraums')
+    const matching = buildWendepunkte({ selectedResults: [r], data, startAge: 40, retirementAge: 67, retirementEndAge: 85 })
+    expect(matching.find((row) => row.kind === 'modell-ende')?.label).toBe('Ende der geplanten Auszahlungen')
+  })
+
   it('reports null break-even age when payouts never reach paid-in within the window', () => {
     // Very low payouts that never overtake contributions — payout rate is
     // 1 EUR/year net, contributions are 100 EUR/month for 30 years.

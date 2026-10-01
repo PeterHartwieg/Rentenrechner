@@ -389,7 +389,7 @@ describe('BreakEvenChart — leaf-level legend items (issue 13)', () => {
     expect(el).not.toBeNull()
   })
 
-  it('all five legend items are individually selectable', () => {
+  it('the three line items are always selectable; marker items only when their marker is drawn', () => {
     const { container } = render(
       <QaFeedbackProvider>
         <BreakEvenChart {...BREAK_EVEN_PROPS} />
@@ -399,12 +399,14 @@ describe('BreakEvenChart — leaf-level legend items (issue 13)', () => {
       'results.breakEvenChart.legend.nettoEingezahlt',
       'results.breakEvenChart.legend.restkapital',
       'results.breakEvenChart.legend.nettoAusgezahlt',
-      'results.breakEvenChart.legend.breakEven',
-      'results.breakEvenChart.legend.leibrenteCrossover',
     ]
     for (const id of ids) {
       expect(container.querySelector(`[data-qa-target="${id}"]`)).not.toBeNull()
     }
+    // A single product cannot overtake itself, so the legend carries no
+    // "Leibrente überholt Kapitalverzehr" row for this fixture (audit F19:
+    // legend entries are filtered to what is actually drawn).
+    expect(container.querySelector('[data-qa-target="results.breakEvenChart.legend.leibrenteCrossover"]')).toBeNull()
   })
 
   it('product picker chip carries data-qa-target="results.breakEvenChart.picker.etf"', () => {
@@ -675,6 +677,7 @@ const AVD_FUNDING: AltersvorsorgedepotFundingResult = {
 
 /** Minimal stub for statutoryPensionResult */
 const GRV_RESULT = {
+  pkvRetirementMonthlyCost: 0,
   projectedEntgeltpunkte: 35,
   grossMonthlyPension: 1400,
   netMonthlyPension: 1200,
@@ -798,9 +801,23 @@ describe('Issue 16: AltersvorsorgedepotInputs — leaf-level QA targets present'
         />
       </QaFeedbackProvider>,
     )
-    expect(container.querySelector('[data-qa-target="inputs.avd.monthlyNetCost"]')).not.toBeNull()
+    // Renamed with the contribution redesign: the panel's primary field is now
+    // the Eigenbeitrag (the statutory AVD thresholds apply to it), not the
+    // derived net cost.
+    expect(
+      container.querySelector('[data-qa-target="inputs.avd.monthlyOwnContribution"]'),
+    ).not.toBeNull()
     expect(container.querySelector('[data-qa-target="inputs.avd.subtype"]')).not.toBeNull()
     expect(container.querySelector('[data-qa-target="inputs.avd.payoutMode"]')).not.toBeNull()
+    // Beitragsstufen carry the card index, never the amount — QA target ids
+    // reach the report unredacted, so a value here would leak the contribution.
+    const choices = container.querySelectorAll(
+      '[data-qa-target^="inputs.avd.monthlyOwnContribution.choice."]',
+    )
+    expect(choices.length).toBeGreaterThan(0)
+    for (const el of choices) {
+      expect(el.getAttribute('data-qa-target')).toMatch(/\.choice\.\d+$/)
+    }
   })
 
   it('QA targets are absent when QA mode is off', () => {

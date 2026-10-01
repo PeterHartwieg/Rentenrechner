@@ -40,7 +40,11 @@ import {
   netCertifiedPensionPayout,
 } from './certifiedPensionPayout'
 import type { RetirementHealthStatus } from './retirementPayout'
-import { calculateAllowanceExcessBenefit, calculateSalaryPhaseTaxDelta } from './salaryPhaseFunding'
+import {
+  calculateAllowanceExcessBenefit,
+  calculateSalaryPhaseTaxDelta,
+  isSection10aEligible,
+} from './salaryPhaseFunding'
 import { childBirthYearsUnder25InYear } from './childEligibility'
 
 // ---------------------------------------------------------------------------
@@ -86,12 +90,17 @@ export function computeRiesterChildAllowance(
  *  - directlyEligible (§79 Satz 1 EStG): Grundzulage + Kinderzulage + Berufseinsteiger-Bonus.
  *  - indirectSpouseEligible only (§79 Satz 2 EStG): Grundzulage. Kinderzulage is granted
  *    when `profile.childBirthYears` is populated, on the assumption that attribution
- *    has been transferred to this contract via §85 Abs. 2 Satz 2 EStG (the default
- *    attribution under Satz 1 is to the mother; Satz 2 allows transfer by joint
- *    application). The ZfA Riester-Rechner makes the same assumption: kids entered on
+ *    follows the Kindergeld entitlement or spouses have assigned it to the other
+ *    parent on joint application (§85 Abs. 2 EStG).
+ *    The ZfA Riester-Rechner makes the same assumption: kids entered on
  *    the indirect spouse's input form are paid out to that contract. No Berufseinsteiger-
  *    Bonus (§84 Satz 2 limits it to "unmittelbar Zulageberechtigte").
  *  - Neither: zero.
+ *
+ * §85 Abs. 2 EStG one-parent rule: `eligibility.claimsChildAllowance === false`
+ * suppresses the Kinderzulage on this contract (another person holds the claim).
+ * The §86 Mindesteigenbeitrag is derived from the reduced allowance total below,
+ * so it rises by exactly the removed Zulage — no separate subtraction.
  */
 function computeFullRiesterAllowances(
   riester: RiesterAssumptions,
@@ -111,7 +120,9 @@ function computeFullRiesterAllowances(
 
   const grundzulage = e.directlyEligible || indirectOnly ? r.grundzulage : 0
 
-  const childAllowance = e.directlyEligible || indirectOnly
+  const childAllowance =
+    (e.directlyEligible || indirectOnly) &&
+    e.claimsChildAllowance !== false
     ? (() => {
         const eligibleChildBirthYears = childBirthYearsUnder25InYear(
           profile.childBirthYears,
@@ -235,11 +246,21 @@ export function calculateRiesterFunding(
 
   // -------------------------------------------------------------------------
   // 4. §10a EStG Sonderausgabenabzug: capped at 2,100 EUR including allowances.
+  //    Step 0: the deduction requires the begünstigter Personenkreis
+  //    (§10a / §79 EStG) — a saver who is neither directly nor mittelbar
+  //    eligible gets no Sonderausgabenabzug at all. Indirect eligibility
+  //    requires the minimum own contribution (§79 Satz 2 Nr. 4).
   // -------------------------------------------------------------------------
-  const specialExpenseDeductibleAnnual = Math.min(
-    annualOwnContribution + totalAllowanceAnnual,
-    r.annualCapInclAllowances,
+  const specialExpenseDeductibleAnnual = isSection10aEligible(
+    riester.eligibility,
+    annualOwnContribution,
+    r.sockelbetrag,
   )
+    ? Math.min(
+        annualOwnContribution + totalAllowanceAnnual,
+        r.annualCapInclAllowances,
+      )
+    : 0
 
   // -------------------------------------------------------------------------
   // 5. Günstigerprüfung: compare income-tax saving from §10a deduction against
@@ -283,6 +304,48 @@ export function calculateRiesterFunding(
     specialExpenseDeductibleAnnual,
     guenstigerpruefungBenefitAnnual,
     monthlyNetCost,
+  }
+}
+
+/**
+ * Allocates one household Riester allowance/tax calculation back to a single
+ * contract while preserving that contract's own minimum-contribution fields.
+ * One recipient receives the household allowance fields; every contract gets
+ * its pro-rata share of the household §10a tax benefit.
+ */
+export function allocateRiesterHouseholdFunding(
+  ownFunding: RiesterFundingResult,
+  householdFunding: RiesterFundingResult,
+  receivesPortfolioAllowance: boolean,
+  portfolioTaxBenefitShare: number,
+): RiesterFundingResult {
+  const allocatedTaxBenefitAnnual =
+    householdFunding.guenstigerpruefungBenefitAnnual * portfolioTaxBenefitShare
+  const allocatedSpecialExpenseAnnual =
+    householdFunding.specialExpenseDeductibleAnnual * portfolioTaxBenefitShare
+  return {
+    ...ownFunding,
+    grundzulageAnnual:
+      receivesPortfolioAllowance ? householdFunding.grundzulageAnnual : 0,
+    childAllowanceAnnual:
+      receivesPortfolioAllowance ? householdFunding.childAllowanceAnnual : 0,
+    careerStarterBonusAnnual:
+      receivesPortfolioAllowance ? householdFunding.careerStarterBonusAnnual : 0,
+    totalAllowanceAnnual:
+      receivesPortfolioAllowance ? householdFunding.totalAllowanceAnnual : 0,
+    ...(receivesPortfolioAllowance
+      ? {
+          minEigenbeitragAnnual: householdFunding.minEigenbeitragAnnual,
+          meetsMinContribution: householdFunding.meetsMinContribution,
+          prorationFactor: householdFunding.prorationFactor,
+        }
+      : {}),
+    specialExpenseDeductibleAnnual: allocatedSpecialExpenseAnnual,
+    guenstigerpruefungBenefitAnnual: allocatedTaxBenefitAnnual,
+    monthlyNetCost: Math.max(
+      0,
+      ownFunding.monthlyOwnContribution - allocatedTaxBenefitAnnual / 12,
+    ),
   }
 }
 

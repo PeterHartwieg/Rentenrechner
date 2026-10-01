@@ -13,22 +13,27 @@
  * on first load when the workspace was migrated from an older shape.
  */
 
+import { CHILD_ALLOWANCE_CLAIM_HINT } from '../../../content/terms'
+import { InfoTip } from '../../../ui/InfoTip'
+import type { PersonalProfile } from '../../../domain'
 import type { RiesterInstance } from '../../../domain/instances'
 import { InvSelect } from '../../inventory/fields'
 import { PAYOUT_OPTIONS_NO_KAPITAL } from '../../inventory/fieldHelpers'
 import {
   CombineField,
   DraftNumberInput,
+  CombineNativeInput,
   CommonContractFields,
 } from './_shared'
 import { diffInstancePatch } from './instancePatch'
 
 interface Props {
   instance: RiesterInstance
+  profile: PersonalProfile
   patchInstance: (patch: Partial<RiesterInstance>) => void
 }
 
-export function RiesterInstanceInputs({ instance, patchInstance }: Props) {
+export function RiesterInstanceInputs({ instance, patchInstance, profile }: Props) {
   const onCommonChange = (next: RiesterInstance) => {
     // Keep existingCapital in sync with currentValueEUR per the legacy
     // sidebar's behaviour (see CombineDashboardSidebar.RiesterInstanceCard
@@ -53,6 +58,59 @@ export function RiesterInstanceInputs({ instance, patchInstance }: Props) {
         disabled={instance.status === 'paid_up'}
         onCommit={(v) => patchInstance({ monthlyOwnContribution: v })}
       />
+      <DraftNumberInput
+        label="Alter zu Beginn des ersten Beitragsjahres"
+        value={instance.eligibility.ageAtContractStart}
+        min={0}
+        max={100}
+        step={1}
+        onCommit={(v) =>
+          patchInstance({
+            eligibility: {
+              ...instance.eligibility,
+              ageAtContractStart: Math.max(0, Math.round(v)),
+            },
+          })
+        }
+      />
+      <CombineField label="Berufseinsteiger-Bonus">
+        <label className="combine-checkbox-field">
+          <CombineNativeInput
+            type="checkbox"
+            checked={instance.eligibility.careerStarterBonusUsed}
+            onChange={(e) =>
+              patchInstance({
+                eligibility: {
+                  ...instance.eligibility,
+                  careerStarterBonusUsed: (e.target as HTMLInputElement).checked,
+                },
+              })
+            }
+          />
+          bereits erhalten
+        </label>
+      </CombineField>
+      {profile.childBirthYears.length > 0 && (
+        <CombineField
+          label="Kinderzulage in diesem Vertrag berücksichtigen"
+          labelSuffix={<InfoTip text={CHILD_ALLOWANCE_CLAIM_HINT} />}
+        >
+          <label className="combine-checkbox-field">
+            <CombineNativeInput
+              type="checkbox"
+              checked={instance.eligibility.claimsChildAllowance ?? true}
+              onChange={(e) =>
+                patchInstance({
+                  eligibility: {
+                    ...instance.eligibility,
+                    claimsChildAllowance: (e.target as HTMLInputElement).checked,
+                  },
+                })
+              }
+            />
+          </label>
+        </CombineField>
+      )}
       <CombineField label="Auszahlungsform">
         <InvSelect
           value={instance.payoutMode}

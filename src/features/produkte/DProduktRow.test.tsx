@@ -45,15 +45,15 @@ describe('DProduktRow — visual contract', () => {
     const { getByText } = render(
       <DProduktRow
         kind="DRV · Schicht 1 · Pflicht"
-        title="Rentenauskunft DRV"
-        fields={[{ key: 'Stand', value: '05 / 2026' }]}
-        primary="PDF erneut hochladen"
-        accent="Anpassung der Werte überschreibt die Annahme aus der DRV-PDF."
+        title="Gesetzliche Rentenversicherung"
+        fields={[{ key: 'Berechnungsstand', value: 'Wertejahr 2026' }]}
+        primary="Manuell überschreiben"
+        accent="Manuelle Eingaben überschreiben die Schätzung. Die Prognose bleibt eine Schätzung."
       />,
     )
     expect(
       getByText(
-        'Anpassung der Werte überschreibt die Annahme aus der DRV-PDF.',
+        'Manuelle Eingaben überschreiben die Schätzung. Die Prognose bleibt eine Schätzung.',
       ),
     ).toBeTruthy()
   })
@@ -68,6 +68,17 @@ describe('DProduktRow — visual contract', () => {
       />,
     )
     expect(container.querySelector('.d-produkt-row__status')).toBeNull()
+  })
+
+  it('omits the primary CTA entirely when `primary` is not provided', () => {
+    // The combine-mode DRV card renders no primary affordance when the
+    // disclosure behind the edit action cannot mount — the aside must not
+    // show a dead button.
+    const { container, queryByRole } = render(
+      <DProduktRow kind="DRV" title="T" fields={[]} />,
+    )
+    expect(queryByRole('button', { name: 'Bearbeiten' })).toBeNull()
+    expect(container.querySelectorAll('.d-produkt-row__aside-actions button').length).toBe(0)
   })
 })
 

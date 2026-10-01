@@ -31,6 +31,7 @@ import type {
   InstanceCommon,
   TransferEvent,
 } from '../domain/instances'
+import type { GermanRules } from '../domain/rules'
 import type { ProductId } from '../domain/products/common'
 import { deepCloneScenario } from './portfolioState'
 import { runRules, type Atom } from './recommendations'
@@ -38,6 +39,10 @@ import type { AtomId } from './recommendations'
 import { avdDraftToInstance } from '../features/inventory/inventoryHelpers'
 import { newInstanceId } from './workspaceIdentity'
 import { de2026Rules } from '../rules/de2026'
+import { buildPortfolioFunding } from '../engine/portfolioFunding'
+import { defaultHaircutFor } from './contractPolicy'
+
+export { DEFAULT_HAIRCUT_BY_PREFIX, defaultHaircutFor } from './contractPolicy'
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -129,21 +134,6 @@ export type WorkspaceDelta =
  * ETF 0 %:       ETF index funds have no surrender penalty (liquid market).
  * Basisrente:    capital payout legally prohibited — never generate a kuendigen option.
  */
-export const DEFAULT_HAIRCUT_BY_PREFIX: Record<string, number> = {
-  'versicherung-': 0.10, // pAV
-  'bav-': 0.05,           // bAV
-  'riester-': 0.15,       // Riester
-  'altersvorsorgedepot-': 0.10, // AVD
-  'etf-': 0.00,           // ETF (no penalty)
-}
-
-export function defaultHaircutFor(instanceId: string): number {
-  for (const [prefix, pct] of Object.entries(DEFAULT_HAIRCUT_BY_PREFIX)) {
-    if (instanceId.startsWith(prefix)) return pct
-  }
-  return 0.10 // fallback
-}
-
 // ---------------------------------------------------------------------------
 // Product type detection helpers
 // ---------------------------------------------------------------------------
@@ -372,22 +362,65 @@ export function defaultBeitragErhoehenEUR(currentMonthlyEUR: number): number {
   return Math.round((currentMonthlyEUR * 1.5) / 10) * 10
 }
 
-/**
- * Annual statutory funding cap for each product slot.
- * Insurance and ETF have no relevant statutory cap → Infinity.
- */
-function fundingCapAnnualFor(slot: ProductSlot): number {
-  switch (slot) {
-    case 'bav':
-      return de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.taxFreePctOfPensionCap
-    case 'basisrente':
-      return de2026Rules.basisrente.schicht1CapSingle
-    case 'riester':
-      return 2_100
-    case 'altersvorsorgedepot':
-      return de2026Rules.altersvorsorgedepot.contractContributionCapAnnual
-    default:
-      return Infinity
+function prospectiveFundingCap(
+  workspace: Workspace,
+  slot: ProductSlot,
+  instanceId: string,
+  newMonthlyEUR: number,
+  rules: GermanRules,
+): {
+  capAnnualEUR: number
+  proposedAnnualEUR: number
+  householdRequestedAnnualEUR: number
+  constrained: boolean
+} | null {
+  if (slot === 'etf' || slot === 'insurance') return null
+
+  const baseline = deepCloneScenario(workspace.baseline)
+  const assumptions = baseline.assumptions
+  if (slot === 'bav') {
+    assumptions.bav = assumptions.bav.map((instance) =>
+      instance.instanceId === instanceId
+        ? { ...instance, status: 'active', monthlyGrossConversion: newMonthlyEUR }
+        : instance,
+    )
+  } else if (slot === 'basisrente') {
+    assumptions.basisrente = assumptions.basisrente.map((instance) =>
+      instance.instanceId === instanceId
+        ? { ...instance, status: 'active', monthlyGrossContribution: newMonthlyEUR }
+        : instance,
+    )
+  } else if (slot === 'altersvorsorgedepot') {
+    assumptions.altersvorsorgedepot = assumptions.altersvorsorgedepot.map((instance) =>
+      instance.instanceId === instanceId
+        ? { ...instance, status: 'active', monthlyOwnContribution: newMonthlyEUR }
+        : instance,
+    )
+  } else {
+    assumptions.riester = assumptions.riester.map((instance) =>
+      instance.instanceId === instanceId
+        ? { ...instance, status: 'active', monthlyOwnContribution: newMonthlyEUR }
+        : instance,
+    )
+  }
+
+  const prospective = buildPortfolioFunding(
+    { ...workspace, baseline },
+    rules,
+  )
+  const headroom = slot === 'bav'
+    ? prospective.headroom.bav
+    : slot === 'basisrente'
+      ? prospective.headroom.basisrente
+      : slot === 'riester'
+        ? prospective.headroom.riester
+        : prospective.headroom.altersvorsorgedepotByInstanceId[instanceId]
+  if (!headroom) return null
+  return {
+    capAnnualEUR: headroom.capAnnual,
+    proposedAnnualEUR: newMonthlyEUR * 12,
+    householdRequestedAnnualEUR: headroom.requestedAnnual,
+    constrained: headroom.constrained,
   }
 }
 
@@ -397,15 +430,15 @@ function fundingCapAnnualFor(slot: ProductSlot): number {
  * Returns `null` when the instance has `status === 'surrendered'` or
  * `status === 'offered'` — those contracts cannot receive new contributions.
  *
- * Emits `funding_cap_hit` (priority `high`) when `newMonthlyEUR × 12`
- * exceeds the relevant statutory cap.  The applier writes `newMonthlyEUR`
- * verbatim — no auto-clamp — so the simulation naturally reflects cap
- * consequences (lost Zulagen, no §3 Nr. 63 deferral on excess, etc.).
+ * Emits `funding_cap_hit` (priority `high`) when the prospective portfolio
+ * funding pass constrains the increase. The applier writes `newMonthlyEUR`
+ * verbatim — no auto-clamp — so simulation reflects the cap consequence.
  */
 export function beitragErhoehenWhatIf(
   workspace: Workspace,
   instanceId: string,
   newMonthlyEUR: number,
+  rules: GermanRules = de2026Rules,
 ): ContractDecision | null {
   const instance = findInstanceById(workspace, instanceId)
   if (!instance) return null
@@ -433,15 +466,22 @@ export function beitragErhoehenWhatIf(
   // Suppress non-increases: proposed amount must be strictly above the current one.
   if (newMonthlyEUR <= oldEUR) return null
 
-  // Funding-cap check.
+  // Funding-cap check. The prospective workspace goes through the same
+  // portfolio funding pass as combine simulation, so other contracts,
+  // employer bAV contributions, pension-system contributions, and allowances
+  // are part of the warning.
   const atoms: Atom[] = []
-  const capAnnualEUR = fundingCapAnnualFor(slot)
-  const proposedAnnualEUR = newMonthlyEUR * 12
-  if (isFinite(capAnnualEUR) && proposedAnnualEUR > capAnnualEUR) {
+  const cap = prospectiveFundingCap(workspace, slot, instanceId, newMonthlyEUR, rules)
+  if (cap?.constrained) {
     atoms.push({
       id: 'funding_cap_hit',
       priority: 'high',
-      context: { instanceId, capAnnualEUR, proposedAnnualEUR },
+      context: {
+        instanceId,
+        capAnnualEUR: cap.capAnnualEUR,
+        proposedAnnualEUR: cap.proposedAnnualEUR,
+        householdRequestedAnnualEUR: cap.householdRequestedAnnualEUR,
+      },
     })
   }
 
@@ -612,16 +652,12 @@ export function kuendigenWhatIf(
  *   - Riester → AVD:              certified (AltZertG §1 Abs. 1 Nr. 4 explicit transfer path).
  *                                  If no AVD exists: emits a virtual "Neuen AVD anlegen" target.
  *   - AVD → Riester:              NOT allowed (AltZertG only allows Riester→AVD, not reverse).
- *   - AVD → AVD:                  REMOVED — no certified-transfer path between same-type AltZertG
- *                                  contracts; surrender_reinvest into certified products is
- *                                  validator-rejected (CERTIFIED_TARGET_PRODUCTS in scenarioSchema).
+ *   - AVD → AVD:                  certified provider/contract change (§3 Nr. 55c EStG).
  *   - bAV → bAV (same DFW):       certified (§4 BetrAVG Übertragung).
  *   - bAV → bAV (diff DFW):       REMOVED — cross-DFW is a surrender + new contribution, not a
  *                                  transfer; validator rejects surrender_reinvest into bAV.
  *   - Basisrente → Basisrente:    certified (§10 Abs. 2 Satz 3 EStG provider change).
- *   - Riester → Riester:          REMOVED — no statutory transfer mechanism; user must surrender
- *                                  + start fresh. Validator would reject surrender_reinvest into
- *                                  a certified product.
+ *   - Riester → Riester:          certified provider/contract change (§3 Nr. 55c EStG).
  *   - pAV → pAV:                  REMOVED — surrender_reinvest into pAV would bypass that
  *                                  product's own contribution path; validator rejects it.
  *   - pAV → ETF:                  surrender_reinvest (valid; ETF is not a certified product).
@@ -646,8 +682,8 @@ export function compatibleTransferTargets(
     return targets
   }
 
-  // Riester source: AVD instances are certified (AltZertG); surrender_reinvest only into ETF.
-  // Riester→Riester and Riester→other certified products are excluded (validator-rejected).
+  // Riester source: same-product provider changes and Riester→AVD are certified;
+  // surrender_reinvest is available only into ETF.
   if (sourceSlot === 'riester') {
     const activeAvd = wsa.altersvorsorgedepot.filter((i) => i.status !== 'surrendered' && i.status !== 'offered')
     if (activeAvd.length > 0) {
@@ -658,6 +694,12 @@ export function compatibleTransferTargets(
       // No AVD exists yet — offer a virtual "Neuen AVD anlegen" target.
       targets.push({ kind: 'create_new', productId: 'altersvorsorgedepot', eventType: 'certified' })
     }
+    // Keep the reform's Riester→AVD path ahead of provider-change targets: the
+    // decision UI shows only the first two transfer cards.
+    for (const inst of wsa.riester) {
+      if (inst.instanceId === sourceId || inst.status === 'surrendered' || inst.status === 'offered') continue
+      targets.push({ kind: 'existing', targetInstance: inst, eventType: 'certified' })
+    }
     // Riester → ETF: surrender_reinvest is valid (ETF is not a certified product).
     for (const inst of wsa.etf) {
       if (inst.status === 'surrendered' || inst.status === 'offered') continue
@@ -666,10 +708,13 @@ export function compatibleTransferTargets(
     return targets
   }
 
-  // AVD source: AVD → Riester NOT allowed per AltZertG.
-  // AVD → other AVD and AVD → certified products excluded (validator-rejected surrender_reinvest).
-  // No valid certified or surrender_reinvest transfer targets for AVD.
+  // AVD source: same-product provider changes are certified. AVD → Riester
+  // remains excluded; the reform does not permit a return to the old regime.
   if (sourceSlot === 'altersvorsorgedepot') {
+    for (const inst of wsa.altersvorsorgedepot) {
+      if (inst.instanceId === sourceId || inst.status === 'surrendered' || inst.status === 'offered') continue
+      targets.push({ kind: 'existing', targetInstance: inst, eventType: 'certified' })
+    }
     return targets
   }
 
@@ -937,6 +982,10 @@ function createMinimalInstance(
  *   basisrente       → `monthlyGrossContribution`
  *   altersvorsorgedepot → `monthlyOwnContribution`
  *   riester          → `monthlyOwnContribution`
+ *
+ * Applying a positive contribution decision also reactivates a paid-up
+ * instance. The prospective funding pass evaluates the same transition, so
+ * persisted state and the preview must not diverge.
  */
 function applyIncreaseContribution(
   wsa: Workspace['baseline']['assumptions'],
@@ -947,33 +996,33 @@ function applyIncreaseContribution(
 
   if (slot === 'bav') {
     const idx = wsa.bav.findIndex((i) => i.instanceId === instanceId)
-    if (idx >= 0) {
-      wsa.bav[idx] = { ...wsa.bav[idx], monthlyGrossConversion: newMonthlyEUR }
+    if (idx >= 0 && (wsa.bav[idx].status === 'active' || wsa.bav[idx].status === 'paid_up')) {
+      wsa.bav[idx] = { ...wsa.bav[idx], status: 'active', monthlyGrossConversion: newMonthlyEUR }
     }
   } else if (slot === 'etf') {
     const idx = wsa.etf.findIndex((i) => i.instanceId === instanceId)
-    if (idx >= 0) {
-      wsa.etf[idx] = { ...wsa.etf[idx], monthlyContribution: newMonthlyEUR }
+    if (idx >= 0 && (wsa.etf[idx].status === 'active' || wsa.etf[idx].status === 'paid_up')) {
+      wsa.etf[idx] = { ...wsa.etf[idx], status: 'active', monthlyContribution: newMonthlyEUR }
     }
   } else if (slot === 'insurance') {
     const idx = wsa.insurance.findIndex((i) => i.instanceId === instanceId)
-    if (idx >= 0) {
-      wsa.insurance[idx] = { ...wsa.insurance[idx], monthlyContribution: newMonthlyEUR }
+    if (idx >= 0 && (wsa.insurance[idx].status === 'active' || wsa.insurance[idx].status === 'paid_up')) {
+      wsa.insurance[idx] = { ...wsa.insurance[idx], status: 'active', monthlyContribution: newMonthlyEUR }
     }
   } else if (slot === 'basisrente') {
     const idx = wsa.basisrente.findIndex((i) => i.instanceId === instanceId)
-    if (idx >= 0) {
-      wsa.basisrente[idx] = { ...wsa.basisrente[idx], monthlyGrossContribution: newMonthlyEUR }
+    if (idx >= 0 && (wsa.basisrente[idx].status === 'active' || wsa.basisrente[idx].status === 'paid_up')) {
+      wsa.basisrente[idx] = { ...wsa.basisrente[idx], status: 'active', monthlyGrossContribution: newMonthlyEUR }
     }
   } else if (slot === 'altersvorsorgedepot') {
     const idx = wsa.altersvorsorgedepot.findIndex((i) => i.instanceId === instanceId)
-    if (idx >= 0) {
-      wsa.altersvorsorgedepot[idx] = { ...wsa.altersvorsorgedepot[idx], monthlyOwnContribution: newMonthlyEUR }
+    if (idx >= 0 && (wsa.altersvorsorgedepot[idx].status === 'active' || wsa.altersvorsorgedepot[idx].status === 'paid_up')) {
+      wsa.altersvorsorgedepot[idx] = { ...wsa.altersvorsorgedepot[idx], status: 'active', monthlyOwnContribution: newMonthlyEUR }
     }
   } else if (slot === 'riester') {
     const idx = wsa.riester.findIndex((i) => i.instanceId === instanceId)
-    if (idx >= 0) {
-      wsa.riester[idx] = { ...wsa.riester[idx], monthlyOwnContribution: newMonthlyEUR }
+    if (idx >= 0 && (wsa.riester[idx].status === 'active' || wsa.riester[idx].status === 'paid_up')) {
+      wsa.riester[idx] = { ...wsa.riester[idx], status: 'active', monthlyOwnContribution: newMonthlyEUR }
     }
   }
 }

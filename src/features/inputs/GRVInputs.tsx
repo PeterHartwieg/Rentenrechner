@@ -1,9 +1,14 @@
 import '../../ui/forms.css'
 import type React from 'react'
-import type { PensionBaselineType, ScenarioAssumptions, StatutoryPensionAssumptions } from '../../domain';
+import type {
+  PensionBaselineType,
+  ScenarioAssumptions,
+  StatutoryPensionAssumptions,
+} from '../../domain';
 import { NumberField } from '../../ui/NumberField';
 import { formatCurrency, formatNumber } from '../../utils/format';
 import { useFeedbackTarget } from '../qa-feedback';
+import { applyPensionPoints } from '../inventory/pensionPoints';
 
 type Props = {
   assumptions: ScenarioAssumptions;
@@ -14,6 +19,7 @@ type Props = {
     netMonthlyPension: number;
     taxMonthly: number;
     kvPvMonthly: number;
+    pkvRetirementMonthlyCost: number;
     grvReductionApplied: number;
   };
 };
@@ -36,7 +42,10 @@ function patchSp(
   current: ScenarioAssumptions,
   patch: Partial<StatutoryPensionAssumptions>,
 ): ScenarioAssumptions {
-  return { ...current, statutoryPension: { ...current.statutoryPension, ...patch } }
+  return {
+    ...current,
+    statutoryPension: { ...current.statutoryPension, ...patch },
+  }
 }
 
 export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionResult }: Props) {
@@ -83,7 +92,7 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
       <div className="subsection-heading">
         <h3>{SECTION_TITLES[baselineType]}</h3>
         <p>
-          {baselineType === 'grv' && 'Basisschutz aus der gesetzlichen Rente — geschätzt oder aus der Renteninformation.'}
+          {baselineType === 'grv' && 'Basisschutz aus der gesetzlichen Rente — als Schätzung berechnet oder manuell eingegeben.'}
           {baselineType === 'versorgungswerk' && 'Berufsständische Altersversorgung (z. B. Ärzte-, Anwalts-, Architektenversorgung) — ersetzt die GRV für kammerpflichtige Berufe.'}
           {baselineType === 'beamtenpension' && 'Versorgung nach Beamtenversorgungsgesetz — prozentual vom letzten Grundgehalt (Ruhegehaltssatz). Geben Sie den Betrag aus Ihrer Versorgungsauskunft ein.'}
           {baselineType === 'none' && 'Kein gesetzliches Pflichtversicherungssystem modelliert (z. B. dauerhaft befreite Selbstständige).'}
@@ -133,11 +142,7 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
                 }
               >
                 <option value="ep">Schätzen (Entgeltpunkte)</option>
-                <option value="manual">
-                  {baselineType === 'versorgungswerk'
-                    ? 'Aus Versorgungsauskunft (manuell)'
-                    : 'Aus Renteninformation (manuell)'}
-                </option>
+                <option value="manual">Manuell eingegeben</option>
               </select>
             </label>
           )}
@@ -147,9 +152,7 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
               label={
                 baselineType === 'beamtenpension'
                   ? 'Bruttopension (Versorgungsauskunft)'
-                  : baselineType === 'versorgungswerk'
-                  ? 'Progn. Bruttorente (Versorgungsauskunft)'
-                  : 'Progn. Bruttorente (Renteninformation)'
+                  : 'Progn. Bruttorente (manuell)'
               }
               feedbackTargetId="inputs.grv.manualMonthlyGross"
               value={sp.manualMonthlyGross ?? 0}
@@ -180,7 +183,7 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
                 suffix="EP"
                 onChange={(value) =>
                   onAssumptionsChange((current) =>
-                    patchSp(current, { currentEntgeltpunkte: Math.max(0, Number(value)) }),
+                    applyPensionPoints(current, Math.max(0, Number(value))),
                   )
                 }
               />
@@ -199,7 +202,10 @@ export function GRVInputs({ assumptions, onAssumptionsChange, statutoryPensionRe
             :{' '}
             <strong>{formatCurrency(statutoryPensionResult.netMonthlyPension, 0)}/Monat</strong>
             {' '}(Steuer {formatCurrency(statutoryPensionResult.taxMonthly, 0)} +
-            {' '}KV/PV {formatCurrency(statutoryPensionResult.kvPvMonthly, 0)})
+            {' '}gesetzliche KV/PV {formatCurrency(statutoryPensionResult.kvPvMonthly, 0)}
+            {statutoryPensionResult.pkvRetirementMonthlyCost > 0 && <>
+              {' '}+ private KV/PV abzgl. Zuschuss §106 {formatCurrency(statutoryPensionResult.pkvRetirementMonthlyCost, 0)}
+            </>})
             {statutoryPensionResult.grvReductionApplied > 0 && (
               <> · bAV-Minderung {formatCurrency(statutoryPensionResult.grvReductionApplied, 0)}/Monat abgezogen</>
             )}

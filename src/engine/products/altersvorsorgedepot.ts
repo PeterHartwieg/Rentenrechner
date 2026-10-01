@@ -1,5 +1,8 @@
 import type { AltersvorsorgedepotProductResult, ReturnScenario } from '../../domain'
-import type { SimulationContext } from '../simulationContext'
+import {
+  guaranteePrincipalAfterTransfers,
+  type SimulationContext,
+} from '../simulationContext'
 import {
   buildProductResult,
 } from '../buildResult'
@@ -44,10 +47,13 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
   const avdMonthlyContribution =
     altersvorsorgedepotFunding.totalContractContributionAnnual / 12 +
     altersvorsorgedepotFunding.guenstigerpruefungBenefitAnnual / 12
-  const fundingForYear = (yearIndex: number) =>
-    calculateAvdFunding(
+  const fundingForYear = (yearIndex: number) => {
+    const scheduled = ctx.altersvorsorgedepotFundingSchedule?.[yearIndex]
+    if (scheduled) return scheduled
+
+    return calculateAvdFunding(
       rules,
-      ctx.bavFunding.salaryWithBav,
+      ctx.salaryForOtherFunding,
       avd,
       {
         profile,
@@ -56,6 +62,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
           yearIndex === 0 && !avd.eligibility.careerStarterBonusUsed,
       },
     )
+  }
   const yearlySavings = Array.from({ length: yearsToRetirement }).reduce<number>(
     (sum, _, yearIndex) => {
       const funding = fundingForYear(yearIndex)
@@ -116,7 +123,10 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
         ? {
             label: `${Math.round(guaranteePct * 100)}% Garantie`,
             floorCapital: (projection) =>
-              (projection.totalProductContributions + (transferInitialCapital ?? 0)) * guaranteePct,
+              guaranteePrincipalAfterTransfers(
+                projection.totalProductContributions + (transferInitialCapital ?? 0),
+                ctx.instanceCapitalPolicy,
+              ) * guaranteePct,
           }
         : undefined,
     policy: mergeInstanceCapitalPolicy(ctx, {

@@ -26,6 +26,7 @@ import {
 import {
   type CandidateDraft,
   type GeneratorContext,
+  candidateAnnualReturn,
   projectMonthlyContributionFV,
   synthesizeProductResult,
 } from './types'
@@ -42,7 +43,8 @@ export function makeInsuranceCandidate(g: GeneratorContext): CandidateDraft | nu
   const gross = g.marginalMonthlyEUR
   if (gross <= 0) return null
   const fees = (target.fees?.wrapperAssetFee ?? 0) + (target.fees?.fundAssetFee ?? 0)
-  const netReturn = Math.max(-0.5, g.basis.annualReturn - fees)
+  const annualReturn = candidateAnnualReturn(g.basis, target)
+  const netReturn = Math.max(-0.5, annualReturn - fees)
   const capital = projectMonthlyContributionFV(gross, netReturn, g.yearsToRetirement)
   const totalContributions = gross * 12 * g.yearsToRetirement
   const payoutYears = Math.max(1, wsa.retirementEndAge - profile.retirementAge)
@@ -92,7 +94,7 @@ export function makeInsuranceCandidate(g: GeneratorContext): CandidateDraft | nu
     instanceId: target.instanceId,
     scenarioId: g.basis.scenarioId,
     scenarioLabel: 'Basis',
-    annualReturn: g.basis.annualReturn,
+    annualReturn,
     grossMonthlyPayout: grossPayout,
     capitalAtRetirement: capital,
     totalProductContributions: totalContributions,

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { PRODUKT_ROW_ASIDE_DEFAULT } from './produktRowCopy'
 
 export interface ProduktRowField {
   /** Display key (left column, label-soft colour). */
@@ -18,8 +19,11 @@ interface Props {
   status?: string
   /** Optional italic accent line below the fields. */
   accent?: ReactNode
-  /** Primary CTA label (right sidebar, paper background). */
-  primary: string
+  /** Primary CTA label (right sidebar, paper background). Omit to render no
+   *  primary affordance at all — used by the DRV card when the disclosure
+   *  behind the only sensible action cannot mount (combine-mode without a
+   *  baseline patcher / statutory-pension result). */
+  primary?: string
   /** Primary CTA click handler. */
   onPrimary?: () => void
   /** Optional secondary CTA label. */
@@ -33,6 +37,12 @@ interface Props {
   primaryDisabled?: boolean
   /** Tooltip for the primary button (e.g. when disabled). */
   primaryTitle?: string
+  /**
+   * Sidebar caption above the CTAs. Defaults to the "flows into Mein Plan"
+   * line, which is only true for counted contracts; callers pass a different
+   * caption for offers and surrendered contracts.
+   */
+  asideCopy?: string
 }
 
 /**
@@ -65,6 +75,7 @@ export function DProduktRow({
   destructive,
   primaryDisabled,
   primaryTitle,
+  asideCopy = PRODUKT_ROW_ASIDE_DEFAULT,
 }: Props) {
   return (
     <div className="d-produkt-row">
@@ -85,19 +96,19 @@ export function DProduktRow({
         {accent && <div className="d-produkt-row__accent">{accent}</div>}
       </div>
       <div className="d-produkt-row__aside">
-        <div className="d-produkt-row__aside-copy">
-          Diese Werte fließen direkt in dein Mein-Plan-Ergebnis ein.
-        </div>
+        <div className="d-produkt-row__aside-copy">{asideCopy}</div>
         <div className="d-produkt-row__aside-actions">
-          <button
-            type="button"
-            className="d-produkt-row__btn d-produkt-row__btn--primary"
-            onClick={onPrimary}
-            disabled={primaryDisabled}
-            title={primaryTitle}
-          >
-            {primary}
-          </button>
+          {primary && (
+            <button
+              type="button"
+              className="d-produkt-row__btn d-produkt-row__btn--primary"
+              onClick={onPrimary}
+              disabled={primaryDisabled}
+              title={primaryTitle}
+            >
+              {primary}
+            </button>
+          )}
           {secondary && (
             <button
               type="button"

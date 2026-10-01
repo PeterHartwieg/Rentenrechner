@@ -27,6 +27,15 @@ export interface RiesterEligibility {
    * Optional for backwards compatibility with existing stored state.
    */
   indirectSpouseEligible?: boolean
+  /**
+   * §85 Abs. 2 EStG: the Kinderzulage follows the Kindergeld entitlement; spouses
+   * can assign it to the other parent on joint application.
+   * `false` = another person holds the claim, so this contract receives no
+   * Kinderzulage and the §86
+   * Mindesteigenbeitrag is computed without it. `undefined` = true (back-compat
+   * for stored state; no migration needed).
+   */
+  claimsChildAllowance?: boolean
   /** Age at the start of the first contribution year (for career-starter bonus check). */
   ageAtContractStart: number
   /** True when the one-time 200 EUR Berufseinsteiger-Bonus (§84 EStG) has already been paid. */
@@ -92,4 +101,20 @@ export interface RiesterFundingResult {
   guenstigerpruefungBenefitAnnual: number
   /** Net monthly cost = own contribution minus Günstigerprüfung extra refund / 12. */
   monthlyNetCost: number
+  /**
+   * Combine-mode allocation marker. Multiple Riester contracts belong to the
+   * same saver, so the household allowance and §10a benefit are calculated
+   * once and assigned to one instance. Undefined on the singleton path.
+   */
+  receivesPortfolioAllowance?: boolean
+  /** Aggregate own contribution used for that household calculation. */
+  portfolioHouseholdOwnContributionMonthly?: number
+  /** Raw per-instance own contribution before the current-year cap scale. */
+  portfolioRequestedOwnContributionMonthly?: number
+  /** Raw household own contribution before the current-year cap scale. */
+  portfolioHouseholdRequestedOwnContributionMonthly?: number
+  /** Dimensionless pro-rata factor (0–1) applied to the household §10a benefit. */
+  portfolioTaxBenefitShare?: number
+  /** Eligibility of the contract selected for the household calculation. */
+  portfolioHouseholdEligibility?: RiesterEligibility
 }

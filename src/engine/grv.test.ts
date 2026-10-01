@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { projectGrvContributionTimeline } from './grv'
+import { projectGrvContributionTimeline, projectStatutoryPension } from './grv'
 import { de2026Rules } from '../rules/de2026'
 import type { PersonalProfile, StatutoryPensionAssumptions } from '../domain'
 
@@ -134,5 +134,26 @@ describe('projectGrvContributionTimeline', () => {
   it('returns empty array when already at retirement age', () => {
     const p = profile({ age: 67, retirementAge: 67 })
     expect(projectGrvContributionTimeline(p, rules, assumptions())).toEqual([])
+  })
+})
+
+
+describe('retirement PKV expense', () => {
+  it.each([
+    ['grv', 1800, 450, 120, 412.5],
+    ['grv', 10000, 450, 120, 345],
+    ['grv', 0, 450, 120, 570],
+    ['versorgungswerk', 1800, 450, 120, 570],
+    ['beamtenpension', 1800, 450, 120, 570],
+    ['none', 0, 450, 120, 570],
+    ['grv', 1800, 0, 120, 120],
+  ] as const)('%s, pension %s, KV %s, PV %s → expense %s', (type, pension, kv, pv, expected) => {
+    const result = projectStatutoryPension(profile({
+      publicHealthInsurance: false, pkvMonthlyPremium: kv, pPVMonthlyPremium: pv,
+      healthAdditionalContributionPct: 10, // §106 uses the average, not this personal rate.
+    }), rules, assumptions({ pensionBaselineType: type, manualMonthlyGross: pension }), 0, 2053)
+    expect(result.kvPvMonthly).toBe(0)
+    expect(result.pkvRetirementMonthlyCost).toBeCloseTo(expected, 8)
+    expect(result.netMonthlyPension).toBeCloseTo(Math.max(0, pension - result.taxMonthly) - expected, 8)
   })
 })

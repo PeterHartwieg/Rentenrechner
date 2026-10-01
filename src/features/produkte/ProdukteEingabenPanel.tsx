@@ -24,8 +24,8 @@ import type {
   RiesterInstance,
 } from '../../domain/instances'
 import { formatCurrency, formatNumber, formatPercent } from '../../utils/format'
+import { availableRiy, RIY_UNAVAILABLE } from '../results/riyAvailability'
 import { activeRules } from '../../rules'
-import { besteuerungsanteilGrv } from '../../rules/legalConstants'
 import { getProductMeta, PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import {
   PRIMARY_PRODUCT_IDS,
@@ -33,7 +33,17 @@ import {
 } from '../../content/triggers'
 import { de2026Rules } from '../../rules/de2026'
 import { computeBavMinimumEntitlement } from '../../engine/bavWarnings'
+import {
+  GRV_CARD_ACCENT,
+  GRV_CARD_KIND,
+  GRV_CARD_TITLE,
+  GRV_SECTION_NOTE,
+  buildGrvCardFields,
+  grvProvenanceLabel,
+} from './grvCard'
 import { GRVInputs } from '../inputs/GRVInputs'
+import { detectLegacyEpSeed } from '../inventory/inventoryHelpers'
+import { useWorkspaceUndoNotice } from '../../app/portfolioState'
 import {
   PRODUCT_UI_REGISTRY,
   type ProductInputsContext,
@@ -44,8 +54,10 @@ import {
 } from '../inventory/inventoryProductRegistry'
 import { DProduktSection } from './DProduktSection'
 import { DProduktRow, type ProduktRowField } from './DProduktRow'
+import { produktRowAsideCopy } from './produktRowCopy'
 import { DSparformOption } from './DSparformOption'
-import { sparformDescriptions } from './sparformDescriptions'
+import { pensionEntryLabels, sparformDescriptions } from './sparformDescriptions'
+import type { PensionEntryMethod } from '../../domain/inputStatus'
 
 /**
  * `ProdukteEingabenPanel` — Sober D body for `/eingaben/produkte`.
@@ -77,6 +89,26 @@ import { sparformDescriptions } from './sparformDescriptions'
  * disclaimer of its own; the global `<DisclaimerBanner>` upstream stays
  * session-only. No public copy mentions "Rentenrechner".
  */
+
+/**
+ * Provenance badge for the § 1 GRV card.
+ *
+ * `grvCard.grvProvenanceLabel` decides from `manualMonthlyGross` alone, which
+ * is all the compare-only path can know. The start journey additionally
+ * records *how* the user supplied the baseline (`pensionEntryMethod`:
+ * Renteninformation, Berufsstart, Beitragsjahre, Entgeltpunkte, Prognose,
+ * übersprungen), so prefer that label when it exists — same provenance
+ * contract, just a more specific statement of the user's own source. Falls
+ * back to the shared two-value label when the method was never recorded.
+ */
+function grvStatusLabel(statutoryPension: {
+  pensionEntryMethod?: PensionEntryMethod
+  manualMonthlyGross?: number | null
+}): string {
+  const method = statutoryPension.pensionEntryMethod?.kind
+  if (method) return pensionEntryLabels[method]
+  return grvProvenanceLabel(statutoryPension.manualMonthlyGross)
+}
 
 /** All registered comparable product ids in canonical sort order. */
 const ALL_COMPARABLE_PRODUCT_IDS: readonly ProductId[] = [
@@ -145,6 +177,8 @@ interface ProdukteEingabenPanelCompareProps {
   tarifgebunden: boolean
   onTarifgebundenChange: (next: boolean) => void
   onSyncMonthlyContribution: (targetNet: number) => void
+  /** Compare-mode only: pins the AVD Eigenbeitrag. */
+  onAvdOwnContributionChange?: (monthlyOwn: number) => void
 }
 
 interface ProdukteEingabenPanelCombineProps {
@@ -200,6 +234,7 @@ function ComparePanel({
   tarifgebunden,
   onTarifgebundenChange,
   onSyncMonthlyContribution,
+  onAvdOwnContributionChange,
 }: ProdukteEingabenPanelCompareProps) {
   // `onProfileChange` is part of the panel's public API; compare-mode does
   // not render an inline profile editor, so silence the unused-binding lint
@@ -226,22 +261,24 @@ function ComparePanel({
       data-mode="compare"
       aria-label="Verträge und Sparformen"
     >
-      {/* § 1 — Gesetzliche Rente. Single DRV card with live values. */}
-      <DProduktSection
-        legend="§ 1 · Gesetzliche Rente"
-        note="Pflicht für die meisten Angestellten. Werte aus deiner DRV-Rentenauskunft übernommen."
-      >
+      {/* § 1 — Gesetzliche Rente. Single DRV card with live values. Copy +
+          provenance come from the shared `grvCard` module so both modes stay
+          in lockstep (input-followups plan 3: no import / upload claims). */}
+      <DProduktSection legend="§ 1 · Gesetzliche Rente" note={GRV_SECTION_NOTE}>
         <DProduktRow
-          kind="DRV · Schicht 1 · Pflicht"
-          title="Rentenauskunft der Deutschen Rentenversicherung"
-          status="übernommen"
-          fields={buildGrvFieldsCompare(profile, assumptions, simulation)}
-          primary="PDF erneut hochladen"
-          primaryDisabled
-          primaryTitle="Bald verfügbar — OCR-Upload kommt mit einem späteren Release."
-          secondary={grvOverrideOpen ? 'Schließen' : 'Manuell überschreiben'}
-          onSecondary={() => setGrvOverrideOpen((v) => !v)}
-          accent="Anpassung der Werte überschreibt die Annahme aus der DRV-PDF."
+          kind={GRV_CARD_KIND}
+          title={GRV_CARD_TITLE}
+          status={grvStatusLabel(assumptions.statutoryPension)}
+          fields={buildGrvCardFields({
+            currentEntgeltpunkte: assumptions.statutoryPension.currentEntgeltpunkte,
+            projectedEntgeltpunkte: simulation.statutoryPension.projectedEntgeltpunkte,
+            grossMonthlyPension: simulation.statutoryPension.grossMonthlyPension,
+            retirementAge: profile.retirementAge,
+            age: profile.age,
+          })}
+          primary={grvOverrideOpen ? 'Schließen' : 'Manuell überschreiben'}
+          onPrimary={() => setGrvOverrideOpen((v) => !v)}
+          accent={GRV_CARD_ACCENT}
         />
         {grvOverrideOpen && (
           <div
@@ -320,6 +357,7 @@ function ComparePanel({
                       assumptions,
                       onAssumptionsChange,
                       onSyncMonthlyContribution,
+                      onAvdOwnContributionChange,
                       profile,
                       simulation,
                       selectedResults,
@@ -379,6 +417,24 @@ function ComparePanel({
 // Entfernen / Optionen affordances back to the page-level mutators.
 // ---------------------------------------------------------------------------
 
+/**
+ * "Vertrag entfernt · Rückgängig" for the combine panel. Reads the shared
+ * one-level undo handle from the workspace store, so it also surfaces a
+ * removal made on another surface in the same session.
+ */
+function UndoNotice() {
+  const { lastUndo, undo } = useWorkspaceUndoNotice()
+  if (!lastUndo) return null
+  return (
+    <div className="produkte-eingaben-panel__undo" role="status">
+      <span>{lastUndo.label}</span>
+      <button type="button" onClick={() => undo(lastUndo)}>
+        Rückgängig
+      </button>
+    </div>
+  )
+}
+
 function CombinePanel({
   baseline,
   assumptions,
@@ -390,6 +446,12 @@ function CombinePanel({
   onOpenDecisionMenu,
 }: ProdukteEingabenPanelCombineProps) {
   const [grvOverrideOpen, setGrvOverrideOpen] = useState(false)
+  const legacyEpSeed = detectLegacyEpSeed({
+    statutoryPension: assumptions.statutoryPension,
+    profile: baseline.profile,
+    rules: activeRules,
+    inputStatus: assumptions.inputStatus,
+  })
   // CX-PR4-2 R1: track which instance rows have their inline editor open.
   // Same useState<Set<…>> shape as compare-mode's `expandedRows` so a future
   // refactor that lifts the disclosure pattern into a shared helper sees
@@ -459,6 +521,11 @@ function CombinePanel({
       data-mode="combine"
       aria-label="Verträge und Sparformen"
     >
+      {/* Undo status line. "Entfernen" below commits through the shared
+          workspace store, which records a one-level undo handle; this is the
+          local surface for it so a removal can be reversed without first
+          navigating back to the plan. Renders only while a handle is pending. */}
+      <UndoNotice />
       {/* § 1 — Gesetzliche Rente. Same DRV card shape; combine-mode sources
           values from `baseline.profile` + `baseline.assumptions.statutoryPension`.
           When the parent provides a `statutoryPensionResult`, the projected EP
@@ -466,41 +533,65 @@ function CombinePanel({
           inputs-only view (combine-mode has its own simulation pipeline via
           `useCombineSimulation`, but the page-level caller decides whether to
           run it before mounting this panel). */}
-      <DProduktSection
-        legend="§ 1 · Gesetzliche Rente"
-        note="Pflicht für die meisten Angestellten. Werte aus deiner DRV-Rentenauskunft übernommen."
-      >
-        {/* CR-PR4-R1-5: gate the secondary CTA label/handler on the same
-            condition as the disclosure body — without `onPatchBaseline` /
-            `statutoryPensionResult` the disclosure cannot mount, so the
-            "Schließen" / "Manuell überschreiben" toggle was a dead control. */}
+      <DProduktSection legend="§ 1 · Gesetzliche Rente" note={GRV_SECTION_NOTE}>
+        {/* CR-PR4-R1-5: gate the edit affordance on the same condition as the
+            disclosure body — without `onPatchBaseline` /
+            `statutoryPensionResult` the disclosure cannot mount, so a visible
+            edit CTA would be a dead control. The upload CTA is gone entirely
+            (no upload path exists; input-followups plan 3). */}
         {(() => {
           const canOverrideGrv =
             onPatchBaseline !== undefined && statutoryPensionResult !== undefined
           return (
             <DProduktRow
-              kind="DRV · Schicht 1 · Pflicht"
-              title="Rentenauskunft der Deutschen Rentenversicherung"
-              status="übernommen"
-              fields={buildGrvFieldsCombine(
-                baseline.profile,
-                assumptions,
-                statutoryPensionResult,
-              )}
-              primary="PDF erneut hochladen"
-              primaryDisabled
-              primaryTitle="Bald verfügbar — OCR-Upload kommt mit einem späteren Release."
-              secondary={
+              kind={GRV_CARD_KIND}
+              title={GRV_CARD_TITLE}
+              status={grvStatusLabel(assumptions.statutoryPension)}
+              fields={buildGrvCardFields({
+                currentEntgeltpunkte: assumptions.statutoryPension.currentEntgeltpunkte,
+                projectedEntgeltpunkte: statutoryPensionResult?.projectedEntgeltpunkte,
+                grossMonthlyPension: statutoryPensionResult?.grossMonthlyPension,
+                retirementAge: baseline.profile.retirementAge,
+                age: baseline.profile.age,
+              })}
+              primary={
                 canOverrideGrv
                   ? grvOverrideOpen
                     ? 'Schließen'
                     : 'Manuell überschreiben'
                   : undefined
               }
-              onSecondary={
+              onPrimary={
                 canOverrideGrv ? () => setGrvOverrideOpen((v) => !v) : undefined
               }
-              accent="Anpassung der Werte überschreibt die Annahme aus der DRV-PDF."
+              accent={
+                <>
+                  {GRV_CARD_ACCENT}
+                  {legacyEpSeed.legacy && (
+                    <div>
+                      Deine Entgeltpunkte wurden mit einem veralteten Durchschnittsentgelt geschätzt.{' '}
+                      Neu geschätzt wären es {formatNumber(legacyEpSeed.freshEstimate, 1)} Punkte.{' '}
+                      {onPatchBaseline && (
+                        <button
+                          type="button"
+                          className="d-produkt-row__btn d-produkt-row__btn--secondary"
+                          onClick={() => onPatchBaseline({
+                            assumptions: {
+                              ...assumptions,
+                              statutoryPension: {
+                                ...assumptions.statutoryPension,
+                                currentEntgeltpunkte: legacyEpSeed.freshEstimate,
+                              },
+                            },
+                          })}
+                        >
+                          Neu schätzen
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </>
+              }
             />
           )
         })()}
@@ -516,19 +607,25 @@ function CombinePanel({
                 // combine-mode stores everything on the workspace baseline. We
                 // translate the singleton update back into a workspace patch
                 // here: only the statutoryPension sub-object is editable from
-                // this surface.
+                // this surface, plus the scenario-level inputStatus metadata
+                // GRVInputs may stamp (e.g. a typed Entgeltpunkte value marks
+                // itself 'entered' so the legacy-EP-seed detector stays quiet).
                 const prevSingleton = toSingletonAssumptionsForGrvOverride(assumptions)
                 const next =
                   typeof updater === 'function'
                     ? (updater as (prev: ScenarioAssumptions) => ScenarioAssumptions)(prevSingleton)
                     : updater
-                if (next.statutoryPension === prevSingleton.statutoryPension) {
+                if (
+                  next.statutoryPension === prevSingleton.statutoryPension &&
+                  next.inputStatus === prevSingleton.inputStatus
+                ) {
                   return
                 }
                 onPatchBaseline({
                   assumptions: {
                     ...assumptions,
                     statutoryPension: next.statutoryPension,
+                    inputStatus: next.inputStatus,
                   },
                 })
               }}
@@ -593,6 +690,7 @@ function CombinePanel({
                   kind={kindFor(productId)}
                   title={titleLabel}
                   status={statusLabel(status)}
+                  asideCopy={produktRowAsideCopy(status)}
                   fields={buildInstanceFieldsCombine(productId, instance)}
                   primary={isOpen ? 'Schließen' : 'Bearbeiten'}
                   onPrimary={toggleEditor}
@@ -688,108 +786,10 @@ function CombinePanel({
 }
 
 // ---------------------------------------------------------------------------
-// Pure field builders.
+// Pure field builders. The § 1 DRV card copy + field rows live in the shared
+// `grvCard` module (consumed by both modes); the builders below cover the
+// per-contract rows only.
 // ---------------------------------------------------------------------------
-
-function buildGrvFieldsCompare(
-  profile: PersonalProfile,
-  assumptions: ScenarioAssumptions,
-  simulation: SimulationResult,
-): readonly ProduktRowField[] {
-  const standDate = new Date().toLocaleDateString('de-DE', {
-    month: '2-digit',
-    year: 'numeric',
-  })
-  const standDisplay = standDate.replace(/[./]/g, ' / ')
-
-  const currentEp = assumptions.statutoryPension.currentEntgeltpunkte
-  const projectedEp = simulation.statutoryPension.projectedEntgeltpunkte
-  const grossMonthly = simulation.statutoryPension.grossMonthlyPension
-  const rentenwert = activeRules.socialSecurity.aktuellerRentenwert
-  const retirementYear =
-    activeRules.year + (profile.retirementAge - profile.age)
-  const besteuerungsanteil = besteuerungsanteilGrv(retirementYear)
-
-  return [
-    { key: 'Stand', value: standDisplay },
-    {
-      key: 'Bisherige Entgeltpunkte',
-      value: `${formatNumber(currentEp, 2)} EP`,
-    },
-    {
-      key: `Voraussichtlich mit ${profile.retirementAge}`,
-      value: `${formatNumber(projectedEp, 2)} EP`,
-    },
-    {
-      key: 'Heutiger Rentenwert (West)',
-      value: formatCurrency(rentenwert, 2),
-    },
-    {
-      key: 'Brutto-Rente, geschätzt',
-      value: `${formatCurrency(grossMonthly, 0)}/Mon.`,
-    },
-    {
-      key: 'Steuerlich erfasst ab',
-      value: `${retirementYear} (${formatPercent(besteuerungsanteil, 0)})`,
-    },
-  ]
-}
-
-/**
- * Combine-mode DRV-card field builder. Mirrors the compare-mode helper but
- * sources values from `baseline.profile` + `baseline.assumptions.statutoryPension`.
- * Projected EP and gross monthly are read from the optional
- * `statutoryPensionResult`; when absent we render an em-dash placeholder so
- * the user can still see the inputs (current EP + Rentenwert + Stand) without
- * an active simulation.
- */
-function buildGrvFieldsCombine(
-  profile: PersonalProfile,
-  assumptions: WorkspaceAssumptionsV2,
-  statutoryPensionResult?: SimulationResult['statutoryPension'],
-): readonly ProduktRowField[] {
-  const standDate = new Date().toLocaleDateString('de-DE', {
-    month: '2-digit',
-    year: 'numeric',
-  })
-  const standDisplay = standDate.replace(/[./]/g, ' / ')
-
-  const currentEp = assumptions.statutoryPension.currentEntgeltpunkte
-  const rentenwert = activeRules.socialSecurity.aktuellerRentenwert
-  const retirementYear =
-    activeRules.year + (profile.retirementAge - profile.age)
-  const besteuerungsanteil = besteuerungsanteilGrv(retirementYear)
-  const projectedEp = statutoryPensionResult?.projectedEntgeltpunkte
-  const grossMonthly = statutoryPensionResult?.grossMonthlyPension
-
-  return [
-    { key: 'Stand', value: standDisplay },
-    {
-      key: 'Bisherige Entgeltpunkte',
-      value: `${formatNumber(currentEp, 2)} EP`,
-    },
-    {
-      key: `Voraussichtlich mit ${profile.retirementAge}`,
-      value:
-        projectedEp !== undefined ? `${formatNumber(projectedEp, 2)} EP` : '—',
-    },
-    {
-      key: 'Heutiger Rentenwert (West)',
-      value: formatCurrency(rentenwert, 2),
-    },
-    {
-      key: 'Brutto-Rente, geschätzt',
-      value:
-        grossMonthly !== undefined
-          ? `${formatCurrency(grossMonthly, 0)}/Mon.`
-          : '—',
-    },
-    {
-      key: 'Steuerlich erfasst ab',
-      value: `${retirementYear} (${formatPercent(besteuerungsanteil, 0)})`,
-    },
-  ]
-}
 
 function buildContractFieldsCompare(
   productId: ProductId,
@@ -799,7 +799,11 @@ function buildContractFieldsCompare(
   selectedResults: readonly ProductResult[],
 ): readonly ProduktRowField[] {
   const result = selectedResults.find((r) => r.productId === productId)
-  const riy = result?.accumulationRiy
+  // Zero RIY next to charged fees is not presentable as "0,00 % p.a."; the
+  // sentinel carries no "p.a." because it is not a rate.
+  const riy = availableRiy(result)
+  const effKosten =
+    riy !== undefined ? `${formatPercent(riy, 2)} p.a.` : result ? RIY_UNAVAILABLE : '–'
   switch (productId) {
     case 'etf': {
       return [
@@ -817,7 +821,7 @@ function buildContractFieldsCompare(
         },
         {
           key: 'Eff. Kosten',
-          value: riy !== undefined ? `${formatPercent(riy, 2)} p.a.` : '–',
+          value: effKosten,
         },
         {
           key: 'Steuerlich',
@@ -850,7 +854,7 @@ function buildContractFieldsCompare(
         },
         {
           key: 'Eff. Kosten',
-          value: riy !== undefined ? `${formatPercent(riy, 2)} p.a.` : '–',
+          value: effKosten,
         },
         {
           key: 'Auszahlung',
@@ -879,7 +883,7 @@ function buildContractFieldsCompare(
         },
         {
           key: 'Eff. Kosten',
-          value: riy !== undefined ? `${formatPercent(riy, 2)} p.a.` : '–',
+          value: effKosten,
         },
         {
           key: 'Auszahlung',
@@ -908,7 +912,7 @@ function buildContractFieldsCompare(
         },
         {
           key: 'Eff. Kosten',
-          value: riy !== undefined ? `${formatPercent(riy, 2)} p.a.` : '–',
+          value: effKosten,
         },
         {
           key: 'Auszahlung',
@@ -937,7 +941,7 @@ function buildContractFieldsCompare(
         },
         {
           key: 'Eff. Kosten',
-          value: riy !== undefined ? `${formatPercent(riy, 2)} p.a.` : '–',
+          value: effKosten,
         },
         {
           key: 'Auszahlung',
@@ -968,7 +972,7 @@ function buildContractFieldsCompare(
         },
         {
           key: 'Eff. Kosten',
-          value: riy !== undefined ? `${formatPercent(riy, 2)} p.a.` : '–',
+          value: effKosten,
         },
         {
           key: 'Auszahlung',
@@ -1185,9 +1189,10 @@ function statusLabel(status: 'active' | 'paid_up' | 'surrendered' | 'offered'): 
 /**
  * Map the combine-mode workspace `WorkspaceAssumptionsV2` onto the singleton
  * `ScenarioAssumptions` shape that `<GRVInputs>` expects, so we can reuse the
- * same input component in both modes. Only the `statutoryPension` slot is
- * read by GRVInputs; the other slots come from `INVENTORY_PRODUCT_REGISTRY`
- * defaults (the panel never relies on them in this code path).
+ * same input component in both modes. Only the `statutoryPension` and
+ * `inputStatus` slots are read (and possibly stamped) by GRVInputs; the other
+ * slots come from `INVENTORY_PRODUCT_REGISTRY` defaults (the panel never
+ * relies on them in this code path).
  */
 function toSingletonAssumptionsForGrvOverride(
   assumptions: WorkspaceAssumptionsV2,
@@ -1235,6 +1240,7 @@ function toSingletonAssumptionsForGrvOverride(
     altersvorsorgedepot: assumptions.altersvorsorgedepot[0] ?? avdEntry,
     riester: assumptions.riester[0] ?? riesterEntry,
     statutoryPension: assumptions.statutoryPension,
+    inputStatus: assumptions.inputStatus,
     inflationRate: assumptions.inflationRate,
     retirementEndAge: assumptions.retirementEndAge,
     returnScenarios: assumptions.returnScenarios,

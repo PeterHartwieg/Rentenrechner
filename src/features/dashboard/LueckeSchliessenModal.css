@@ -111,6 +111,55 @@
   font-variant-numeric: tabular-nums;
 }
 
+.luecke-modal__saved-figures {
+  padding: 6px 16px 10px;
+  border: 1px solid var(--rw-rule);
+  background: var(--rw-bg-paper);
+}
+
+/* ---- Target solver (audit F07) ------------------------------------------ */
+
+.luecke-modal__solver {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--rw-rule-soft);
+  background: var(--rw-bg-paper-soft);
+}
+
+.luecke-modal__solver h4 {
+  margin: 0;
+  font-family: var(--rw-font-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--rw-ink);
+}
+
+.luecke-modal__solver-select select {
+  min-height: 40px;
+  width: 100%;
+  border: 1px solid var(--rw-rule-soft);
+  border-radius: 0;
+  background: var(--rw-bg-paper);
+  padding: 0 12px;
+  color: var(--rw-ink);
+  font-family: var(--rw-font-sans);
+  font-size: 0.92rem;
+}
+
+.luecke-modal__solver-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.luecke-modal__solver-result {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 /* ---- Preset / choice rows ---------------------------------------------- */
 
 .luecke-modal__presets,

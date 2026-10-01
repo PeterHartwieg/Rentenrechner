@@ -4,57 +4,63 @@ For each screen section: the component file, co-located CSS, and what state it r
 
 ## App-level routing
 
-`App.tsx` is split into a tiny `App` component that consults `useRoute()` and a
-`Calculator` component that renders the existing dashboard at `/`. Two static
-legal routes are served in-app:
+`App.tsx` is the route dispatcher and lazy-load boundary. `Calculator.tsx`
+renders the saved compare/combine workspace at `/`; first-time visitors see
+the landing page. Static public pages are described by
+`src/seo/publicRouteRegistry.ts`, while the router also owns workspace flows
+and a dynamic contract-detail route:
 
-```
-App.tsx  (route detector)
-├── /            → Calculator   (the rest of this document)
-├── /impressum   → ImpressumPage    (src/features/legal/)
-└── /datenschutz → DatenschutzPage  (src/features/legal/)
+```text
+App.tsx  (route detector + lazy boundaries)
+├── /                         → LandingPage (fresh) or Calculator → the plan
+├── /vergleich                → VergleichJourneyPage (public, prerendered)
+├── /vergleich/details        → VergleichDetailPage
+├── /eingaben[/produkte]      → two-step input flow
+├── /vorsorge/neu             → VorsorgeNeuPage (contract picker; ?produkt=<id>
+│                               opens the editor for a new instance)
+├── /vertrag/:instanceId      → VertragDetailPage (dynamic, not prerendered)
+├── /vertrag/:id/bearbeiten   → VertragBearbeitenPage (contract editor)
+├── /alternativen             → AlternativenPage (?id=<whatIfId>)
+├── /kapital                  → KapitalPage
+├── /artikel, /methode        → editorial hub / methodology
+├── calculator/topic routes   → prerendered pages from publicRouteRegistry
+├── /impressum, /datenschutz  → legal pages
+└── unknown path              → PageNotFound
 ```
 
-Routing is implemented by [`useRoute.ts`](../../src/app/useRoute.ts) — a ~30-line
-pathname-based hook (no react-router dependency). SPA fallback for static hosts
-lives in `public/_redirects` (Netlify) and `vercel.json` at
-repo root. Add a route by extending the `Route` union and `KNOWN_ROUTES` array,
-then dispatching in `App.tsx`.
+`/` is always the personal plan for a returning user (a `?s=` share link still
+renders the comparison inside `Calculator`); the independent comparison lives at
+`/vergleich` and reads the compare-mode singleton only. `pathToRoute` matches
+`/vertrag/:id/bearbeiten` **before** the bare `/vertrag/:id` pattern, whose
+`(.+)` is greedy. Of the new routes only `/vergleich` is public and prerendered;
+`/vorsorge/neu`, `/vertrag/:id/bearbeiten` and `/alternativen` depend on
+workspace state and stay dynamic.
+
+Routing is implemented by [`useRoute.ts`](../../src/app/useRoute.ts) as a typed
+tagged union with `pathToRoute`, `routeToPath`, and `ROUTES` constructors (no
+react-router dependency). Static routes are prerendered and served through the
+Cloudflare Worker; host fallbacks also live in `public/_redirects` and
+`vercel.json`. Add a route to the union, both conversion functions, the App
+dispatch, and—when public/indexable—the public route registry.
 
 ## Calculator layout overview
 
-```
+```text
 Calculator
-├── DisclaimerBanner            (session-only, never persisted)
-├── WorkspaceTabs               (Eingaben / Vergleich / Details & Export)
-├── JourneyStepper              (when guided-setup journey is active)
-├── workspace
-│   ├── vergleichView           (default)
-│   │   ├── ScenarioToolbar
-│   │   ├── ComparisonPicker
-│   │   ├── DecisionSummary
-│   │   ├── MonteCarloHighlights
-│   │   ├── SummaryMetrics
-│   │   ├── ProductEditCards
-│   │   ├── ResultWaterfalls
-│   │   ├── CapitalChart
-│   │   ├── PensionChart
-│   │   └── BreakEvenChart
-│   ├── detailsView
-│   │   ├── FeeDragChart
-│   │   ├── MonteCarloPanel
-│   │   ├── SensitivityPanel
-│   │   ├── FairnessPanel
-│   │   ├── CalculationWarnings
-│   │   ├── AssumptionReviewPanel
-│   │   ├── DetailComparisonTable
-│   │   ├── CashflowTable
-│   │   └── AssumptionsPanel
-│   └── angebotView
-│       └── InputsPanel         (ProfileInputs, GRVInputs, plus per-product inputs dispatched through `productUiRegistry`, plus glossary + scenario library)
+├── compare mode
+│   └── VergleichPage           (linear six-product comparison + actions)
+├── combine mode
+│   ├── MeinPlanPage            (PlanOverview when a `summary` prop is passed,
+│   │                            otherwise the legacy linear portfolio view)
+│   └── three closed disclosures below it:
+│       ├── Annahmen & Risiko   (ScenarioToolbar, AssumptionsPanel, warnings)
+│       ├── Empfehlung          (contribution recommender modal trigger)
+│       └── Details & Export    (CombineDetailView: CSV + Drucken, no copy-link —
+│                                the share URL encodes compare inputs only)
+├── InventoryWizard             (fixed overlay when starting a portfolio)
 ├── PrintReport                 (display:none on screen; first child = disclaimer block)
 ├── LegalFooter                 (Impressum / Datenschutzerklärung / Lizenz)
-└── GuidedSetup overlay         (when first-run / re-opened)
+└── inputs/details/capital      (separate routes, not workspace tabs)
 ```
 
 ## Component map
@@ -101,8 +107,8 @@ Calculator
 |-----------|------|-----|-------|
 | Cashflow table | `src/features/cashflows/CashflowTable.tsx` | `CashflowTable.css` | Yearly rows for one selected product/scenario; after-tax balance built by `makeRowAfterTaxBalance` in `simulationSelectors.ts` and exposed as the `rowAfterTaxBalance` field of `useDerivedViews`. |
 | ETF payout table | inline in results | — | `EtfProductResult.etfPayoutRows` |
-| Assumptions panel | `src/features/assumptions/AssumptionsPanel.tsx` | `AssumptionsPanel.css` | Static `CALCULATION_WARNINGS` from `productPresentation.ts` |
-| Calculation warnings | `src/features/results/CalculationWarnings.tsx` | `CalculationWarnings.css` | Same `CALCULATION_WARNINGS` |
+| Assumptions panel | `src/features/assumptions/AssumptionsPanel.tsx` | `AssumptionsPanel.css` | Static rule values + source links |
+| Calculation warnings | `src/features/results/CalculationWarnings.tsx` | `CalculationWarnings.css` | Consumer-facing `CALCULATION_NOTES` from `src/content/calculationNotes.ts` (no issue numbers or internal status language) |
 
 ## Shared UI primitives (`src/ui/`)
 
@@ -168,7 +174,41 @@ but `App.tsx` consumes the three hooks directly.
 | `useDerivedViews.ts` | Composes the simulation result + UI state into chart/table data (`capitalChartData`, `pensionBars`, `selectedResults`, `visibleProducts`, `cashflowResult`, `rowAfterTaxBalance`, etc.) and the share-link / CSV side-effects (`handleCopyLink`, `handleExportCsv`). |
 | `simulationSelectors.ts` | Pure framework-agnostic selectors (`deriveSelectedResults`, `buildCapitalChartData`, `buildPensionBars`, `deriveTaxModes`, `makeRowAfterTaxBalance`, …) consumed by the three hooks above. Unit-testable without React. |
 | `useSimulationViewModel.ts` | Back-compat facade that calls the three hooks above and returns a single object. New code should consume the focused hooks; this file exists so the migration was non-breaking. |
-| `productPresentation.ts` | `BAV_FEE_PRESETS`, `PAV_FEE_PRESETS`, `CALCULATION_WARNINGS`, `GRV_COLOR`. Re-exports `getProductMeta`, `PRODUCT_MANIFEST` from `productManifest.ts`. |
+| `productPresentation.ts` | `BAV_FEE_PRESETS`, `PAV_FEE_PRESETS`, `GRV_COLOR`. Re-exports `getProductMeta`, `PRODUCT_MANIFEST` from `productManifest.ts`. (`CALCULATION_WARNINGS` still exported here but no longer rendered; the UI reads `src/content/calculationNotes.ts`.) |
+
+## Simplification surfaces (plan, wizard, contract editors)
+
+| Surface | File | Notes |
+|---------|------|-------|
+| Plan overview | `src/features/mein-plan/PlanOverview.tsx` | Default plan surface. Selected by `MeinPlanPage` whenever a `summary` prop is supplied; callers without one keep the legacy layout. Owns the household total, source rows, the target gap, and a `notification` slot (`role="status"`) for the one-level undo. |
+| Plan duration view | `src/features/mein-plan/PlanDurationSummary.tsx` | Separate view with its own H1, reached from the overview; also exports `PlanDurationText` for overview rows. |
+| Onboarding / profile edit | `src/features/inventory/InventoryWizard.tsx` | Two steps only (`profile`, `pension`). Props: `scenario`, `mode: 'onboarding' \| 'edit'`, optional `initialStep`, `onComplete(scenario)`, `onDismiss`. The old contract-checklist step is gone — contracts are added from the plan via `/vorsorge/neu`. Profile/pension editing reuses the same component with `mode: 'edit'` and an initial step. |
+| Contract picker | `src/features/vorsorge/ContractPicker.tsx` (host `VorsorgeNeuPage.tsx`) | Registry-ordered product list; a chosen product mounts the editor. The host resets the draft whenever the selection changes, because `'etf'` doubles as the placeholder product while nothing is picked. |
+| Contract editor | `src/features/vertrag-detail/ContractEditor{,Field,Host}.tsx` | Draft state is component-local (`useContractDraft`); cancel discards. Saving goes through `addPopulatedInstance` / `updateInstance` only. |
+| Alternatives | `src/features/alternativen/AlternativenPage.tsx` | What-if before/after flow; the plan's "Änderung ausprobieren" and "Gespeicherte Alternativen (n)" both navigate here. |
+
+`UnknownNumberField` (`src/ui/UnknownNumberField.tsx`) is the numeric input for
+every field that can be explicitly unknown: `value: number | null` plus an
+`InputStatus`, and `onChange(next, 'entered' | 'unknown')`. Ticking "Weiß ich
+nicht" emits `(null, 'unknown')` — the host keeps the previous number and passes
+it back, so unchecking restores it. A typed `0` is a real entered zero, never an
+unknown. Use it instead of `NumberField` wherever an unknown must not be
+mistaken for a zero.
+
+## Input status and readiness
+
+| File | Role |
+|------|------|
+| `src/domain/inputStatus.ts` | `InputStatus` (`unknown` / `assumed` / `entered` / `document`), `InputStatusMap`, `PensionEntryMethod`, sanitisers. Carried on `InstanceCommon.inputStatus`, `WorkspaceAssumptionsV2.inputStatus` and `ScenarioAssumptions.inputStatus`. Absent → `assumed` (legacy-conservative). |
+| `src/app/resultReadiness.ts` | `selectResultReadiness(workspace, simulation, error)` → `available` / `estimated` / `incomplete` / `error` plus blocking reasons with route targets. `householdTotalBlockedLabels` turns a blocked verdict into the labels the CSV/PDF print instead of a number. |
+| `src/app/planSummary.ts` | `selectPlanSummary` — the household total, per-source rows, duration descriptors and the target gap in one scoped object, on both money bases. |
+| `src/features/results/provenanceHelpers.ts` | Mapping between `InputStatus`, `EvidenceState` and the display `ProvKind` / German export labels. |
+
+A blocked total is never approximated: the UI shows "Noch offen" with the
+blocking reasons as buttons, and both export paths emit an empty cell plus a
+Hinweis line. `employment` has no domain field today and is reconstructed from
+`pensionBaselineType`; provenance for `retirementHealthStatus` and
+Versorgungswerk contributions is not carried (they are not reserved keys).
 
 ## Adding a UI input for a new product
 

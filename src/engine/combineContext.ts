@@ -30,6 +30,7 @@
  *      whether a bAV instance exists (matches `simulationContext.ts:256`).
  */
 
+import { calculatePkvRetirementMonthlyCost } from './grv'
 import type { GermanRules, PersonalProfile } from '../domain'
 import type { StatutoryPensionAssumptions } from '../domain/products/grv'
 import type { RetirementHealthStatus } from './retirementPayout'
@@ -125,8 +126,11 @@ export function buildCombineContext(inputs: CombineContextInputs): CombineContex
   //    so KV/PV routing is independent of any specific bAV instance existing.
   //    Falls back to 'kvdr' (statutory default for GRV members).
   // -------------------------------------------------------------------------
-  const retirementHealthStatus: RetirementHealthStatus =
-    statutoryPension.retirementHealthStatus ?? 'kvdr'
+  // Profile membership wins over a stale GKV selection in saved assumptions.
+  // Both combine simulation and the recommender consume this resolved status.
+  const retirementHealthStatus: RetirementHealthStatus = profile.publicHealthInsurance
+    ? statutoryPension.retirementHealthStatus ?? 'kvdr'
+    : 'pkv'
 
   return {
     profile,
@@ -135,6 +139,8 @@ export function buildCombineContext(inputs: CombineContextInputs): CombineContex
     grvGrossMonthlyPension,
     statutoryPensionTaxChannel,
     statutoryPensionKvChannel,
+    bavKvChannel: profile.publicHealthInsurance ? 'bav_versorgungsbezug' : 'none',
+    pkvRetirementMonthlyCost: calculatePkvRetirementMonthlyCost(profile, rules, pensionType, grvGrossMonthlyPension),
     retirementHealthStatus,
     filingStatus,
   }

@@ -12,6 +12,7 @@ import { projectGrvContributionTimeline } from '../../engine/grv'
 import { BreakEvenChart } from '../results/BreakEvenChart'
 import { buildLifecycleLineSeries } from '../results/breakEvenSeries'
 import { LIFECYCLE_HORIZON_AGE } from '../results/lifecycleHorizon'
+import { VergleichRenditeStrip } from '../vergleich/VergleichRenditeStrip'
 import { KapitalFilterChips } from './KapitalFilterChips'
 import { KapitalWendepunkteTable } from './KapitalWendepunkteTable'
 import { buildWendepunkte } from './wendepunkte'
@@ -54,13 +55,47 @@ const SECTION_WENDEPUNKTE = {
 // modes have a renderable surface. When neither mode has any contracts /
 // visible products, the chips list collapses and a single empty-state
 // paragraph guides the user to add data on `/eingaben`.
+//
+// Source selection: the saved workspace mode is only the DEFAULT. A caller
+// may name its origin with `?quelle=vergleich`, which pins the page to the
+// compare-mode data (and returns the back-link to `/vergleich`). Without it,
+// the "Kapital im Verlauf" link on `/vergleich` dropped a user with a saved
+// plan onto their plan's numbers — a different contribution, silently. The
+// param stays a query string on purpose: the `Route` union carries no
+// payload, matching how `/vergleich/details` reads `?scenario=`.
 // ---------------------------------------------------------------------------
+
+/** Read `?quelle=` once per mount. Defensive against a malformed query. */
+function readQuelleParam(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return new URLSearchParams(window.location.search).get('quelle')
+  } catch {
+    return null
+  }
+}
+
+/** Read the incoming scenario only on mount; later choices are local UI state. */
+function readScenarioParam(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    return new URLSearchParams(window.location.search).get('scenario')
+  } catch {
+    return null
+  }
+}
 
 export function KapitalPage({ navigate }: Props) {
   // ---- 1. Hook prelude — runs unconditionally. ----------------------------
   const portfolioState = usePortfolioState()
   const workspace = portfolioState.workspace
   const compareState = useCalculatorState()
+  const [pickedScenarioId, setPickedScenarioId] = useState(readScenarioParam)
+  // Validate independently: the comparison and plan can have different sets.
+  const compareScenarios = compareState.assumptions.returnScenarios
+  const combineScenarios = workspace.baseline.assumptions.returnScenarios
+  const compareScenarioId = resolveScenarioId(compareScenarios, pickedScenarioId)
+  const scenarioId = resolveScenarioId(combineScenarios, pickedScenarioId)
 
   // Both simulations run on every render (cheap, memoised). The unused one
   // is dropped in the render branch below.
@@ -68,10 +103,7 @@ export function KapitalPage({ navigate }: Props) {
   const compareSimulation = useSimulationResult(
     compareState.profile,
     compareState.assumptions,
-    // Compare-mode uses its own basis-pinned scenario id; we deliberately
-    // don't share `combineSimulation`'s selection because compare and
-    // combine workspaces have independent scenario sets.
-    pickBasisScenarioId(compareState.assumptions.returnScenarios),
+    compareScenarioId,
   )
 
   // Doc title — `/kapital` is not in `publicRouteRegistry` (it's a tool-
@@ -83,13 +115,20 @@ export function KapitalPage({ navigate }: Props) {
 
   // ---- 2. Mode-specific data sourcing. ------------------------------------
   // `workspace.mode` is the canonical mode signal (PR 286 hardening); do NOT
-  // fall back to `detectSavedMode()`.
-  const isCombine = workspace.mode === 'combine'
+  // fall back to `detectSavedMode()`. An explicit `?quelle=vergleich` from the
+  // comparison overrides it — see the source-selection note above.
+  const fromVergleich = useMemo(() => readQuelleParam() === 'vergleich', [])
+  const isCombine = workspace.mode === 'combine' && !fromVergleich
 
-  const scenarioId = useMemo(() => {
-    const scenarios = workspace.baseline.assumptions.returnScenarios
-    return pickBasisScenarioId(scenarios)
-  }, [workspace.baseline.assumptions.returnScenarios])
+  const scenarios = isCombine ? combineScenarios : compareScenarios
+  const selectedScenarioId = isCombine ? scenarioId : compareScenarioId
+
+  function selectScenario(id: string) {
+    setPickedScenarioId(id)
+    const url = new URL(window.location.href)
+    url.searchParams.set('scenario', id)
+    window.history.replaceState(window.history.state, '', url)
+  }
 
   const combineChipBundle = useMemo(() => {
     if (!isCombine) return { options: [] as KapitalChipOption[] }
@@ -103,9 +142,7 @@ export function KapitalPage({ navigate }: Props) {
   const compareChipOptions = useMemo(() => {
     if (isCombine) return [] as KapitalChipOption[]
     // `simulation.products` is flat — one entry per (product × scenario).
-    // Filter to the basis scenario so the chart and Wendepunkte align with
-    // the single-scenario picker convention used elsewhere in the redesign.
-    const compareScenarioId = pickBasisScenarioId(compareState.assumptions.returnScenarios)
+    // Chart and Wendepunkte consume the same resolved scenario results.
     return buildCompareChipOptions({
       assumptions: compareState.assumptions,
       productResults: compareSimulation.simulation.products.filter(
@@ -117,6 +154,7 @@ export function KapitalPage({ navigate }: Props) {
     })
   }, [
     isCombine,
+    compareScenarioId,
     compareState.assumptions,
     compareSimulation.simulation.products,
     compareState.profile.age,
@@ -215,28 +253,40 @@ export function KapitalPage({ navigate }: Props) {
 
   const productColors = useMemo(() => buildChartColorMap(selectedResults), [selectedResults])
 
+  // The back-link returns to wherever the user came from: the comparison when
+  // it named itself, the plan otherwise.
+  const backTarget = fromVergleich
+    ? { route: ROUTES.vergleich, label: '← Zurück zum Vergleich', kicker: 'Vergleich' }
+    : { route: ROUTES.home, label: '← Zurück zum Plan', kicker: 'Mein Plan' }
+
   // ---- 6. Render. ---------------------------------------------------------
   return (
     <div className="kapital-shell">
       <div className="kapital-main">
         <article className="kapital-body">
           <div className="kapital-kicker">
-            Mein Plan › Verlauf {profile.age} → {horizonAge}
+            {backTarget.kicker} › Verlauf {profile.age} → {horizonAge}
           </div>
           <h1 className="kapital-headline">Kapital und Auszahlungen über das Leben</h1>
           <div className="kapital-backline">
             <a
-              href={routeToPath(ROUTES.home)}
+              href={routeToPath(backTarget.route)}
               className="kapital-backlink"
               onClick={(event) => {
                 if (!shouldUseSpaNavigation(event)) return
                 event.preventDefault()
-                navigate(ROUTES.home)
+                navigate(backTarget.route)
               }}
             >
-              ← Zurück zum Plan
+              {backTarget.label}
             </a>
           </div>
+
+          <VergleichRenditeStrip
+            scenarios={scenarios}
+            selectedId={selectedScenarioId}
+            onSelect={selectScenario}
+          />
 
           {chipOptions.length === 0 ? (
             // PR #344 R2 (Codex CX3): retarget to Schritt 2. The empty-state copy
@@ -265,6 +315,11 @@ export function KapitalPage({ navigate }: Props) {
                 activeId={activeChipId}
                 onSelect={setPickedChipId}
               />
+              <p className="kapital-scope" data-testid="kapital-scope">
+                Alle Beträge nominal, in Euro des jeweiligen Jahres, nicht in heutigen Euro.
+                {' '}Gezeigt wird die Auswahl oben{activeChip ? ` („${activeChip.label}“)` : ''}
+                {isCombine ? ', nicht dein ganzer Plan; jede Quelle ist hier für sich allein versteuert.' : ', jedes Produkt für sich allein versteuert.'}
+              </p>
 
               <div className="kapital-chart-wrap">
                 <BreakEvenChart
@@ -280,6 +335,13 @@ export function KapitalPage({ navigate }: Props) {
                   pensionBaselineType={pensionBaselineType}
                 />
               </div>
+
+              <p className="kapital-benchmark-note">
+                Bei Sparverträgen umfasst „Netto eingezahlt“ nur deine künftigen eigenen Beiträge ab heute.
+                Bereits vorhandenes Guthaben ist im Kapital enthalten, aber nicht in diesem Vergleichswert.
+                Der markierte Rückzahlungszeitpunkt bezieht sich auf diese künftigen Beiträge,
+                nicht auf die Rückzahlung deines gesamten bisher angelegten Vermögens.
+              </p>
 
               <section
                 className="kapital-section"
@@ -314,4 +376,11 @@ function pickBasisScenarioId(
   scenarios: ReadonlyArray<{ id: string }>,
 ): string {
   return scenarios.find((s) => s.id === 'basis')?.id ?? scenarios[0]?.id ?? 'basis'
+}
+
+function resolveScenarioId(
+  scenarios: ReadonlyArray<{ id: string }>,
+  pickedId: string | null,
+): string {
+  return scenarios.find((s) => s.id === pickedId)?.id ?? pickBasisScenarioId(scenarios)
 }

@@ -4,6 +4,7 @@ import type { InsuranceAssumptions } from './products/insurance'
 import type { BasisrenteAssumptions } from './products/basisrente'
 import type { AltersvorsorgedepotAssumptions } from './products/altersvorsorgedepot'
 import type { RiesterAssumptions } from './products/riester'
+import type { InputStatusMap } from './inputStatus'
 
 export type EvidenceState = 'user_confirmed' | 'model_estimate' | 'statement'
 
@@ -30,8 +31,19 @@ export interface InstanceCommon {
   anbieter?: string
   status: 'active' | 'paid_up' | 'surrendered' | 'offered'
   contractStartYear: number
+  /** Combine-only nominal market return before costs; replaces every scenario rate. */
+  expectedReturn?: number
   currentValueEUR?: number
   evidenceMap: Record<string, EvidenceState>
+  /**
+   * Per-field input status ("known / assumed / unknown"), keyed identically to
+   * `evidenceMap`. Optional and additive: absent means "no explicit metadata",
+   * which `resolveInputStatus` resolves to `'assumed'` (never `'unknown'`).
+   *
+   * Instances live inside arrays, and `mergeDeep` copies arrays wholesale, so
+   * this round-trips through storage without a schema bump.
+   */
+  inputStatus?: InputStatusMap
   ownedBy?: 'self' | 'partner'
   transferEvents?: TransferEvent[]
 }

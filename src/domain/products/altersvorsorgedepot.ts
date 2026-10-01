@@ -2,7 +2,7 @@ import type { FeeModel } from '../fees'
 
 /**
  * Altersvorsorgedepot subtype — determines guarantee level and investment constraints.
- * Source: Altersvorsorgereformgesetz (Bundestag 2026-03-27; Bundesrat consent expected 2026-05-08).
+ * Source: Altersvorsorgereformgesetz vom 26.05.2026 (BGBl. 2026 I Nr. 156).
  *
  * - depot_no_guarantee: Standard no-guarantee depot; full equity risk allowed (SRI ≤ 5).
  * - standarddepot: Standarddepot-Vertrag with mandatory two-bucket allocation and 1.0 pp RIY cap.
@@ -39,6 +39,14 @@ export interface AltersvorsorgedepotEligibility {
   indirectSpouseEligible: boolean
   /** Number of children with Kindergeld attribution for child allowance. */
   eligibleChildren: number
+  /**
+   * AVD-Reformgesetz, analog § 85 Abs. 2 EStG: the Kinderzulage is allocated
+   * to one parent only. `false` = another person holds the
+   * claim, so this contract receives no Kinderzulage (100 % of own contribution,
+   * max 300 EUR/child). `undefined` = true (back-compat for stored state; no
+   * migration needed).
+   */
+  claimsChildAllowance?: boolean
   /** Age at the start of the contribution year (for career-starter bonus check). */
   ageAtContractStart: number
   /** True when the one-time 200 EUR career-starter bonus has already been used. */
@@ -53,8 +61,6 @@ export interface AltersvorsorgedepotAssumptions {
   // Allocation and returns for Standarddepot / no-guarantee subtypes.
   /** Fraction of capital in the high-risk sleeve (SRI 3–5), before glidepath clamps. */
   riskAllocationPct: number
-  /** Expected annual return of the high-risk fund sleeve. */
-  riskAnnualReturn: number
   /** Expected annual return of the low-risk fund sleeve (SRI 1–2). */
   lowRiskAnnualReturn: number
   fees: FeeModel

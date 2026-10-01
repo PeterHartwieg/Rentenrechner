@@ -49,7 +49,6 @@ export const defaultAvdAssumptions: AltersvorsorgedepotAssumptions = {
   riskAllocationPct: 0.80,
   // High-risk sleeve return matches the user's selected return scenario in simulate.ts.
   // Low-risk sleeve: 2% p.a. market-typical for bond / money-market OGAW (SRI 1–2).
-  riskAnnualReturn: 0.05,   // placeholder; overridden by scenario in simulate.ts
   lowRiskAnnualReturn: 0.02,
   fees: {
     // Standarddepot cost cap = 1.0 pp Effektivkosten. Defaults to a competitive provider.
@@ -120,6 +119,9 @@ export const defaultAssumptions: ScenarioAssumptions = {
   // Compatibility field from the old compare sub-mode. It now stores the
   // single public monthly Netto-Belastung anchor.
   equalInputAmountEUR: DEFAULT_MONTHLY_NETTO_BELASTUNG_EUR,
+  // Nominal modelling assumptions, not externally validated; see
+  // docs/validation.md "Return Scenarios (Modelling Assumptions, Not
+  // Externally Validated)".
   returnScenarios: [
     { id: 'konservativ', label: 'Konservativ', annualReturn: 0.03 },
     { id: 'basis', label: 'Basis', annualReturn: 0.05 },

@@ -1,3 +1,4 @@
+import { EXPECTED_RETURN_BOUNDS } from '../domain/validation/bounds'
 import type {
   MonteCarloAssumptions,
   PersonalProfile,
@@ -9,6 +10,10 @@ import type {
 import type { Workspace, WhatIfScenario, WorkspaceAssumptionsV2, Scenario } from '../domain/workspace'
 import type { InstanceCommon } from '../domain/instances'
 import { inRange, isFiniteNumber, isInt } from '../domain/validation/primitives'
+import {
+  sanitizeInputStatusMap,
+  sanitizePensionEntryMethod,
+} from '../domain/inputStatus'
 import { PRODUCT_IDS, PRODUCT_REGISTRY } from '../engine/productRegistry'
 import type { ProductId } from '../engine/productRegistry'
 import { validateBav } from '../engine/products/bav.validation'
@@ -92,6 +97,22 @@ function validateStatutoryPension(sp: StatutoryPensionAssumptions): boolean {
   return true
 }
 
+/**
+ * Sanitise-not-reject for the additive input-status metadata on a statutory
+ * pension block. A malformed `pensionEntryMethod` degrades to `undefined`
+ * instead of discarding the user's whole scenario (transfer-event precedent).
+ */
+function sanitizeStatutoryPension(
+  sp: StatutoryPensionAssumptions,
+): StatutoryPensionAssumptions {
+  const entryMethod = sanitizePensionEntryMethod(sp.pensionEntryMethod)
+  if (entryMethod === undefined && sp.pensionEntryMethod === undefined) return sp
+  const next = { ...sp }
+  if (entryMethod === undefined) delete next.pensionEntryMethod
+  else next.pensionEntryMethod = entryMethod
+  return next
+}
+
 export function validateAssumptions(input: unknown): ScenarioAssumptions | null {
   if (!input || typeof input !== 'object') return null
   const a = input as ScenarioAssumptions
@@ -110,7 +131,31 @@ export function validateAssumptions(input: unknown): ScenarioAssumptions | null 
   for (const pid of a.visibleProducts) {
     if (!PRODUCT_IDS.includes(pid)) return null
   }
-  return a
+  if (!validateContributionInput(a.contributionInput)) return null
+  // Additive metadata: sanitise, never reject (state contract §2.4).
+  const inputStatus = sanitizeInputStatusMap(a.inputStatus, { restrictToReservedKeys: true })
+  const statutoryPension = sanitizeStatutoryPension(a.statutoryPension)
+  const sanitized: ScenarioAssumptions = { ...a, statutoryPension }
+  if (inputStatus === undefined) delete sanitized.inputStatus
+  else sanitized.inputStatus = inputStatus
+  return sanitized
+}
+
+/**
+ * Validate the optional compare-mode contribution-input mode.
+ *
+ * Absent is valid and means plain net mode. A pinned Eigenbeitrag is bounded
+ * generously here (the exact statutory ceiling depends on eligibility and is
+ * re-clamped by `syncMonthlyContributions` on every call); this layer only
+ * rejects shapes that would produce NaN downstream.
+ */
+function validateContributionInput(input: unknown): boolean {
+  if (input === undefined) return true
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return false
+  const c = input as Record<string, unknown>
+  if (c.kind === 'net') return true
+  if (c.kind === 'avd-own') return inRange(c.monthlyOwn, 0, 100_000)
+  return false
 }
 
 export function validateState(
@@ -134,14 +179,13 @@ const VALID_INSTANCE_STATUSES = ['active', 'paid_up', 'surrendered', 'offered'] 
 const VALID_EVIDENCE_STATES = ['user_confirmed', 'model_estimate', 'statement'] as const
 const VALID_TRANSFER_TYPES = ['certified', 'surrender_reinvest'] as const
 
-/** Illegal certified-transfer pairings under AltZertG / EStG. */
-const ILLEGAL_CERTIFIED_PAIRINGS = new Set([
-  'altersvorsorgedepot→riester', // AVD → Riester forbidden under AltZertG
-  'etf→bav',                     // ETF → bAV requires §3 Nr. 63 contribution, not a transfer
-  'etf→altersvorsorgedepot',     // ETF → AVD: no certified-transfer route
-  'etf→riester',                 // ETF → Riester: no certified-transfer route
-  'bav→altersvorsorgedepot',     // bAV → AVD: no certified-transfer route under AltZertG
-  'bav→riester',                 // bAV → Riester: no certified-transfer route
+/** Exhaustive certified-transfer pairings modelled by contractDecisions. */
+const LEGAL_CERTIFIED_PAIRINGS = new Set([
+  'riester→riester',
+  'riester→altersvorsorgedepot',
+  'altersvorsorgedepot→altersvorsorgedepot',
+  'basisrente→basisrente',
+  'bav→bav',
 ])
 
 /**
@@ -164,7 +208,7 @@ export function productIdFromInstanceId(instanceId: string): ProductId | null {
   return null
 }
 
-function validateTransferEvent(event: unknown, allInstanceIds: Set<string>): boolean {
+function validateTransferEventShape(event: unknown): boolean {
   if (!event || typeof event !== 'object') return false
   const e = event as Record<string, unknown>
   if (!VALID_TRANSFER_TYPES.includes(e.type as typeof VALID_TRANSFER_TYPES[number])) return false
@@ -173,36 +217,40 @@ function validateTransferEvent(event: unknown, allInstanceIds: Set<string>): boo
   if (typeof e.targetInstanceId !== 'string' || !e.targetInstanceId) return false
   if (!isFiniteNumber(e.amountEUR as unknown) || (e.amountEUR as number) < 0) return false
 
-  // Both source and target instances must exist in the workspace.
-  // Without the source check, `portfolioTransfer.findInstanceById` would
-  // silently skip the inbound side at simulation time and the user would
-  // see a missing capital injection with no error surface.
-  if (!allInstanceIds.has(e.sourceInstanceId as string)) return false
-  if (!allInstanceIds.has(e.targetInstanceId as string)) return false
-
-  // Self-target is never legal for any transfer type.
-  if (e.sourceInstanceId === e.targetInstanceId) return false
-
-  // For certified transfers, check illegal pairings.
-  if (e.type === 'certified') {
-    const sourcePid = productIdFromInstanceId(e.sourceInstanceId as string)
-    const targetPid = productIdFromInstanceId(e.targetInstanceId as string)
-    if (sourcePid && targetPid) {
-      const pairingKey = `${sourcePid}→${targetPid}`
-      if (ILLEGAL_CERTIFIED_PAIRINGS.has(pairingKey)) return false
-    }
-  }
-
   if (e.type === 'surrender_reinvest') {
     if (!inRange(e.surrenderHaircutPct as unknown, 0, 1)) return false
-    const sourcePid = productIdFromInstanceId(e.sourceInstanceId as string)
-    const targetPid = productIdFromInstanceId(e.targetInstanceId as string)
-    if (sourcePid && ILLEGAL_SURRENDER_REINVEST_SOURCES.has(sourcePid)) return false
-    if (targetPid && CERTIFIED_TARGET_PRODUCTS.has(targetPid)) {
-      // Reinvestment into a certified product (bAV / Riester / AVD / Basisrente)
-      // must go through the product's own contribution path, not via a transfer.
-      return false
-    }
+  }
+
+  return true
+}
+
+function isUsableTransferEvent(
+  event: NonNullable<InstanceCommon['transferEvents']>[number],
+  allInstanceIds: Set<string>,
+  bavById: Map<string, WorkspaceAssumptionsV2['bav'][number]>,
+): boolean {
+  if (!allInstanceIds.has(event.sourceInstanceId)) return false
+  if (!allInstanceIds.has(event.targetInstanceId)) return false
+  if (event.sourceInstanceId === event.targetInstanceId) return false
+
+  const sourcePid = productIdFromInstanceId(event.sourceInstanceId)
+  const targetPid = productIdFromInstanceId(event.targetInstanceId)
+  if (!sourcePid || !targetPid) return false
+
+  if (event.type === 'certified') {
+    if (!LEGAL_CERTIFIED_PAIRINGS.has(`${sourcePid}→${targetPid}`)) return false
+    const sourceBav = bavById.get(event.sourceInstanceId)
+    const targetBav = bavById.get(event.targetInstanceId)
+    if (
+      sourceBav &&
+      targetBav &&
+      sourceBav.durchfuehrungsweg !== targetBav.durchfuehrungsweg
+    ) return false
+  }
+
+  if (event.type === 'surrender_reinvest') {
+    if (ILLEGAL_SURRENDER_REINVEST_SOURCES.has(sourcePid)) return false
+    if (CERTIFIED_TARGET_PRODUCTS.has(targetPid)) return false
   }
 
   return true
@@ -211,7 +259,7 @@ function validateTransferEvent(event: unknown, allInstanceIds: Set<string>): boo
 /**
  * Validate the InstanceCommon fields shared by all instance types.
  */
-function validateInstanceCommon(inst: unknown, allInstanceIds: Set<string>): inst is InstanceCommon {
+function validateInstanceCommon(inst: unknown): inst is InstanceCommon {
   if (!inst || typeof inst !== 'object') return false
   const i = inst as Record<string, unknown>
   if (typeof i.instanceId !== 'string' || !i.instanceId) return false
@@ -223,6 +271,13 @@ function validateInstanceCommon(inst: unknown, allInstanceIds: Set<string>): ins
   for (const v of Object.values(i.evidenceMap as Record<string, unknown>)) {
     if (!VALID_EVIDENCE_STATES.includes(v as typeof VALID_EVIDENCE_STATES[number])) return false
   }
+  // Optional inputStatus — never rejected here; `sanitizeInstances` below
+  // drops unusable entries so a bad status byte cannot discard the workspace.
+  if (
+    i.inputStatus !== undefined &&
+    (typeof i.inputStatus !== 'object' || i.inputStatus === null || Array.isArray(i.inputStatus))
+  ) return false
+  if (i.expectedReturn !== undefined && !inRange(i.expectedReturn, EXPECTED_RETURN_BOUNDS.min, EXPECTED_RETURN_BOUNDS.max)) return false
   // Optional currentValueEUR
   if (i.currentValueEUR !== undefined && (!isFiniteNumber(i.currentValueEUR as unknown) || (i.currentValueEUR as number) < 0)) return false
   // Optional ownedBy
@@ -233,7 +288,7 @@ function validateInstanceCommon(inst: unknown, allInstanceIds: Set<string>): ins
   if (i.transferEvents !== undefined) {
     if (!Array.isArray(i.transferEvents)) return false
     for (const ev of i.transferEvents as unknown[]) {
-      if (!validateTransferEvent(ev, allInstanceIds)) return false
+      if (!validateTransferEventShape(ev)) return false
     }
   }
   return true
@@ -242,8 +297,8 @@ function validateInstanceCommon(inst: unknown, allInstanceIds: Set<string>): ins
 /**
  * Validate a bAV instance (InstanceCommon + BavAssumptions).
  */
-export function validateBavInstance(inst: unknown, allInstanceIds: Set<string>): boolean {
-  if (!validateInstanceCommon(inst, allInstanceIds)) return false
+export function validateBavInstance(inst: unknown): boolean {
+  if (!validateInstanceCommon(inst)) return false
   // Double-cast via unknown: validateInstanceCommon confirms the shape is InstanceCommon;
   // the validator then checks the additional product-specific fields.
   return validateBav(inst as unknown as Parameters<typeof validateBav>[0])
@@ -252,41 +307,71 @@ export function validateBavInstance(inst: unknown, allInstanceIds: Set<string>):
 /**
  * Validate an ETF instance (InstanceCommon + EtfAssumptions).
  */
-export function validateEtfInstance(inst: unknown, allInstanceIds: Set<string>): boolean {
-  if (!validateInstanceCommon(inst, allInstanceIds)) return false
+export function validateEtfInstance(inst: unknown): boolean {
+  if (!validateInstanceCommon(inst)) return false
   return validateEtf(inst as unknown as Parameters<typeof validateEtf>[0])
 }
 
 /**
  * Validate a private insurance instance (InstanceCommon + InsuranceAssumptions).
  */
-export function validateInsuranceInstance(inst: unknown, allInstanceIds: Set<string>): boolean {
-  if (!validateInstanceCommon(inst, allInstanceIds)) return false
+export function validateInsuranceInstance(inst: unknown): boolean {
+  if (!validateInstanceCommon(inst)) return false
   return validateInsurance(inst as unknown as Parameters<typeof validateInsurance>[0])
 }
 
 /**
  * Validate a Basisrente instance (InstanceCommon + BasisrenteAssumptions).
  */
-export function validateBasisrenteInstance(inst: unknown, allInstanceIds: Set<string>): boolean {
-  if (!validateInstanceCommon(inst, allInstanceIds)) return false
+export function validateBasisrenteInstance(inst: unknown): boolean {
+  if (!validateInstanceCommon(inst)) return false
   return validateBasisrente(inst as unknown as Parameters<typeof validateBasisrente>[0])
 }
 
 /**
  * Validate an Altersvorsorgedepot instance (InstanceCommon + AltersvorsorgedepotAssumptions).
  */
-export function validateAltersvorsorgedepotInstance(inst: unknown, allInstanceIds: Set<string>): boolean {
-  if (!validateInstanceCommon(inst, allInstanceIds)) return false
+export function validateAltersvorsorgedepotInstance(inst: unknown): boolean {
+  if (!validateInstanceCommon(inst)) return false
   return validateAltersvorsorgedepot(inst as unknown as Parameters<typeof validateAltersvorsorgedepot>[0])
 }
 
 /**
  * Validate a Riester instance (InstanceCommon + RiesterAssumptions).
  */
-export function validateRiesterInstance(inst: unknown, allInstanceIds: Set<string>): boolean {
-  if (!validateInstanceCommon(inst, allInstanceIds)) return false
+export function validateRiesterInstance(inst: unknown): boolean {
+  if (!validateInstanceCommon(inst)) return false
   return validateRiester(inst as unknown as Parameters<typeof validateRiester>[0])
+}
+
+/**
+ * Per-product instance validators, keyed by `ProductId`.
+ *
+ * The persisted-schema gate, exposed as a table so writers (the contract
+ * editor, `usePortfolioState`'s instance mutators) can run the *same* check
+ * before they persist. Editor bounds that drift wider than these validators
+ * used to produce a workspace that failed on the next load; both sides now
+ * share this entry point.
+ */
+export const INSTANCE_VALIDATOR_BY_PRODUCT: Record<ProductId, (inst: unknown) => boolean> = {
+  bav: validateBavInstance,
+  etf: validateEtfInstance,
+  versicherung: validateInsuranceInstance,
+  basisrente: validateBasisrenteInstance,
+  altersvorsorgedepot: validateAltersvorsorgedepotInstance,
+  riester: validateRiesterInstance,
+}
+
+/**
+ * Instances dropped by the last `validateWorkspaceAssumptions` call, so the
+ * warning is emitted once per load rather than once per instance.
+ */
+function warnDroppedInstances(instanceIds: readonly string[]): void {
+  if (instanceIds.length === 0) return
+  console.warn(
+    `[storage] ${instanceIds.length} ungültige(r) Vertrag/Verträge beim Laden verworfen: ` +
+      `${instanceIds.join(', ')}. Die übrigen Angaben bleiben erhalten.`,
+  )
 }
 
 /**
@@ -308,6 +393,7 @@ export function validateWorkspaceAssumptions(input: unknown): WorkspaceAssumptio
   for (const pid of a.visibleProducts) {
     if (!PRODUCT_IDS.includes(pid)) return null
   }
+  if (!validateContributionInput(a.contributionInput)) return null
 
   // Collect all instance ids across every product array for transfer-event target validation.
   // Duplicate instanceId values across product arrays are rejected — they indicate a corrupt
@@ -331,38 +417,92 @@ export function validateWorkspaceAssumptions(input: unknown): WorkspaceAssumptio
     }
   }
 
-  // Validate each product's instance array.
+  const hasExpectedProductPrefix = (inst: unknown, expected: ProductId): boolean => {
+    if (!inst || typeof inst !== 'object') return false
+    const instanceId = (inst as Record<string, unknown>).instanceId
+    return typeof instanceId === 'string' && productIdFromInstanceId(instanceId) === expected
+  }
+
+  // Validate each product's instance array. The product prefix is part of the
+  // persisted identity contract and must agree with the array containing it.
+  // A single malformed instance is *dropped*, not fatal. Rejecting the whole
+  // workspace here means `loadInitialWorkspace` falls back to defaults and the
+  // next mutation overwrites the user's contracts, profile and saved
+  // alternatives — a silent, irrecoverable loss. Same sanitise-not-reject
+  // posture as the transfer-event filter below.
+  const dropped: string[] = []
+  const keepValid = <T,>(instances: T[], expected: ProductId): T[] =>
+    instances.filter((inst) => {
+      if (
+        hasExpectedProductPrefix(inst, expected) &&
+        INSTANCE_VALIDATOR_BY_PRODUCT[expected](inst)
+      ) return true
+      const id = (inst as Record<string, unknown> | null)?.instanceId
+      dropped.push(typeof id === 'string' && id ? id : `${expected} (ohne Kennung)`)
+      return false
+    })
+
   if (!Array.isArray(a.bav)) return null
-  for (const inst of a.bav) {
-    if (!validateBavInstance(inst, allInstanceIds)) return null
-  }
-
   if (!Array.isArray(a.etf)) return null
-  for (const inst of a.etf) {
-    if (!validateEtfInstance(inst, allInstanceIds)) return null
-  }
-
   if (!Array.isArray(a.insurance)) return null
-  for (const inst of a.insurance) {
-    if (!validateInsuranceInstance(inst, allInstanceIds)) return null
-  }
-
   if (!Array.isArray(a.basisrente)) return null
-  for (const inst of a.basisrente) {
-    if (!validateBasisrenteInstance(inst, allInstanceIds)) return null
-  }
-
   if (!Array.isArray(a.altersvorsorgedepot)) return null
-  for (const inst of a.altersvorsorgedepot) {
-    if (!validateAltersvorsorgedepotInstance(inst, allInstanceIds)) return null
-  }
-
   if (!Array.isArray(a.riester)) return null
-  for (const inst of a.riester) {
-    if (!validateRiesterInstance(inst, allInstanceIds)) return null
+
+  const bav = keepValid(a.bav, 'bav')
+  const etf = keepValid(a.etf, 'etf')
+  const insurance = keepValid(a.insurance, 'versicherung')
+  const basisrente = keepValid(a.basisrente, 'basisrente')
+  const altersvorsorgedepot = keepValid(a.altersvorsorgedepot, 'altersvorsorgedepot')
+  const riester = keepValid(a.riester, 'riester')
+  warnDroppedInstances(dropped)
+
+  // Transfer legality is event-scoped. A stale event can arise after a user
+  // edits or removes a contract; discard that event rather than rejecting the
+  // entire persisted workspace and falling back to an empty default.
+  const bavById = new Map(bav.map((inst) => [inst.instanceId, inst]))
+  // A transfer event pointing at a dropped instance is itself unusable.
+  for (const id of dropped) allInstanceIds.delete(id)
+  const sanitizeInstances = <T extends InstanceCommon>(instances: T[]): T[] => {
+    return instances.map((instance) => {
+      // Additive input-status metadata: drop unusable entries, keep the instance.
+      const inputStatus = sanitizeInputStatusMap(instance.inputStatus)
+      const statusChanged =
+        instance.inputStatus !== undefined &&
+        (inputStatus === undefined ||
+          Object.keys(inputStatus).length !== Object.keys(instance.inputStatus).length)
+      let next = instance
+      if (statusChanged) {
+        next = { ...instance }
+        if (inputStatus === undefined) delete next.inputStatus
+        else next.inputStatus = inputStatus
+      }
+      if (!next.transferEvents) return next
+      const transferEvents = next.transferEvents.filter((event) =>
+        isUsableTransferEvent(event, allInstanceIds, bavById),
+      )
+      return transferEvents.length === next.transferEvents.length
+        ? next
+        : { ...next, transferEvents }
+    })
   }
 
-  return a
+  const workspaceInputStatus = sanitizeInputStatusMap(a.inputStatus, {
+    restrictToReservedKeys: true,
+  })
+  const sanitizedWorkspaceAssumptions: WorkspaceAssumptionsV2 = {
+    ...a,
+    statutoryPension: sanitizeStatutoryPension(a.statutoryPension),
+    bav: sanitizeInstances(bav),
+    etf: sanitizeInstances(etf),
+    insurance: sanitizeInstances(insurance),
+    basisrente: sanitizeInstances(basisrente),
+    altersvorsorgedepot: sanitizeInstances(altersvorsorgedepot),
+    riester: sanitizeInstances(riester),
+  }
+  if (workspaceInputStatus === undefined) delete sanitizedWorkspaceAssumptions.inputStatus
+  else sanitizedWorkspaceAssumptions.inputStatus = workspaceInputStatus
+  return sanitizedWorkspaceAssumptions
 }
 
 /**
@@ -376,10 +516,11 @@ export function validateScenario(input: unknown): Scenario | null {
   if (typeof s.createdAt !== 'string') return null
   if (!['baseline', 'manual', 'recommender'].includes(s.origin)) return null
   if (!validateProfile(s.profile)) return null
-  if (validateWorkspaceAssumptions(s.assumptions) === null) return null
+  const assumptions = validateWorkspaceAssumptions(s.assumptions)
+  if (assumptions === null) return null
   // Validate retirementEndAge > retirementAge cross-invariant
-  if (s.assumptions.retirementEndAge <= s.profile.retirementAge) return null
-  return s
+  if (assumptions.retirementEndAge <= s.profile.retirementAge) return null
+  return { ...s, assumptions }
 }
 
 /**
@@ -393,11 +534,13 @@ export function validateScenario(input: unknown): Scenario | null {
 export function validateWhatIfScenario(input: unknown): WhatIfScenario | null {
   if (!input || typeof input !== 'object') return null
   const w = input as WhatIfScenario
-  if (validateScenario(w) === null) return null
+  const scenario = validateScenario(w)
+  if (scenario === null) return null
   if (typeof w.derivedFromBaselineId !== 'string' || !w.derivedFromBaselineId) return null
-  if (validateScenario(w.derivedFromBaselineSnapshot) === null) return null
+  const derivedFromBaselineSnapshot = validateScenario(w.derivedFromBaselineSnapshot)
+  if (derivedFromBaselineSnapshot === null) return null
   if (w.frozenAt !== undefined && (typeof w.frozenAt !== 'number' || !Number.isFinite(w.frozenAt))) return null
-  return w
+  return { ...w, ...scenario, derivedFromBaselineSnapshot }
 }
 
 /**
@@ -419,11 +562,15 @@ export function validateWorkspace(input: unknown): Workspace | null {
   if (w.mode !== 'compare' && w.mode !== 'combine') return null
   if (!Array.isArray(w.whatIfs)) return null
   if (!Array.isArray(w.pinnedComparisonIds)) return null
-  if (validateScenario(w.baseline) === null) return null
+  const baseline = validateScenario(w.baseline)
+  if (baseline === null) return null
   // Deep-validate every what-if and its baseline snapshot so the backfill
   // and re-base paths can dereference them without defensive null checks.
+  const whatIfs: WhatIfScenario[] = []
   for (const wi of w.whatIfs) {
-    if (validateWhatIfScenario(wi) === null) return null
+    const validated = validateWhatIfScenario(wi)
+    if (validated === null) return null
+    whatIfs.push(validated)
   }
-  return w
+  return { ...w, baseline, whatIfs }
 }

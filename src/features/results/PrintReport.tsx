@@ -1,3 +1,4 @@
+import { availableRiy, RIY_UNAVAILABLE } from './riyAvailability'
 /**
  * PrintReport — Sober D port (PR 4.1, H4).
  *
@@ -41,8 +42,9 @@ import { simulateRetirementComparison } from '../../engine/simulate'
 import { buildAllProductsSimulation } from '../../app/buildAllProductsSimulation'
 import {
   evidenceStateToProvKind,
-  formatEvidenceStateForExport,
+  formatExportProvenance,
 } from './provenanceHelpers'
+import { householdTotalSuppressedNotice } from '../../utils/csvExport'
 import {
   buildPrintWohinRows,
   buildPrintZusammenRows,
@@ -50,7 +52,7 @@ import {
   buildPrintWendepunkteRows,
   buildPrintVergleichRows,
   buildPrintProContraRows,
-  PRINT_METHODE_BULLETS,
+  buildPrintMethodeBullets,
   type PrintWohinRow,
   type PrintZusammenRow,
   type PrintVertragBlock,
@@ -133,6 +135,17 @@ interface Props {
    * + combined bundle threaded in via `portfolio`).
    */
   compareAllProductsSimulation?: ReturnType<typeof simulateRetirementComparison>
+  /**
+   * Set by the caller when `selectResultReadiness` says the household total may
+   * not be shown. The two export surfaces suppress it differently on purpose
+   * (lead decision §10.3): PDF renders `—` plus the Hinweis line naming the
+   * missing inputs; CSV emits an empty cell plus the same Hinweis line. Never 0,
+   * never a number — a blank cell in the printed table would read as a layout
+   * bug, while a dash in a CSV would be parsed as data.
+   *
+   * Omitted → today's behaviour, so existing callers are unchanged.
+   */
+  combineHouseholdTotalBlocked?: { reasonLabels: string[] }
 }
 
 const SCENARIO_ORDER = ['konservativ', 'basis', 'optimistisch']
@@ -152,7 +165,7 @@ function KvRow({ label, children }: { label: string; children: ReactNode }) {
  * Routes the domain `EvidenceState` (or absence of it) through the issue 13
  * shared mapping layer:
  *   - `evidenceStateToProvKind` selects the visual-distinction class.
- *   - `formatEvidenceStateForExport` supplies the German label text.
+ *   - `formatExportProvenance` supplies the German label text.
  *
  * Visual mapping (className → marker):
  *   - `model` (model_estimate)        → `.pr-confidence-estimate`, prefixed 🤔 — visibly equivalent to the prior "🤔 Schätzung" treatment.
@@ -162,7 +175,7 @@ function KvRow({ label, children }: { label: string; children: ReactNode }) {
  */
 function ConfidenceIndicator({ state }: { state: EvidenceState | undefined }) {
   const kind = evidenceStateToProvKind(state)
-  const label = formatEvidenceStateForExport(state)
+  const label = formatExportProvenance(undefined, state)
   // statement is mapped to 'confirmed' by evidenceStateToProvKind, but we want
   // a distinct prefix so the document-source case is recognisable in print.
   const prefix =
@@ -201,6 +214,7 @@ export function PrintReport({
   combineSensitivityRows,
   selectedScenarioId,
   compareAllProductsSimulation,
+  combineHouseholdTotalBlocked,
 }: Props) {
   const date = new Date().toLocaleDateString('de-DE', {
     day: '2-digit',
@@ -256,6 +270,7 @@ export function PrintReport({
         portfolio={portfolio}
         workspace={combineWorkspace}
         sensitivityRows={combineSensitivityRows}
+        householdTotalBlocked={combineHouseholdTotalBlocked}
         date={date}
       />
     )
@@ -387,9 +402,10 @@ export function PrintReport({
               <table className="pr-kv">
                 <tbody>
                   <KvRow label="Bruttorente">{formatCurrency(grv.grossMonthlyPension, 0)}/Monat</KvRow>
-                  <KvRow label="Nettorente">
+                  <KvRow label={profile.publicHealthInsurance ? "Nettorente" : "Nettorente nach privater KV/PV"}>
                     <strong>{formatCurrency(grv.netMonthlyPension, 0)}/Monat</strong>
                   </KvRow>
+                  {grv.pkvRetirementMonthlyCost > 0 && <KvRow label="Private KV/PV abzgl. Zuschuss §106 (bereits abgezogen)">{formatCurrency(grv.pkvRetirementMonthlyCost, 0)}/Monat</KvRow>}
                   <KvRow label="Entgeltpunkte">{formatNumber(grv.projectedEntgeltpunkte, 1)} EP</KvRow>
                   <KvRow label="bAV Nettoaufwand">{formatCurrency(bav.monthlyNetCost, 0)}/Monat</KvRow>
                   <KvRow label="bAV Gesamtbeitrag">
@@ -456,7 +472,7 @@ export function PrintReport({
         />
       )}
 
-      <MethodeSection />
+      <MethodeSection returnScenarios={assumptions.returnScenarios} />
 
       <section className="pr-section pr-disclaimer">
         <div className="pr-section-title">Hinweise und Grenzen der Rechnung</div>
@@ -528,6 +544,8 @@ interface CombinePrintReportProps {
   /** Pre-computed sensitivity rows (PR 11 R1). Threaded so this component
    *  stays presentational; the cost is paid in Calculator.tsx. */
   sensitivityRows?: ReadonlyArray<PrintSensitivityRow>
+  /** See `Props.combineHouseholdTotalBlocked`. */
+  householdTotalBlocked?: { reasonLabels: string[] }
   date: string
 }
 
@@ -540,6 +558,7 @@ function CombinePrintReport({
   portfolio,
   workspace,
   sensitivityRows,
+  householdTotalBlocked,
   date,
 }: CombinePrintReportProps) {
   const { perInstance, combinedByScenarioId, scenarioLabels } = portfolio
@@ -588,8 +607,11 @@ function CombinePrintReport({
         perInstance,
         scenarioId: basisScenarioId,
         combinedForScenario: basisCombined,
+        householdTotalBlocked: householdTotalBlocked !== undefined,
       })
     : []
+
+  const returnOverrides = vertragBlocks.filter(block => block.expectedReturn !== undefined)
 
   // Per-instance Kapital & Auszahlungen wendepunkte. The lifecycle line
   // series is built per instance so the print table renders one block per
@@ -674,13 +696,26 @@ function CombinePrintReport({
             </td>
             <td className="pr-col-right">
               <div className="pr-section-title">Gesetzliche Rente</div>
+              {/* Issue #395: when the household total is blocked, the statutory
+                  projection is an approximation over inputs the user has not
+                  supplied. It is suppressed here for the same reason the total
+                  is — a labelled EUR figure reads as an answer. */}
               <table className="pr-kv">
                 <tbody>
-                  <KvRow label="Bruttorente">{formatCurrency(grv.grossMonthlyPension, 0)}/Monat</KvRow>
-                  <KvRow label="Nettorente">
-                    <strong>{formatCurrency(grv.netMonthlyPension, 0)}/Monat</strong>
+                  <KvRow label="Bruttorente">
+                    {householdTotalBlocked ? '—' : `${formatCurrency(grv.grossMonthlyPension, 0)}/Monat`}
                   </KvRow>
-                  <KvRow label="Entgeltpunkte">{formatNumber(grv.projectedEntgeltpunkte, 1)} EP</KvRow>
+                  <KvRow label={profile.publicHealthInsurance ? "Nettorente" : "Nettorente nach privater KV/PV"}>
+                    <strong>
+                      {householdTotalBlocked ? '—' : `${formatCurrency(grv.netMonthlyPension, 0)}/Monat`}
+                    </strong>
+                  </KvRow>
+                  {!profile.publicHealthInsurance && <KvRow label="Private KV/PV abzgl. Zuschuss §106 (bereits abgezogen)">
+                    {householdTotalBlocked ? '—' : `${formatCurrency(grv.pkvRetirementMonthlyCost, 0)}/Monat`}
+                  </KvRow>}
+                  <KvRow label="Entgeltpunkte">
+                    {householdTotalBlocked ? '—' : `${formatNumber(grv.projectedEntgeltpunkte, 1)} EP`}
+                  </KvRow>
                 </tbody>
               </table>
             </td>
@@ -710,16 +745,24 @@ function CombinePrintReport({
             ))}
           </tbody>
         </table>
+        {returnOverrides.length > 0 && (
+          <p className="pr-note">
+            Vertragsspezifische Renditen (in allen Szenarien):{' '}
+            {returnOverrides.map(block => `${block.title}: ${formatPercent(block.expectedReturn!, 1)} p. a.`).join('; ')}.
+          </p>
+        )}
       </section>
 
       <section className="pr-section">
         <div className="pr-section-title">Kombiniertes Renteneinkommen je Szenario</div>
+        <p className="pr-note pr-table-note">Rentenbeträge zum Rentenbeginn (nominal).</p>
         <table className="pr-table">
           <thead>
             <tr>
               <th>Szenario</th>
               <th className="pr-num">Netto-Einkommen mtl.</th>
-              <th className="pr-num">Gesetzl. Rente netto mtl.</th>
+              <th className="pr-num">{profile.publicHealthInsurance ? 'Gesetzl. Rente netto mtl.' : 'Gesetzl. Rente vor privater KV/PV'}</th>
+              <th className="pr-num">Private KV/PV abzgl. Zuschuss §106</th>
             </tr>
           </thead>
           <tbody>
@@ -729,21 +772,37 @@ function CombinePrintReport({
               return (
                 <tr key={id} className={id === 'basis' ? 'pr-basis' : ''}>
                   <td>{scenarioLabels[id] ?? id}</td>
-                  <td className="pr-num">{formatCurrency(c.monthlyNetIncome, 0)}/Monat</td>
-                  <td className="pr-num">{formatCurrency(c.statutoryPensionMonthlyNet, 0)}/Monat</td>
+                  <td className="pr-num">
+                    {householdTotalBlocked
+                      ? '—'
+                      : `${formatCurrency(c.monthlyNetIncome, 0)}/Monat`}
+                  </td>
+                  <td className="pr-num">
+                    {householdTotalBlocked
+                      ? '—'
+                      : `${formatCurrency(c.statutoryPensionMonthlyNet, 0)}/Monat`}
+                  </td>
+                  <td className="pr-num">{householdTotalBlocked ? '—' : `${formatCurrency(c.pkvRetirementMonthlyCost, 0)}/Monat`}</td>
                 </tr>
               )
             })}
           </tbody>
         </table>
+        {householdTotalBlocked && (
+          <p className="pr-note pr-table-note">
+            {householdTotalSuppressedNotice(householdTotalBlocked.reasonLabels)}
+          </p>
+        )}
         <p className="pr-note pr-table-note">
           Aggregierte Steuer- und Sozialversicherungsabgaben über alle Verträge nach §32a EStG
           und §240 SGB V (KV/PV). Fettgedruckte Zeile = Basisszenario.
+          {!profile.publicHealthInsurance && ' Die gesetzliche Rente in dieser Tabelle ist vor privater KV/PV ausgewiesen. Die private KV/PV wird einmal vom Gesamtbetrag abgezogen; heutige Beiträge werden ohne künftige Erhöhungen fortgeschrieben.'}
         </p>
       </section>
 
       <section className="pr-section">
         <div className="pr-section-title">Mein Plan — Detail je Vertrag</div>
+        <p className="pr-note pr-table-note">Kapital und Rentenbeträge zum Rentenbeginn (nominal). Beiträge und Kosten bleiben gesonderte Größen.</p>
         <table className="pr-table pr-main-table">
           <colgroup>
             <col style={{ width: '20%' }} />
@@ -787,10 +846,10 @@ function CombinePrintReport({
                   <td className="pr-num">{formatCurrency(r.capitalAtRetirement, 0)}</td>
                   <td className="pr-num">{formatCurrency(r.grossMonthlyPayout, 0)}</td>
                   <td className="pr-num">
-                    {formatCurrency(netMonthly, 0)}
+                    {householdTotalBlocked ? '—' : formatCurrency(netMonthly, 0)}
                     <ConfidenceIndicator state={r.inputConfidence} />
                   </td>
-                  <td className="pr-num">{formatPercent(r.accumulationRiy, 2)}</td>
+                  <td className="pr-num">{availableRiy(r) === undefined ? RIY_UNAVAILABLE : formatPercent(availableRiy(r)!, 2)}</td>
                 </tr>
               )
             })}
@@ -808,6 +867,7 @@ function CombinePrintReport({
           rows={zusammenRows}
           retirementAge={profile.retirementAge}
           sensitivityRows={sensitivityRows}
+          householdTotalBlocked={householdTotalBlocked !== undefined}
         />
       )}
 
@@ -819,7 +879,7 @@ function CombinePrintReport({
         <VertragImDetailSection blocks={vertragBlocks} />
       )}
 
-      <MethodeSection />
+      <MethodeSection returnScenarios={returnScenarios} />
 
       <section className="pr-section pr-disclaimer">
         <div className="pr-section-title">Hinweise und Grenzen der Rechnung</div>
@@ -865,7 +925,7 @@ function CombinePrintReport({
  * desc per R1. Replaces the legacy 9-column scenario-sweep summary.
  *
  * Column structure mirrors `VergleichComparisonTable.tsx`:
- *   Sparform | Wie es funktioniert | Kapital mit N | Kosten p. a. |
+ *   Sparform | Wie es funktioniert | Kapital mit N | Effektivkosten p. a. |
  *   Brutto-Rente | Abzüge | Netto pro Monat
  *
  * Visual treatment per Sober D conventions: oxblood (`var(--rw-accent)`) on
@@ -897,6 +957,7 @@ function VergleichSection({
         davon ab, was du gewichtest: Rendite, Sicherheit, Flexibilität.
         Diese Modellrechnung nennt keine Empfehlung.
       </p>
+      <p className="pr-note pr-table-note">Kapital und Rentenbeträge zum Rentenbeginn (nominal). Der Netto-Aufwand ist dein monatlicher Einsatz.</p>
       <table className="pr-table pr-main-table pr-vergleich-table">
         <colgroup>
           <col style={{ width: '18%' }} />
@@ -912,7 +973,7 @@ function VergleichSection({
             <th>Sparform</th>
             <th>Wie es funktioniert</th>
             <th className="pr-num">{`Kapital mit ${retirementAge}`}</th>
-            <th className="pr-num">Kosten p. a.</th>
+            <th className="pr-num">Effektivkosten p. a.</th>
             <th className="pr-num">Brutto-Rente</th>
             <th className="pr-num">Abzüge</th>
             <th className="pr-num">Netto pro Monat</th>
@@ -929,7 +990,11 @@ function VergleichSection({
               </td>
               <td className="pr-vergleich-cell-tagline">{row.tagline}</td>
               <td className="pr-num">{formatCurrency(row.capitalAtRetirement, 0)}</td>
-              <td className="pr-num">{formatPercent(row.effectiveAnnualCost, 1)}</td>
+              <td className="pr-num">
+                {row.effectiveAnnualCost === undefined
+                  ? RIY_UNAVAILABLE
+                  : formatPercent(row.effectiveAnnualCost, 1)}
+              </td>
               <td className="pr-num">{formatCurrency(row.grossMonthlyPayout, 0)}</td>
               <td className="pr-num pr-vergleich-cell-abzuege">
                 −{formatCurrency(row.deductionsMonthly, 0)}
@@ -1155,13 +1220,22 @@ function formatRowValue(row: VergleichDetailRow): string {
  * Statutorische Werte / Bewusst nicht modellieren) as a short definition
  * list, plus a pointer to the live `/methode` page for full statutory
  * tables. Kept terse — the print budget is ≤ 1 A4 page for this block.
+ *
+ * `returnScenarios` is the live set (compare: singleton assumptions;
+ * combine: workspace baseline) so the Renditeannahmen bullet can flag a
+ * user-defined `custom` scenario (#408). The bullet still lists only the
+ * three standard rates — the Rentenszenarien table above lists the live set.
  */
-function MethodeSection() {
+function MethodeSection({
+  returnScenarios,
+}: {
+  returnScenarios: ScenarioAssumptions['returnScenarios']
+}) {
   return (
     <section className="pr-section pr-methode-section">
       <div className="pr-section-title">Methode &amp; Quellen</div>
       <ul className="pr-methode-list">
-        {PRINT_METHODE_BULLETS.map((bullet) => (
+        {buildPrintMethodeBullets(returnScenarios).map((bullet) => (
           <li key={bullet.label}>
             <strong>{bullet.label}:</strong> {bullet.body}
           </li>
@@ -1190,10 +1264,18 @@ function ZusammensetzungSection({
   rows,
   retirementAge,
   sensitivityRows,
+  householdTotalBlocked = false,
 }: {
   rows: ReadonlyArray<PrintZusammenRow>
   retirementAge: number
   sensitivityRows?: ReadonlyArray<PrintSensitivityRow>
+  /**
+   * Issue #395: every row amount is a share of the blocked household total.
+   * Printing one of them would re-introduce the approximation the total was
+   * suppressed to avoid, so the amount and share columns render '—'. The rows
+   * themselves stay so the user still sees which contracts are in the plan.
+   */
+  householdTotalBlocked?: boolean
 }) {
   return (
     <section className="pr-section">
@@ -1231,8 +1313,12 @@ function ZusammensetzungSection({
                     ? 'beitragsfrei'
                     : `${formatCurrency(row.contributionMonthly, 0)}/Mon.`}
               </td>
-              <td className="pr-num">{formatCurrency(row.monthlyNet, 0)}/Mon.</td>
-              <td className="pr-num">{formatPercent(row.share, 1)}</td>
+              <td className="pr-num">
+                {householdTotalBlocked ? '—' : `${formatCurrency(row.monthlyNet, 0)}/Mon.`}
+              </td>
+              <td className="pr-num">
+                {householdTotalBlocked ? '—' : formatPercent(row.share, 1)}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -1408,6 +1494,9 @@ function VertragBlockView({ block }: { block: PrintVertragBlock }) {
           {block.anbieter ? ` · ${block.anbieter}` : ''}
         </span>
       </div>
+      {block.marketReturnAssumption !== undefined && (
+        <p className="pr-note">Marktrendite {formatPercent(block.marketReturnAssumption, 1)} p. a. (Annahme, {block.expectedReturn !== undefined ? 'vertragsspezifisch' : 'Szenario'})</p>
+      )}
       <table className="pr-table pr-vertrag-kpi-table">
         <thead>
           <tr>

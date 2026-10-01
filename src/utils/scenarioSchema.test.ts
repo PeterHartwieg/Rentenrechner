@@ -824,6 +824,52 @@ describe('validateWorkspaceAssumptions — strict monteCarlo / statutoryPension 
     const patched = { ...a, etf: patchedEtf }
     expect(validateWorkspaceAssumptions(patched)).toBeNull()
   })
+
+  it('drops an out-of-range instance and keeps every other contract (issue #395 sibling)', () => {
+    const a = makeWorkspaceAssumptions()
+    // A rentenfaktor the editor used to accept (its spec allowed 200) but the
+    // bAV validator rejects (`inRange(0, 100)`).
+    const patched = {
+      ...a,
+      bav: [{ ...a.bav[0], rentenfaktor: 120 }],
+    }
+    const result = validateWorkspaceAssumptions(patched)
+    expect(result).not.toBeNull()
+    expect(result!.bav).toHaveLength(0)
+    expect(result!.etf).toHaveLength(a.etf.length)
+    expect(result!.insurance).toHaveLength(a.insurance.length)
+    expect(result!.riester).toHaveLength(a.riester.length)
+  })
+
+  it('drops an instance whose product prefix does not match its array, keeping the rest', () => {
+    const a = makeWorkspaceAssumptions()
+    const patched = {
+      ...a,
+      etf: [{ ...a.etf[0], instanceId: 'versicherung-wrong-slot' }],
+    }
+    const result = validateWorkspaceAssumptions(patched)
+    expect(result).not.toBeNull()
+    expect(result!.etf).toHaveLength(0)
+    // The user's other contracts survive the misfiled one.
+    expect(result!.bav).toHaveLength(a.bav.length)
+  })
+
+  // Combine-mode instance validators delegate to the product validators, so a
+  // malformed flag poisons the whole instance instead of counting as a claim.
+  it.each(['riester', 'altersvorsorgedepot'] as const)(
+    'drops a %s instance with a non-boolean claimsChildAllowance',
+    (slot) => {
+      const a = makeWorkspaceAssumptions()
+      const inst = a[slot][0] as unknown as Record<string, unknown>
+      inst.eligibility = {
+        ...(inst.eligibility as Record<string, unknown>),
+        claimsChildAllowance: 'false',
+      }
+      const result = validateWorkspaceAssumptions(a)
+      expect(result).not.toBeNull()
+      expect(result![slot]).toHaveLength(0)
+    },
+  )
 })
 
 describe('validateTransferEvent — both source and target must exist', () => {
@@ -837,7 +883,7 @@ describe('validateTransferEvent — both source and target must exist', () => {
     )
   }
 
-  it('rejects a transfer event with a missing sourceInstanceId', () => {
+  it('drops a transfer event with a missing sourceInstanceId without losing the workspace', () => {
     const ws = makeWorkspaceWithTwoInstances()
     const etfInst = ws.baseline.assumptions.etf[0] as unknown as Record<string, unknown>
     etfInst.transferEvents = [
@@ -849,10 +895,12 @@ describe('validateTransferEvent — both source and target must exist', () => {
         amountEUR: 1000,
       },
     ]
-    expect(validateWorkspaceAssumptions(ws.baseline.assumptions)).toBeNull()
+    const validated = validateWorkspaceAssumptions(ws.baseline.assumptions)
+    expect(validated).not.toBeNull()
+    expect(validated!.etf[0].transferEvents).toEqual([])
   })
 
-  it('rejects a transfer event with a missing targetInstanceId (existing behaviour, kept)', () => {
+  it('drops a transfer event with a missing targetInstanceId without losing the workspace', () => {
     const ws = makeWorkspaceWithTwoInstances()
     const etfInst = ws.baseline.assumptions.etf[0] as unknown as Record<string, unknown>
     etfInst.transferEvents = [
@@ -864,7 +912,9 @@ describe('validateTransferEvent — both source and target must exist', () => {
         amountEUR: 1000,
       },
     ]
-    expect(validateWorkspaceAssumptions(ws.baseline.assumptions)).toBeNull()
+    const validated = validateWorkspaceAssumptions(ws.baseline.assumptions)
+    expect(validated).not.toBeNull()
+    expect(validated!.etf[0].transferEvents).toEqual([])
   })
 
   it('accepts a transfer event whose source and target both exist', () => {
@@ -884,8 +934,108 @@ describe('validateTransferEvent — both source and target must exist', () => {
     expect(validateWorkspaceAssumptions(ws.baseline.assumptions)).not.toBeNull()
   })
 
+  it('drops a certified transfer outside the exhaustive legal allowlist', () => {
+    const ws = makeWorkspaceWithTwoInstances()
+    const bavInst = ws.baseline.assumptions.bav[0] as unknown as Record<string, unknown>
+    bavInst.transferEvents = [
+      {
+        type: 'certified',
+        year: 2030,
+        sourceInstanceId: ws.baseline.assumptions.bav[0].instanceId,
+        targetInstanceId: ws.baseline.assumptions.etf[0].instanceId,
+        amountEUR: 1000,
+      },
+    ]
+    const validated = validateWorkspaceAssumptions(ws.baseline.assumptions)
+    expect(validated).not.toBeNull()
+    expect(validated!.bav[0].transferEvents).toEqual([])
+  })
+
+  it('drops a stale certified bAV transfer across different Durchführungswege without losing the workspace', () => {
+    const ws = makeWorkspaceWithTwoInstances()
+    const source = ws.baseline.assumptions.bav[0]
+    const target = {
+      ...source,
+      instanceId: 'bav-second',
+      durchfuehrungsweg: 'direktzusage' as const,
+      transferEvents: undefined,
+    }
+    ;(source as unknown as Record<string, unknown>).transferEvents = [
+      {
+        type: 'certified',
+        year: 2030,
+        sourceInstanceId: source.instanceId,
+        targetInstanceId: target.instanceId,
+        amountEUR: 1000,
+      },
+    ]
+    ws.baseline.assumptions.bav.push(target)
+    const validated = validateWorkspaceAssumptions(ws.baseline.assumptions)
+    expect(validated).not.toBeNull()
+    expect(validated!.bav[0].transferEvents).toEqual([])
+  })
+
+  it('accepts a certified bAV transfer using the same Durchführungsweg', () => {
+    const ws = makeWorkspaceWithTwoInstances()
+    const source = ws.baseline.assumptions.bav[0]
+    const target = {
+      ...source,
+      instanceId: 'bav-second',
+      transferEvents: undefined,
+    }
+    ;(source as unknown as Record<string, unknown>).transferEvents = [
+      {
+        type: 'certified',
+        year: 2030,
+        sourceInstanceId: source.instanceId,
+        targetInstanceId: target.instanceId,
+        amountEUR: 1000,
+      },
+    ]
+    ws.baseline.assumptions.bav.push(target)
+    const validated = validateWorkspaceAssumptions(ws.baseline.assumptions)
+    expect(validated).not.toBeNull()
+    expect(validated!.bav[0].transferEvents).toEqual([
+      {
+        type: 'certified',
+        year: 2030,
+        sourceInstanceId: source.instanceId,
+        targetInstanceId: target.instanceId,
+        amountEUR: 1000,
+      },
+    ])
+  })
+
+  it.each(['riester', 'altersvorsorgedepot'] as const)(
+    'preserves a certified %s provider transfer between distinct contracts',
+    (slot) => {
+      const ws = makeWorkspaceWithTwoInstances()
+      const source = ws.baseline.assumptions[slot][0]
+      const event = {
+        type: 'certified' as const,
+        year: 2030,
+        sourceInstanceId: source.instanceId,
+        targetInstanceId: `${slot}-provider-target`,
+        amountEUR: 1000,
+      }
+      const target = {
+        ...source,
+        instanceId: event.targetInstanceId,
+        transferEvents: [event],
+      }
+      source.transferEvents = [event]
+      ;(ws.baseline.assumptions[slot] as Array<typeof target>).push(target)
+
+      const validated = validateWorkspaceAssumptions(ws.baseline.assumptions)
+
+      expect(validated).not.toBeNull()
+      expect(validated![slot][0].transferEvents).toEqual(source.transferEvents)
+      expect(validated![slot][1].transferEvents).toEqual(target.transferEvents)
+    },
+  )
+
   it.each(['bav', 'basisrente', 'riester'] as const)(
-    'rejects a certified %s self-target transfer',
+    'drops a certified %s self-target transfer',
     (slot) => {
       const ws = makeWorkspaceWithTwoInstances()
       const inst = ws.baseline.assumptions[slot][0] as unknown as Record<string, unknown>
@@ -899,7 +1049,9 @@ describe('validateTransferEvent — both source and target must exist', () => {
         },
       ]
 
-      expect(validateWorkspaceAssumptions(ws.baseline.assumptions)).toBeNull()
+      const validated = validateWorkspaceAssumptions(ws.baseline.assumptions)
+      expect(validated).not.toBeNull()
+      expect(validated![slot][0].transferEvents).toEqual([])
     },
   )
 })

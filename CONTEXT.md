@@ -47,8 +47,14 @@ naming code, tests, issues, and ADRs.
 | **Paid-up (beitragsfrei)** | Phase-2 contract state: contributions stop, capital continues to grow under (usually elevated) paid-up fees. Per-product paid-up funding helpers live in `portfolioFunding.ts`. |
 | **Evidence state** | Per-instance per-field confidence flag: `'user_confirmed' \| 'model_estimate' \| 'statement'`. Domain type in `src/domain/instances.ts`. Display mapping via `evidenceStateToProvKind` in `src/features/results/provenanceHelpers.ts`. |
 | **Provenance kind** | Display-layer confidence label (`'user' \| 'confirmed' \| 'model' \| 'default'`) used by `ProvLabel` / `FieldWithProv` in `src/features/results/provenance.tsx`. |
+| **Input status** | Per-field answer state independent of evidence: `'unknown' \| 'assumed' \| 'entered' \| 'document'` (`src/domain/inputStatus.ts`). Carried in an `InputStatusMap` on instances, workspace assumptions and scenario assumptions. Absent means `assumed`; `unknown` means the user explicitly said so and **never** writes a value (a typed `0` is an entered zero). |
+| **Readiness** | Whether a result may be shown, and why not: `'available' \| 'estimated' \| 'incomplete' \| 'error'` plus blocking reasons with route targets (`selectResultReadiness` in `src/app/resultReadiness.ts`). A blocked household total is suppressed everywhere — UI, CSV and PDF — never approximated. |
+| **Plan summary** | One scoped household result for the plan surface: total on both money bases, per-source rows with duration descriptors, the target gap and the readiness verdict. Built by `selectPlanSummary` in `src/app/planSummary.ts`. |
+| **Alternative** | User-facing name for a what-if on the plan surface (`/alternativen`). **Apply** writes the what-if's diff onto the current baseline (`applyWhatIf`, refused when stale or shape-drifted); **undo** restores the whole workspace from the handle the mutation returned. |
+| **Undo handle** | `WorkspaceUndo` — a whole-workspace snapshot plus a German label, returned by every recording mutation. One level, in memory, module-level (so it survives a route change), never persisted; superseded by the next mutation and cleared once consumed. |
 | **Recommendation atom** | Smallest unit of recommender output: `{ id, priority, context }`. Pure rules in `src/app/recommendations.ts`; German copy templates in `src/content/recommendationCopy.ts`. |
 | **Combine context** | Statutory pension + tax + KV/PV routing decisions shared by combine simulation and the recommender. Built by `buildCombineContext` in `src/engine/combineContext.ts`. |
+| **Funding headroom** | Authoritative combine-mode snapshot of requested, accepted, and remaining statutory funding budgets. Built with per-instance funding by `buildPortfolioFunding`; simulation, recommendation atoms, candidate sizing, and contract warnings consume the same snapshot. |
 | **Schicht 1 / 2 / 3** | The German three-pillar retirement layering: Schicht 1 = Basisrente / GRV, Schicht 2 = Riester / AVD / bAV, Schicht 3 = ETF / private insurance. |
 
 ## Module ownership map
@@ -64,6 +70,7 @@ behaviour; tests live next to the module unless noted.
 | Salary, BMF PAP Vorsorgepauschale, bAV two-pass funding | `src/engine/salary.ts` |
 | Retirement-phase tax (cohort tables, Versorgungsfreibetrag, Ehegattensplitting) | `src/engine/retirementTax.ts` |
 | Monthly retirement net-payout cascade (bAV/pAV/AVD/Riester/Basisrente) | `src/engine/retirementPayout.ts` |
+| Private-insurance monthly income classification (effective tax mode + taxable annual; shared by compare and combine) | `src/engine/insurancePayout.ts` (`classifyInsuranceMonthlyIncome`) |
 | Accumulation, fee drag, ETF Vorabpauschale | `src/engine/accumulation.ts` |
 | Salary-phase §10 Sonderausgaben tax-delta primitives | `src/engine/salaryPhaseFunding.ts` |
 | Monte Carlo return paths | `src/engine/marketReturns.ts`, `src/engine/monteCarlo.ts` |
@@ -75,7 +82,7 @@ behaviour; tests live next to the module unless noted.
 | Concern | Module |
 |---------|--------|
 | Compare-mode top-level | `src/engine/simulate.ts` (`simulateRetirementComparison`) |
-| Pre-scenario funding context (bAV, Basisrente, AVD, Riester) | `src/engine/simulationContext.ts` (`buildContext`) |
+| Pre-scenario funding context (bAV, Basisrente, AVD, Riester) | `src/engine/simulationContext.ts` (`buildContext`; plus `EtfCalculationContext` — the first narrow per-product context, ADR-0003) |
 | Combine-mode top-level | `src/engine/portfolioCombine.ts` (`combinePortfolio`) |
 | Combine-mode adapter (per-instance projection + simulation orchestration) | `src/engine/portfolioAdapter.ts` (thin) |
 
@@ -108,7 +115,12 @@ tests.
 | Recommender orchestrator (candidate selection, ranking, what-if materialisation) | `src/app/recommender.ts` |
 | Per-product candidate generation (registry pattern) | `src/app/recommenderCandidates/` |
 | Recommendation rules (pure, atoms in/out) | `src/app/recommendations.ts` |
-| Routing (tagged-union `Route` + `ROUTES` constructors + `pathToRoute` / `routeToPath` translators; dynamic segment for `/vertrag/:instanceId`) | `src/app/useRoute.ts` |
+| Input-status metadata (types + sanitisers, React-free) | `src/domain/inputStatus.ts` |
+| Result readiness (status, blocking reasons, export suppression labels) | `src/app/resultReadiness.ts` |
+| Plan summary (household total, source rows, durations, target gap) | `src/app/planSummary.ts` |
+| Explicit compare seeding from a saved plan (`/vergleich` only) | `src/app/compareSeed.ts` |
+| What-if preview construction + labels (pure) | `src/app/whatIfPreview.ts` |
+| Routing (tagged-union `Route` + `ROUTES` constructors + `pathToRoute` / `routeToPath` translators; dynamic segments for `/vertrag/:instanceId` and `/vertrag/:instanceId/bearbeiten`, plus `/vergleich`, `/vorsorge/neu`, `/alternativen`) | `src/app/useRoute.ts` |
 
 ### Content (no React)
 
@@ -129,6 +141,14 @@ tests.
 | Provenance primitives (`ProvLabel`, `FieldWithProv`) | `src/features/results/provenance.tsx` |
 | Evidence ↔ provenance + export-label mapping | `src/features/results/provenanceHelpers.ts` |
 | Legal pages (Impressum, Datenschutz, footer) | `src/features/legal/` |
+| Plan overview — the default plan surface (household total, source rows, target gap, undo notification) and the separate duration view | `src/features/mein-plan/PlanOverview.tsx`, `PlanDurationSummary.tsx` (selected by `MeinPlanPage` when a `summary` prop is supplied) |
+| Independent comparison journey at `/vergleich` (setup + result, compare-mode singleton only, own `PrintReport` mirror) | `src/features/vergleich/VergleichJourneyPage.tsx`, `VergleichJourneyView.tsx`, `VergleichResultCard.tsx` |
+| Contract picker + new-contract editor (`/vorsorge/neu`) | `src/features/vorsorge/{VorsorgeNeuPage,ContractPicker}.tsx` |
+| Contract editor for an existing instance (`/vertrag/:id/bearbeiten`) | `src/features/vertrag-detail/{VertragBearbeitenPage,ContractEditorHost,ContractEditor,ContractEditorField}.tsx` |
+| Contract draft model + hook (spec-driven fields, unknown handling, draft→instance patch) | `src/features/inventory/{contractDraft.ts,useContractDraft.ts}` |
+| Two-step onboarding / profile + pension editing (`scenario`, `mode`, `initialStep`) | `src/features/inventory/{InventoryWizard,onboardingDraft,useOnboardingDraft}.tsx` |
+| Alternatives (what-if before/after, apply, rebase, remove, undo) | `src/features/alternativen/{AlternativenPage,useAlternativenFlow}.ts(x)` |
+| Numeric input with an explicit "Weiß ich nicht" (unknown ≠ 0) | `src/ui/UnknownNumberField.tsx` |
 | Combine-mode "Mein Plan" Sober D surface (lead + headline + § 1 Zusammensetzung + § 2 Sensitivität + right-rail "Deine Angaben" receipt) | `src/features/mein-plan/MeinPlanPage.tsx` |
 | Sensitivity-row perturbation selectors (Rendite konservativ / Renteneintritt 70 / Inflation 3 % / ETF-Beitrag +100 €) — pure, framework-agnostic, re-run `runCombineSimulation` over a cloned workspace | `src/features/mein-plan/sensitivitySelectors.ts` |
 | Policy-default constants for the sensitivity rows (target scenario id, age cap, inflation rate, ETF-bump amount) | `src/features/mein-plan/sensitivityConfig.ts` |
@@ -174,7 +194,17 @@ should be flagged in review.
   npm package, internal docs, ADRs, and design notes — never in user-facing
   page titles, marketing copy, OG tags, or share-URL slugs.
 - **Fair-comparison invariant** applies to compare-mode only (see
-  `CLAUDE.md` → "Non-obvious architecture").
+  `CLAUDE.md` → "Non-obvious architecture"). In combine mode,
+  ETF and insurance honor independent per-instance monthly contributions.
+  All six contract types may set optional `InstanceCommon.expectedReturn`
+  (decimal ratio, −0.5 to 0.5). `scenarioForInstance` in
+  `portfolioProjection.ts` replaces the scenario market return absolutely,
+  preserving scenario ids/labels in all three scenarios and the ETF shared
+  allowance re-run. Clearing it restores the scenario rate. The AVD safety
+  allocation/glidepath still applies to its risky-market return. Singleton
+  projections strip the field, leaving comparison and its Monte Carlo on one
+  shared return; combine-mode Monte Carlo remains out of scope. Contract
+  details, sensitivity captions, PDF and combine CSV disclose these overrides.
 - **Combine context is shared.** Recommender and combine simulation both call
   `buildCombineContext`. If you find tax / KV/PV routing being rebuilt
   somewhere else, fold it into `combineContext.ts`.
@@ -205,6 +235,7 @@ should be flagged in review.
 | Change storage migration / load path | `src/storage.ts` (sections clearly marked) |
 | Plan future schema changes | `docs/portfolio-schema-design.md` |
 | Audit oracle / integration coverage | `docs/golden-coverage-audit.md` |
+| Extend property tests / run the mutation pilot | `docs/property-and-mutation-testing.md` |
 | Update annual statutory values | `src/rules/de2026.ts` |
 | Edit Impressum / Datenschutz / footer | `src/features/legal/` |
 | Extend the printable A4 report (compare or combine mode) | `src/features/results/PrintReport.tsx`, plus row builders in `src/features/results/printReportRows.ts` |
@@ -219,3 +250,19 @@ should be flagged in review.
   references in design docs / ADRs / backlog.
 - Changes to calculation results, statutory rules, payout math, or rounding
   policy — those are product changes and need their own issue.
+
+### Private health insurance in retirement (#390, #400)
+
+`profile.publicHealthInsurance` is the membership gate for both phases. The
+legacy `retirementHealthStatus: 'pkv'` value does not independently switch
+membership; a future insurance switch is not modelled. `buildCombineContext`
+owns the bAV and statutory KV/PV channels consumed by combine and recommender.
+It resolves retirement health status to PKV for private profiles, overriding stale
+GKV selections before any freiwillig-GKV channel is built.
+`calculatePkvRetirementMonthlyCost` in `grv.ts` owns the private expense:
+current KV + PV premiums held constant, less the §106 subsidy on GRV only
+(average Zusatzbeitrag, capped at half the KV premium, no PV subsidy).
+`projectStatutoryPension.netMonthlyPension` includes that expense and can be
+negative when it exceeds the pension. `CombinedResult.statutoryPensionMonthlyNet`
+is the income share before this household expense; `pkvRetirementMonthlyCost`
+is subtracted once from the total and shown separately in composition and exports.

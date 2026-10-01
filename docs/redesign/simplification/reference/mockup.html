@@ -1,0 +1,356 @@
+<div id="rw-journeys" aria-label="RentenWiki.de – interaktiver Entwurf">
+  <div class="rw-prototype">Designvorschau · Beispielzahlen, keine persönliche Berechnung</div>
+  <header class="rw-header"><button class="rw-brand" data-action="home">RentenWiki<span>.de</span></button><nav aria-label="Hauptnavigation"><button data-action="plan" class="rw-text">Mein Plan</button><button data-action="compare-setup" class="rw-text">Vergleich</button></nav></header>
+  <details class="rw-disclaimer"><summary>Keine Steuer-, Rechts- oder Anlageberatung.</summary><p>Beispielwerte zur Prüfung des Ablaufs; keine persönliche Berechnung.</p></details>
+  <div id="rw-status" role="status"></div>
+  <main id="rw-main"></main>
+  <footer class="rw-footer"><span>RentenWiki.de</span><button class="rw-text" data-action="method">Annahmen & Rechenweg</button><button class="rw-text" data-action="privacy">Datenschutz</button></footer>
+</div>
+<style>
+#rw-journeys{--rw-bg:light-dark(#f7f4ee,#211e1a);--rw-surface:light-dark(#fffdf9,#2a2621);--rw-ink:light-dark(#27251f,#f3eee4);--rw-muted:light-dark(#686156,#c3b9aa);--rw-line:light-dark(#d9d1c4,#514a40);--rw-accent:light-dark(#853c32,#efad9a);--rw-button:light-dark(#853c32,#e9ad9c);--rw-onbutton:light-dark(#fff9f2,#301c17);--rw-soft:light-dark(#ece7dc,#353028);background:var(--rw-bg);color:var(--rw-ink);font:400 16px/1.5 system-ui,sans-serif;min-width:0;border-radius:10px;overflow:clip;text-align:left}
+#rw-journeys *{box-sizing:border-box}#rw-journeys button,#rw-journeys input,#rw-journeys select{font:inherit;color:inherit}#rw-journeys button{cursor:pointer;min-height:44px;border-radius:5px;padding:9px 15px;background:transparent;border:1px solid var(--rw-line);text-align:center}#rw-journeys button:hover{background:var(--rw-soft)}#rw-journeys button:disabled{opacity:.5;cursor:default}#rw-journeys button.rw-primary{background:var(--rw-button);color:var(--rw-onbutton);border-color:var(--rw-button)}#rw-journeys button.rw-secondary{background:var(--rw-surface)}#rw-journeys button.rw-text{border:0;padding:7px 8px;color:var(--rw-accent)}#rw-journeys .rw-prototype{background:var(--rw-soft);color:var(--rw-muted);padding:7px 24px;font-size:12px;letter-spacing:.025em}#rw-journeys .rw-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 32px;border-bottom:1px solid var(--rw-line)}#rw-journeys .rw-brand{font:500 24px Georgia,serif;padding:0;border:0;white-space:nowrap}#rw-journeys .rw-brand span{color:var(--rw-accent)}#rw-journeys nav{display:flex;gap:8px}#rw-journeys nav button[aria-current=page]{color:var(--rw-ink);text-decoration:underline;text-underline-offset:7px}#rw-journeys .rw-disclaimer{margin:0;padding:8px 32px;border:0;border-bottom:1px solid var(--rw-line);font-size:12px;color:var(--rw-muted)}#rw-journeys .rw-disclaimer summary{padding:2px 0;min-height:24px}#rw-journeys #rw-main{padding:36px 40px 32px;min-height:440px;max-width:1024px;margin:auto}#rw-journeys #rw-status:empty{display:none}#rw-journeys #rw-status{margin:12px 32px 0;padding:10px 14px;background:var(--rw-soft);font-size:14px}#rw-journeys h1,#rw-journeys h2,#rw-journeys h3{font-family:Georgia,serif;font-weight:400;letter-spacing:-.025em;margin:0 0 16px;color:var(--rw-ink)}#rw-journeys h1{font-size:36px;line-height:1.15}#rw-journeys h2{font-size:25px;line-height:1.25}#rw-journeys h3{font-size:20px}#rw-journeys p{margin:0 0 16px}#rw-journeys .rw-kicker{color:var(--rw-accent);font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px}#rw-journeys .rw-lead{color:var(--rw-muted);max-width:540px}#rw-journeys .rw-muted,#rw-journeys .rw-result-label{color:var(--rw-muted)}#rw-journeys .rw-muted,#rw-journeys small{font-size:13px}#rw-journeys .rw-form{max-width:650px}#rw-journeys .rw-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}#rw-journeys .rw-field{display:flex;flex-direction:column;gap:6px;min-width:0;margin-bottom:18px}#rw-journeys .rw-field input,#rw-journeys .rw-field select{width:100%;min-width:0;min-height:46px;background:var(--rw-surface);border:1px solid var(--rw-line);border-radius:4px;padding:10px 12px;font-size:16px}#rw-journeys .rw-field small{color:var(--rw-muted)}#rw-journeys .rw-field:has(>input[type=checkbox]),#rw-journeys .rw-field:has(>input[type=radio]){flex-direction:row;align-items:center}#rw-journeys input[type=radio],#rw-journeys input[type=checkbox]{accent-color:var(--rw-accent);width:18px;min-height:18px;flex:none;margin:0 10px 0 0}#rw-journeys .rw-choice{display:flex;align-items:center;gap:8px;min-height:52px;padding:12px 14px;border:1px solid var(--rw-line);background:var(--rw-surface);border-radius:5px;margin-bottom:10px;cursor:pointer}#rw-journeys .rw-choice:has(input:checked){border-color:var(--rw-accent);background:var(--rw-soft)}#rw-journeys fieldset{border:0;padding:0;margin:0 0 20px;min-width:0}#rw-journeys legend{margin-bottom:10px}#rw-journeys .rw-actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:22px}#rw-journeys .rw-panel{background:var(--rw-surface);border:1px solid var(--rw-line);padding:20px;border-radius:6px;margin:16px 0}#rw-journeys .rw-note{font-size:13px;color:var(--rw-muted);padding:12px 15px;background:var(--rw-soft);border-radius:4px;margin:14px 0}#rw-journeys details{border-top:1px solid var(--rw-line);margin-top:18px}#rw-journeys summary{cursor:pointer;padding:15px 0;min-height:44px}#rw-journeys details[open]>summary{margin-bottom:8px}#rw-journeys .rw-list{display:flex;flex-direction:column;border-top:1px solid var(--rw-line);margin-top:16px}#rw-journeys .rw-row{display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:1px solid var(--rw-line);padding:13px 0}#rw-journeys button.rw-row{width:100%;border:0;border-bottom:1px solid var(--rw-line);border-radius:0;text-align:left}#rw-journeys .rw-row>span:first-child{min-width:0}#rw-journeys .rw-row small{display:block;color:var(--rw-muted);margin-top:3px}#rw-journeys .rw-amount{white-space:nowrap;font-variant-numeric:tabular-nums}#rw-journeys .rw-hero-number{font:400 58px/1.08 Georgia,serif;letter-spacing:-.04em;margin:8px 0;color:var(--rw-ink)}#rw-journeys .rw-result-label{font-size:14px}#rw-journeys .rw-plan{max-width:700px}#rw-journeys .rw-plan h1{font-size:28px;margin-bottom:20px}#rw-journeys .rw-hero{display:grid;grid-template-columns:1fr auto;align-items:end;gap:18px;margin-bottom:26px}#rw-journeys .rw-target{max-width:220px;border-left:1px solid var(--rw-line);padding-left:22px}#rw-journeys .rw-landing{display:grid;grid-template-columns:1.1fr .9fr;align-items:center;gap:50px;padding:24px 0}#rw-journeys .rw-landing h1{font-size:48px;max-width:490px}#rw-journeys .rw-preview{background:var(--rw-surface);padding:26px;border:1px solid var(--rw-line);border-radius:8px;transform:rotate(1deg)}#rw-journeys .rw-preview .rw-hero-number{font-size:46px}#rw-journeys .rw-back{margin:0 0 15px -8px}#rw-journeys .rw-footer{display:flex;gap:8px 20px;flex-wrap:wrap;align-items:center;border-top:1px solid var(--rw-line);padding:16px 32px;color:var(--rw-muted);font-size:12px}#rw-journeys .rw-footer span{margin-right:auto}#rw-journeys .rw-footer button{font-size:12px}#rw-journeys .rw-inline{display:flex;flex-wrap:wrap;gap:12px;align-items:center}#rw-journeys .rw-error{color:var(--rw-accent)}#rw-journeys strong{font-weight:500}#rw-journeys .rw-comparison-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}#rw-journeys table{width:100%;border-collapse:collapse}#rw-journeys td,#rw-journeys th{text-align:left;padding:10px 4px;border-bottom:1px solid var(--rw-line)}#rw-journeys .rw-bars{display:grid;gap:15px;margin:25px 0}#rw-journeys .rw-bar-row{display:grid;grid-template-columns:50px 1fr 85px;gap:10px;align-items:center;font-size:14px}#rw-journeys .rw-bar-track{background:var(--rw-soft);height:18px}#rw-journeys .rw-bar-fill{height:18px;background:var(--rw-accent)}
+#rw-journeys .rw-unknown{display:flex;align-items:center;gap:4px;min-height:44px;font-size:13px;color:var(--rw-muted)}#rw-journeys .rw-unknown input{width:auto;min-height:18px}#rw-journeys button.rw-choice{flex-direction:column;align-items:flex-start;text-align:left}#rw-journeys .rw-field input:disabled{opacity:.5}
+@media(min-width:651px) and (max-width:850px){#rw-journeys .rw-landing{grid-template-columns:1fr;gap:24px}#rw-journeys .rw-preview{transform:none;max-width:520px}}
+@media(max-width:650px){#rw-journeys .rw-header{padding:10px 18px;flex-wrap:wrap;gap:2px}#rw-journeys .rw-brand{font-size:23px}#rw-journeys nav{gap:0}#rw-journeys nav button{font-size:14px;padding:7px}#rw-journeys .rw-disclaimer{padding:7px 18px}#rw-journeys #rw-main{padding:24px 20px;min-height:360px}#rw-journeys .rw-grid{grid-template-columns:1fr;gap:0}#rw-journeys .rw-landing{grid-template-columns:1fr;gap:25px;padding:6px 0}#rw-journeys .rw-landing h1{font-size:36px}#rw-journeys .rw-preview{transform:none}#rw-journeys h1{font-size:30px}#rw-journeys .rw-hero-number{font-size:48px}#rw-journeys .rw-hero{grid-template-columns:1fr;gap:12px;margin-bottom:20px}#rw-journeys .rw-target{max-width:none;border-left:0;border-top:1px solid var(--rw-line);padding:12px 0 0}#rw-journeys .rw-panel{padding:16px}#rw-journeys .rw-footer{padding:14px 18px;gap:5px 10px}#rw-journeys .rw-row{gap:10px}#rw-journeys .rw-prototype{padding:6px 18px;font-size:11px}}
+#rw-journeys .rw-duration{font-size:14px;padding-left:14px;border-left:3px solid var(--rw-accent);margin-bottom:20px}#rw-journeys .rw-duration button{font-size:14px}#rw-journeys .rw-help{font-size:13px;margin:0 0 18px;border:0}#rw-journeys .rw-help summary{padding:3px 0;color:var(--rw-accent)}
+</style>
+
+<script>
+(function () {
+  'use strict';
+  const products = {
+    etf: { label: 'ETF-Depot', hint: 'Dein selbst angelegtes Vermögen', monthly: 'Monatliche Sparrate' },
+    bav: { label: 'Betriebsrente', hint: 'Vorsorge über deinen Arbeitgeber', monthly: 'Dein monatlicher Bruttobeitrag' },
+    insurance: { label: 'Private Rentenversicherung', hint: 'Dein privater Versicherungsvertrag', monthly: 'Monatlicher Beitrag' },
+    basisrente: { label: 'Basisrente', hint: 'Auch als Rürup-Rente bekannt', monthly: 'Monatlicher Beitrag' },
+    riester: { label: 'Riester', hint: 'Dein bestehender Riester-Vertrag', monthly: 'Monatlicher Eigenbeitrag' },
+    altersvorsorgedepot: { label: 'Altersvorsorgedepot', hint: 'Als zukünftige Sparform erkunden', monthly: 'Monatlicher Eigenbeitrag' }
+  };
+  let draft = null;
+  let draftKey = null;
+  const esc = (app, value) => app.escape(String(value ?? ''));
+  function begin(app) {
+    const key = `${app.state.editContractId || 'new'}:${app.state.contractType || 'etf'}`;
+    if (draft && key === draftKey) return draft;
+    const saved = app.state.contracts.find(c => c.id === app.state.editContractId);
+    draft = saved ? { ...saved, details: { ...saved.details } } : {
+      id: null, type: app.state.contractType || 'etf', name: '', capital: null, monthly: null,
+      details: { employerSupport: null, startYear: null, contractKind: '', annualFee: null, pensionFactor: null, payoutEndAge: null }
+    };
+    draftKey = key;
+    return draft;
+  }
+  function number(app, key, label, value, options = {}) {
+    const unknown = value === null || value === undefined;
+    return `<div class="rw-field"><label for="contract-${key}">${label}</label>
+      <input id="contract-${key}" name="${key}" type="number" inputmode="decimal" min="${options.min ?? 0}" ${options.max ? `max="${options.max}"` : ''} step="${options.step || '0.01'}" value="${unknown ? '' : esc(app, value)}" placeholder="Unbekannt" ${unknown ? '' : 'required'} aria-describedby="contract-${key}-status">
+      <label class="rw-unknown" id="contract-${key}-status"><input type="checkbox" name="unknown-${key}" data-contract-unknown="${key}" ${unknown ? 'checked' : ''}> Weiß ich nicht</label>
+      ${options.hint ? `<small class="rw-muted">${options.hint}</small>` : ''}</div>`;
+  }
+  function render(app) {
+    if (app.state.view === 'contract-picker') {
+      return `<button class="rw-text" data-action="contract:cancel">← Zurück zum Plan</button>
+        <p class="rw-kicker">Vorsorge ergänzen</p><h1>Was möchtest du hinzufügen?</h1>
+        <p class="rw-lead">Wähle eine Sparform. Angaben kannst du später ändern.</p>
+        <div class="rw-grid">${Object.entries(products).map(([id, p]) => `<button class="rw-choice" data-action="contract:pick:${id}"><strong>${p.label}</strong><span class="rw-muted">${p.hint}</span></button>`).join('')}</div>`;
+    }
+    if (app.state.view !== 'contract-editor') return null;
+    const d = begin(app), p = products[d.type] || products.etf;
+    const detail = d.details || {};
+    const insured = ['bav', 'insurance', 'basisrente'].includes(d.type);
+    return `<button class="rw-text" data-action="contract:${d.id ? 'cancel' : 'back'}">← ${d.id ? 'Zurück zum Plan' : 'Andere Sparform'}</button>
+      <p class="rw-kicker">${d.id ? 'Vorsorge bearbeiten' : 'Vorsorge ergänzen'}</p><h1>${p.label}</h1>
+      <p class="rw-lead">Trage ein, was du weißt. Unbekannte Werte bleiben offen.</p>
+      ${d.type === 'altersvorsorgedepot' ? '<p class="rw-note">Diese Sparform dient hier nur als Zukunftsbeispiel.</p>' : ''}
+      <form class="rw-form" data-form="contract-save">
+        <div class="rw-grid">${number(app, 'capital', 'Aktueller Wert (€)', d.capital)}
+        ${number(app, 'monthly', `${p.monthly} (€)`, d.monthly, { hint: d.type === 'bav' ? 'Deine Entgeltumwandlung vor Steuern und Sozialabgaben; ohne Arbeitgeberzuschuss.' : undefined })}</div>
+        ${d.type === 'bav' ? number(app, 'employerSupport', 'Arbeitgeberzuschuss im Monat (€)', detail.employerSupport, { hint: '0 bedeutet: kein Zuschuss. Unbekannt bleibt unbekannt.' }) : ''}
+        ${['bav', 'insurance'].includes(d.type) ? `<div class="rw-panel"><p class="rw-muted">Für die spätere steuerliche Einordnung:</p>
+          ${number(app, 'startYear', 'Jahr des Vertragsbeginns', detail.startYear, { min: 1900, max: 2100, step: '1' })}
+          ${d.type === 'bav' ? `<div class="rw-field"><label for="contract-kind">Art der betrieblichen Vorsorge</label><select id="contract-kind" name="contractKind">
+          ${[['', 'Weiß ich nicht'], ['direktversicherung', 'Direktversicherung'], ['pensionskasse', 'Pensionskasse'], ['pensionsfonds', 'Pensionsfonds'], ['direktzusage', 'Direktzusage'], ['unterstuetzungskasse', 'Unterstützungskasse']].map(([value, label]) => `<option value="${value}" ${detail.contractKind === value ? 'selected' : ''}>${label}</option>`).join('')}</select></div>` : ''}</div>` : ''}
+        <details class="rw-panel"><summary>Kosten & Auszahlung</summary>
+          <div class="rw-field"><label for="contract-name">Eigener Name (optional)</label><input id="contract-name" name="name" maxlength="80" value="${esc(app, d.name)}" placeholder="Zum Beispiel: Mein Depot"></div>
+          ${number(app, 'annualFee', 'Laufende Kosten pro Jahr (%)', detail.annualFee, { max: 100, hint: 'Unbekannt ist nicht kostenlos. Der Wert bleibt als offen markiert.' })}
+          <details class="rw-help"><summary>Wo finde ich die Kosten?</summary><p>Im Kostenblatt deines Depots oder Vertrags. Bei Versicherungen können mehrere Kostenarten genannt sein. Wenn du unsicher bist, lass das Feld offen.</p></details>${insured ? number(app, 'pensionFactor', 'Rentenfaktor (€ je 10.000 € Kapital)', detail.pensionFactor, { hint: 'Steht in manchen Rentenverträgen: monatliche Rente je 10.000 € Kapital. Sonst offen lassen.' }) : ''}
+          ${['etf', 'altersvorsorgedepot'].includes(d.type) ? number(app, 'payoutEndAge', 'Auszahlung bis Alter', detail.payoutEndAge, { min: Number(app.state.profile.retirement)+1, max: 120, step: '1', hint: 'Danach endet diese Auszahlung. Solange offen, zeigt das Beispiel Alter 90 als Annahme.' }) : ''}
+          
+        </details>
+        
+        <div class="rw-actions"><button class="rw-primary" type="submit">${d.id ? 'Änderungen übernehmen' : 'Zum Plan hinzufügen'}</button><button class="rw-secondary" type="button" data-action="contract:cancel">Abbrechen</button></div>${d.id ? '<button class="rw-text" type="button" data-action="contract:remove">Vorsorge entfernen</button>' : ''}
+      </form>`;
+  }
+  function handle(action, app) {
+    if (!action.startsWith('contract:')) return false;
+    if (action === 'contract:remove') {
+      const index=app.state.contracts.findIndex(c=>c.id===app.state.editContractId);
+      if(index<0)return true;
+      const removed=app.state.contracts[index];
+      app.state.contracts.splice(index,1);app.state.editContractId=null;resetDraft();app.go('plan');
+      app.undoable(`${removed.name} entfernt.`,()=>app.state.contracts.splice(index,0,removed));return true;
+    }
+    if (action.startsWith('contract:pick:')) {
+      const type = action.slice('contract:pick:'.length);
+      if (!products[type]) return false;
+      app.state.contractType = type;
+      draft = null; draftKey = null;
+      app.go('contract-editor');
+      return true;
+    }
+    if (action === 'contract:cancel' || action === 'contract:back') {
+      draft = null; draftKey = null;
+      app.go(action === 'contract:back' ? 'contract-picker' : 'plan');
+      return true;
+    }
+    return false;
+  }
+  function change(target, app) {
+    if (!target.closest('[data-form="contract-save"]')) return false;
+    if (target.dataset.contractUnknown) {
+      const field = target.form.elements.namedItem(target.dataset.contractUnknown);
+      if (target.checked) {
+        if (field.value !== '') field.dataset.previousValue = field.value;
+        field.value = '';
+      } else {
+        field.value = field.dataset.previousValue || '';
+        field.focus();
+      }
+      field.required = !target.checked;
+    }
+    return true;
+  }
+  function input(target, app) {
+    if (target.type !== 'number' || !target.closest('[data-form="contract-save"]')) return false;
+    const unknown = target.form.elements.namedItem(`unknown-${target.name}`);
+    if (!unknown) return false;
+    unknown.checked = target.value === '' && !target.validity.badInput;
+    target.required = !unknown.checked;
+    if (target.value !== '') target.dataset.previousValue = target.value;
+    return true;
+  }
+  function resetDraft() {
+    draft = null;
+    draftKey = null;
+  }
+  function submit(form, app) {
+    if (form.dataset.form !== 'contract-save') return false;
+    if (!form.reportValidity()) return true;
+    const d = begin(app), data = new FormData(form), details = { ...d.details };
+    const numeric = key => data.has(`unknown-${key}`) || !data.has(key) || String(data.get(key)).trim() === '' ? null : Number(data.get(key));
+    for (const key of ['employerSupport', 'startYear', 'annualFee', 'pensionFactor', 'payoutEndAge']) {
+      if (form.elements.namedItem(key)) details[key] = numeric(key);
+    }
+    if (data.has('contractKind')) details.contractKind = data.get('contractKind');
+    const contract = { ...d, id: d.id || `prototype-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: String(data.get('name') || '').trim() || products[d.type].label,
+      capital: numeric('capital'), monthly: numeric('monthly'), details };
+    app.state.contracts = d.id ? app.state.contracts.map(c => c.id === d.id ? contract : c) : [...app.state.contracts, contract];
+    app.state.editContractId = null;
+    draft = null; draftKey = null;
+    app.go('plan');
+    return true;
+  }
+  window.RWContracts = { render, handle, submit, change, input, resetDraft };
+}());
+
+</script>
+<script>
+/* Clickable design example. Fixtures only; no pension engine or persistence. */
+(() => {
+  const products = [
+    { id: 'etf', name: 'ETF-Depot', payout: 350, duration: 'bis Alter 90' },
+    { id: 'bav', name: 'Betriebsrente', payout: 310, duration: 'lebenslang' },
+    { id: 'insurance', name: 'Private Rentenversicherung', payout: 290, duration: 'lebenslang' },
+    { id: 'basisrente', name: 'Basisrente', payout: 330, duration: 'lebenslang' },
+    { id: 'riester', name: 'Riester', payout: 280, duration: 'lebenslang' },
+    { id: 'altersvorsorgedepot', name: 'Altersvorsorgedepot', payout: 360, duration: 'bis Alter 90' },
+  ];
+  const meta = id => products.find(p => p.id === id) || products[0];
+  const amount = n => Math.max(0, Number(n) || 0);
+  const contractId = c => String(c.id);
+  const productId = c => c.productId || c.type || c.product || 'etf';
+  const contribution = c => amount(c.monthlyContribution ?? c.contribution ?? c.monthly ?? 0);
+  const label = c => c.name || c.label || meta(productId(c)).name;
+  const button = (action, text, kind = 'rw-secondary') => `<button type="button" class="${kind}" data-action="compare:${action}">${text}</button>`;
+  const age = app => app.state.profile?.retirement || 67;
+  function setup(app) {
+    const s = app.state;
+    return `<div class="rw-kicker">Sparformen vergleichen</div><h1>Was möchtest du vergleichen?</h1><p class="rw-lead">Wähle nur die Sparformen, die dich interessieren.</p>
+      <form class="rw-form" data-form="compare-setup"><fieldset><legend>Sparformen</legend><div class="rw-grid">${products.map(p => `<label class="rw-choice"><input type="checkbox" name="compareProducts" value="${p.id}" ${(s.compareProducts || []).includes(p.id) ? 'checked' : ''}><span>${p.name}</span></label>`).join('')}</div></fieldset>
+      <label class="rw-field">Was möchtest du monatlich selbst zahlen (€)?<input name="compareBudget" type="number" min="0" max="10000" step="1" required value="${amount(s.compareBudget ?? 150)}"></label>
+      <p class="rw-muted">Für jede ausgewählte Sparform derselbe Betrag aus deinem eigenen Geld.</p><div class="rw-actions"><button class="rw-primary" type="submit">Vergleich ansehen</button></div></form>`;
+  }
+  function comparison(app) {
+    const s = app.state;
+    const selected = (s.compareProducts || []).map(id => products.find(p => p.id === id)).filter(Boolean);
+    return `<div class="rw-kicker">Sparformen vergleichen · Beispiel</div><h1>${selected.length ? 'Sparformen im Vergleich' : 'Noch keine Sparform ausgewählt'}</h1>
+      ${selected.length ? `<p class="rw-lead">Je ${app.money(amount(s.compareBudget))} aus deinem eigenen Geld im Monat.</p><p class="rw-muted">Gezeigt wird die Auszahlung je Sparform ab ${age(app)}, keine Gesamtrente. Beträge in heutigen Euro.</p><div class="rw-grid">${selected.map(p => `<article class="rw-panel"><h2>${p.name}</h2><div class="rw-hero-number">${app.money(p.payout * amount(s.compareBudget) / 150)}</div><p class="rw-result-label">Beispiel · netto / Monat</p><p><strong>${p.duration === 'lebenslang' ? 'Lebenslang (angenommen)' : 'Bis 90 (angenommen)'}</strong><br><small class="rw-muted">${p.duration === 'lebenslang' ? 'Auch wenn du älter wirst.' : 'Danach endet diese Auszahlung.'}</small></p><details><summary>Beispielannahmen ansehen</summary><p>Eigenes Geld: ${app.money(amount(s.compareBudget))} / Monat. Auszahlung ab ${age(app)}, ${p.duration}.</p><p class="rw-muted">Frei gewählte Beispielbeträge für die Gestaltung. Kosten, Förderung, Steuern und Versicherungsbeiträge werden hier nicht berechnet.</p></details></article>`).join('')}</div>` : '<p class="rw-lead">Wähle eine oder mehrere Sparformen für deinen Vergleich.</p>'}
+      <div class="rw-actions">${button('setup', selected.length ? 'Auswahl oder Betrag ändern' : 'Sparformen auswählen', 'rw-primary')}</div>`;
+  }
+  function getDraft(app) {
+    const s = app.state;
+    if (!s.alternativeDraft) s.alternativeDraft = { contractId: s.contracts?.length ? contractId(s.contracts[0]) : '', mode: 'contribution', monthlyContribution: s.contracts?.length ? contribution(s.contracts[0]) : 150, ready: false };
+    return s.alternativeDraft;
+  }
+  function alternative(app) {
+    const s = app.state;
+    const d = getDraft(app);
+    const contracts = d.savedSnapshot ? [d.savedSnapshot.contract] : (s.contracts || []);
+    if (!contracts.length) return `<div class="rw-kicker">Änderung ausprobieren</div><h1>Welche Vorsorge möchtest du verändern?</h1><p class="rw-lead">Ergänze zuerst eine Sparform in deinem Plan.</p><div class="rw-actions">${button('add', 'Sparform ergänzen', 'rw-primary')}${button('original', 'Zurück zum Plan')}</div>`;
+    const c = contracts.find(c => contractId(c) === d.contractId) || contracts[0];
+    const incomplete = d.savedSnapshot ? d.savedSnapshot.incomplete : app.isIncomplete();
+    const shownAge = d.savedSnapshot?.retirementAge || age(app);
+    const result = d.ready ? `<div data-alternative-result><section class="rw-panel" aria-label="Vorher und nachher"><div class="rw-grid"><div><p class="rw-result-label">Bisher · Beispiel</p><div class="rw-hero-number">${incomplete ? 'Noch offen' : app.money(d.before)}</div></div><div><p class="rw-result-label">Danach · Beispiel</p><div class="rw-hero-number">${incomplete ? 'Noch offen' : app.money(d.after)}</div></div></div><p>Beispielzahlen · netto pro Monat ab ${shownAge}</p>${incomplete ? '<p class="rw-note">Für eine Gesamtrente fehlen noch Angaben in deinem Plan.</p>' : `<p><strong>Änderung: ${d.after - d.before >= 0 ? '+' : '−'}${app.money(Math.abs(d.after - d.before))} / Monat</strong></p>`}${d.savedSnapshot ? `<p class="rw-note">Stand beim Merken: ${app.escape(d.savedSnapshot.source)} · Beitrag vorher ${app.money(d.savedSnapshot.monthly)} / Monat.</p>` : ''}<p class="rw-muted">Die Zahlen veranschaulichen nur den Ablauf. Keine persönliche Berechnung.</p></section><div class="rw-actions">${button('apply', 'Beitrag in meinen Plan übernehmen', 'rw-primary')}${d.savedSnapshot ? '' : button('save', 'Für diese Vorschau merken')}</div>${d.savedSnapshot ? '' : '<p class="rw-muted" style="margin-top:8px">Gemerkte Alternativen gehen beim Neuladen verloren.</p>'}</div>` : '';
+    if (d.savedSnapshot) return `<div class="rw-kicker">Gemerkte Alternative · Beispiel</div><h1>${app.escape(d.title)}</h1>${result}<div class="rw-actions">${button('original', 'Zurück zum Plan')}${button('edit-saved', 'Neue Änderung ausprobieren')}</div>`;
+    return `<div class="rw-kicker">Änderung ausprobieren · Beispiel</div><h1>Was wäre, wenn …?</h1><p class="rw-lead">Du kannst Änderungen erst ansehen und dann übernehmen.</p><form class="rw-form" data-form="compare-alternative">${contracts.length>1?`<label class="rw-field">Sparform<select name="alternativeContract">${contracts.map(item => `<option value="${app.escape(contractId(item))}" ${contractId(item) === contractId(c) ? 'selected' : ''}>${app.escape(label(item))}</option>`).join('')}</select></label>`:`<p><strong>${app.escape(label(c))}</strong></p><input type="hidden" name="alternativeContract" value="${app.escape(contractId(c))}">`}<label class="rw-field">Änderung<select name="alternativeMode"><option value="contribution" ${d.mode === 'contribution' ? 'selected' : ''}>Monatlichen Beitrag ändern</option><option value="paidup" ${d.mode === 'paidup' ? 'selected' : ''}>Keine weiteren Beiträge zahlen</option></select></label>${d.mode === 'contribution' ? `<label class="rw-field">Neuer monatlicher ${productId(c) === 'bav' ? 'Bruttobeitrag zur bAV' : 'Beitrag'} in €<input name="alternativeContribution" type="number" min="0" max="10000" step="1" required value="${amount(d.monthlyContribution)}"></label><p class="rw-muted">Bisher: ${app.money(contribution(c))} / Monat${productId(c) === 'bav' ? ' · Bruttobeitrag zur bAV' : ''}.</p>` : '<p class="rw-muted">Das vorhandene Guthaben bleibt bestehen.</p>'}<button type="submit" class="rw-primary">Vorher und nachher ansehen</button></form>${result}<div class="rw-actions">${button('original', 'Zurück zum Plan')}</div>`;
+  }
+  function saved(app) {
+    const items = app.state.alternatives || [];
+    return `<div class="rw-kicker">Alternativen</div><h1>Deine gemerkten Änderungen</h1><p class="rw-muted">Für diese Vorschau gemerkt. Nach dem Neuladen nicht mehr verfügbar.</p>${items.length ? `<div class="rw-list">${items.map((item, i) => `<article class="rw-panel"><h2>${app.escape(item.title)}</h2><p>${item.savedSnapshot?.incomplete ? 'Noch offen' : `${app.money(item.before)} → ${app.money(item.after)} netto / Monat`} · Beispiel</p><p class="rw-muted">Stand beim Merken</p><div class="rw-actions">${button(`open:${i}`, 'Vorher und nachher öffnen')}${button(`remove:${i}`, 'Entfernen', 'rw-text')}</div></article>`).join('')}</div>` : '<p class="rw-lead">Noch keine Alternative gemerkt.</p>'}<div class="rw-actions">${button('alternative', 'Änderung ausprobieren', 'rw-primary')}${button('original', 'Zurück zum Plan')}</div>`;
+  }
+  window.RWCompare = {
+    render(app) {
+      return ({ 'compare-setup': setup, comparison, alternative, 'saved-plans': saved }[app.state.view]?.(app)) ?? null;
+    },
+    handle(action, app) {
+      if (!action.startsWith('compare:')) return false;
+      const a = action.slice(8);
+      if (a === 'setup') app.go('compare-setup');
+      else if (a === 'original') app.go('plan');
+      else if (a === 'add') { app.state.editContractId = null; app.go('contract-picker'); }
+      else if (a === 'alternative') {delete app.state.alternativeDraft;app.go('alternative');}
+      else if (a === 'edit-saved') { delete app.state.alternativeDraft; app.go('alternative'); }
+      else if (a.startsWith('remove:')) {
+        const index=Number(a.slice(7)),removed=app.state.alternatives[index];if(!removed)return true;
+        app.state.alternatives.splice(index,1);app.go('saved-plans');
+        app.undoable('Alternative entfernt.',()=>app.state.alternatives.splice(index,0,removed),'saved-plans');
+      } else if (a === 'apply') {
+        const d=getDraft(app),c=app.state.contracts.find(c=>contractId(c)===d.contractId);
+        if(!d.ready)return true;
+        if(!c){app.notice('Diese Vorsorge wurde entfernt. Ergänze sie zuerst wieder im Plan.');return true;}
+        if(d.baseSignature!==JSON.stringify({profile:app.state.profile,pension:app.state.pension,contracts:app.state.contracts})){
+          app.notice('Dein Plan hat sich inzwischen geändert. Starte eine neue Änderung, damit vorher und nachher zusammenpassen.');return true;
+        }
+        const previous=c.monthly;c.monthly=d.monthlyContribution;delete app.state.alternativeDraft;app.go('plan');
+        app.undoable('Neuen Beitrag in den Plan übernommen.',()=>{c.monthly=previous});
+      } else if (a === 'save') {
+        const d = getDraft(app);
+        if (!d.ready) return true;
+        const c = (app.state.contracts || []).find(c => contractId(c) === d.contractId);
+        const copy = { ...d, savedSnapshot: d.savedSnapshot || { contract: { ...(c || {}), details: { ...(c?.details || {}) } }, source: c ? label(c) : 'Sparform', monthly: contribution(c || {}), retirementAge: age(app), incomplete: app.isIncomplete() }, title: `${c ? label(c) : 'Sparform'}: ${d.mode === 'paidup' ? 'keine weiteren Beiträge' : `${app.money(d.monthlyContribution)} Beitrag / Monat`}` };
+        app.state.alternatives = [...(app.state.alternatives || []), copy];
+        app.go('saved-plans');
+      } else if (a.startsWith('open:')) {
+        const saved = app.state.alternatives?.[Number(a.slice(5))];
+        if (saved) { app.state.alternativeDraft = { ...saved }; app.go('alternative'); }
+      } else return false;
+      return true;
+    },
+    submit(form, app) {
+      const kind = form.dataset.form;
+      if (kind === 'compare-setup') {
+        const data = new FormData(form);
+        app.state.compareProducts = data.getAll('compareProducts').filter(id => products.some(p => p.id === id));
+        app.state.compareBudget = amount(data.get('compareBudget'));
+        app.go('comparison');
+        return true;
+      }
+      if (kind === 'compare-alternative') {
+        const data = new FormData(form), d = getDraft(app);
+        d.contractId = String(data.get('alternativeContract'));
+        d.mode = String(data.get('alternativeMode'));
+        d.monthlyContribution = d.mode === 'paidup' ? 0 : amount(data.get('alternativeContribution'));
+        const c = (app.state.contracts || []).find(c => contractId(c) === d.contractId);
+        d.baseSignature=JSON.stringify({profile:app.state.profile,pension:app.state.pension,contracts:app.state.contracts});
+        d.before = amount(app.planTotal());
+        d.after = Math.max(0, d.before - app.contractPayout(c || {}) + app.contractPayout({ ...(c || {}), monthly: d.monthlyContribution }));
+        delete d.savedSnapshot;
+        d.ready = true;
+        app.render();
+        return true;
+      }
+      return false;
+    },
+    input(target, app) {
+      if (target.name !== 'alternativeContribution') return false;
+      const d = getDraft(app); d.ready = false; d.monthlyContribution = amount(target.value); delete d.savedSnapshot;
+      const result = target.closest('main')?.querySelector('[data-alternative-result]') || document.querySelector('[data-alternative-result]');
+      if (result) result.hidden = true;
+      return true;
+    },
+    change(target, app) {
+      if (target.name === 'compareProducts') {
+        const ids = new Set(app.state.compareProducts || []);
+        target.checked ? ids.add(target.value) : ids.delete(target.value);
+        app.state.compareProducts = products.filter(p => ids.has(p.id)).map(p => p.id);
+        return true;
+      }
+      if (target.name === 'compareBudget') { app.state.compareBudget = amount(target.value); return true; }
+      if (!['alternativeContract', 'alternativeMode', 'alternativeContribution'].includes(target.name)) return false;
+      const d = getDraft(app); d.ready = false;
+      if (target.name === 'alternativeContract') {
+        d.contractId = target.value;
+        const c = (app.state.contracts || []).find(c => contractId(c) === d.contractId);
+        d.monthlyContribution = contribution(c || {});
+      } else if (target.name === 'alternativeMode') d.mode = target.value;
+      else d.monthlyContribution = amount(target.value);
+      delete d.savedSnapshot;
+      if(target.name!=='alternativeContribution')app.render();
+      return true;
+    },
+  };
+})();
+
+</script>
+<script>
+(() => {
+const root=document.getElementById('rw-journeys'),main=root.querySelector('#rw-main');
+const e=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n);
+const labels={etf:'ETF-Depot',bav:'Betriebsrente',insurance:'Private Rentenversicherung',basisrente:'Basisrente',riester:'Riester',altersvorsorgedepot:'Altersvorsorgedepot'};
+const state={view:'home',started:false,profile:{age:'',income:'',employment:'employee',health:'gkv',premium:'',retirement:67},pension:{source:'estimate',value:'',years:'',estimateBy:'career',startAge:'',breakYears:0,system:'grv'},contracts:[],editContractId:null,contractType:'etf',compareProducts:['etf','bav'],compareBudget:150,alternatives:[],target:null};
+const design={composition:true,preview:true};
+let message='',undo=null;
+function showMessage(){root.querySelector('#rw-status').innerHTML=e(message)+(undo?' <button class="rw-text" data-action="undo">Rückgängig</button>':'')}
+function undoable(text,restore,view='plan'){undo={restore,view};message=text;showMessage()}
+let profileDraft=null,pensionDraft=null;
+const num=x=>x===''||x===null?null:Number(x);
+const field=(label,name,value,opts='')=>`<label class="rw-field">${label}<input type="number" name="${name}" value="${e(value)}" ${opts}></label>`;
+const option=(v,l,sel)=>`<option value="${v}" ${sel===v?'selected':''}>${l}</option>`;
+const back=(action='plan',label='Zurück zum Plan')=>`<button class="rw-text rw-back" data-action="${action}">← ${label}</button>`;
+const app={state,escape:e,money,go,render,isIncomplete:incomplete,notice:m=>{message=m;showMessage();root.scrollIntoView({block:'start'})},undoable,contractPayout:c=>Math.round((Number(c.monthly)||0)*({etf:2.3,bav:1.5,insurance:1.9,basisrente:2.1,riester:1.8,altersvorsorgedepot:2.4}[c.type]||2)+(Number(c.capital)||0)*.003),planTotal:()=>pensionAmount()+state.contracts.reduce((s,c)=>s+app.contractPayout(c),0)};
+function missing(){const p=state.pension;const items=[];if(p.system==='other')items.push('Angabe zu deiner anderen Altersversorgung fehlt');else if(p.source==='unknown'||(p.source==='statement'&&p.value==='')||(p.source==='estimate'&&p.years===''))items.push('Gesetzliche Rente fehlt');if(state.profile.health==='pkv'&&state.profile.premium==='')items.push('PKV-Beitrag im Ruhestand fehlt');if(state.contracts.some(c=>c.capital===null||c.monthly===null))items.push('Vertragsangaben fehlen');return items}
+function incomplete(){return missing().length>0}
+function pensionAmount(){return state.pension.source==='unknown'||state.pension.system==='other'||(state.pension.source==='estimate'&&state.pension.years==='')||(state.pension.source==='statement'&&state.pension.value==='')?0:1900}
+function go(view){if(view==='profile')profileDraft={...state.profile};if(view==='pension')pensionDraft={...state.pension};state.view=view;message='';undo=null;render();root.scrollIntoView({block:'start'})}
+function profileForm(){let p=profileDraft||state.profile;return `${back(state.started?'plan':'home',state.started?'Zurück zum Plan':'Zurück')}<div class="rw-kicker">${state.started?'Deine Angaben':'1 von 2 · Über dich'}</div><h1>Ein paar Angaben reichen.</h1><form class="rw-form" data-form="profile"><div class="rw-grid">${field('Dein Alter','age',p.age,'min="18" max="80" required placeholder="z. B. 35"')}${field(p.employment==='self'?'Gewinn vor Steuern pro Jahr (€)':'Jahreseinkommen brutto (€)','income',p.income,'min="0" max="10000000" required placeholder="z. B. 60000"')}</div><div class="rw-grid"><label class="rw-field">Deine Tätigkeit<select name="employment">${option('employee','Angestellt',p.employment)}${option('self','Selbstständig',p.employment)}${option('other','Verbeamtet / anderes',p.employment)}</select></label><label class="rw-field">Krankenversicherung<select name="health">${option('gkv','Gesetzlich',p.health)}${option('pkv','Privat',p.health)}</select></label></div>${p.health==='pkv'?`${field('Kranken- und Pflegeversicherung im Ruhestand (€/Monat)','premium',p.premium,'min="0" placeholder="Unbekannt"')}<p class="rw-muted">Ohne Beitrag bleibt dein Netto-Ergebnis offen.</p>`:''}<details><summary>Rentenalter & weitere Angaben</summary>${field('Rentenbeginn mit','retirement',p.retirement,'min="50" max="90" required')}<p class="rw-muted">Steuerdetails kannst du später ergänzen.</p></details><div class="rw-actions"><button class="rw-primary" type="submit">${state.started?'Angaben übernehmen':'Weiter'}</button></div></form>`}
+function pensionForm(){
+ const p=pensionDraft||state.pension,career=(p.estimateBy||'career')==='career';
+ const estimate=`${career?`${field('Mit welchem Alter hast du angefangen zu arbeiten?','startAge',p.startAge,`min="14" max="${e(state.profile.age)}" required placeholder="z. B. 22"`)}<p class="rw-muted">Ungefähr reicht. Eine bezahlte Ausbildung kannst du als Start nehmen.</p><details><summary>Pausen berücksichtigen</summary>${field('Jahre ohne Arbeit (grob)','breakYears',p.breakYears??0,`min="0" max="${e(state.profile.age)}" step="0.5"`)}<p class="rw-muted">Nur eine Arbeitshilfe. Die tatsächlich angerechneten Zeiten können abweichen.</p></details>`:`${field('Bisherige Beitragsjahre','years',p.years,`min="0" max="${e(state.profile.age)}" required`)}<p class="rw-muted">Falls du die Zahl kennst, etwa aus deinem Versicherungsverlauf.</p>`}<details><summary>${career?'Ich kenne meine Beitragsjahre':'Lieber über meinen Berufsstart schätzen'}</summary><button type="button" class="rw-text" data-action="pension-estimate:${career?'years':'career'}">${career?'Beitragsjahre direkt eingeben':'Berufsstart verwenden'}</button></details>`;
+ return `${back(state.started?'plan':'profile',state.started?'Zurück zum Plan':'Zurück zu deinen Angaben')}<div class="rw-kicker">${state.started?'Deine Rentenangabe':'2 von 2 · Deine Rente'}</div><h1>Was weißt du schon?</h1><form class="rw-form" data-form="pension">${state.profile.employment!=='employee'?`<label class="rw-field">Deine Altersversorgung<select name="system">${option('grv','Gesetzliche Rentenversicherung',p.system)}${option('other','Versorgungswerk / Beamtenversorgung / andere',p.system)}</select></label>`:''}${p.system==='other'?'<p class="rw-note">Diese Versorgung braucht eine eigene Berechnung. Du kannst weitere Vorsorge ergänzen; die Gesamtrente bleibt offen.</p>':`<fieldset><legend>Gesetzliche Rente</legend>${[['statement','Renteninformation liegt vor'],['estimate','Ohne Unterlagen grob schätzen'],['unknown','Später ergänzen']].map(([v,l])=>`<label class="rw-choice"><input type="radio" name="source" value="${v}" ${p.source===v?'checked':''}>${l}</label>`).join('')}</fieldset>${p.source==='statement'?`${field('Monatsrente aus deiner Renteninformation (€ brutto)','value',p.value,'min="0" max="30000" required')}<details><summary>Welche Zahl ist gemeint?</summary><p>Die hochgerechnete Regelaltersrente, wenn du weiter Beiträge wie bisher zahlst. Nimm den Betrag ohne künftige Rentenanpassungen.</p><p class="rw-muted">Brutto heißt: Steuern und Krankenversicherung sind noch nicht abgezogen.</p></details>`:p.source==='estimate'?estimate:'<p class="rw-muted">Das ist okay. Ergänze zuerst, was du schon weißt. Die Gesamtrente bleibt offen.</p>'}`}<div class="rw-actions"><button class="rw-primary" type="submit">${state.started?'Angaben übernehmen':'Meinen Plan ansehen'}</button></div></form>`
+}
+function home(){return `<div class="rw-landing"><section><div class="rw-kicker">Deine Vorsorge. Verständlich.</div><h1>Was bleibt dir<br>im Ruhestand?</h1><p class="rw-lead">Ein erster Überblick mit wenigen Angaben. Details ergänzt du, wenn du möchtest.</p><div class="rw-actions"><button class="rw-primary" data-action="${state.started?'plan':'profile'}">${state.started?'Meinen Plan fortsetzen':'Meine Rente einschätzen'}</button></div><div class="rw-actions"><button class="rw-text" data-action="compare-setup">Sparformen vergleichen →</button></div><p class="rw-muted">Ohne Anmeldung.</p>${!state.started?'<button class="rw-text" data-action="demo">Mit Beispiel erkunden</button>':''}</section>${design.preview?'<aside class="rw-preview" aria-label="Ergebnisvorschau mit Beispielwerten"><div class="rw-kicker">So kann ein Ergebnis aussehen</div><div class="rw-hero-number">ca. 2.450 €</div><p class="rw-result-label">Gesamt · netto pro Monat<br>Mit 67 · heutige Kaufkraft</p><div class="rw-list"><div class="rw-row"><span>Gesetzliche Rente</span><span>1.900 €</span></div><div class="rw-row"><span>ETF-Depot</span><span>350 €</span></div><div class="rw-row"><span>Betriebsrente</span><span>200 €</span></div></div><p class="rw-muted" style="margin:14px 0 0">Frei gewähltes Beispiel · nicht dein Ergebnis</p></aside>':''}</div>`}
+function duration(c){return ['etf','altersvorsorgedepot'].includes(c.type)?`Bis ${c.details?.payoutEndAge??90}${c.details?.payoutEndAge==null?' (angenommen)':''}`:'Lebenslang (Annahme)'}
+function sourceNotes(c){const notes=[duration(c)];if(c.capital==null||c.monthly==null)notes.push('Angaben fehlen');if(c.details?.annualFee==null)notes.push('Kosten offen');return notes.join(' · ')}
+function plan(){
+ if(!state.started)return `<h1>Dein Plan beginnt hier.</h1><p class="rw-lead">Zwei kurze Schritte. Bestehende Verträge sind optional.</p><button class="rw-primary" data-action="profile">Meine Rente einschätzen</button>`;
+ const total=app.planTotal(),limited=state.contracts.filter(c=>['etf','altersvorsorgedepot'].includes(c.type));
+ const rows=`<button class="rw-row" data-action="pension"><span>${state.pension.system==='other'?'Weitere Altersversorgung':'Gesetzliche Rente'}<small>${pensionAmount()?'Lebenslang · '+(state.pension.source==='statement'?'Rentenangabe hinterlegt':state.pension.estimateBy==='career'?'Berufsstart grob geschätzt':'Beitragsjahre angegeben'):'Noch offen'}</small></span><span class="rw-amount">${pensionAmount()?money(pensionAmount()):'—'} ›</span></button>`+state.contracts.map(c=>`<button class="rw-row" data-action="edit:${e(c.id)}"><span>${e(c.name||labels[c.type])}<small>${e(sourceNotes(c))}</small></span><span class="rw-amount">${c.capital==null||c.monthly==null?'—':money(app.contractPayout(c))} ›</span></button>`).join('');
+ return `<section class="rw-plan"><h1>Deine Rente im Überblick</h1><div class="rw-hero"><div><div class="rw-kicker">Beispiel-Ergebnis</div><div class="rw-hero-number">${incomplete()?'Noch offen':'ca. '+money(total)}</div><div class="rw-result-label">Gesamt · netto pro Monat ab ${e(state.profile.retirement)}</div><small class="rw-muted">${incomplete()?e(missing().join(' · ')):'In heutigen Euro'}</small></div>${state.target!==null&&!incomplete()?`<aside class="rw-target"><div class="rw-muted">Dein Wunsch: ${money(state.target)}</div><strong>${total>=state.target?'Im Beispiel erreicht':money(state.target-total)+' fehlen im Beispiel'}</strong><br><button class="rw-text" data-action="target">Wunsch ändern</button></aside>`:''}</div>${limited.length?`<p class="rw-duration">${limited.length===1?e(limited[0].name||labels[limited[0].type])+': '+e(duration(limited[0])).toLowerCase():limited.length+' Auszahlungen enden zeitlich'}. Danach fällt dieser Teil weg. <button class="rw-text" data-action="capital">Dauer ansehen →</button></p>`:''}${design.composition?`<div class="rw-list">${rows}</div>`:`<details><summary>Woraus setzt sich die Rente zusammen?</summary><div class="rw-list">${rows}</div></details>`}<div class="rw-actions"><button class="rw-primary" data-action="add-contract">Vorsorge ergänzen</button>${state.contracts.length?'<button class="rw-secondary" data-action="alternative">Änderung ausprobieren</button>':''}</div>${state.alternatives.length?`<div class="rw-actions"><button class="rw-secondary" data-action="saved-plans">Gemerkte Alternativen (${state.alternatives.length})</button></div>`:''}<div class="rw-actions"><button class="rw-text" data-action="profile">Persönliche Angaben</button><button class="rw-text" data-action="target">${state.target===null?'Wunschrente ergänzen (optional)':'Wunschrente'}</button></div><details><summary>Angaben & Annahmen prüfen</summary><p class="rw-muted">${e(state.profile.age)} Jahre · ${money(state.profile.income)} Jahreseinkommen vor Steuern · Rente ab ${e(state.profile.retirement)}.<br>${state.pension.source==='estimate'&&state.pension.years!==''?e(state.pension.years)+' Beitragsjahre '+(state.pension.estimateBy==='career'?'grob aus Berufsstart und Pausen geschätzt.':'angegeben.'):'Rentenangabe: '+(state.pension.source==='statement'?money(state.pension.value)+' brutto.':'noch offen.')}</p><div class="rw-actions"><button class="rw-secondary" data-action="method">Weitere Annahmen & Rechenweg</button><button class="rw-secondary" data-action="capital">Auszahlungen im Alter</button></div></details></section>`
+}
+function payoutDuration(){return `${back()}<h1>Wie lange kommt welches Geld?</h1><p class="rw-lead">Der Gesamtbetrag gilt nicht automatisch ein Leben lang.</p><div class="rw-list"><div class="rw-row"><span>${state.pension.system==='other'?'Weitere Altersversorgung':'Gesetzliche Rente'}</span><span>${state.pension.system==='other'?'Noch offen':'Lebenslang'}</span></div>${state.contracts.map(c=>`<div class="rw-row"><span>${e(c.name||labels[c.type])}<small>${['etf','altersvorsorgedepot'].includes(c.type)?'Danach endet diese Auszahlung.':'Eine lebenslange Auszahlung ist hier angenommen.'}</small></span><span>${e(duration(c))}</span></div>`).join('')}</div><p class="rw-muted" style="margin-top:18px">Ein Endalter kannst du beim jeweiligen Vertrag unter „Kosten & Auszahlung“ ändern.</p>`}
+
+function method(){return `${back(state.started?'plan':'home')}<h1>Annahmen & Rechenweg</h1><p class="rw-lead">Die Details bleiben erreichbar, wenn du genauer hinsehen möchtest.</p><details><summary>Deine Angaben</summary><div class="rw-list"><div class="rw-row"><span>Alter / Einkommen</span><span>${e(state.profile.age)||'—'} Jahre / ${state.profile.income?money(state.profile.income):'—'}</span></div><div class="rw-row"><span>Rentenangabe</span><span>${state.pension.system==='other'?'Andere Altersversorgung · offen':state.pension.source==='statement'?e(state.pension.value)+' € brutto, von dir eingetragen':state.pension.source==='estimate'?'Grobe Schätzung':'Unbekannt'}</span></div></div><button class="rw-text" data-action="profile">Angaben ändern</button></details><details><summary>Markt, Kaufkraft & Rentenbeginn</summary><p>Alle gezeigten Beträge sind Beispiele in heutiger Kaufkraft. Im fertigen Rechner wird die Inflation berücksichtigt.</p><p class="rw-muted">Die Eingaben in dieser Vorschau führen keine Renten-, Steuer- oder Inflationsberechnung aus.</p><button class="rw-text" data-action="assumptions">Annahmen bearbeiten</button></details><details><summary>Steuern & Krankenversicherung</summary><p>Das Netto-Ergebnis soll die Abzüge aller erfassten Renten berücksichtigen. Fehlende Angaben bleiben sichtbar.</p><button class="rw-text" data-action="tax">Weitere persönliche Angaben</button></details><details><summary>Woher kommen die Beispielwerte?</summary><p>Frei gewählte Beträge zur Prüfung des Bedienablaufs. Vertragsbeiträge verändern nur das Zahlenbeispiel. Keine finanzielle Prognose.</p></details>`}
+function core(){switch(state.view){case'home':return home();case'profile':return profileForm();case'pension':return pensionForm();case'plan':return plan();case'target':return `${back()}<h1>Wie viel möchtest du haben?</h1><p class="rw-lead">Optional · wie viel du heute pro Monat zum Leben brauchen würdest.</p><form class="rw-form" data-form="target"><details><summary>Ich weiß noch keinen Betrag</summary><p>Deine heutigen monatlichen Ausgaben können ein Startpunkt sein. Du kannst die Wunschrente auch einfach weglassen.</p></details>${field('Deine Wunschrente (€)','target',state.target,'min="0" max="100000" required placeholder="z. B. 2800"')}<div class="rw-actions"><button class="rw-primary">Wunsch übernehmen</button><button type="button" class="rw-text" data-action="clear-target">Ohne Wunschrente fortfahren</button></div></form>`;case'method':return method();case'privacy':return `${back(state.started?'plan':'home')}<h1>Deine Angaben bleiben hier.</h1><p class="rw-lead">Dieser Entwurf speichert Eingaben nur während der geöffneten Vorschau. Beim Neuladen gehen sie verloren.</p><p>Keine Anmeldung, keine Übertragung deiner Eingaben.</p>`;case'assumptions':return `${back('method','Zurück')}<h1>Deine Annahmen</h1><form class="rw-form" data-form="assumptions"><div class="rw-grid">${field('Erwarteter Wertzuwachs vor Kosten (% pro Jahr)','returns',state.returns??5,'min="-10" max="20" step="0.1" required')}${field('Inflation (% pro Jahr)','inflation',state.inflation??2,'min="0" max="15" step="0.1" required')}</div><p class="rw-note">Im Entwurf werden Werte gemerkt. Die Beispielrente wird nicht neu berechnet.</p><button class="rw-primary">Annahmen übernehmen</button></form>`;case'tax':return `${back('method','Zurück')}<h1>Weitere persönliche Angaben</h1><form class="rw-form" data-form="tax"><label class="rw-field">Veranlagung<select name="filing">${option('single','Einzeln (Annahme)',state.filing??'single')}${option('joint','Gemeinsam',state.filing??'single')}</select></label>${field('Weitere Einkünfte im Ruhestand (€/Monat)','otherIncome',state.otherIncome??0,'min="0" required')}<p class="rw-note">Diese Angaben werden in der Vorschau gemerkt; die Beispielwerte bleiben unverändert.</p><button class="rw-primary">Angaben übernehmen</button></form>`;case'capital':return payoutDuration();default:return null}}
+function render(){const active=document.activeElement;const focusName=main.contains(active)?active.name:null;const focusValue=active?.value;showMessage();main.innerHTML=core()??window.RWContracts?.render(app)??window.RWCompare?.render(app)??'<h1>Diese Ansicht fehlt.</h1>';root.querySelectorAll('nav button').forEach(b=>{if((b.dataset.action==='plan'&&state.view==='plan')||(b.dataset.action==='compare-setup'&&state.view.startsWith('compar')))b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});if(focusName){const controls=[...main.querySelectorAll('[name]')];const same=controls.find(n=>n.name===focusName&&(n.type!=='radio'||n.value===focusValue));same?.focus({preventScroll:true})}}
+root.addEventListener('click',event=>{const submit=event.target.closest('button');if(submit?.type==='submit'&&submit.form){event.preventDefault();submit.form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));return}const b=event.target.closest('[data-action]');if(!b)return;const action=b.dataset.action;if(action==='undo'&&undo){const last=undo;undo=null;last.restore();go(last.view);app.notice('Rückgängig gemacht.');return}if(action.startsWith('pension-estimate:')){const form=main.querySelector('form');Object.assign(pensionDraft,Object.fromEntries(new FormData(form)));pensionDraft.estimateBy=action.split(':')[1];render();return}if(window.RWContracts?.handle(action,app)||window.RWCompare?.handle(action,app))return;if(action.startsWith('edit:')){state.editContractId=action.slice(5);window.RWContracts?.resetDraft?.();go('contract-editor');return}if(action==='add-contract'){state.editContractId=null;window.RWContracts?.resetDraft?.();go('contract-picker');return}if(action==='alternative'){delete state.alternativeDraft;go('alternative');return}if(action==='clear-target'){state.target=null;go('plan');return}if(action==='demo'){state.started=true;state.profile={age:35,income:60000,employment:'employee',health:'gkv',premium:'',retirement:67};state.pension={source:'estimate',estimateBy:'years',years:15,value:'',system:'grv'};state.contracts=[{id:'demo-etf',type:'etf',name:'ETF-Depot',capital:10000,monthly:140,details:{payoutEndAge:90}},{id:'demo-bav',type:'bav',name:'Betriebsrente',capital:5000,monthly:125,details:{startYear:2024}}];go('plan');return}go(action)});
+root.addEventListener('submit',event=>{const form=event.target;if(!form.matches('form[data-form]'))return;event.preventDefault();if(!form.reportValidity())return;if(window.RWContracts?.submit(form,app)||window.RWCompare?.submit(form,app))return;const data=Object.fromEntries(new FormData(form));switch(form.dataset.form){case'profile':Object.assign(state.profile,data);if(state.profile.employment==='employee')state.pension.system='grv';go(state.started?'plan':'pension');break;case'pension':{const next={...state.pension,...pensionDraft,...data};if(next.source==='estimate'&&(next.estimateBy||'career')==='career'){const years=Number(state.profile.age)-Number(next.startAge)-Number(next.breakYears||0);if(years<0){app.notice('Die Pausen sind länger als die Zeit seit deinem Berufsstart. Bitte prüfe die Angaben.');return}next.years=years}state.pension=next;state.started=true;go('plan');break;}case'target':state.target=num(data.target);go('plan');break;case'assumptions':state.returns=num(data.returns);state.inflation=num(data.inflation);go('method');app.notice('Annahmen für diese Vorschau übernommen.');break;case'tax':state.filing=data.filing;state.otherIncome=num(data.otherIncome);go('method');app.notice('Angaben für diese Vorschau übernommen.');break}});
+root.addEventListener('change',event=>{const t=event.target;if(window.RWContracts?.change?.(t,app)||window.RWCompare?.change?.(t,app))return;let form=t.closest('form');if(form?.dataset.form==='profile'){Object.assign(profileDraft||(profileDraft={...state.profile}),Object.fromEntries(new FormData(form)));if(t.name==='health'||t.name==='employment')render()}if(form?.dataset.form==='pension'){Object.assign(pensionDraft||(pensionDraft={...state.pension}),Object.fromEntries(new FormData(form)));if(t.name==='source'||t.name==='system')render()}});
+root.addEventListener('keydown',event=>{if(event.key==='Enter'&&event.target.matches('input')&&event.target.form){event.preventDefault();event.target.form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}))}});
+root.addEventListener('input',event=>{if(window.RWContracts?.input?.(event.target,app))return;window.RWCompare?.input?.(event.target,app)});
+render();
+if(globalThis.Tweak){const tweak=new Tweak({container:root,onChange:render});tweak.addToggle(design,'composition',{label:'Zusammensetzung direkt zeigen'});tweak.addToggle(design,'preview',{label:'Ergebnisvorschau auf der Startseite'})}
+})();
+
+</script>

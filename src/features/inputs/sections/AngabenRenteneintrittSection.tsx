@@ -23,8 +23,8 @@ import { clampNumber } from '../../../ui/formatting'
  */
 
 const RETIREMENT_HEALTH_OPTIONS = [
-  { value: 'kvdr', label: 'KVdR (§ 226 SGB V)' },
-  { value: 'freiwillig_gkv', label: 'freiwillige GKV (§ 240 SGB V)' },
+  { value: 'kvdr', label: 'Krankenversicherung der Rentner (KVdR)' },
+  { value: 'freiwillig_gkv', label: 'Freiwillige gesetzliche Krankenversicherung' },
   { value: 'pkv', label: 'PKV in der Rente' },
 ] as const
 
@@ -62,9 +62,8 @@ export function AngabenRenteneintrittSection({
         </h2>
       </div>
       <p className="angaben-section-lead">
-        Renteneintrittsalter und Status in der Krankenversicherung der
-        Rentner fixieren Besteuerungsanteil und Versorgungsfreibetrag —
-        beide sind kohortengebunden.
+        Wann möchtest du in Rente gehen, und wie bist du dann krankenversichert?
+        Diese Angaben beeinflussen die Dauer deiner Auszahlung und dein Netto.
       </p>
 
       <div className="angaben-fields">
@@ -88,7 +87,7 @@ export function AngabenRenteneintrittSection({
           />
           <span className="angaben-field-meta">
             <span className="angaben-field-hint">
-              Renteneintrittsjahr fixiert Kohortenwerte zum Renteneintritt
+              Ab diesem Alter beginnt die Auszahlung in unserem Modell.
             </span>
           </span>
         </div>

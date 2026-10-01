@@ -19,8 +19,9 @@ import type {
   ProductId,
   ProductResult,
 } from '../../domain'
-import type { Workspace } from '../../domain/workspace'
+import type { PortfolioFunding, Workspace } from '../../domain/workspace'
 import type {
+  InstanceCommon,
   BavInstance,
   BasisrenteInstance,
   AltersvorsorgedepotInstance,
@@ -66,6 +67,7 @@ export interface ResolvedBavOffer {
 // ---------------------------------------------------------------------------
 
 export interface GeneratorContext {
+  preferredEtfInstanceId?: string
   workspace: Workspace
   rules: GermanRules
   marginalMonthlyEUR: number
@@ -73,6 +75,7 @@ export interface GeneratorContext {
   yearsToRetirement: number
   baselinePerInstance: Record<string, ProductResult[]>
   baselineCombined: CombinedResult
+  portfolioFunding: PortfolioFunding
   combineCtx: CombineContext
   bavOffer: ResolvedBavOffer
 }
@@ -129,6 +132,14 @@ export type CandidateGenerator = (g: GeneratorContext) => CandidateDraft | null
 // ---------------------------------------------------------------------------
 // Shared pure helpers
 // ---------------------------------------------------------------------------
+
+/** Existing targets (including offers) keep their absolute contract return. */
+export function candidateAnnualReturn(
+  scenario: BasisScenarioInfo,
+  target?: Pick<InstanceCommon, 'expectedReturn'>,
+): number {
+  return target?.expectedReturn ?? scenario.annualReturn
+}
 
 /**
  * Compound monthly contribution with simple geometric accumulation.

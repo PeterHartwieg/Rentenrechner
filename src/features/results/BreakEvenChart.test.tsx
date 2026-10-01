@@ -1,14 +1,17 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { StrictMode } from 'react'
 import { cleanup, render } from '@testing-library/react'
 import { BreakEvenChart } from './BreakEvenChart'
+import { formatLifecycleAxisEuro } from '../../utils/format'
 import { lifecyclePickerLabel } from './lifecycleLabels'
 import type { LifecycleSeriesResult } from './breakEvenSeries'
 import { formatCurrency } from '../../utils/format'
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
 })
 
 function lifecycleResult(productId: string, label: string): LifecycleSeriesResult {
@@ -23,6 +26,15 @@ function lifecycleResult(productId: string, label: string): LifecycleSeriesResul
     netMonthlyPayout: 0,
   }
 }
+
+describe('formatLifecycleAxisEuro', () => {
+  it('uses familiar euro labels across thousand and million ticks', () => {
+    expect(formatLifecycleAxisEuro(0)).toBe('0 €')
+    expect(formatLifecycleAxisEuro(250_000)).toBe('250 Tsd. €')
+    expect(formatLifecycleAxisEuro(1_000_000)).toBe('1 Mio. €')
+    expect(formatLifecycleAxisEuro(1_500_000)).toBe('1,5 Mio. €')
+  })
+})
 
 describe('lifecyclePickerLabel', () => {
   it('preserves grouped portfolio product labels with contract counts', () => {
@@ -138,6 +150,27 @@ const minimalEtfResult: LifecycleSeriesResult = {
 }
 
 const PRODUCT_COLORS: Record<string, string> = { etf: '#3b82f6' }
+
+it('mounts without invalid-size warnings before layout is available', () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const { container } = render(
+    <StrictMode>
+      <BreakEvenChart
+        selectedResults={[minimalEtfResult]}
+        productColors={PRODUCT_COLORS}
+        startAge={40}
+        retirementAge={67}
+        retirementEndAge={85}
+      />
+    </StrictMode>,
+  )
+  const messages = [...warn.mock.calls, ...error.mock.calls].flat().join(' ')
+  expect(messages).not.toContain('width(-1)')
+  expect(container.querySelector('.chart-size-placeholder')).not.toBeNull()
+  expect(container.querySelector('.recharts-surface')).toBeNull()
+  expect(container.querySelector('table.sr-only')).not.toBeNull()
+})
 
 const sampleGrvContribTimeline = [
   { ageYears: 40, employeeAnnualEUR: 5_580 },

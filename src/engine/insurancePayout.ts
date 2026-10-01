@@ -58,7 +58,84 @@ export function deriveInsuranceTaxMode(
   return 'abgeltungsteuer'
 }
 
+/**
+ * Effective tax mode + annual taxable amount of one private-insurance MONTHLY
+ * payout. This classification is the single owner shared by compare mode
+ * (`netInsurancePayout` / `netInsurancePayoutFull`) and combine mode
+ * (`portfolioCombine`) so identical contracts classify identically in both
+ * modes.
+ */
+export interface InsuranceMonthlyIncomeClassification {
+  /**
+   * Tax mode entering `calculateRetirementTax`. `'ertragsanteil'` for every
+   * lifelong payout (§22 Nr. 1 Satz 3 a EStG — applies to ALL contract eras,
+   * even pre-2005); otherwise the resolved contract tax mode.
+   */
+  effectiveTaxMode: InsuranceTaxMode
+  /**
+   * Annual taxable amount accompanying `effectiveTaxMode`. Ertragsanteil:
+   * gross × 12 × age fraction. Capital-payout modes: gross × 12 × gain ratio,
+   * loss-floored at zero gain. pre-2005 capital payout: 0 — the payout is
+   * entirely tax-free (§52 Abs. 28 EStG a.F.), nothing enters either base.
+   */
+  taxableAnnual: number
+}
+
+/**
+ * Classify one private-insurance MONTHLY payout: effective tax mode + annual
+ * taxable amount, derived from the gross payout, the capital/cost-basis pair
+ * (cost basis includes transferred principal from inbound transfers), the
+ * payout mode/age, and the resolved contract tax mode.
+ *
+ * - `payoutMode === 'leibrente'` (#59): §22 Nr. 1 Satz 3 a aa EStG Ertragsanteil
+ *   method — `effectiveTaxMode: 'ertragsanteil'`, taxable = gross × 12 ×
+ *   `ertragsanteilByAge(age)`. Overrides the contract tax mode in every era.
+ * - `contractTaxMode === 'pre2005'` otherwise: the payout is tax-free —
+ *   `taxableAnnual: 0`. The gain-ratio amount is never read by a tax consumer:
+ *   `calculateRetirementTax` short-circuits pre-2005 before reading the amount.
+ * - Otherwise (halbeinkuenfte / abgeltungsteuer): gain-ratio method with the
+ *   loss floor at zero gain.
+ *
+ * The halbeinkuenfte factor itself is applied downstream by
+ * `calculateRetirementTax` (exactly once), never here.
+ */
+export function classifyInsuranceMonthlyIncome(input: {
+  grossMonthlyPayout: number
+  capital: number
+  /** Cost basis — regular contributions + injected transfer principal. */
+  totalContributions: number
+  /** Contract tax mode resolved from vintage/runtime/age (capital-payout era). */
+  contractTaxMode: InsuranceTaxMode
+  payoutMode?: PayoutMode
+  retirementAge?: number
+}): InsuranceMonthlyIncomeClassification {
+  const {
+    grossMonthlyPayout,
+    capital,
+    totalContributions,
+    contractTaxMode,
+    payoutMode,
+    retirementAge,
+  } = input
+  // #59: Leibrente → Ertragsanteil method (§22 EStG), ignoring capital-payout tax mode.
+  if (payoutMode === 'leibrente' && retirementAge !== undefined) {
+    return {
+      effectiveTaxMode: 'ertragsanteil',
+      taxableAnnual: grossMonthlyPayout * 12 * ertragsanteilByAge(retirementAge),
+    }
+  }
+  // pre2005 capital payout → entirely tax-free; nothing enters either base.
+  // (Leibrente on a pre-2005 contract returns above — Ertragsanteil applies.)
+  if (contractTaxMode === 'pre2005') {
+    return { effectiveTaxMode: 'pre2005', taxableAnnual: 0 }
+  }
+  const gainRatio = capital > 0 ? Math.max(0, capital - totalContributions) / capital : 0
+  return { effectiveTaxMode: contractTaxMode, taxableAnnual: grossMonthlyPayout * 12 * gainRatio }
+}
+
 // Net monthly insurance payout after tax and KV/PV where applicable. (#46, #47, #59)
+// Classification (effective tax mode + taxable base) is owned by
+// `classifyInsuranceMonthlyIncome` — the same pure helper combine mode uses.
 // For payoutMode === 'leibrente' (#59): §22 Nr. 1 Satz 3 a aa EStG Ertragsanteil method.
 // For other payout modes: gain-ratio method — capital-payout tax modes (halbeinkuenfte / abgeltungsteuer / pre2005).
 // Routed through calculateRetirementTax so retirement deductions are applied before computing the marginal rate. (#46)
@@ -78,62 +155,20 @@ export function netInsurancePayout(
    *  statutoryPensionAnnual and into KV/PV (freiwillig path). */
   grvBaselineMonthly = 0,
 ): number {
-  // #59: Leibrente → Ertragsanteil method (§22 EStG), ignoring capital-payout tax mode.
-  let effectiveTaxMode: InsuranceTaxMode = taxMode
-  let annualGain: number
-  if (payoutMode === 'leibrente' && retirementAge !== undefined) {
-    const ertragsanteil = ertragsanteilByAge(retirementAge)
-    annualGain = grossMonthlyPayout * 12 * ertragsanteil
-    effectiveTaxMode = 'ertragsanteil'
-  } else {
-    const gainRatio = capital > 0 ? Math.max(0, capital - totalContributions) / capital : 0
-    annualGain = grossMonthlyPayout * 12 * gainRatio
-  }
-
-  // pre2005 + KVdR (or PKV / no profile) → entirely pass-through.
-  // pre2005 + freiwillig versichert still owes KV/PV via §240 SGB V — fall through
-  // to the shared primitive, which short-circuits the income-tax calc on pre2005.
-  if (
-    effectiveTaxMode === 'pre2005' &&
-    (!profile?.publicHealthInsurance || kvdrMember || !profile)
-  ) {
-    return grossMonthlyPayout
-  }
-
-  // No profile → no KV/PV (legacy contract for direct callers without retiree
-  // context). Compute marginal tax only and skip the shared primitive (it requires
-  // a real profile for the children-adjusted PV rate).
-  if (!profile) {
-    const marginalTax = calculateMarginalRetirementTax(
-      rules,
-      retirementIncomeBase(retirementYear, {
-        grvBaselineMonthly,
-        otherTaxableAnnual: otherMonthlyIncome * 12,
-        privateInsuranceTaxMode: effectiveTaxMode,
-      }),
-      { privateInsuranceTaxableAnnual: annualGain },
-    )
-    return Math.max(0, grossMonthlyPayout - marginalTax / 12)
-  }
-
-  const kvPvChannel = profile.publicHealthInsurance && !kvdrMember
-    ? 'freiwillig_other'
-    : 'none'
-
-  return calculateMonthlyRetirementPayout({
-    rules,
-    retirementYear,
-    grvBaselineMonthly,
-    otherMonthlyIncome,
+  return netInsurancePayoutFull(
     grossMonthlyPayout,
-    // Tax base uses the gain (pre-multiplied by Ertragsanteil for Leibrente, gain ratio otherwise).
-    taxableAnnualOverride: annualGain,
-    taxChannel: 'private_insurance',
-    privateInsuranceTaxMode: effectiveTaxMode,
-    kvPvChannel,
+    capital,
+    totalContributions,
+    taxMode,
+    rules,
+    otherMonthlyIncome,
+    retirementYear,
     profile,
-    healthStatus: kvdrMember ? 'kvdr' : 'freiwillig_gkv',
-  }).netMonthly
+    kvdrMember,
+    payoutMode,
+    retirementAge,
+    grvBaselineMonthly,
+  ).netMonthly
 }
 
 /** Like netInsurancePayout but returns both netMonthly and kvPvMonthly. Used by the
@@ -152,20 +187,28 @@ export function netInsurancePayoutFull(
   retirementAge?: number,
   grvBaselineMonthly = 0,
 ): { netMonthly: number; kvPvMonthly: number } {
-  let effectiveTaxMode: InsuranceTaxMode = taxMode
-  let annualGain: number
-  if (payoutMode === 'leibrente' && retirementAge !== undefined) {
-    annualGain = grossMonthlyPayout * 12 * ertragsanteilByAge(retirementAge)
-    effectiveTaxMode = 'ertragsanteil'
-  } else {
-    const gainRatio = capital > 0 ? Math.max(0, capital - totalContributions) / capital : 0
-    annualGain = grossMonthlyPayout * 12 * gainRatio
-  }
+  const { effectiveTaxMode, taxableAnnual: annualGain } = classifyInsuranceMonthlyIncome({
+    grossMonthlyPayout,
+    capital,
+    totalContributions,
+    contractTaxMode: taxMode,
+    payoutMode,
+    retirementAge,
+  })
 
-  if (effectiveTaxMode === 'pre2005' && (!profile?.publicHealthInsurance || kvdrMember || !profile)) {
+  // pre2005 + KVdR (or PKV / no profile) → entirely pass-through.
+  // pre2005 + freiwillig versichert still owes KV/PV via §240 SGB V — fall through
+  // to the shared primitive, which short-circuits the income-tax calc on pre2005.
+  if (
+    effectiveTaxMode === 'pre2005' &&
+    (!profile?.publicHealthInsurance || kvdrMember || !profile)
+  ) {
     return { netMonthly: grossMonthlyPayout, kvPvMonthly: 0 }
   }
 
+  // No profile → no KV/PV (legacy contract for direct callers without retiree
+  // context). Compute marginal tax only and skip the shared primitive (it requires
+  // a real profile for the children-adjusted PV rate).
   if (!profile) {
     const marginalTax = calculateMarginalRetirementTax(
       rules,
@@ -186,6 +229,7 @@ export function netInsurancePayoutFull(
     grvBaselineMonthly,
     otherMonthlyIncome,
     grossMonthlyPayout,
+    // Tax base uses the gain (pre-multiplied by Ertragsanteil for Leibrente, gain ratio otherwise).
     taxableAnnualOverride: annualGain,
     taxChannel: 'private_insurance',
     privateInsuranceTaxMode: effectiveTaxMode,

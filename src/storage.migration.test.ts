@@ -637,7 +637,7 @@ describe('Test 9 — singletonViewOfWorkspace + projectInstanceToScenarioAssumpt
 // ---------------------------------------------------------------------------
 
 describe('Test 11 — illegal transfer-pairing rejection', () => {
-  it('validateWorkspaceAssumptions rejects AVD instance with transferEvent pointing to Riester target', () => {
+  it('validateWorkspaceAssumptions drops AVD transferEvent pointing to Riester target', () => {
     const avdInstance = {
       instanceId: 'altersvorsorgedepot-singleton',
       label: 'AVD',
@@ -669,7 +669,9 @@ describe('Test 11 — illegal transfer-pairing rejection', () => {
       riester: [riesterInstance],
     }
     // AVD → Riester is an illegal certified transfer pairing.
-    expect(validateWorkspaceAssumptions(assumptions)).toBeNull()
+    const validated = validateWorkspaceAssumptions(assumptions)
+    expect(validated).not.toBeNull()
+    expect(validated!.altersvorsorgedepot[0].transferEvents).toEqual([])
   })
 
   it('Riester → AVD certified transfer is valid (a legal AltZertG path)', () => {
@@ -712,7 +714,7 @@ describe('Test 11 — illegal transfer-pairing rejection', () => {
 // ---------------------------------------------------------------------------
 
 describe('Test 12 — transferEvent target instance must exist', () => {
-  it('validator rejects a transferEvent whose targetInstanceId does not exist in the workspace', () => {
+  it('validator drops a transferEvent whose targetInstanceId does not exist in the workspace', () => {
     const bavInstance = {
       instanceId: 'bav-singleton',
       label: 'bAV',
@@ -737,7 +739,9 @@ describe('Test 12 — transferEvent target instance must exist', () => {
       // etf is empty (no etf-nonexistent instance)
       etf: [],
     }
-    expect(validateWorkspaceAssumptions(assumptions)).toBeNull()
+    const validated = validateWorkspaceAssumptions(assumptions)
+    expect(validated).not.toBeNull()
+    expect(validated!.bav[0].transferEvents).toEqual([])
   })
 
   it('validator accepts a transferEvent whose targetInstanceId exists in another product array', () => {
@@ -775,7 +779,7 @@ describe('Test 12 — transferEvent target instance must exist', () => {
     expect(validateWorkspaceAssumptions(assumptions)).not.toBeNull()
   })
 
-  it('validator rejects surrender_reinvest from ETF source (issue 15)', () => {
+  it('validator drops surrender_reinvest from ETF source (issue 15)', () => {
     const etfInstance = {
       instanceId: 'etf-singleton',
       label: 'ETF',
@@ -807,10 +811,12 @@ describe('Test 12 — transferEvent target instance must exist', () => {
       etf: [etfInstance],
       insurance: [insuranceInstance],
     }
-    expect(validateWorkspaceAssumptions(assumptions)).toBeNull()
+    const validated = validateWorkspaceAssumptions(assumptions)
+    expect(validated).not.toBeNull()
+    expect(validated!.etf[0].transferEvents).toEqual([])
   })
 
-  it('validator rejects surrender_reinvest into a certified product target (issue 15)', () => {
+  it('validator drops surrender_reinvest into a certified product target (issue 15)', () => {
     const insInstance = {
       instanceId: 'versicherung-singleton',
       label: 'pAV',
@@ -842,10 +848,12 @@ describe('Test 12 — transferEvent target instance must exist', () => {
       insurance: [insInstance],
       bav: [bavInstance],
     }
-    expect(validateWorkspaceAssumptions(assumptions)).toBeNull()
+    const validated = validateWorkspaceAssumptions(assumptions)
+    expect(validated).not.toBeNull()
+    expect(validated!.insurance[0].transferEvents).toEqual([])
   })
 
-  it('validator rejects self-target surrender_reinvest (issue 15)', () => {
+  it('validator drops self-target surrender_reinvest (issue 15)', () => {
     const insInstance = {
       instanceId: 'versicherung-singleton',
       label: 'pAV',
@@ -868,7 +876,9 @@ describe('Test 12 — transferEvent target instance must exist', () => {
       ...defaultWorkspace.baseline.assumptions,
       insurance: [insInstance],
     }
-    expect(validateWorkspaceAssumptions(assumptions)).toBeNull()
+    const validated = validateWorkspaceAssumptions(assumptions)
+    expect(validated).not.toBeNull()
+    expect(validated!.insurance[0].transferEvents).toEqual([])
   })
 })
 

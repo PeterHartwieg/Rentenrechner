@@ -4,7 +4,7 @@
  * LandingPage tests — combined coverage for issues #03 and #13.
  *
  * Issue #03 (homepage SEO upgrade):
- *   - Hero + two existing CTAs render unchanged
+ *   - Hero, start/resume CTA, compare CTA and static example render
  *   - The new `Erkunde Themen` hub renders with 5 cluster headings and 10
  *     descriptive-anchor links pointing to the locked canonical paths
  *   - Three JSON-LD blocks (WebSite, Organization, WebApplication) render
@@ -25,7 +25,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToString } from 'react-dom/server'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, fireEvent, render, within } from '@testing-library/react'
 import { createElement, type ReactElement } from 'react'
 import { AppShell } from '../../ui/chrome/AppShell'
 import { pathToRoute } from '../../app/useRoute'
@@ -107,7 +107,7 @@ describe('LandingPage — ?topic= auto-fire on first-time landing', () => {
     const { getByRole } = render(<LandingPage onChoice={onChoice} />)
     expect(onChoice).not.toHaveBeenCalled()
     // Sanity: the landing headline is rendered.
-    expect(getByRole('heading', { level: 1 }).textContent).toMatch(/wirklich/i)
+    expect(getByRole('heading', { level: 1 }).textContent).toBe('Was bleibt dir im Ruhestand?')
   })
 
   it('does not auto-fire when no ?topic= is present — landing renders normally', () => {
@@ -115,7 +115,7 @@ describe('LandingPage — ?topic= auto-fire on first-time landing', () => {
     const onChoice = vi.fn<(c: LandingChoice) => void>()
     const { getByRole } = render(<LandingPage onChoice={onChoice} />)
     expect(onChoice).not.toHaveBeenCalled()
-    expect(getByRole('heading', { level: 1 }).textContent).toMatch(/wirklich/i)
+    expect(getByRole('heading', { level: 1 }).textContent).toBe('Was bleibt dir im Ruhestand?')
   })
 
   it('does not auto-fire when other query params are present (no ?topic=)', () => {
@@ -170,7 +170,7 @@ describe('LandingPage — combine-mode preselection (issue #13 forwards visibleP
   })
 
   it('LandingChoice variants without visibleProducts are still legal (CTA buttons)', () => {
-    // Manual CTA clicks (Mein Plan / Vergleich starten) never carry seeds.
+    // Manual CTA clicks (Mein Plan / Sparformen vergleichen) never carry seeds.
     const c1: LandingChoice = { kind: 'combine' }
     const c2: LandingChoice = { kind: 'compare' }
     expect(c1.visibleProducts).toBeUndefined()
@@ -182,18 +182,72 @@ describe('LandingPage — combine-mode preselection (issue #13 forwards visibleP
 // Issue #03 — homepage SEO upgrade
 // ---------------------------------------------------------------------------
 
-describe('LandingPage — hero and two-CTA layout (unchanged from #02)', () => {
-  it('renders the H1 from the registry', () => {
+describe('LandingPage — hero and two-CTA layout', () => {
+  beforeEach(() => {
+    vi.stubGlobal('localStorage', makeStore())
+    stubLocationSearch('')
+  })
+  it('renders the revised H1', () => {
     const { getByRole } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
     expect(getByRole('heading', { level: 1 }).textContent).toBe(
-      publicRouteRegistry['/'].h1,
+      'Was bleibt dir im Ruhestand?',
     )
   })
 
-  it('renders the two CTAs (Mein Plan + Vergleich starten)', () => {
+  it('fires the existing combine and compare choices without preselection', () => {
+    const onChoice = vi.fn<(c: LandingChoice) => void>()
+    const { getByRole } = render(<LandingPage onChoice={onChoice} />)
+    fireEvent.click(getByRole('button', { name: 'Meine Rente einschätzen' }))
+    fireEvent.click(getByRole('button', { name: 'Sparformen vergleichen' }))
+    expect(onChoice.mock.calls).toEqual([[{ kind: 'combine' }], [{ kind: 'compare' }]])
+  })
+
+  it.each(['compare', 'combine'])('resumes saved %s mode through the combine choice', (mode) => {
+    vi.stubGlobal('localStorage', makeStore({
+      [STORAGE_KEY_V2]: JSON.stringify({ schemaVersion: 2, mode }),
+    }))
+    const onChoice = vi.fn<(c: LandingChoice) => void>()
+    const { getByRole, queryByRole } = render(<LandingPage onChoice={onChoice} />)
+    expect(queryByRole('button', { name: 'Meine Rente einschätzen' })).toBeNull()
+    fireEvent.click(getByRole('button', { name: 'Meinen Plan fortsetzen' }))
+    expect(onChoice.mock.calls).toEqual([[{ kind: 'combine' }]])
+  })
+
+  it('labels the fixed example and never writes personal state', () => {
+    const saved = JSON.stringify({ schemaVersion: 2, mode: 'combine', personalValue: 9999 })
+    const store = makeStore({ [STORAGE_KEY_V2]: saved })
+    const setItem = vi.spyOn(store, 'setItem')
+    const removeItem = vi.spyOn(store, 'removeItem')
+    const clear = vi.spyOn(store, 'clear')
+    vi.stubGlobal('localStorage', store)
+    const onChoice = vi.fn<(c: LandingChoice) => void>()
+    const { getByRole, queryByRole } = render(<LandingPage onChoice={onChoice} />)
+    const aside = getByRole('complementary', { name: 'Ergebnisvorschau mit Beispielwerten' })
+    const example = within(aside)
+    expect(example.getByRole('heading', { name: 'So kann ein Ergebnis aussehen' })).toBeTruthy()
+    expect(example.getByText('ca. 2.450 €')).toBeTruthy()
+    expect(example.getByText('Gesamt · netto pro Monat')).toBeTruthy()
+    expect(example.getByText('Mit 67 · heutige Kaufkraft')).toBeTruthy()
+    expect(example.getAllByRole('term').map((term) => term.textContent)).toEqual([
+      'Gesetzliche Rente', 'ETF-Depot', 'Betriebsrente',
+    ])
+    expect(example.getAllByRole('definition').map((value) => value.textContent?.replace(/\s/g, ' '))).toEqual([
+      '1.900 €', '350 €', '200 €',
+    ])
+    expect(example.getByText('Frei gewähltes Beispiel · nicht dein Ergebnis')).toBeTruthy()
+    expect(aside.querySelectorAll('button, a, input, select').length).toBe(0)
+    expect(queryByRole('button', { name: 'Mit Beispiel erkunden' })).toBeNull()
+    expect(onChoice).not.toHaveBeenCalled()
+    expect(setItem).not.toHaveBeenCalled()
+    expect(removeItem).not.toHaveBeenCalled()
+    expect(clear).not.toHaveBeenCalled()
+    expect(store.getItem(STORAGE_KEY_V2)).toBe(saved)
+  })
+
+  it('renders the two CTAs (Mein Plan + Sparformen vergleichen)', () => {
     const { getByText } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
-    expect(getByText('Plan erstellen')).toBeTruthy()
-    expect(getByText('Vergleich starten')).toBeTruthy()
+    expect(getByText('Meine Rente einschätzen')).toBeTruthy()
+    expect(getByText('Sparformen vergleichen')).toBeTruthy()
   })
 })
 
@@ -505,7 +559,7 @@ describe('LandingPage — prerender resilience', () => {
 })
 
 // ---------------------------------------------------------------------------
-// PR 2 — Editorial A layout (cream bg + serif hero + 3-step row + right rail)
+// Editorial layout (cream bg + serif hero + static example)
 // ---------------------------------------------------------------------------
 
 describe('LandingPage — editorial layout (PR 2)', () => {
@@ -513,30 +567,25 @@ describe('LandingPage — editorial layout (PR 2)', () => {
     const { container } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
     const kicker = container.querySelector('.landing-kicker')
     expect(kicker).not.toBeNull()
-    expect(kicker?.textContent).toMatch(/Plane deine Rente/i)
+    expect(kicker?.textContent).toBe('Deine Vorsorge. Verständlich.')
   })
 
-  it('renders the H1 with an italic oxblood accent on "wirklich"', () => {
-    const { container } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
-    const accent = container.querySelector('.landing-headline-accent')
-    expect(accent).not.toBeNull()
-    expect(accent?.textContent).toBe('wirklich')
-    // The accent element is an <em> so screen readers + crawlers see the
-    // emphasis without relying on CSS-only styling.
-    expect(accent?.tagName.toLowerCase()).toBe('em')
+  it('renders the lead and no-sign-up microcopy', () => {
+    const { getByText } = render(<LandingPage onChoice={NOOP} />)
+    expect(getByText('Ein erster Überblick mit wenigen Angaben. Details ergänzt du, wenn du möchtest.')).toBeTruthy()
+    expect(getByText('Ohne Anmeldung.')).toBeTruthy()
   })
 
-  it('renders exactly three process steps (I. / II. / III.)', () => {
-    const { container } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
-    const steps = container.querySelectorAll('.landing-step')
-    expect(steps.length).toBe(3)
-    const nums = Array.from(container.querySelectorAll('.landing-step-num')).map(
-      (n) => n.textContent,
-    )
-    expect(nums).toEqual(['I.', 'II.', 'III.'])
+  it('renders two short steps plus optional contracts below the hero', () => {
+    const { container, getByText } = render(<LandingPage onChoice={NOOP} />)
+    const nums = Array.from(container.querySelectorAll('.landing-step-num')).map((n) => n.textContent)
+    expect(nums).toEqual(['I.', 'II.', '+'])
+    expect(getByText('Verträge sind optional')).toBeTruthy()
+    expect(getByText('Nach zwei kurzen Schritten siehst du deinen Plan. Bestehende Verträge kannst du danach ergänzen.')).toBeTruthy()
+    expect(container.querySelector('.landing-top')?.nextElementSibling?.className).toBe('landing-steps')
   })
 
-  it('renders the Empfohlene Artikel right-rail with entries derived from hubClusters', () => {
+  it('renders the Empfohlene Artikel section with entries derived from hubClusters', () => {
     const { container } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
     const featuredLinks = container.querySelectorAll('a.landing-featured-link')
     expect(featuredLinks.length).toBe(FEATURED_ARTICLE_HREFS.length)
@@ -625,8 +674,8 @@ describe('LandingPage — viewport sweep (PR 11)', () => {
       // H1 + both CTA buttons + the hub grid render at every viewport
       // (responsive layout via CSS; same DOM shape).
       expect(container.querySelector('h1')).not.toBeNull()
-      expect(container.textContent ?? '').toContain('Plan erstellen')
-      expect(container.textContent ?? '').toContain('Vergleich starten')
+      expect(container.textContent ?? '').toContain('Meine Rente einschätzen')
+      expect(container.textContent ?? '').toContain('Sparformen vergleichen')
       // CR4: the hub navigation grid (`.landing-hub`) renders at every
       // viewport — responsive layout collapses its column count via CSS
       // but the container is always present.
@@ -652,20 +701,31 @@ describe('LandingPage — runtime language pilot (?lang=en)', () => {
   it('renders German by default (no ?lang)', () => {
     stubLocationSearch('')
     const { getByText } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
-    expect(getByText('Plan erstellen')).toBeTruthy()
-    expect(getByText('Vergleich starten')).toBeTruthy()
+    expect(getByText('Meine Rente einschätzen')).toBeTruthy()
+    expect(getByText('Sparformen vergleichen')).toBeTruthy()
   })
 
-  it('renders English for translated keys and German for untranslated (explicit fallback)', () => {
+  it('renders the revised hero, actions, steps and example in English', () => {
     stubLocationSearch('?lang=en')
     const { getByText, queryByText } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
     // Translated labels switch to English…
-    expect(getByText('Create my plan')).toBeTruthy()
-    expect(getByText('Start comparison')).toBeTruthy()
+    expect(getByText('Estimate my retirement income')).toBeTruthy()
+    expect(getByText('Compare savings options')).toBeTruthy()
     // …the German CTA label is replaced…
-    expect(queryByText('Plan erstellen')).toBeNull()
-    // …but the untranslated step body falls back to German.
-    expect(getByText('Du beschreibst deine Situation.')).toBeTruthy()
+    expect(queryByText('Meine Rente einschätzen')).toBeNull()
+    expect(getByText('About you')).toBeTruthy()
+    expect(getByText('Contracts are optional')).toBeTruthy()
+    expect(getByText('What will you have in retirement?')).toBeTruthy()
+    expect(getByText('Arbitrary example · not your result')).toBeTruthy()
+  })
+
+  it('translates the resume action for returning users', () => {
+    stubLocationSearch('?lang=en')
+    vi.stubGlobal('localStorage', makeStore({
+      [STORAGE_KEY_V2]: JSON.stringify({ schemaVersion: 2, mode: 'combine' }),
+    }))
+    const { getByRole } = render(<LandingPage onChoice={NOOP} />)
+    expect(getByRole('button', { name: 'Continue my plan' })).toBeTruthy()
   })
 
   it('exposes a DE/EN switch reflecting the active language', () => {

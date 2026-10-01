@@ -132,6 +132,38 @@ describe('readUrlState — valid', () => {
     }
   })
 
+  it('keeps claimsChildAllowance = false through a share-URL round trip (#371)', () => {
+    // The flag is not part of the compact-share default snapshot (undefined = true),
+    // so a stored `false` must survive the sparse-defaults omit/merge on both ends.
+    const assumptions = {
+      ...defaultAssumptions,
+      riester: {
+        ...defaultAssumptions.riester,
+        eligibility: {
+          ...defaultAssumptions.riester.eligibility,
+          claimsChildAllowance: false,
+        },
+      },
+      altersvorsorgedepot: {
+        ...defaultAssumptions.altersvorsorgedepot,
+        eligibility: {
+          ...defaultAssumptions.altersvorsorgedepot.eligibility,
+          claimsChildAllowance: false,
+        },
+      },
+    }
+    const url = buildShareUrl(defaultProfile, assumptions)
+    const search = url.slice(url.indexOf('?'))
+    setSearch(`/${search}`)
+
+    const result = readUrlState()
+    expect(result.kind).toBe('valid')
+    if (result.kind === 'valid') {
+      expect(result.state.assumptions.riester.eligibility.claimsChildAllowance).toBe(false)
+      expect(result.state.assumptions.altersvorsorgedepot.eligibility.claimsChildAllowance).toBe(false)
+    }
+  })
+
   it('hydrates sparse payloads from their versioned default snapshot', () => {
     const payload = JSON.stringify({
       version: 1,

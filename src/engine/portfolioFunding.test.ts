@@ -32,7 +32,10 @@ import {
 } from './portfolioFunding'
 import { calculateBavFunding, calculateSalaryResult } from './salary'
 import { calculateBasisrenteFunding } from './basisrente'
-import { calculateAvdFunding } from './altersvorsorgedepot'
+import {
+  calculateAvdFunding,
+  maxAvdMonthlyOwnContribution,
+} from './altersvorsorgedepot'
 import { calculateRiesterFunding } from './riester'
 import { simulatePortfolio } from './portfolioAdapter'
 import type {
@@ -62,6 +65,52 @@ function makeBaseWorkspace(): Workspace {
 
 // Riester §10a cap: 2 100 EUR/year
 const RIESTER_CAP_ANNUAL = de2026Rules.riester.annualCapInclAllowances
+
+describe('buildPortfolioFunding — subsidised-product top-up headroom', () => {
+  it('Riester remainingAnnual reserves the full allowance earned by the top-up', () => {
+    const ws = makeBaseWorkspace()
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+
+    // 50 EUR/month own contribution is 600 EUR/year. At the suggested top-up
+    // point the full 175 EUR Grundzulage is earned, leaving 2,100 - 600 - 175.
+    expect(funding.headroom.riester.allowanceAnnual).toBeLessThan(
+      de2026Rules.riester.grundzulage,
+    )
+    expect(funding.headroom.riester.remainingAnnual).toBeCloseTo(1_325, 2)
+  })
+
+  it('Riester funding scales own contribution when own plus allowance exceeds the cap', () => {
+    const ws = makeBaseWorkspace()
+    ws.baseline.assumptions.riester[0].monthlyOwnContribution = 170
+
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+    const accepted = funding.riesterByInstanceId['riester-singleton']
+    const acceptedAnnual = accepted.annualOwnContribution + accepted.totalAllowanceAnnual
+
+    expect(accepted.monthlyOwnContribution).toBeLessThan(170)
+    expect(accepted.monthlyOwnContribution).toBeGreaterThan(0)
+    expect(acceptedAnnual).toBeLessThanOrEqual(RIESTER_CAP_ANNUAL + 0.01)
+    expect(acceptedAnnual).toBeGreaterThan(RIESTER_CAP_ANNUAL - 1)
+    expect(funding.headroom.riester.fundedAnnual).toBeCloseTo(acceptedAnnual, 8)
+    expect(funding.headroom.riester.remainingAnnual).toBe(0)
+    expect(funding.headroom.riester.constrained).toBe(true)
+  })
+
+  it('AVD remainingAnnual reserves the saturated allowance at the contract cap', () => {
+    const ws = makeBaseWorkspace()
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+    const headroom = funding.headroom.altersvorsorgedepotByInstanceId[
+      'altersvorsorgedepot-singleton'
+    ]
+
+    // Default AVD: 100 EUR/month own contribution. The full basic allowance
+    // is 540 EUR, so maximum own is 6,300 EUR/year and the top-up is 5,100.
+    expect(headroom.allowanceAnnual).toBeLessThan(
+      de2026Rules.altersvorsorgedepot.basicAllowanceMax,
+    )
+    expect(headroom.remainingAnnual).toBeCloseTo(5_100, 8)
+  })
+})
 
 // ---------------------------------------------------------------------------
 // 1 & 2. bAV funding — single instance and two-instance cap aggregation
@@ -322,6 +371,196 @@ describe('buildPortfolioFunding — AVD', () => {
     // Zero state allowance (eligibility zeroed).
     expect(funding.altersvorsorgedepotByInstanceId['avd-paidup'].totalAllowanceAnnual).toBe(0)
   })
+
+  it('grants the one-time career-starter bonus to only one AVD contract and releases it after year one', () => {
+    const ws = makeBaseWorkspace()
+    const base = ws.baseline.assumptions.altersvorsorgedepot[0]
+    const makeEligibleAvd = (
+      instanceId: string,
+      contractStartYear: number,
+    ): AltersvorsorgedepotInstance => ({
+      ...base,
+      instanceId,
+      label: instanceId,
+      contractStartYear,
+      monthlyOwnContribution: 100,
+      eligibility: {
+        ...base.eligibility,
+        directlyEligible: true,
+        ageAtContractStart: 23,
+        careerStarterBonusUsed: false,
+      },
+    })
+    const earlier = makeEligibleAvd('avd-career-earlier', 2026)
+    const later = makeEligibleAvd('avd-career-later', 2027)
+    ws.baseline.assumptions.altersvorsorgedepot = [later, earlier]
+    ws.baseline.assumptions.riester = []
+
+    const { perInstance, portfolioFunding } = simulatePortfolio(ws, de2026Rules)
+    const earlierSchedule =
+      portfolioFunding.altersvorsorgedepotYearlyByInstanceId[earlier.instanceId]
+    const laterSchedule =
+      portfolioFunding.altersvorsorgedepotYearlyByInstanceId[later.instanceId]
+
+    expect(
+      earlierSchedule[0].careerStarterBonusAnnual +
+        laterSchedule[0].careerStarterBonusAnnual,
+    ).toBeCloseTo(de2026Rules.altersvorsorgedepot.careerStarterBonus, 8)
+    expect(earlierSchedule[0].careerStarterBonusAnnual).toBeCloseTo(
+      de2026Rules.altersvorsorgedepot.careerStarterBonus,
+      8,
+    )
+    expect(laterSchedule[0].careerStarterBonusAnnual).toBe(0)
+    expect(earlierSchedule[1].careerStarterBonusAnnual).toBe(0)
+    expect(laterSchedule[1].careerStarterBonusAnnual).toBe(0)
+
+    for (const instance of [earlier, later]) {
+      const schedule =
+        portfolioFunding.altersvorsorgedepotYearlyByInstanceId[instance.instanceId]
+      const result = perInstance[instance.instanceId][0]
+      for (const yearIndex of [0, 1]) {
+        const expectedProductContribution =
+          schedule[yearIndex].totalContractContributionAnnual +
+          schedule[yearIndex].guenstigerpruefungBenefitAnnual
+        expect(result.rows[yearIndex].yearlyProductContribution).toBeCloseTo(
+          expectedProductContribution,
+          8,
+        )
+      }
+    }
+  })
+
+  it('does not grant an AVD career-starter bonus after a surrendered Riester contract used it', () => {
+    const ws = makeBaseWorkspace()
+    const avd = ws.baseline.assumptions.altersvorsorgedepot[0]
+    avd.monthlyOwnContribution = 100
+    avd.eligibility = {
+      ...avd.eligibility,
+      directlyEligible: true,
+      ageAtContractStart: 23,
+      careerStarterBonusUsed: false,
+    }
+    ws.baseline.assumptions.riester[0].eligibility = {
+      ...ws.baseline.assumptions.riester[0].eligibility,
+      directlyEligible: true,
+      ageAtContractStart: 23,
+      careerStarterBonusUsed: true,
+    }
+    ws.baseline.assumptions.riester[0].status = 'surrendered'
+
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+
+    expect(
+      funding.altersvorsorgedepotByInstanceId[avd.instanceId]
+        .careerStarterBonusAnnual,
+    ).toBe(0)
+  })
+
+  it('allocates the bonus to the contract with the largest realised allowance claim', () => {
+    const ws = makeBaseWorkspace()
+    const avd = ws.baseline.assumptions.altersvorsorgedepot[0]
+    avd.contractStartYear = 2026
+    avd.monthlyOwnContribution = 100
+    avd.eligibility = {
+      ...avd.eligibility,
+      directlyEligible: true,
+      ageAtContractStart: 23,
+      careerStarterBonusUsed: false,
+    }
+    const riester = ws.baseline.assumptions.riester[0]
+    riester.contractStartYear = 2025
+    riester.monthlyOwnContribution = de2026Rules.riester.sockelbetrag / 12
+    riester.eligibility = {
+      ...riester.eligibility,
+      directlyEligible: true,
+      ageAtContractStart: 23,
+      careerStarterBonusUsed: false,
+    }
+
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+    const avdFunding =
+      funding.altersvorsorgedepotByInstanceId[avd.instanceId]
+    const riesterFunding = funding.riesterByInstanceId[riester.instanceId]
+
+    expect(avdFunding.careerStarterBonusAnnual).toBeCloseTo(
+      de2026Rules.altersvorsorgedepot.careerStarterBonus,
+      8,
+    )
+    expect(riesterFunding.careerStarterBonusAnnual).toBe(0)
+  })
+
+  it('does not allocate the bonus to an AVD contract whose cap would absorb it', () => {
+    const ws = makeBaseWorkspace()
+    const base = ws.baseline.assumptions.altersvorsorgedepot[0]
+    const eligibility = {
+      ...base.eligibility,
+      directlyEligible: true,
+      ageAtContractStart: 23,
+      careerStarterBonusUsed: false,
+    }
+    const capped: AltersvorsorgedepotInstance = {
+      ...base,
+      instanceId: 'avd-capped-career-bonus',
+      label: 'AVD capped',
+      contractStartYear: 2025,
+      monthlyOwnContribution: maxAvdMonthlyOwnContribution(
+        eligibility,
+        de2026Rules,
+        false,
+      ),
+      eligibility,
+    }
+    const uncapped: AltersvorsorgedepotInstance = {
+      ...base,
+      instanceId: 'avd-uncapped-career-bonus',
+      label: 'AVD uncapped',
+      contractStartYear: 2026,
+      monthlyOwnContribution: 100,
+      eligibility,
+    }
+    ws.baseline.assumptions.altersvorsorgedepot = [capped, uncapped]
+    ws.baseline.assumptions.riester = []
+
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+
+    expect(
+      funding.altersvorsorgedepotByInstanceId[capped.instanceId]
+        .careerStarterBonusAnnual,
+    ).toBe(0)
+    expect(
+      funding.altersvorsorgedepotByInstanceId[uncapped.instanceId]
+        .careerStarterBonusAnnual,
+    ).toBeCloseTo(de2026Rules.altersvorsorgedepot.careerStarterBonus, 8)
+  })
+
+  it('ignores an age-ineligible legacy used flag when an eligible contract is added', () => {
+    const ws = makeBaseWorkspace()
+    const legacy = ws.baseline.assumptions.altersvorsorgedepot[0]
+    expect(legacy.eligibility.careerStarterBonusUsed).toBe(true)
+    expect(legacy.eligibility.ageAtContractStart).toBeGreaterThan(
+      de2026Rules.altersvorsorgedepot.careerStarterMaxAge,
+    )
+    const eligible: AltersvorsorgedepotInstance = {
+      ...legacy,
+      instanceId: 'avd-valid-career-starter',
+      label: 'AVD valid career starter',
+      monthlyOwnContribution: 100,
+      eligibility: {
+        ...legacy.eligibility,
+        directlyEligible: true,
+        ageAtContractStart: 23,
+        careerStarterBonusUsed: false,
+      },
+    }
+    ws.baseline.assumptions.altersvorsorgedepot.push(eligible)
+
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+
+    expect(
+      funding.altersvorsorgedepotByInstanceId[eligible.instanceId]
+        .careerStarterBonusAnnual,
+    ).toBeCloseTo(de2026Rules.altersvorsorgedepot.careerStarterBonus, 8)
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -516,6 +755,16 @@ describe('buildPortfolioFunding — multi-bAV cap including employer contributio
     const totalBavAnnual = fundA.totalBavContributionAnnual + fundB.totalBavContributionAnnual
     const bavCapAnnual = de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.taxFreePctOfPensionCap
     expect(totalBavAnnual).toBeLessThanOrEqual(bavCapAnnual + 0.01)
+    expect(funding.headroom.bav.constrained).toBe(true)
+    expect(funding.headroom.bav.fundedAnnual).toBeCloseTo(
+      Math.min(totalBavAnnual, bavCapAnnual),
+      8,
+    )
+    expect(funding.headroom.bav.employerAnnual).toBeCloseTo(
+      fundA.annualEmployerContribution + fundB.annualEmployerContribution,
+      8,
+    )
+    expect(funding.headroom.bav.remainingAnnual).toBeLessThan(0.02)
   })
 
   it('two bAV instances with contractual employer match: total funding capped at §3 Nr. 63 limit', () => {
@@ -590,6 +839,38 @@ describe('buildPortfolioFunding — multi-bAV cap including employer contributio
     expect(fundA.monthlyGrossConversion).toBeCloseTo(100, 2)
     expect(fundB.monthlyGrossConversion).toBeCloseTo(100, 2)
   })
+
+  it('employer-only funding exhausts headroom even when employee conversion is zero', () => {
+    const ws = makeBaseWorkspace()
+    const employerOnly: BavInstance = {
+      ...ws.baseline.assumptions.bav[0],
+      instanceId: 'bav-employer-only',
+      monthlyGrossConversion: 0,
+      statutoryMinimumSubsidyEnabled: false,
+      contractualMatchPercent: 0,
+      contractualFixedMonthly: 700,
+    }
+    const testWs: Workspace = {
+      ...ws,
+      baseline: {
+        ...ws.baseline,
+        assumptions: { ...ws.baseline.assumptions, bav: [employerOnly] },
+      },
+    }
+
+    const funding = buildPortfolioFunding(testWs, de2026Rules)
+    const accepted = funding.bavByInstanceId['bav-employer-only']
+    expect(funding.headroom.bav.requestedAnnual).toBe(700 * 12)
+    expect(funding.headroom.bav.constrained).toBe(true)
+    expect(funding.headroom.bav.remainingAnnual).toBeLessThan(0.01)
+    expect(accepted.totalBavContributionAnnual).toBeLessThanOrEqual(
+      funding.headroom.bav.capAnnual + 0.01,
+    )
+    expect(accepted.annualEmployerContribution).toBeCloseTo(
+      funding.headroom.bav.capAnnual,
+      1,
+    )
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -663,6 +944,12 @@ describe('buildPortfolioFunding — downstream salary baseline accuracy', () => 
     // leaving more Schicht-1 headroom. Basisrente contribution should be
     // the same or higher in the two-bAV case (never lower from headroom reduction).
     expect(basisTwoAnnual).toBeGreaterThanOrEqual(basisOneAnnual - 0.01)
+    expect(fundingTwo.headroom.basisrente.pensionSystemAnnual).toBeLessThan(
+      fundingOne.headroom.basisrente.pensionSystemAnnual,
+    )
+    expect(fundingTwo.headroom.basisrente.remainingAnnual).toBeGreaterThan(
+      fundingOne.headroom.basisrente.remainingAnnual,
+    )
   })
 
   it('two bAV instances: downstream AVD funding uses combined post-bAV salary', () => {
@@ -857,12 +1144,71 @@ describe('gh#56 — multi-Riester simulator uses capped contributions', () => {
     expect(fundA.monthlyOwnContribution).toBeLessThan(100)
     expect(fundB.monthlyOwnContribution).toBeLessThan(100)
 
-    // Each should be approximately half the cap monthly = 2100/24 ≈ 87.5 EUR/month.
-    expect(fundA.monthlyOwnContribution).toBeCloseTo(RIESTER_CAP_ANNUAL / 24, 0)
-    expect(fundB.monthlyOwnContribution).toBeCloseTo(RIESTER_CAP_ANNUAL / 24, 0)
+    // The single household allowance is assigned to one recipient contract,
+    // so the two accepted own contributions together must leave room for it.
+    expect(fundA.monthlyOwnContribution).toBeLessThan(RIESTER_CAP_ANNUAL / 24)
+    expect(fundB.monthlyOwnContribution).toBeLessThan(RIESTER_CAP_ANNUAL / 24)
+    const acceptedAnnual = [fundA, fundB].reduce(
+      (sum, entry) => sum + entry.annualOwnContribution + entry.totalAllowanceAnnual,
+      0,
+    )
+    expect(acceptedAnnual).toBeLessThanOrEqual(RIESTER_CAP_ANNUAL + 0.01)
+
+    const scheduleA = funding.riesterYearlyByInstanceId['riester-cap-a']
+    const scheduleB = funding.riesterYearlyByInstanceId['riester-cap-b']
+    expect(scheduleA).toHaveLength(
+      ws.baseline.profile.retirementAge - ws.baseline.profile.age,
+    )
+    scheduleA.forEach((entryA, yearIndex) => {
+      const entryB = scheduleB[yearIndex]
+      expect(
+        entryA.annualOwnContribution + entryA.totalAllowanceAnnual +
+          entryB.annualOwnContribution + entryB.totalAllowanceAnnual,
+      ).toBeLessThanOrEqual(RIESTER_CAP_ANNUAL + 0.01)
+      expect(
+        [entryA, entryB].filter((entry) => entry.receivesPortfolioAllowance),
+      ).toHaveLength(1)
+    })
   })
 
-  it('two instances above cap: combined allowances ≤ single full-allowance entitlement', () => {
+  it('multi-instance schedule releases the one-time career-starter bonus after year one', () => {
+    const ws = makeTwoRiesterWorkspace(100, 100)
+    for (const instance of ws.baseline.assumptions.riester) {
+      instance.eligibility = {
+        ...instance.eligibility,
+        ageAtContractStart: 23,
+        careerStarterBonusUsed: false,
+      }
+    }
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+    const yearOne = [
+      funding.riesterYearlyByInstanceId['riester-cap-a'][0],
+      funding.riesterYearlyByInstanceId['riester-cap-b'][0],
+    ]
+    const yearTwo = [
+      funding.riesterYearlyByInstanceId['riester-cap-a'][1],
+      funding.riesterYearlyByInstanceId['riester-cap-b'][1],
+    ]
+    const aggregateOwnAnnual = (entries: typeof yearOne) =>
+      entries.reduce((sum, entry) => sum + entry.annualOwnContribution, 0)
+    const aggregateFundedAnnual = (entries: typeof yearOne) =>
+      entries.reduce(
+        (sum, entry) => sum + entry.annualOwnContribution + entry.totalAllowanceAnnual,
+        0,
+      )
+
+    expect(
+      yearOne.reduce((sum, entry) => sum + entry.careerStarterBonusAnnual, 0),
+    ).toBeCloseTo(de2026Rules.riester.careerStarterBonus, 2)
+    expect(
+      yearTwo.reduce((sum, entry) => sum + entry.careerStarterBonusAnnual, 0),
+    ).toBe(0)
+    expect(aggregateOwnAnnual(yearTwo)).toBeGreaterThan(aggregateOwnAnnual(yearOne))
+    expect(aggregateFundedAnnual(yearOne)).toBeLessThanOrEqual(RIESTER_CAP_ANNUAL + 0.01)
+    expect(aggregateFundedAnnual(yearTwo)).toBeLessThanOrEqual(RIESTER_CAP_ANNUAL + 0.01)
+  })
+
+  it('two instances share one household allowance instead of doubling it', () => {
     // Full Grundzulage = 175 EUR/year (no children, bonus used). Two instances
     // at 100 EUR/month each → after proportional scaling allowances should sum
     // to at most 175 EUR (one household entitlement), not 350 EUR (doubled).
@@ -873,22 +1219,46 @@ describe('gh#56 — multi-Riester simulator uses capped contributions', () => {
 
     const combinedGrundzulage = fundA.grundzulageAnnual + fundB.grundzulageAnnual
 
-    // Each instance has its own allowance entitlement (§79 Satz 1: per eligible person,
-    // not per household). Two directly eligible spouses with separate contracts can
-    // each receive the Grundzulage. In the typical one-person scenario (both instances
-    // belong to the same saver), the allowance IS doubled in the funding result — this
-    // is a known modeling limitation — but the KEY fix is that the contribution to
-    // each contract is capped, so total capital does not double the subsidy benefit.
-    // We assert: combined allowances ≤ 2 × full entitlement (175 × 2 = 350 EUR) with
-    // proration matching the scaled contribution.
     const grundzulagePerInstance = de2026Rules.riester.grundzulage
-    // With scaling to ~87.5 EUR/month and minRequired ~1925 EUR/year:
-    // prorationFactor ≈ (87.5×12) / 1925 ≈ 0.545 → grundzulage ≈ 95 EUR each.
-    // Strict bound: each prorated allowance must be less than the full 175 EUR.
-    expect(fundA.grundzulageAnnual).toBeLessThanOrEqual(grundzulagePerInstance)
-    expect(fundB.grundzulageAnnual).toBeLessThanOrEqual(grundzulagePerInstance)
-    // And together they must not exceed 2 × 175.
-    expect(combinedGrundzulage).toBeLessThanOrEqual(grundzulagePerInstance * 2 + 0.01)
+    expect(combinedGrundzulage).toBeLessThanOrEqual(grundzulagePerInstance + 0.01)
+    expect(
+      [fundA, fundB].filter((entry) => entry.receivesPortfolioAllowance),
+    ).toHaveLength(1)
+    expect(fundA.portfolioHouseholdOwnContributionMonthly).toBeCloseTo(
+      fundA.monthlyOwnContribution + fundB.monthlyOwnContribution,
+      8,
+    )
+  })
+
+  it('apportions the household tax benefit without truncating it on a small first contract', () => {
+    const ws = makeTwoRiesterWorkspace(5, 150)
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+    const fundA = funding.riesterByInstanceId['riester-cap-a']
+    const fundB = funding.riesterByInstanceId['riester-cap-b']
+    const householdOwnMonthly = fundA.monthlyOwnContribution + fundB.monthlyOwnContribution
+    const household = calculateRiesterFunding(
+      de2026Rules,
+      funding.salaryForOtherFunding,
+      {
+        ...defaultAssumptions.riester,
+        eligibility: ws.baseline.assumptions.riester[0].eligibility,
+        monthlyOwnContribution: householdOwnMonthly,
+      },
+      ws.baseline.profile,
+    )
+
+    expect(fundA.monthlyNetCost + fundB.monthlyNetCost).toBeCloseTo(
+      householdOwnMonthly - household.guenstigerpruefungBenefitAnnual / 12,
+      8,
+    )
+    expect(
+      fundA.guenstigerpruefungBenefitAnnual + fundB.guenstigerpruefungBenefitAnnual,
+    ).toBeCloseTo(household.guenstigerpruefungBenefitAnnual, 8)
+
+    const single = makeSingleRiesterWorkspace(householdOwnMonthly)
+    const singleFunding = buildPortfolioFunding(single, de2026Rules)
+      .riesterByInstanceId['riester-single-ref']
+    expect(singleFunding.monthlyNetCost).toBeCloseTo(household.monthlyNetCost, 8)
   })
 
   it('two instances under cap: no scaling — contributions and capital unaffected', () => {

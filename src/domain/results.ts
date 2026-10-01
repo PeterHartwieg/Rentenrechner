@@ -8,6 +8,7 @@ import type { RiesterFundingResult, RiesterAssumptions } from './products/rieste
 import type { StatutoryPensionResult, StatutoryPensionAssumptions } from './products/grv'
 import type { EtfAssumptions } from './products/etf'
 import type { MonteCarloAssumptions } from './monteCarlo'
+import type { InputStatusMap } from './inputStatus'
 import type { EvidenceState } from './instances'
 
 export interface YearlyProjection {
@@ -186,9 +187,47 @@ export interface ScenarioAssumptions {
    * Monthly net out-of-pocket comparison anchor (EUR/month). All six products
    * are sized so the user's bank-account burden equals this target where
    * statutory caps allow. Default 200 EUR/month.
+   *
+   * When `contributionInput.kind === 'avd-own'` this field is **derived output**,
+   * not input: `syncMonthlyContributions` recomputes it from the pinned AVD
+   * Eigenbeitrag on every call. Read it for display; do not treat it as the
+   * source of truth in that mode.
    */
   equalInputAmountEUR?: number
+  /**
+   * Which quantity the user is actually steering in compare mode.
+   *
+   * - `{ kind: 'net' }` (default, and the behaviour of every state saved before
+   *   this field existed) — the user sets the monthly net burden directly and
+   *   every product's contribution is back-solved from it.
+   * - `{ kind: 'avd-own', monthlyOwn }` — the user set the AVD Eigenbeitrag,
+   *   because the statutory AVD thresholds (Mindestbeitrag, Zulagenstufen,
+   *   Vertragsrahmen) apply to the Eigenbeitrag and not to the net cost. The
+   *   comparison anchor is then *derived* from it so all other products still
+   *   invest AVD's true net cost.
+   *
+   * Deliberately a discriminated union rather than a `ProductId`: `'bav'` as an
+   * origin would decouple ETF and private insurance from the anchor (both
+   * consume `bavFunding.monthlyNetCost` directly), and `'etf'` / `'versicherung'`
+   * / statutory pension have no editable contribution at all.
+   */
+  contributionInput?: ContributionInput
+  /**
+   * Scenario-level input status for profile and statutory-pension fields (the
+   * v1 singleton twin of `WorkspaceAssumptionsV2.inputStatus`). Reserved keys
+   * live in `src/domain/inputStatus.ts`. Optional and additive; absent
+   * resolves to `'assumed'`.
+   */
+  inputStatus?: InputStatusMap
 }
+
+/**
+ * Which contribution quantity the compare-mode user is steering.
+ * See `ScenarioAssumptions.contributionInput`.
+ */
+export type ContributionInput =
+  | { kind: 'net' }
+  | { kind: 'avd-own'; monthlyOwn: number }
 
 export interface SimulationResult {
   bavFunding: BavFundingResult

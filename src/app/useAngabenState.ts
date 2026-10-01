@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { PersonalProfile, ScenarioAssumptions } from '../domain'
-import type { BavInstance } from '../domain/instances'
 import type {
   Scenario,
   WhatIfScenario,
@@ -29,7 +28,13 @@ import {
   addInstanceToWorkspace,
   removeInstanceFromWorkspace,
 } from './workspaceIdentity'
-import { rebaseWhatIf as rebaseWhatIfPure } from './portfolioState'
+import {
+  commitWorkspace,
+  getWorkspaceSnapshot,
+  rebaseWhatIf as rebaseWhatIfPure,
+  updateWorkspaceStore,
+  useWorkspaceValue,
+} from './portfolioState'
 import type { MultiInstanceProductId } from './portfolioState'
 import {
   normalizeMonthlyNettoBelastung,
@@ -106,6 +111,14 @@ export interface UseAngabenStateApi {
    * in combine-mode (per-instance `monthlyContribution` is the source of truth there).
    */
   setSyncedMonthlyContribution: ((targetNet: number) => void) | undefined
+  /**
+   * Compare-mode only. Pins the AVD Eigenbeitrag and lets the sync derive the
+   * shared anchor from it, in one atomic state update. The statutory AVD
+   * thresholds apply to the Eigenbeitrag, which is why it — not the net cost —
+   * is what the AVD panel lets the user steer. `undefined` in combine-mode,
+   * where each instance's `monthlyOwnContribution` is already a real input.
+   */
+  setAvdOwnContribution: ((monthlyOwn: number) => void) | undefined
   // ------- Combine-mode-only workspace surface (mirror `usePortfolioState` subset) -------
   /** The full workspace (combine-mode only). `undefined` in compare-mode. */
   workspace: Workspace | undefined
@@ -154,30 +167,23 @@ const SINGLETON_VIEW_DEFAULTS = {
  *
  * Workspace-level fields (`inflationRate`, `retirementEndAge`, `monteCarlo`,
  * `statutoryPension`, `returnScenarios`, `visibleProducts`, the compareSubMode
- * legacy round-trip pair) map 1:1.
+ * legacy round-trip pair, the contribution-input pair) map 1:1.
  *
- * The per-product slots are asymmetric: in compare-mode `assumptions.bav` is a
- * single `BavAssumptions` object; in combine-mode `assumptions.bav` is a
- * `BavInstance[]` (one element per contract the user owns). The page's
- * `AngabenEinkommenSection` reads/writes `assumptions.bav.monthlyGrossConversion`
- * — a per-instance field. We honour this by writing the field onto the *first*
- * active bAV instance when one exists. If the user has zero bAV instances the
- * edit is dropped silently (the field still renders with the
- * `defaultAssumptions.bav` value from `singletonViewOfWorkspace`, but the
- * workspace has no instance to receive the change). The storage copy on the
- * AngabenPage names this asymmetry honestly so the user is never surprised.
- *
- * No other per-product field is edited by the four `/eingaben` sections today,
- * so the projection only touches `bav.monthlyGrossConversion`. If future PRs
- * add per-instance edits (ETF contribution, Riester monthly, etc.), extend
- * this projection to cover them.
+ * **Per-product slots are never written here** (input-followups plan 2). The
+ * projection used to route `bav.monthlyGrossConversion` onto the *first*
+ * active bAV instance — or silently drop the edit with zero instances — which
+ * made a singleton-shaped field write look like a per-contract edit. In
+ * combine mode every per-instance field is edited through its own contract
+ * surface (Schritt 2 instance disclosures, `/vertrag/:instanceId`) via
+ * `patchInstance` → `onPatchBaseline`; a singleton projection must not become
+ * an ambiguous proxy writer. If a future surface needs singleton↔instance
+ * mapping, it needs an explicit, mode-labelled design — not this projection.
  */
 function projectSingletonAssumptionsToWorkspace(
   next: ScenarioAssumptions,
   wsa: WorkspaceAssumptionsV2,
 ): WorkspaceAssumptionsV2 {
-  // Workspace-level fields — direct mapping.
-  let updated: WorkspaceAssumptionsV2 = {
+  return {
     ...wsa,
     inflationRate: next.inflationRate,
     retirementEndAge: next.retirementEndAge,
@@ -187,35 +193,8 @@ function projectSingletonAssumptionsToWorkspace(
     visibleProducts: next.visibleProducts,
     compareSubMode: next.compareSubMode ?? wsa.compareSubMode,
     equalInputAmountEUR: next.equalInputAmountEUR ?? wsa.equalInputAmountEUR,
+    contributionInput: next.contributionInput ?? wsa.contributionInput,
   }
-
-  // Per-instance asymmetric field: bAV-Brutto. Write to the first active bAV
-  // instance if any. Mirrors `singletonViewOfWorkspace`'s `firstActive`
-  // selector so the read+write paths agree on which instance is "the" bAV.
-  const firstBavActiveIdx = wsa.bav.findIndex(
-    (i) => i.status === 'active' || i.status === 'paid_up',
-  )
-  if (firstBavActiveIdx >= 0) {
-    const existing = wsa.bav[firstBavActiveIdx]
-    // Only rewrite when the value actually changed — avoids re-render thrash.
-    if (existing.monthlyGrossConversion !== next.bav.monthlyGrossConversion) {
-      const updatedInstance: BavInstance = {
-        ...existing,
-        monthlyGrossConversion: next.bav.monthlyGrossConversion,
-      }
-      updated = {
-        ...updated,
-        bav: updated.bav.map((inst, idx) =>
-          idx === firstBavActiveIdx ? updatedInstance : inst,
-        ),
-      }
-    }
-  }
-  // If no active bAV instance exists, the edit is dropped. The user sees the
-  // field reset to the default on the next render via singletonViewOfWorkspace.
-  // The storage copy on AngabenPage names this asymmetry.
-
-  return updated
 }
 
 /**
@@ -341,11 +320,9 @@ function computeInitialAngabenState(): InitialAngabenState {
  * Combine-mode write strategy: profile maps 1:1 onto `baseline.profile`;
  * workspace-level assumptions fields (`inflationRate`, `retirementEndAge`,
  * `monteCarlo`, `statutoryPension`, `returnScenarios`, `visibleProducts`)
- * map 1:1 onto `baseline.assumptions`. The per-instance
- * `bav.monthlyGrossConversion` field writes onto the first active bAV
- * instance; with zero bAV instances the edit is dropped (the user has no
- * contract to receive the value). The page's storage copy names this
- * asymmetry.
+ * map 1:1 onto `baseline.assumptions`. Per-instance fields are never written
+ * here (input-followups plan 2) — per-contract bAV values live in Schritt 2
+ * and `/vertrag/:instanceId`.
  *
  * Storage shape: byte-identical with what the rest of the app reads/writes.
  * The v2 workspace `schemaVersion: 2` is unchanged; no new top-level fields
@@ -354,6 +331,18 @@ function computeInitialAngabenState(): InitialAngabenState {
  * for compare-mode; combine-mode goes through `parseWorkspaceJson` (which
  * runs `validateWorkspace`).
  */
+/**
+ * Functional updater over the shared workspace store, in the shape the
+ * combine-mode mutators below were written against. Module-level so it is
+ * referentially stable across renders. Only the combine-mode branch reaches it
+ * — the mutators that call it are `undefined` on the compare-mode API surface.
+ */
+function setWorkspaceState(
+  updater: (prev: Workspace | null) => Workspace | null,
+): void {
+  updateWorkspaceStore((prev) => updater(prev) ?? prev)
+}
+
 export function useAngabenState(): UseAngabenStateApi {
   // Initial state — runs once. Captures mode, profile, assumptions, and the
   // underlying workspace (combine-mode only).
@@ -375,9 +364,17 @@ export function useAngabenState(): UseAngabenStateApi {
   // immediately reflected in the § 4 receipt without any extra synchronisation
   // effect. Codex R2 P1: this is what eliminates the parallel-store data loss
   // — there is exactly one store per mode, owned by this hook.
-  const [workspace, setWorkspaceState] = useState<Workspace | null>(initial.workspace)
-
+  //
+  // The workspace itself lives in the shared module-level store owned by
+  // `portfolioState.ts` (see "Workspace store"), NOT in per-mount `useState`.
+  // Two writers on STORAGE_KEY_V2 — this hook and `usePortfolioState` — meant
+  // whichever component unmounted last wrote its own stale snapshot back over
+  // the other's edits. Reading and writing the one store removes that race and
+  // makes an edit here visible to `/` without a reload.
   const isCombine = initial.mode === 'combine'
+  const storeWorkspace = useWorkspaceValue()
+  const workspace: Workspace | null = isCombine ? storeWorkspace : null
+
 
   // Derive the canonical `profile` + `assumptions` for the active mode. In
   // combine-mode we re-derive on every render via `singletonViewOfWorkspace`;
@@ -419,6 +416,9 @@ export function useAngabenState(): UseAngabenStateApi {
   // frozen what-ifs.
   const persistNow = useCallback(() => {
     if (isCombine) {
+      // The shared workspace store persists write-through on every mutation,
+      // so this only has to cover the "user changed nothing" case that still
+      // needs a saved-mode marker.
       if (!workspace) return
       saveWorkspace(workspace)
       return
@@ -427,15 +427,20 @@ export function useAngabenState(): UseAngabenStateApi {
     safeSetItem(STORAGE_KEY_V1, buildStateJson(compareProfile, compareAssumptions))
   }, [isCombine, workspace, compareProfile, compareAssumptions])
 
-  // Persistence effect. Single dispatch by mode via `persistNow`. Compare-mode
-  // writes a v1 envelope to STORAGE_KEY_V1; combine-mode writes the full
-  // workspace to STORAGE_KEY_V2 via `saveWorkspace`. `persistNow` closes over
-  // every mutation that should trigger a save (combine-mode `workspace`,
-  // compare-mode `compareProfile` + `compareAssumptions`), so it is the only
-  // data dependency the effect needs. The first-run skip stays HERE — only the
-  // write body moved into `persistNow`, so the combine-mode `lastEditedAt`
-  // concern (skip the no-op mount write unless `persistOnMount` flags a
-  // load-bearing share-URL import) is unchanged.
+  // Persistence effect — compare-mode only. It writes the v1 envelope to
+  // STORAGE_KEY_V1, which has no other writer while this hook is mounted.
+  //
+  // Combine-mode is deliberately NOT persisted here: every workspace mutation
+  // goes through the shared store in `portfolioState.ts`, which writes through
+  // to STORAGE_KEY_V2 synchronously inside `setWorkspaceStore`. Running
+  // `persistNow()` from this effect as well serialised the very same snapshot a
+  // second time on every edit (Codex P2). `persistNow` keeps its combine branch
+  // for the one case the store cannot cover: the "Speichern und …" CTA of a
+  // visitor who changed nothing, and therefore never triggered a store write.
+  //
+  // The first-run skip stays HERE: the mount-time write is a no-op except for
+  // the load-bearing compare-mode share-URL import flagged by
+  // `initial.persistOnMount`.
   useEffect(() => {
     if (isFirstEffectRun.current) {
       isFirstEffectRun.current = false
@@ -446,8 +451,9 @@ export function useAngabenState(): UseAngabenStateApi {
       // share-URL import). This is intentionally restricted to compare-mode:
       // the combine-mode branch always sets `persistOnMount: false`.
     }
+    if (isCombine) return
     persistNow()
-  }, [persistNow, initial.persistOnMount])
+  }, [isCombine, persistNow, initial.persistOnMount])
 
   // Setters: same shape as `useCalculatorState` so section components do not
   // change. In combine-mode they route through `setWorkspaceState` with the
@@ -544,7 +550,34 @@ export function useAngabenState(): UseAngabenStateApi {
     (targetNet: number) => {
       const target = normalizeMonthlyNettoBelastung(targetNet)
       setCompareAssumptions((current) =>
-        syncMonthlyContributions(target, current, compareProfile, de2026Rules),
+        // See useCalculatorState: entering a net amount releases a pinned AVD
+        // Eigenbeitrag, atomically in the same state update.
+        syncMonthlyContributions(
+          target,
+          { ...current, contributionInput: { kind: 'net' } },
+          compareProfile,
+          de2026Rules,
+        ),
+      )
+    },
+    [compareProfile],
+  )
+
+  const setAvdOwnContribution = useCallback(
+    (monthlyOwn: number) => {
+      setCompareAssumptions((current) =>
+        syncMonthlyContributions(
+          0, // ignored: the anchor is derived from the pinned Eigenbeitrag
+          {
+            ...current,
+            contributionInput: {
+              kind: 'avd-own',
+              monthlyOwn: normalizeMonthlyNettoBelastung(monthlyOwn),
+            },
+          },
+          compareProfile,
+          de2026Rules,
+        ),
       )
     },
     [compareProfile],
@@ -575,10 +608,16 @@ export function useAngabenState(): UseAngabenStateApi {
     setWorkspaceState((w) => (w ? addInstanceToWorkspace(w, productId) : w))
   }, [])
 
+  // Removal is the one mutation here that must be reversible: it destroys a
+  // contract the user entered. Routing it through `commitWorkspace` (rather
+  // than the plain store write the other mutators use) records the shared
+  // one-level undo handle, so the plan — and the § 2 status line on
+  // `/eingaben/produkte` — can offer "Rückgängig" afterwards.
   const removeInstance = useCallback(
     (productId: MultiInstanceProductId, instanceId: string) => {
-      setWorkspaceState((w) =>
-        w ? removeInstanceFromWorkspace(w, productId, instanceId) : w,
+      commitWorkspace(
+        'Vertrag entfernt',
+        removeInstanceFromWorkspace(getWorkspaceSnapshot(), productId, instanceId),
       )
     },
     [],
@@ -651,6 +690,7 @@ export function useAngabenState(): UseAngabenStateApi {
     // Compare-mode-only convenience setters
     resetToDefaults: isCombine ? undefined : resetToDefaults,
     setSyncedMonthlyContribution: isCombine ? undefined : setSyncedMonthlyContribution,
+    setAvdOwnContribution: isCombine ? undefined : setAvdOwnContribution,
     // Combine-mode-only workspace surface
     workspace: isCombine && workspace ? workspace : undefined,
     baseline: isCombine && workspace ? workspace.baseline : undefined,

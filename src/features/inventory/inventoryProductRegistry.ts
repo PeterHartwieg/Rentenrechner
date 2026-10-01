@@ -379,7 +379,6 @@ const altersvorsorgedepotEntry: InventoryProductEntry<
     monthlyOwnContribution: 200,
     eligibility: defaultAssumptions.altersvorsorgedepot.eligibility,
     riskAllocationPct: defaultAssumptions.altersvorsorgedepot.riskAllocationPct,
-    riskAnnualReturn: defaultAssumptions.altersvorsorgedepot.riskAnnualReturn,
     lowRiskAnnualReturn: defaultAssumptions.altersvorsorgedepot.lowRiskAnnualReturn,
     fees: defaultAssumptions.altersvorsorgedepot.fees,
     payoutMode: defaultAssumptions.altersvorsorgedepot.payoutMode,
@@ -406,7 +405,6 @@ const altersvorsorgedepotEntry: InventoryProductEntry<
     riskAllocationPct: d.useGlidepath
       ? defaultAssumptions.altersvorsorgedepot.riskAllocationPct
       : 1.0,
-    riskAnnualReturn: defaultAssumptions.altersvorsorgedepot.riskAnnualReturn,
     lowRiskAnnualReturn: defaultAssumptions.altersvorsorgedepot.lowRiskAnnualReturn,
     fees: defaultAssumptions.altersvorsorgedepot.fees,
     payoutMode: defaultAssumptions.altersvorsorgedepot.payoutMode,

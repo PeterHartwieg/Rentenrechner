@@ -12,7 +12,16 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { evidenceStateToProvKind, formatEvidenceStateForExport } from './provenanceHelpers'
+import {
+  evidenceStateToInputStatus,
+  evidenceStateToProvKind,
+  formatEvidenceStateForExport,
+  formatExportProvenance,
+  formatInputStatusForExport,
+  inputStatusToEvidenceState,
+  inputStatusToProvKind,
+  resolveInputStatus,
+} from './provenanceHelpers'
 import type { EvidenceState } from '../../domain/instances'
 
 // ---------------------------------------------------------------------------
@@ -79,12 +88,14 @@ describe('formatEvidenceStateForExport', () => {
     expect(formatEvidenceStateForExport('model_estimate')).toBe('Schätzwert')
   })
 
-  it('undefined → "Unbekannt"', () => {
-    expect(formatEvidenceStateForExport(undefined)).toBe('Unbekannt')
+  // Absent evidence is "we never asked", which must stay distinguishable from
+  // an explicit "weiß ich nicht" (`InputStatus === 'unknown'` → 'Unbekannt').
+  it('undefined → "Keine Angabe"', () => {
+    expect(formatEvidenceStateForExport(undefined)).toBe('Keine Angabe')
   })
 
-  it('null → "Unbekannt"', () => {
-    expect(formatEvidenceStateForExport(null)).toBe('Unbekannt')
+  it('null → "Keine Angabe"', () => {
+    expect(formatEvidenceStateForExport(null)).toBe('Keine Angabe')
   })
 
   // Guardrail: raw English domain values must never leak into export output.
@@ -116,5 +127,53 @@ describe('formatEvidenceStateForExport', () => {
     expect(formatEvidenceStateForExport('model_estimate')).not.toBe(
       formatEvidenceStateForExport('user_confirmed'),
     )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// InputStatus bridge (simplification project, state contract §2.3)
+// ---------------------------------------------------------------------------
+
+describe('InputStatus ↔ EvidenceState bridge', () => {
+  it('maps each status to the evidence state written alongside it', () => {
+    expect(inputStatusToEvidenceState('entered')).toBe('user_confirmed')
+    expect(inputStatusToEvidenceState('document')).toBe('statement')
+    expect(inputStatusToEvidenceState('assumed')).toBe('model_estimate')
+    // 'unknown' has no evidence counterpart — callers delete evidenceMap[key].
+    expect(inputStatusToEvidenceState('unknown')).toBeUndefined()
+  })
+
+  it('falls back to "assumed" for legacy data — never "unknown", never "entered"', () => {
+    expect(evidenceStateToInputStatus(undefined)).toBe('assumed')
+    expect(evidenceStateToInputStatus('model_estimate')).toBe('assumed')
+    expect(evidenceStateToInputStatus('user_confirmed')).toBe('entered')
+    expect(evidenceStateToInputStatus('statement')).toBe('document')
+  })
+
+  it('maps statuses to display kinds, with a dedicated kind for explicit unknown', () => {
+    expect(inputStatusToProvKind('unknown')).toBe('unknown')
+    expect(inputStatusToProvKind('assumed')).toBe('model')
+    expect(inputStatusToProvKind('entered')).toBe('confirmed')
+    expect(inputStatusToProvKind('document')).toBe('confirmed')
+  })
+
+  it('keeps "Unbekannt" (explicit) and "Keine Angabe" (absent) apart in exports', () => {
+    expect(formatInputStatusForExport('unknown')).toBe('Unbekannt')
+    expect(formatInputStatusForExport('assumed')).toBe('Schätzwert')
+    expect(formatInputStatusForExport('entered')).toBe('Bestätigt')
+    expect(formatInputStatusForExport('document')).toBe('lt. Beleg')
+
+    expect(formatExportProvenance(undefined, undefined)).toBe('Keine Angabe')
+    expect(formatExportProvenance('unknown', undefined)).toBe('Unbekannt')
+    // An explicit status wins over a stale evidence value.
+    expect(formatExportProvenance('unknown', 'user_confirmed')).toBe('Unbekannt')
+    expect(formatExportProvenance(undefined, 'statement')).toBe('lt. Beleg')
+  })
+
+  it('resolveInputStatus prefers inputStatus, then evidence, then "assumed"', () => {
+    expect(resolveInputStatus({ a: 'unknown' }, 'user_confirmed', 'a')).toBe('unknown')
+    expect(resolveInputStatus({ b: 'entered' }, undefined, 'a')).toBe('assumed')
+    expect(resolveInputStatus(undefined, 'statement', 'a')).toBe('document')
+    expect(resolveInputStatus(undefined, undefined, 'a')).toBe('assumed')
   })
 })

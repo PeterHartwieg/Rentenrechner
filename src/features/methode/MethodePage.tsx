@@ -19,6 +19,7 @@ import { ROUTES } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { formatCurrency, formatPercent } from '../../utils/format'
 import { MethodeMonteCarloSection } from './MethodeMonteCarloSection'
+import { SUPPORT_PLEDGE } from '../../content/support'
 
 interface Props {
   navigate?: (target: Route) => void
@@ -155,9 +156,9 @@ export function MethodePage({ navigate }: Props) {
   // Look up by `id` (NOT by index — per CLAUDE.md the array order is
   // [konservativ, basis, optimistisch] but is not part of the contract).
   const renditeRows: ReadonlyArray<readonly [string, number, string]> = [
-    ['konservativ', RESOLVED_RENDITEN.konservativ, 'MSCI World rollierend 30 J., 10er-Quantil'],
-    ['Basis', RESOLVED_RENDITEN.basis, 'Realer Median MSCI World 1900–2025 (~ 5,2 % real)'],
-    ['optimistisch', RESOLVED_RENDITEN.optimistisch, 'MSCI World rollierend 30 J., 90er-Quantil'],
+    ['konservativ', RESOLVED_RENDITEN.konservativ, 'Niedrige Modellannahme vor Inflation'],
+    ['Basis', RESOLVED_RENDITEN.basis, 'Mittlere Modellannahme vor Inflation'],
+    ['optimistisch', RESOLVED_RENDITEN.optimistisch, 'Hohe Modellannahme vor Inflation'],
   ]
 
   // ─── Statutorische Werte (RULES_YEAR) ─────────────────────────────────
@@ -256,8 +257,8 @@ export function MethodePage({ navigate }: Props) {
               <p className="methode-section-lead">
                 Drei Marktszenarien für die kapitalmarktgebundenen Produkte
                 (ETF, fondsgebundene Versicherung, bAV-Fonds, Altersvorsorgedepot).
-                Werte sind reale, langfristige Renditen p. a.; Inflation wird in
-                der Auszahlphase getrennt ausgewiesen.
+                Werte sind nominale, langfristige Renditeannahmen p. a.
+                Die heutige Kaufkraft wird separat mit der Inflationsrate berechnet.
               </p>
               <table
                 className="methode-table"
@@ -269,7 +270,7 @@ export function MethodePage({ navigate }: Props) {
                     <th scope="col" className="methode-table-num">
                       Rendite p. a.
                     </th>
-                    <th scope="col">Hergeleitet aus</th>
+                    <th scope="col">Einordnung</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -289,13 +290,33 @@ export function MethodePage({ navigate }: Props) {
                       <td data-label="Rendite p. a." className="methode-table-num">
                         {formatPercent(rate, 1)}
                       </td>
-                      <td data-label="Hergeleitet aus" className="methode-table-note">
+                      <td data-label="Einordnung" className="methode-table-note">
                         {source}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              <p className="methode-section-lead">
+                Die Szenariorendite ist die angenommene Rendite des risikobehafteten
+                Markts und gilt im Vergleich bewusst je Szenario für alle Produkte gleichermaßen.
+                Unterschiede im Ergebnis entstehen durch Kosten, Beitragsgarantien,
+                Steuern in Anspar- und Auszahlungsphase, Zulagen und Arbeitgeberzuschüsse
+                sowie die Auszahlungsform und beim Altersvorsorgedepot zusätzlich durch
+                die eigene Aufteilung zwischen Risiko- und Sicherheitsanteil, die
+                Rendite des Sicherheitsanteils und den gesetzlichen Glidepath.
+                Im Vergleich wird für alle Produkte derselbe monatliche Nettoaufwand
+                angesetzt, soweit ihre jeweiligen Beitrags- und Fördergrenzen es zulassen;
+                beim Altersvorsorgedepot ist der Eigenbeitrag auf die im Modell hinterlegte
+                Vertragsobergrenze begrenzt.
+                So siehst du innerhalb dieser Grenzen, welcher Mantel bei gleichem
+                Nettoaufwand und gleichem Markt im Modell mehr übrig lässt.
+                In Mein Plan kannst du in den Vertragsdetails unter „Erwartete Marktrendite vor Kosten“
+                eine eigene Vertragsrendite festlegen, die den Szenariowert für diesen
+                Vertrag in allen drei Szenarien ersetzt.
+                Diese vertragsspezifische Rendite wird in den Vertragsdetails, im
+                Druckbericht und im CSV-Export ausgewiesen.
+              </p>
 
               {/* Live Monte-Carlo panel (relocated from Vergleich pane dispatcher
                   in PR 9). Renders the user's saved compare-mode simulation
@@ -367,11 +388,11 @@ export function MethodePage({ navigate }: Props) {
                   </span>
                 </li>
                 <li>
-                  <span className="methode-deflist-key">Lump-Sum-Auszahlung</span>
+                  <span className="methode-deflist-key">Einmalige Kapitalauszahlung</span>
                   <span className="methode-deflist-val">
                     Fünftelregelung § 34 EStG für Direktzusage / Unterstützungskasse;
                     §-3-Nr.-63-bAV wird voll versteuert. KV/PV greift via § 229
-                    SGB V mit Spreading auf{' '}
+                    SGB V mit Verteilung auf{' '}
                     {legalConstants.bav.versorgungsbezugSpreadingMonths} Monate.
                   </span>
                 </li>
@@ -415,6 +436,18 @@ export function MethodePage({ navigate }: Props) {
                     werden die Beiträge proportional über alle Quellen verteilt
                     (modellierte Konvention — kein Statut schreibt eine
                     Priorität vor).
+                  </span>
+                </li>
+                <li>
+                  <span className="methode-deflist-key">PKV im Ruhestand</span>
+                  <span className="methode-deflist-val">
+                    Heutige PKV- und Pflegebeiträge werden unverändert fortgeschrieben;
+                    künftige Beitragserhöhungen sind nicht modelliert. Bei gesetzlicher Rente
+                    wird der Zuschuss nach § 106 SGB VI mit dem durchschnittlichen Zusatzbeitrag
+                    abgezogen, begrenzt auf den halben Krankenversicherungsbeitrag.
+                    Für die Pflegeversicherung gibt es keinen Zuschuss. Ohne gesetzliche Rente
+                    wird kein §106-Zuschuss angesetzt. Maßgeblich ist die Angabe GKV/PKV im Profil;
+                    ein späterer Versicherungswechsel wird nicht modelliert.
                   </span>
                 </li>
                 <li>
@@ -621,6 +654,8 @@ export function MethodePage({ navigate }: Props) {
                   Individuelle Versicherungsverträge mit garantierten
                   Rechnungszinsen oder Bestandstarifen vor 2005 — der Rechner
                   unterstellt die statutorischen Voreinstellungen.
+                  Klassische Tarife mit Garantiezins und Überschussbeteiligung
+                  bildet das Modell derzeit nicht ab.
                 </li>
                 <li>
                   Steuerliche Auswirkungen von Auslandsbezug, doppelter
@@ -686,16 +721,13 @@ export function MethodePage({ navigate }: Props) {
                 .
               </p>
               <p className="methode-aside-body">
-                Spenden:{' '}
+                {SUPPORT_PLEDGE}{' '}
                 <a
                   className="methode-aside-link"
-                  href="https://github.com/sponsors/PeterHartwieg"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="#unterstuetzen"
                 >
-                  GitHub Sponsors
-                </a>{' '}
-                finanziert das Hosting.
+                  Projekt unterstützen
+                </a>
               </p>
             </div>
 

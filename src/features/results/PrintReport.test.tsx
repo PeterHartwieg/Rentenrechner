@@ -11,6 +11,8 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import { PrintReport } from './PrintReport'
+import { RIY_UNAVAILABLE } from './riyAvailability'
+import { formatPercent } from '../../utils/format'
 import { defaultProfile, defaultAssumptions } from '../../data/defaultScenario'
 import type { SimulationResult, ProductResult, ScenarioAssumptions } from '../../domain'
 import type { Workspace } from '../../domain/workspace'
@@ -68,6 +70,7 @@ function makeSimulation(inputConfidence: ProductResult['inputConfidence']): Simu
     } as unknown as SimulationResult['bavFunding'],
     statutoryPension: {
       grossMonthlyPension: 1000,
+      pkvRetirementMonthlyCost: 0,
       netMonthlyPension: 900,
       projectedEntgeltpunkte: 35,
     } as unknown as SimulationResult['statutoryPension'],
@@ -105,6 +108,46 @@ describe('PrintReport', () => {
     )
   }
 
+  // Blocked household total (simplification project, lead decision §10.3):
+  // the combined-income cell must render as a dash, never as a number, and the
+  // Hinweis line must name what is missing.
+  function renderCombineWithBlockedTotal(reasonLabels: string[] | null) {
+    const bavResult: ProductResult = {
+      ...(makeSimulation('model_estimate').products[0] as ProductResult),
+      productId: 'bav',
+      label: 'bAV Direktversicherung A',
+      instanceId: 'bav-1',
+    } as unknown as ProductResult
+    return render(
+      <PrintReport
+        profile={defaultProfile}
+        assumptions={defaultAssumptions}
+        simulation={makeSimulation('model_estimate')}
+        combineMode={true}
+        portfolio={{
+          perInstance: { 'bav-1': [bavResult] },
+          combinedByScenarioId: { basis: makeCombined(2200) },
+          scenarioLabels: { basis: 'Basis' },
+        }}
+        combineHouseholdTotalBlocked={reasonLabels ? { reasonLabels } : undefined}
+      />
+    )
+  }
+
+  it('prints the combined net when the household total is not blocked', () => {
+    const { container } = renderCombineWithBlockedTotal(null)
+    expect(container.textContent).toContain('2.200')
+    expect(container.textContent).not.toContain('Netto-Gesamtrente nicht berechnet')
+  })
+
+  it('suppresses the combined net and names the missing inputs when blocked', () => {
+    const { container } = renderCombineWithBlockedTotal(['Gesetzliche Rente unbekannt.'])
+    expect(container.textContent).not.toContain('2.200')
+    expect(container.textContent).toContain(
+      'Netto-Gesamtrente nicht berechnet – fehlende Angaben: Gesetzliche Rente unbekannt.',
+    )
+  })
+
   it('renders .pr-confidence-estimate for a product with model_estimate inputConfidence (combine-mode)', () => {
     const { container } = renderCombineWithEvidence('model_estimate')
     const indicator = container.querySelector('.pr-confidence-estimate')
@@ -129,11 +172,13 @@ describe('PrintReport', () => {
     expect(indicator?.textContent).toContain('lt. Beleg')
   })
 
-  it('renders .pr-confidence-default with "Unbekannt" when inputConfidence is undefined (combine-mode)', () => {
+  it('renders .pr-confidence-default with "Keine Angabe" when inputConfidence is undefined (combine-mode)', () => {
     const { container } = renderCombineWithEvidence(undefined)
     const indicator = container.querySelector('.pr-confidence-default')
     expect(indicator).not.toBeNull()
-    expect(indicator?.textContent).toContain('Unbekannt')
+    // Absent evidence exports as "Keine Angabe"; "Unbekannt" is reserved for an
+    // explicit user "weiß ich nicht" (InputStatus 'unknown').
+    expect(indicator?.textContent).toContain('Keine Angabe')
   })
 
   it('.pr-disclaimer-top is the FIRST child of #print-report', () => {
@@ -164,6 +209,7 @@ describe('PrintReport', () => {
 
   function makeCombined(monthlyNetIncome: number): CombinedResult {
     return {
+      pkvRetirementMonthlyCost: 0,
       monthlyNetIncome,
       monthlyGrossPayouts: {
         statutoryPension: 1000,
@@ -205,6 +251,8 @@ describe('PrintReport', () => {
     // Combine title
     expect(container.textContent).toContain('Mein Plan')
     expect(container.textContent).toContain('Kombiniertes Renteneinkommen')
+    expect(container.textContent).toContain('Rentenbeträge zum Rentenbeginn (nominal).')
+    expect(container.textContent).toContain('Kapital und Rentenbeträge zum Rentenbeginn (nominal).')
     // Per-instance label appears
     expect(container.textContent).toContain('bAV Direktversicherung A')
     // The compare-mode-only Vergleich mirror section title must not appear.
@@ -241,6 +289,29 @@ describe('PrintReport', () => {
     expect(root!.querySelectorAll('.pr-disclaimer-top').length).toBe(1)
   })
 
+  it('combine PKV report distinguishes statutory net before and after private premiums', () => {
+    const simulation = makeSimulation('user_confirmed')
+    simulation.statutoryPension = {
+      grossMonthlyPension: 1800, taxMonthly: 153.5, kvPvMonthly: 0,
+      pkvRetirementMonthlyCost: 412.5, netMonthlyPension: 1234,
+      projectedEntgeltpunkte: 0, grvReductionApplied: 0,
+    }
+    const { container } = render(<PrintReport
+      profile={{ ...defaultProfile, publicHealthInsurance: false }}
+      assumptions={defaultAssumptions} simulation={simulation} combineMode
+      portfolio={{ perInstance: {}, scenarioLabels: { basis: 'Basis' },
+        combinedByScenarioId: { basis: { ...makeCombined(1234),
+          statutoryPensionMonthlyNet: 1646.5, pkvRetirementMonthlyCost: 412.5,
+        } },
+      }}
+    />)
+    const text = container.textContent ?? ''
+    expect(text).toContain('Nettorente nach privater KV/PV')
+    expect(text).toContain('Private KV/PV abzgl. Zuschuss §106 (bereits abgezogen)')
+    expect(text).toContain('Gesetzl. Rente vor privater KV/PV')
+    expect(text).toContain('einmal vom Gesamtbetrag abgezogen')
+  })
+
   it('compare-mode (combineMode=false / undefined) renders the R3 Vergleich mirror', () => {
     // PR R3: compare-mode now mirrors the redesigned `/vergleich` page —
     // single Vergleich table sorted by netMonthlyPayout desc (6 products in
@@ -257,6 +328,7 @@ describe('PrintReport', () => {
     const text = container.textContent ?? ''
     // New R3 section titles must appear.
     expect(text).toContain('Sechs Wege, fürs Alter zu sparen')
+    expect(text).toContain('Kapital und Rentenbeträge zum Rentenbeginn (nominal).')
     expect(text).toContain('Wofür welche Sparform spricht — und wogegen')
     expect(text).toContain('Wohin geht das Geld')
     // Legacy scenario-sweep section must NOT appear.
@@ -437,6 +509,7 @@ describe('PrintReport', () => {
     // Workspace GRV: deliberately different values.
     const workspaceGrv = {
       grossMonthlyPension: 1_234,
+      pkvRetirementMonthlyCost: 0,
       netMonthlyPension: 1_111,
       projectedEntgeltpunkte: 42,
       taxMonthly: 100,
@@ -682,10 +755,39 @@ describe('PrintReport', () => {
       expect(headers[0].textContent).toContain('Sparform')
       expect(headers[1].textContent).toContain('Wie es funktioniert')
       expect(headers[2].textContent).toContain(`Kapital mit ${defaultProfile.retirementAge}`)
-      expect(headers[3].textContent).toContain('Kosten p.')
+      expect(headers[3].textContent).toContain('Effektivkosten p. a.')
       expect(headers[4].textContent).toContain('Brutto-Rente')
       expect(headers[5].textContent).toContain('Abzüge')
       expect(headers[6].textContent).toContain('Netto pro Monat')
+    })
+
+    it('R3 Vergleich table prints the unavailable sentinel for a zero RIY with charged fees, and a formatted 0 % for a fee-free product', () => {
+      const base = makeSimulation('user_confirmed')
+      const etf = base.products[0] as ProductResult
+      // Initial-capital legacy path: RIY 0 although fees were charged.
+      const legacyZero = { ...etf, accumulationRiy: 0, totalFees: 1000 } as ProductResult
+      // Genuine zero-fee product: "0,0 %" is the honest figure.
+      const feeFree = {
+        ...etf,
+        productId: 'versicherung',
+        label: 'pAV',
+        accumulationRiy: 0,
+        totalFees: 0,
+      } as unknown as ProductResult
+      const sim: SimulationResult = { ...base, products: [legacyZero, feeFree] }
+      const { container } = render(
+        <PrintReport
+          profile={defaultProfile}
+          assumptions={defaultAssumptions}
+          simulation={sim}
+          compareAllProductsSimulation={sim}
+        />
+      )
+      const rows = container.querySelectorAll('.pr-vergleich-table tbody tr')
+      const costs = Array.from(rows).map((row) => row.querySelectorAll('td')[3].textContent?.trim())
+      // Equal net payouts → registry order (etf before versicherung).
+      expect(costs).toEqual([RIY_UNAVAILABLE, formatPercent(0, 1)])
+      expect(costs[0]).not.toContain('p.a.')
     })
 
     it('R3 § 1 pro/contra block has one row per registry product (6 rows)', async () => {
@@ -861,7 +963,7 @@ describe('PrintReport', () => {
       // The four wendepunkte labels from buildWendepunkte:
       expect(text).toContain('Halbzeit der Ansparphase')
       expect(text).toContain('Renteneintritt')
-      expect(text).toContain('Voraussichtliches Vertragsende')
+      expect(text).toContain('Ende des betrachteten Zeitraums')
     })
 
     it('renders the Vertrag im Detail section with one block per active instance', () => {

@@ -10,6 +10,9 @@
  * #UX2 — keep entries focused on what a non-expert user sees in this app.
  */
 
+/** Shared hint for the per-contract Kinderzulage claim switch. */
+export const CHILD_ALLOWANCE_CLAIM_HINT = 'Die Kinderzulage bekommt pro Kind nur ein Elternteil: bei verheirateten, nicht dauernd getrennt lebenden Eltern verschiedenen Geschlechts die Mutter, auf gemeinsamen Antrag der Vater; in allen anderen Fällen, wem das Kindergeld ausgezahlt wird (§ 85 Abs. 2 EStG). Abwählen, wenn sie im Vertrag der anderen Person läuft. Deine Kinder bleiben für die Pflegeversicherung erfasst.'
+
 export interface Term {
   id: string
   plainLabel: string

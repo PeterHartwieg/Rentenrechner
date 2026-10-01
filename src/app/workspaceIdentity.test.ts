@@ -107,15 +107,15 @@ describe('addInstanceToWorkspace', () => {
     expect(ws2.baseline.assumptions.bav).toHaveLength(2)
   })
 
-  it('labels the first bAV instance "bAV #1"', () => {
+  it('labels the only bAV instance after the product, without a #1', () => {
     const ws = addInstanceToWorkspace(defaultWorkspace, 'bav')
-    expect(ws.baseline.assumptions.bav[0].label).toBe('bAV #1')
+    expect(ws.baseline.assumptions.bav[0].label).toBe('Betriebliche Altersvorsorge (bAV)')
   })
 
   it('labels the second bAV instance with "#2" suffix', () => {
     const ws1 = addInstanceToWorkspace(defaultWorkspace, 'bav')
     const ws2 = addInstanceToWorkspace(ws1, 'bav')
-    expect(ws2.baseline.assumptions.bav[1].label).toMatch(/#2/)
+    expect(ws2.baseline.assumptions.bav[1].label).toBe('Betriebliche Altersvorsorge (bAV) #2')
   })
 
   it('instanceId follows ${productId}-${random8} format', () => {
@@ -152,6 +152,23 @@ describe('addInstanceToWorkspace', () => {
 
     const ws5 = addInstanceToWorkspace(defaultWorkspace, 'etf')
     expect(ws5.baseline.assumptions.etf).toHaveLength(1)
+  })
+
+  it('seeds new Riester and AVD eligibility from the workspace profile age', () => {
+    const workspace = deepCloneScenario(defaultWorkspace)
+    workspace.baseline.profile.age = 23
+
+    const withRiester = addInstanceToWorkspace(workspace, 'riester')
+    const withAvd = addInstanceToWorkspace(workspace, 'altersvorsorgedepot')
+
+    expect(withRiester.baseline.assumptions.riester[0].eligibility).toMatchObject({
+      ageAtContractStart: 23,
+      careerStarterBonusUsed: false,
+    })
+    expect(withAvd.baseline.assumptions.altersvorsorgedepot[0].eligibility).toMatchObject({
+      ageAtContractStart: 23,
+      careerStarterBonusUsed: false,
+    })
   })
 
   it('versicherung instanceId follows versicherung-${random8} format', () => {

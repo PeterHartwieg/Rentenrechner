@@ -7,6 +7,7 @@ import type {
 } from '../../domain'
 import type { Workspace, WorkspaceAssumptionsV2 } from '../../domain/workspace'
 import type { InstanceCommon, EvidenceState } from '../../domain/instances'
+import type { InputStatusMap } from '../../domain/inputStatus'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import {
   buildVergleichDetailCardData,
@@ -23,9 +24,14 @@ import {
   getAvailabilityEntry,
 } from '../vergleich-detail/vergleichDetailAvailability'
 import { PRODUCT_REGISTRY, getProductMeta } from '../../engine/productRegistry'
+import { defaultAssumptions } from '../../data/defaultScenario'
 import { legalConstants } from '../../rules/legalConstants'
 import { formatCurrency, formatPercent } from '../../utils/format'
-import { evidenceStateToProvKind, formatEvidenceStateForExport } from './provenanceHelpers'
+import {
+  formatExportProvenance,
+  inputStatusToProvKind,
+  resolveInputStatus,
+} from './provenanceHelpers'
 import { buildLifecycleLineSeries, type LifecycleSeriesResult } from './breakEvenSeries'
 import { buildWendepunkte, type WendepunktRow } from '../kapital/wendepunkte'
 import { LIFECYCLE_HORIZON_AGE } from './lifecycleHorizon'
@@ -96,7 +102,8 @@ export interface PrintVergleichRow {
   readonly tagline: string
   /** Engine-precision euro / percent values forwarded from `vergleichRows.ts`. */
   readonly capitalAtRetirement: number
-  readonly effectiveAnnualCost: number
+  /** `undefined` when `availableRiy` rejects the engine RIY (see `vergleichRows.ts`). */
+  readonly effectiveAnnualCost: number | undefined
   readonly grossMonthlyPayout: number
   readonly deductionsMonthly: number
   readonly netMonthlyPayout: number
@@ -228,8 +235,8 @@ export interface PrintWohinRow {
     readonly heading: string
     readonly rows: ReadonlyArray<VergleichDetailRow>
   }>
-  /** Effektivkosten p. a. (decimal — 0.012 = 1.2 %). */
-  readonly effectiveAnnualCost: number
+  /** Effektivkosten p. a. (decimal — 0.012 = 1.2 %); `undefined` when not presentable. */
+  readonly effectiveAnnualCost: number | undefined
   /** "Verfügbar ab" copy resolved at build time. */
   readonly availabilityLabel: string
   /** Optional secondary line below the availability label. */
@@ -310,8 +317,8 @@ export function buildPrintWohinRows({
 /**
  * A single bullet of methodology copy in the printed § Methode block.
  *
- * Pure copy structure — no engine values are interpolated by the print
- * helpers. Statutory figures appear on `/methode` itself; the print block
+ * Pure copy structure — default return assumptions are formatted for display.
+ * Statutory figures appear on `/methode` itself; the print block
  * is a navigation pointer + scope summary, not a re-render of the page.
  */
 export interface PrintMethodeBullet {
@@ -321,49 +328,74 @@ export interface PrintMethodeBullet {
   readonly body: string
 }
 
+const PRINT_RENDITEN = ['konservativ', 'basis', 'optimistisch'].map((id) => {
+  const scenario = defaultAssumptions.returnScenarios.find((s) => s.id === id)
+  if (!scenario) {
+    throw new Error(`printReportRows: missing return scenario "${id}" in defaultAssumptions.returnScenarios`)
+  }
+  return `${id} ${formatPercent(scenario.annualReturn, 0)}`
+}).join(', ')
+
 /**
- * Static methodology bullets shared by compare-mode AND combine-mode print.
+ * Methodology bullets shared by compare-mode AND combine-mode print.
  * Reuses the same five themes as the web /methode page so the print is a
  * faithful sub-summary, not a paraphrase: § 1 Renditeannahmen, § 2 Steuer-
  * Modell, § 3 Sozialversicherung, § 4 Statutorische Werte, § 5 Was wir
  * bewusst nicht modellieren. Kept terse — the print must fit ≤ 1 A4 page.
  *
+ * The Renditeannahmen bullet names the three standard scenarios from
+ * `defaultAssumptions`, never the live set — the print's Rentenszenarien
+ * table already lists the live set (a user-defined `custom` scenario
+ * included). When the live set does contain a `custom` scenario, the bullet
+ * says so instead of silently describing fewer scenarios than the table
+ * shows (issue #408).
+ *
  * `RULES_YEAR` is intentionally NOT interpolated here — the print disclaimer
  * already opens with "Stand 2026" copy, and the print Methode block points
  * the user to `/methode` for the year-bearing tables.
  */
-export const PRINT_METHODE_BULLETS: ReadonlyArray<PrintMethodeBullet> = [
-  {
-    label: 'Renditeannahmen',
-    body:
-      'Drei Szenarien (konservativ, basis, optimistisch) als reale, langfristige Renditen p. a. ' +
-      'Hergeleitet aus rollierenden 30-Jahres-Fenstern (MSCI World) und dem realen Median MSCI World 1900–2025.',
-  },
-  {
-    label: 'Steuermodell',
-    body:
-      'Grundtarif § 32a EStG mit Soli; Kapitalerträge nach § 20 / § 32d EStG mit Abgeltungsteuer plus Sparer-Pauschbetrag; ' +
-      'nachgelagerte Besteuerung der Renten nach § 22 EStG (Kohortenwerte).',
-  },
-  {
-    label: 'Sozialversicherung',
-    body:
-      'KVdR mit Freibetrag § 226 SGB V (Versorgungsbezüge) bzw. freiwillige GKV § 240 SGB V. ' +
-      'KV/PV-Apportionierung über die Beitragsbemessungsgrenze (modellierte Konvention).',
-  },
-  {
-    label: 'Statutorische Werte',
-    body:
-      'BBG RV/KV, Aktueller Rentenwert, Bezugsgröße, Riester-Zulagen, Basisrenten-Höchstbetrag ' +
-      'aus dem aktiven Regel-Modul (src/rules/) — jährlich nach BMF / BMAS aktualisiert.',
-  },
-  {
-    label: 'Bewusst nicht modelliert',
-    body:
-      'Garantien einzelner Versicherungsverträge vor 2005, Auslandsbezug / Erbschaften, politische Risiken, ' +
-      'individuelle Sterbetafeln. Annahmen sind Schätzungen — siehe Hinweise und Grenzen unten.',
-  },
-]
+export function buildPrintMethodeBullets(
+  liveReturnScenarios: ScenarioAssumptions['returnScenarios'],
+): ReadonlyArray<PrintMethodeBullet> {
+  const customClause = liveReturnScenarios.some((s) => s.id === 'custom')
+    ? ', ergänzt um ein eigenes Szenario'
+    : ''
+  return [
+    {
+      label: 'Renditeannahmen',
+      body:
+        `Drei Standardszenarien (${PRINT_RENDITEN})${customClause} als nominale, langfristige Marktrenditen p. a. vor Inflation und Kosten; ` +
+        'Inflation wird separat abgezogen. Modellannahmen, orientiert an langfristigen Aktienmarktrenditen, ' +
+        'nicht extern validiert. Ohne vertragsspezifische Rendite rechnen Produkte je Szenario mit derselben Marktrendite; ' +
+        'im Plan ersetzt eine eigene Vertragsrendite den Szenariowert in allen drei Szenarien. ' +
+        'Das Altersvorsorgedepot mischt die jeweilige Marktrendite mit seinem Sicherheitsanteil und Gleitpfad.',
+    },
+    {
+      label: 'Steuermodell',
+      body:
+        'Grundtarif § 32a EStG mit Soli; Kapitalerträge nach § 20 / § 32d EStG mit Abgeltungsteuer plus Sparer-Pauschbetrag; ' +
+        'nachgelagerte Besteuerung der Renten nach § 22 EStG (Kohortenwerte).',
+    },
+    {
+      label: 'Sozialversicherung',
+      body:
+        'KVdR mit Freibetrag § 226 SGB V (Versorgungsbezüge) bzw. freiwillige GKV § 240 SGB V. ' +
+        'KV/PV-Apportionierung über die Beitragsbemessungsgrenze (modellierte Konvention).',
+    },
+    {
+      label: 'Statutorische Werte',
+      body:
+        'BBG RV/KV, Aktueller Rentenwert, Bezugsgröße, Riester-Zulagen, Basisrenten-Höchstbetrag ' +
+        'aus dem aktiven Regel-Modul (src/rules/) — jährlich nach BMF / BMAS aktualisiert.',
+    },
+    {
+      label: 'Bewusst nicht modelliert',
+      body:
+        'Garantien einzelner Versicherungsverträge vor 2005, Auslandsbezug / Erbschaften, politische Risiken, ' +
+        'individuelle Sterbetafeln. Annahmen sind Schätzungen — siehe Hinweise und Grenzen unten.',
+    },
+  ]
+}
 
 // ---------------------------------------------------------------------------
 // "Zusammensetzung & Sensitivität" — combine-mode composition table rows
@@ -432,6 +464,16 @@ export function buildPrintZusammenRows({
     monthlyNet: statutoryMonthly,
     share: denom > 0 ? statutoryMonthly / denom : 0,
   })
+  const pkvCost = combinedForScenario?.pkvRetirementMonthlyCost ?? 0
+  if (pkvCost > 0) rows.push({
+    key: 'pkv',
+    label: 'Private Kranken- und Pflegeversicherung, abzgl. Zuschuss § 106 SGB VI',
+    sublabel: 'Heutige Beiträge unverändert fortgeschrieben',
+    contributionMonthly: null,
+    monthlyNet: -pkvCost,
+    share: denom > 0 ? -pkvCost / denom : 0,
+  })
+
 
   const slots = buildProductSlots(wsa)
   for (const slot of slots) {
@@ -501,8 +543,8 @@ export interface PrintVertragKpi {
 /** A single provenance-list line in the print "Vertrag im Detail" block. */
 export interface PrintVertragProvenanceRow {
   readonly label: string
-  /** German evidence label routed through `formatEvidenceStateForExport` (`'Bestätigt'`
-   *  / `'lt. Beleg'` / `'Schätzwert'` / `'Unbekannt'`). */
+  /** German label routed through `formatExportProvenance` (`'Bestätigt'` /
+   *  `'lt. Beleg'` / `'Schätzwert'` / `'Unbekannt'` / `'Keine Angabe'`). */
   readonly evidenceLabel: string
   /** Underlying evidence kind for the print's coloured pill (matches PrintReport.css). */
   readonly evidenceKind: 'confirmed' | 'model' | 'default'
@@ -510,7 +552,10 @@ export interface PrintVertragProvenanceRow {
 
 /** Per-contract printed block (one per instance in combine-mode). */
 export interface PrintVertragBlock {
+  /** Contract override or the selected scenario market rate, before AVD blending. */
+  readonly marketReturnAssumption?: number
   readonly instanceId: string
+  readonly expectedReturn?: number
   /** Display name (instance.label fallback to product meta). */
   readonly title: string
   /** Product family label (e.g. "ETF-Depot"). */
@@ -532,6 +577,8 @@ interface BuildPrintVertragBlocksInput {
   perInstance: Record<string, ProductResult[]>
   scenarioId: string
   combinedForScenario: CombinedResult | undefined
+  /** `true` when `selectResultReadiness` suppressed the household total (#395). */
+  householdTotalBlocked?: boolean
 }
 
 /**
@@ -548,6 +595,7 @@ export function buildPrintVertragBlocks({
   perInstance,
   scenarioId,
   combinedForScenario,
+  householdTotalBlocked = false,
 }: BuildPrintVertragBlocksInput): PrintVertragBlock[] {
   const wsa = workspace.baseline.assumptions
   const profile = workspace.baseline.profile
@@ -596,6 +644,9 @@ export function buildPrintVertragBlocks({
         {
           label: 'Netto-Rente',
           value: netMonthly,
+          // Issue #395: a per-contract net is a share of the household total.
+          // When that total is blocked, print a dash — not an approximation.
+          displayOverride: householdTotalBlocked ? '—' : undefined,
           sublabel: 'pro Monat',
         },
       ]
@@ -605,6 +656,8 @@ export function buildPrintVertragBlocks({
       const statusLabel = inst.status === 'paid_up' ? 'beitragsfrei' : undefined
       blocks.push({
         instanceId: inst.instanceId,
+        expectedReturn: inst.expectedReturn,
+        marketReturnAssumption: inst.expectedReturn ?? wsa.returnScenarios.find(s => s.id === scenarioId)?.annualReturn,
         title,
         productLabel,
         statusLabel,
@@ -734,6 +787,7 @@ export function buildPrintWendepunkteRows({
 
 type SlotInstance = {
   instanceId: string
+  expectedReturn?: number
   label?: string
   status: InstanceCommon['status']
   contractStartYear?: number
@@ -743,6 +797,7 @@ type SlotInstance = {
   monthlyOwnContribution?: number
   anbieter?: string
   evidenceMap?: Record<string, EvidenceState>
+  inputStatus?: InputStatusMap
 }
 
 /**
@@ -907,12 +962,22 @@ function fieldsFor(productId: ProductId): ReadonlyArray<ProvenanceField> {
 function buildProvenanceRows(instance: SlotInstance, productId: ProductId): PrintVertragProvenanceRow[] {
   const fields = fieldsFor(productId)
   const evidence = instance.evidenceMap ?? {}
+  const statusMap = instance.inputStatus
   return fields.map((field) => {
     const state = evidence[field.evidenceKey]
-    const kind = evidenceStateToProvKind(state)
+    const explicitStatus = statusMap?.[field.evidenceKey]
+    // `inputStatus` wins when present; otherwise the legacy evidence state
+    // decides. "No metadata at all" keeps the neutral pill and prints
+    // `Keine Angabe` — it must not be dressed up as a reviewed model value.
+    const kind =
+      explicitStatus !== undefined || state !== undefined
+        ? inputStatusToProvKind(resolveInputStatus(statusMap, state, field.evidenceKey))
+        : 'default'
     return {
       label: field.label,
-      evidenceLabel: formatEvidenceStateForExport(state),
+      evidenceLabel: formatExportProvenance(explicitStatus, state),
+      // The print stylesheet has three pill classes; an explicit 'unknown'
+      // rides the neutral one and stays distinguishable through its label.
       evidenceKind: kind === 'model' ? 'model' : kind === 'confirmed' ? 'confirmed' : 'default',
     }
   })
@@ -1093,6 +1158,8 @@ function formatSensitivityNote(note: SensitivityNote | undefined): string | null
       return 'ETF-Vertrag vorhanden, aber beitragsfrei — Aufstockung würde einen neuen aktiven Vertrag erfordern.'
     case 'retirement_age_clamped':
       return 'Renteneintritt auf das Modell-Endalter − 1 begrenzt.'
+    case 'contract_returns_fixed':
+      return 'Vertragsspezifische Renditen bleiben in allen Szenarien unverändert; nur Verträge ohne eigene Rendite folgen dem Szenariowert.'
     case 'unchanged':
       return null
     default: {

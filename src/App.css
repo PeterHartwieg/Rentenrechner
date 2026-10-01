@@ -82,7 +82,8 @@
   --rw-ink-faint: #7a7268;
   --rw-ink-editorial: #1a1612;
   --rw-ink-editorial-soft: #5b5147;
-  --rw-ink-editorial-faint: #9c9183;
+  /* Meets WCAG AA for small text on both editorial cream backgrounds. */
+  --rw-ink-editorial-faint: #70665c;
 
   /* Lines */
   --rw-rule: #1a1a1a;
@@ -571,6 +572,14 @@
 
 .table-scroll {
   overflow-x: auto;
+  /* Scroll cue for wide tables: a soft shadow on the edge that still has
+     content beyond it. The paper-coloured cover layers scroll with the
+     content (`local`) and hide the shadow once that edge is reached. */
+  background:
+    linear-gradient(to right, var(--rw-bg-paper) 30%, rgba(255, 255, 255, 0)) left / 40px 100% no-repeat local,
+    linear-gradient(to left, var(--rw-bg-paper) 30%, rgba(255, 255, 255, 0)) right / 40px 100% no-repeat local,
+    linear-gradient(to right, rgba(15, 23, 42, 0.12), rgba(15, 23, 42, 0)) left / 14px 100% no-repeat scroll,
+    linear-gradient(to left, rgba(15, 23, 42, 0.12), rgba(15, 23, 42, 0)) right / 14px 100% no-repeat scroll;
 }
 
 /* The 920px min-width is intentional for wide compare/breakdown tables and was
@@ -1163,5 +1172,20 @@ th {
   .disclaimer-wrap,
   .dashboard {
     display: none !important;
+  }
+}
+
+/* Keep return scenarios inside the plan disclosure on narrow phones. */
+@media (max-width: 360px) {
+  .scenario-controls .segmented {
+    width: 100%;
+    min-width: 0;
+    flex-direction: column;
+    overflow-x: visible;
+  }
+
+  .scenario-controls .segmented button {
+    width: 100%;
+    white-space: normal;
   }
 }

@@ -34,10 +34,17 @@ import { estimateEpFromYears } from './inventoryHelpers'
 import { VintageChips } from './VintageChips'
 import type { Atom } from '../../app/recommendations'
 import { FeeSection, type FeeInputMode } from '../inputs/sections/FeeSection'
+import { hasNonAssetFees } from '../inputs/sections/feeModelHelpers'
 import { BeitragsdynamikField } from '../inputs/sections/BeitragsdynamikField'
 import { EvidenceBadge } from './EvidenceBadge'
 import { InvField, InvNumber, InvSelect, InvText } from './fields'
 import { DFW_OPTIONS, PAYOUT_OPTIONS_FULL, PAYOUT_OPTIONS_NO_KAPITAL } from './fieldHelpers'
+import { RangeNumberField } from '../../ui/RangeNumberField'
+import { buildAvdBeitragsstufen } from '../inputs/avdBeitragsstufen'
+import { maxAvdMonthlyOwnContribution } from '../../engine/altersvorsorgedepot'
+import { childBirthYearsUnder25InYear } from '../../engine/childEligibility'
+import { activeRules } from '../../rules'
+import { defaultAssumptions } from '../../data/defaultScenario'
 
 // ---------------------------------------------------------------------------
 // Internal shared primitives
@@ -81,9 +88,16 @@ const STATUS_OPTIONS: readonly { value: InstanceStatus; label: string }[] = [
 interface UniversalFieldsProps<T extends ProductDraftState> extends BaseProps<T> {
   /** When true, hides Vertragsbeginn and uses Depot/Sparplan-flavored copy. */
   isEtf?: boolean
+  /**
+   * Suppresses the generic monthly-contribution field so a product can render
+   * its own. Used by AVD, whose contribution is bounded by statutory thresholds
+   * that the generic 0–50 000 EUR field knows nothing about. The product-level
+   * replacement must keep marking `monthlyContribution` as `user_confirmed`.
+   */
+  omitContribution?: boolean
 }
 
-function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvidence, isEtf }: UniversalFieldsProps<T>) {
+function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvidence, isEtf, omitContribution }: UniversalFieldsProps<T>) {
   const update = (patch: Partial<ProductDraftState>) =>
     onChange({ ...draft, ...patch } as T)
 
@@ -145,20 +159,22 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvid
         )}
       </InvField>
 
-      <InvField label={isEtf ? 'Monatliche Sparrate (EUR)' : 'Monatlicher Beitrag (EUR)'}>
-        <InvNumber
-          value={draft.monthlyContribution}
-          min={0}
-          max={50_000}
-          step={10}
-          suffix="EUR/Monat"
-          disabled={draft.status === 'paid_up'}
-          onChange={(n) => {
-            update({ monthlyContribution: n })
-            setEvidence?.('monthlyContribution', 'user_confirmed')
-          }}
-        />
-      </InvField>
+      {!omitContribution && (
+        <InvField label={isEtf ? 'Monatliche Sparrate (EUR)' : 'Monatlicher Beitrag (EUR)'}>
+          <InvNumber
+            value={draft.monthlyContribution}
+            min={0}
+            max={50_000}
+            step={10}
+            suffix="EUR/Monat"
+            disabled={draft.status === 'paid_up'}
+            onChange={(n) => {
+              update({ monthlyContribution: n })
+              setEvidence?.('monthlyContribution', 'user_confirmed')
+            }}
+          />
+        </InvField>
+      )}
 
       <InvField label="Status">
         <InvSelect
@@ -246,11 +262,12 @@ function Layer3Details({
   onBeitragsdynamikChange,
   bavSubsidy,
 }: Layer3Props) {
-  const [feeMode, setFeeMode] = useState<FeeInputMode>('effektivkosten')
+  const [feeMode, setFeeMode] = useState<FeeInputMode>(() => feeDetails && hasAccumulationExtras(feeDetails) ? 'aufgeschluesselt' : 'effektivkosten')
 
   // Adapter: preserve an edited Einzelposten split; otherwise derive the all-in fee from the scalar.
+  // No computed RIY exists at draft time, so FeeSection gets no `riy` and shows
+  // only the asset-charge sum (never labelled as Effektivkosten).
   const feesForInput = feeDetails ?? allInFeeDetails(effektivkostenPct)
-  const riy = feesForInput.wrapperAssetFee + feesForInput.fundAssetFee
   const handleFeesChange = (fees: FeeModel) => {
     const nextEffektivkostenPct = (fees.wrapperAssetFee + fees.fundAssetFee) * 100
     if (onFeeDetailsChange) {
@@ -275,7 +292,6 @@ function Layer3Details({
             fees={feesForInput}
             onChangeFees={handleFeesChange}
             presets={LAYER3_FEE_PRESETS}
-            riy={riy}
             feeInputMode={feeMode}
             setFeeInputMode={setFeeMode}
           />
@@ -376,15 +392,69 @@ function EtfLayer3Details({
   )
 }
 
-function allInFeeDetails(effektivkostenPct: number): FeeModel {
+/**
+ * Fee model for the Layer-1 cost field. What the scalar means depends on what
+ * the user already itemised under "Details":
+ *
+ * - With accumulation extras (fixed / contribution / acquisition charges) the
+ *   field is labelled "Laufende Kapitalgebühr (Mantel + Fonds)" and only that
+ *   asset charge is replaced (wrapper = pct, fund = 0). The itemised extras
+ *   and the Auszahlungsgebühr stay as entered.
+ * - Without extras the scalar is the quoted all-in Effektivkosten (mirrors
+ *   `FeeSection`'s all-in path): the accumulation-phase fields collapse to
+ *   the asset charge, and an existing Auszahlungsgebühr is carried over
+ *   because it is a payout-phase cost.
+ */
+function allInFeeDetails(effektivkostenPct: number, previous?: FeeModel): FeeModel {
+  const assetCharge = { wrapperAssetFee: effektivkostenPct / 100, fundAssetFee: 0 }
+  if (previous && hasAccumulationExtras(previous)) {
+    return { ...previous, ...assetCharge }
+  }
   return {
-    wrapperAssetFee: effektivkostenPct / 100,
-    fundAssetFee: 0,
+    ...assetCharge,
     contributionFee: 0,
     fixedMonthlyFee: 0,
     acquisitionCostPct: 0,
     acquisitionCostSpreadYears: 5,
-    pensionPayoutFeePct: 0,
+    pensionPayoutFeePct: previous?.pensionPayoutFeePct ?? 0,
+  }
+}
+
+/**
+ * True when accumulation-phase itemized charges exist (fixed, contribution,
+ * acquisition). A payout fee alone does not count: the all-in scalar is still
+ * the quoted accumulation Effektivkosten then, exactly as `FeeSection` treats
+ * it.
+ */
+function hasAccumulationExtras(feeDetails: FeeModel): boolean {
+  return hasNonAssetFees({ ...feeDetails, pensionPayoutFeePct: 0 })
+}
+
+/**
+ * Label + hint for the Layer-1 cost field. `effektivkostenPct` is the quoted
+ * all-in figure only while no accumulation-phase extras exist; once the user
+ * has entered fixed / contribution / acquisition charges under "Details", the
+ * scalar is just wrapper + fund and must not be called Effektivkosten.
+ */
+function effektivkostenFieldCopy(
+  feeDetails: FeeModel | undefined,
+  typicalRange?: string,
+): { label: string; hint: string } {
+  if (feeDetails && hasAccumulationExtras(feeDetails)) {
+    return {
+      label: 'Laufende Kapitalgebühr p.a. (Mantel + Fonds)',
+      hint:
+        'Aus den Einzelposten unter „Details" abgeleitet, ohne Fix-, Beitrags-, Abschluss- und Auszahlungskosten. ' +
+        'Nicht die Effektivkostenquote aus dem PIB. Eine Eingabe hier ändert nur die laufende Kapitalgebühr; ' +
+        'die Fix-, Beitrags-, Abschluss- und Auszahlungskosten unter „Details" bleiben erhalten.',
+    }
+  }
+  return {
+    label: 'Effektivkosten p.a. laut PIB/KID (all-in)',
+    hint:
+      'Renditeminderung aus dem Produktinformationsblatt, alle Kosten enthalten.' +
+      (typicalRange ? ` ${typicalRange}` : '') +
+      ' Einzelposten lassen sich unter „Details" erfassen.',
   }
 }
 
@@ -508,8 +578,7 @@ export function BavCard({
         </InvField>
 
         <InvField
-          label="Effektivkosten p.a. (aus PIB/KID)"
-          hint="Renditeminderung aus dem Produktinformationsblatt. Typisch 0,6–1,5 % für ETF-Nettotarife."
+          {...effektivkostenFieldCopy(draft.feeDetails, 'Typisch 0,6–1,5 % für ETF-Nettotarife.')}
         >
           <InvNumber
             value={draft.effektivkostenPct}
@@ -519,7 +588,7 @@ export function BavCard({
             suffix="% p.a."
             onChange={(n) => {
               setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
-              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n) })
+              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n, draft.feeDetails) })
             }}
           />
           {shouldRenderEvidenceBadge(draft, 'fees.wrapperAssetFee', draft.effektivkostenPct <= 0) && (
@@ -602,8 +671,7 @@ export function PavCard({
       <p className="inventory-instance-section-heading">pAV-spezifisch</p>
       <div className="inventory-field-grid">
         <InvField
-          label="Effektivkosten p.a. (aus PIB/KID)"
-          hint="Renditeminderung aus dem Produktinformationsblatt. Typisch 0,5–1,5 % für Nettotarife."
+          {...effektivkostenFieldCopy(draft.feeDetails, 'Typisch 0,5–1,5 % für Nettotarife.')}
         >
           <InvNumber
             value={draft.effektivkostenPct}
@@ -613,7 +681,7 @@ export function PavCard({
             suffix="% p.a."
             onChange={(n) => {
               setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
-              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n) })
+              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n, draft.feeDetails) })
             }}
           />
           {shouldRenderEvidenceBadge(draft, 'fees.wrapperAssetFee', draft.effektivkostenPct <= 0) && (
@@ -751,10 +819,7 @@ export function BasisrenteCard({ draft, onChange, setEvidence }: BaseProps<Basis
 
       <p className="inventory-instance-section-heading">Basisrente-spezifisch</p>
       <div className="inventory-field-grid">
-        <InvField
-          label="Effektivkosten p.a. (aus PIB/KID)"
-          hint="Renditeminderung aus dem Produktinformationsblatt."
-        >
+        <InvField {...effektivkostenFieldCopy(draft.feeDetails)}>
           <InvNumber
             value={draft.effektivkostenPct}
             min={0}
@@ -763,7 +828,7 @@ export function BasisrenteCard({ draft, onChange, setEvidence }: BaseProps<Basis
             suffix="% p.a."
             onChange={(n) => {
               setEvidence?.('fees.wrapperAssetFee', 'user_confirmed')
-              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n) })
+              onChange({ ...draft, effektivkostenPct: n, feeDetails: allInFeeDetails(n, draft.feeDetails) })
             }}
           />
           {shouldRenderEvidenceBadge(draft, 'fees.wrapperAssetFee', draft.effektivkostenPct <= 0) && (
@@ -821,12 +886,61 @@ const AVD_SUBTYPE_OPTIONS: readonly { value: AltersvorsorgedepotSubtype; label: 
   { value: 'guarantee_100', label: 'Mit 100 % Kapitalgarantie' },
 ] as const
 
-export function AvdCard({ draft, onChange, setEvidence }: BaseProps<AvdDraft>) {
+export function AvdCard({
+  draft,
+  onChange,
+  setEvidence,
+  childBirthYears,
+}: BaseProps<AvdDraft> & { childBirthYears: readonly number[] }) {
   const [beitragsdynamik, setBeitragsdynamik] = useState(0)
+
+  // Same helpers the compare-mode panel and the sync clamp use, so the levels
+  // and the ceiling cannot drift between surfaces.
+  const eligibility = {
+    ...defaultAssumptions.altersvorsorgedepot.eligibility,
+    eligibleChildren: childBirthYearsUnder25InYear(
+      childBirthYears,
+      activeRules.year,
+    ).length,
+  }
+  const stufen = buildAvdBeitragsstufen(activeRules, eligibility)
+  const vertragsrahmen = maxAvdMonthlyOwnContribution(
+    eligibility,
+    activeRules,
+    !eligibility.careerStarterBonusUsed,
+  )
+  // A stored contract may already exceed the Vertragsrahmen — the field this
+  // replaces allowed up to 50 000 EUR. Raise the bound to the stored value
+  // rather than clamping it: silently rewriting a user's contract data on open
+  // is worse than showing a number the statutory ceiling will cap later, which
+  // the funding result already flags.
+  const maxOwn = Math.max(vertragsrahmen, draft.monthlyContribution ?? 0)
 
   return (
     <div className="inventory-instance-card" data-testid="instance-card-altersvorsorgedepot">
-      <UniversalFields draft={draft} onChange={onChange} setEvidence={setEvidence} />
+      <UniversalFields
+        draft={draft}
+        onChange={onChange}
+        setEvidence={setEvidence}
+        omitContribution
+      />
+
+      <div className="inventory-field">
+        <RangeNumberField
+          label="Wie viel zahlst du selbst ein?"
+          value={draft.monthlyContribution ?? 0}
+          min={0}
+          max={maxOwn}
+          step={5}
+          suffix="EUR/Monat"
+          disabled={draft.status === 'paid_up'}
+          choices={stufen.map((s) => ({ value: s.value, label: s.label, hint: s.hint }))}
+          onCommit={(monthlyOwn) => {
+            onChange({ ...draft, monthlyContribution: monthlyOwn })
+            setEvidence?.('monthlyContribution', 'user_confirmed')
+          }}
+        />
+      </div>
 
       <p className="inventory-instance-section-heading">AVD-spezifisch</p>
       <div className="inventory-field-grid">

@@ -3,9 +3,11 @@ import type {
   BasisrenteFundingResult,
   BavFundingResult,
   BavLumpSumTaxMode,
+  EtfAssumptions,
   GermanRules,
   PersonalProfile,
   RiesterFundingResult,
+  SalaryResult,
   ScenarioAssumptions,
   StatutoryPensionResult,
 } from '../domain'
@@ -25,13 +27,23 @@ export interface SimulationContext {
   payoutYear: number
   yearsToRetirement: number
   bavFunding: BavFundingResult
+  /** Salary result after all active bAV instances; singleton path uses bavFunding.salaryWithBav. */
+  salaryForOtherFunding: SalaryResult
   bavLumpSumTaxMode: BavLumpSumTaxMode
   /** Derived from contract start year, runtime, and retirement age — excludes 'ertragsanteil'
    *  (that mode is set internally by netInsurancePayout when payoutMode === 'leibrente'). */
   insuranceTaxMode: 'pre2005' | 'halbeinkuenfte' | 'abgeltungsteuer'
   basisrenteFunding: BasisrenteFundingResult
   altersvorsorgedepotFunding: AltersvorsorgedepotFundingResult
+  /** Combine-mode per-year AVD funding after household bonus allocation. */
+  altersvorsorgedepotFundingSchedule?: readonly AltersvorsorgedepotFundingResult[]
   riesterFunding: RiesterFundingResult
+  /**
+   * Combine-mode per-year Riester funding schedule, owned by
+   * `buildPortfolioFunding`. Singleton compare mode leaves this undefined and
+   * derives each year from its single assumption block.
+   */
+  riesterFundingSchedule?: readonly RiesterFundingResult[]
   statutoryPension: StatutoryPensionResult
   /**
    * Gross GRV pension at retirement (EUR/month). Threaded into every product's
@@ -117,6 +129,26 @@ export interface InstanceCapitalPolicy {
 }
 
 /**
+ * Adjust a product's guaranteed principal for capital moved by transfer events.
+ * The source must not keep guaranteeing principal it transferred away, while a
+ * guaranteed target contract inherits the injected principal.
+ */
+export function guaranteePrincipalAfterTransfers(
+  basePrincipal: number,
+  policy?: InstanceCapitalPolicy,
+): number {
+  const injected = policy?.capitalInjections?.reduce(
+    (sum, entry) => sum + entry.amount,
+    0,
+  ) ?? 0
+  const withdrawn = policy?.capitalWithdrawals?.reduce(
+    (sum, entry) => sum + entry.amount,
+    0,
+  ) ?? 0
+  return Math.max(0, basePrincipal + injected - withdrawn)
+}
+
+/**
  * Optional overrides for buildContext (Group G issue 03 — additive only).
  *
  * Used by `simulatePortfolio` to inject pre-computed funding shares for the
@@ -143,8 +175,14 @@ export interface BuildContextOverrides {
   basisrenteFundingOverride?: BasisrenteFundingResult
   /** Pre-computed Altersvorsorgedepot funding for the active instance. */
   altersvorsorgedepotFundingOverride?: AltersvorsorgedepotFundingResult
+  /** Portfolio-owned per-year AVD funding for the active instance. */
+  altersvorsorgedepotFundingScheduleOverride?: readonly AltersvorsorgedepotFundingResult[]
   /** Pre-computed Riester funding for the active instance. */
   riesterFundingOverride?: RiesterFundingResult
+  /** Portfolio-owned per-year Riester funding for the active instance. */
+  riesterFundingScheduleOverride?: readonly RiesterFundingResult[]
+  /** Aggregate post-bAV salary baseline for combine-mode downstream funding. */
+  salaryForOtherFundingOverride?: SalaryResult
   /**
    * Per-instance starting capital + transfer-event injections / withdrawals.
    * Built by `buildInstanceCapitalPolicy` in `portfolioTransfer.ts` and forwarded
@@ -189,6 +227,8 @@ export function buildContext(
 ): SimulationContext {
   const bavFunding = overrides?.bavFundingOverride
     ?? calculateBavFunding(profile, rules, assumptions.bav)
+  const salaryForOtherFunding =
+    overrides?.salaryForOtherFundingOverride ?? bavFunding.salaryWithBav
   const payoutYear = rules.year + (profile.retirementAge - profile.age)
   const contractRuntimeYears = payoutYear - assumptions.insurance.contractStartYear
   const insuranceTaxMode = deriveInsuranceTaxMode(
@@ -216,19 +256,19 @@ export function buildContext(
   const basisrenteFunding = overrides?.basisrenteFundingOverride
     ?? calculateBasisrenteFunding(
       rules,
-      bavFunding.salaryWithBav,
+      salaryForOtherFunding,
       assumptions.basisrente,
       pensionSystemAnnualContributionOverride,
     )
   const altersvorsorgedepotFunding = overrides?.altersvorsorgedepotFundingOverride
     ?? calculateAvdFunding(
       rules,
-      bavFunding.salaryWithBav,
+      salaryForOtherFunding,
       assumptions.altersvorsorgedepot,
       { profile },
     )
   const riesterFunding = overrides?.riesterFundingOverride
-    ?? calculateRiesterFunding(rules, bavFunding.salaryWithBav, assumptions.riester, profile)
+    ?? calculateRiesterFunding(rules, salaryForOtherFunding, assumptions.riester, profile)
 
   const grvProjection = projectStatutoryPension(
     profile,
@@ -245,11 +285,15 @@ export function buildContext(
     payoutYear,
     yearsToRetirement: profile.retirementAge - profile.age,
     bavFunding,
+    salaryForOtherFunding,
     bavLumpSumTaxMode,
     insuranceTaxMode,
     basisrenteFunding,
     altersvorsorgedepotFunding,
+    altersvorsorgedepotFundingSchedule:
+      overrides?.altersvorsorgedepotFundingScheduleOverride,
     riesterFunding,
+    riesterFundingSchedule: overrides?.riesterFundingScheduleOverride,
     statutoryPension: grvProjection,
     grvGrossMonthlyPension: grvProjection.grossMonthlyPension,
     retirementHealthStatus: assumptions.statutoryPension.retirementHealthStatus ?? 'kvdr',
@@ -258,4 +302,112 @@ export function buildContext(
     insuranceMonthlyUserCostOverride: overrides?.insuranceMonthlyUserCostOverride,
     etfSaverAllowanceOverride: overrides?.etfSaverAllowanceOverride,
   }
+}
+
+// ---------------------------------------------------------------------------
+// Narrow per-product calculation context — ETF (issue #380)
+// ---------------------------------------------------------------------------
+
+/**
+ * Assumption slice the ETF simulator actually reads. `ScenarioAssumptions`
+ * satisfies this structurally, so the compare-mode adapter can forward the
+ * full object without copying; the combine-mode adapter passes exactly the
+ * three fields the simulator consumes (no neutralised bAV / Basisrente /
+ * AVD / Riester / insurance / statutory-pension inputs).
+ */
+export interface EtfCalculationAssumptions {
+  etf: EtfAssumptions
+  inflationRate: number
+  retirementEndAge: number
+}
+
+/**
+ * Narrow typed calculation context for the ETF simulator — first product
+ * migrated off the six-product `SimulationContext` (issue #380).
+ *
+ * The interface is the complete, closed set of inputs the ETF calculation
+ * consumes: profile (ages), rules, the ETF assumption slice, the payout
+ * horizon, an explicit monthly net user cost, and the three per-instance
+ * add-ons (market path, capital policy, shared saver allowance). Everything
+ * else `buildContext` computes — bAV two-pass funding, Basisrente / AVD /
+ * Riester funding, GRV projection, lump-sum tax modes — is irrelevant to the
+ * ETF math and is deliberately absent, so the combine-mode per-instance path
+ * no longer has to fabricate neutralised unrelated-product inputs to reach it.
+ *
+ * Build via `buildEtfCalculationContext` (explicit inputs, combine path) or
+ * `etfContextFrom` (adapter over the full compare-mode context). Both
+ * converge on the same shape; the ETF simulator accepts nothing else.
+ */
+export interface EtfCalculationContext {
+  profile: PersonalProfile
+  rules: GermanRules
+  assumptions: EtfCalculationAssumptions
+  /** Calendar years from today to `profile.retirementAge`. Derived, not passed. */
+  yearsToRetirement: number
+  /**
+   * Monthly net cash the user pays into THIS ETF contract (EUR/month).
+   * Compare mode: the fair-comparison anchor `bavFunding.monthlyNetCost`.
+   * Combine mode: the instance's own `monthlyContribution` (0 when paid-up or
+   * unset — matching the previous neutralised-bAV fallback, which was 0).
+   */
+  monthlyUserCost: number
+  /** Stochastic Monte-Carlo market path (see `SimulationContext.marketReturnPath`). */
+  marketReturnPath?: readonly number[]
+  /** Per-instance transfer/capital policy (see `SimulationContext.instanceCapitalPolicy`). */
+  instanceCapitalPolicy?: InstanceCapitalPolicy
+  /** Per-year §20 Abs. 9 EStG shared allowance (see `SimulationContext.etfSaverAllowanceOverride`). */
+  saverAllowanceOverride?: (yearIndex: number) => number
+}
+
+export interface BuildEtfCalculationContextInput {
+  profile: PersonalProfile
+  rules: GermanRules
+  assumptions: EtfCalculationAssumptions
+  monthlyUserCost: number
+  marketReturnPath?: readonly number[]
+  instanceCapitalPolicy?: InstanceCapitalPolicy
+  saverAllowanceOverride?: (yearIndex: number) => number
+}
+
+/**
+ * Build the narrow ETF context from explicit inputs — the combine-mode entry.
+ *
+ * `yearsToRetirement` is derived here from the profile with the same formula
+ * `buildContext` uses, so the two adapters cannot drift.
+ */
+export function buildEtfCalculationContext(
+  input: BuildEtfCalculationContextInput,
+): EtfCalculationContext {
+  return {
+    profile: input.profile,
+    rules: input.rules,
+    assumptions: input.assumptions,
+    yearsToRetirement: input.profile.retirementAge - input.profile.age,
+    monthlyUserCost: input.monthlyUserCost,
+    marketReturnPath: input.marketReturnPath,
+    instanceCapitalPolicy: input.instanceCapitalPolicy,
+    saverAllowanceOverride: input.saverAllowanceOverride,
+  }
+}
+
+/**
+ * Compare-mode adapter: extract the narrow ETF context from a full
+ * `SimulationContext`.
+ *
+ * This is the single place the fair-comparison invariant is expressed for the
+ * ETF: absent a combine-mode override, ETF invests the bAV net-cost anchor.
+ * Compare mode never sets `etfMonthlyUserCostOverride`, so the fallback keeps
+ * the invariant; combine mode passes its real per-instance amount via
+ * `buildEtfCalculationContext` instead.
+ */
+export function etfContextFrom(ctx: SimulationContext): EtfCalculationContext {
+  return buildEtfCalculationContext({
+    profile: ctx.profile,
+    rules: ctx.rules,
+    assumptions: ctx.assumptions,
+    monthlyUserCost: ctx.etfMonthlyUserCostOverride ?? ctx.bavFunding.monthlyNetCost,
+    marketReturnPath: ctx.marketReturnPath,
+    instanceCapitalPolicy: ctx.instanceCapitalPolicy,
+    saverAllowanceOverride: ctx.etfSaverAllowanceOverride,
+  })
 }

@@ -447,7 +447,7 @@ describe('RiesterRechnerPage — visible content for prerender', () => {
 
   it('renders the visible "Stand 2026" line that JSON-LD dateModified references', () => {
     const { container } = render(inShell(<RiesterRechnerPage />, '/riester-rechner'))
-    expect(container.textContent).toContain('Stand: 2026-05-06')
+    expect(container.textContent).toContain('Stand: 2026-08-02')
     expect(container.textContent).toContain('Deutschland 2026')
   })
 
@@ -568,7 +568,7 @@ describe('AltersvorsorgedepotRechnerPage — visible content for prerender', () 
 
   it('renders the visible "Stand 2026" line that JSON-LD dateModified references', () => {
     const { container } = render(inShell(<AltersvorsorgedepotRechnerPage />, '/altersvorsorgedepot-rechner'))
-    expect(container.textContent).toContain('Stand: 2026-05-06')
+    expect(container.textContent).toContain('Stand: 2026-08-02')
     expect(container.textContent).toContain('Deutschland 2026')
   })
 
@@ -689,7 +689,7 @@ describe('RiesterVsAltersvorsorgedepotPage — visible content for prerender', (
 
   it('renders the visible "Stand 2026" line that JSON-LD dateModified references', () => {
     const { container } = render(inShell(<RiesterVsAltersvorsorgedepotPage />, '/riester-vs-altersvorsorgedepot'))
-    expect(container.textContent).toContain('Stand: 2026-05-06')
+    expect(container.textContent).toContain('Stand: 2026-08-02')
     expect(container.textContent).toContain('Deutschland 2026')
   })
 
@@ -911,7 +911,7 @@ describe('AltersvorsorgeproduktePage — visible content for prerender', () => {
 
   it('renders the visible "Stand 2026" line', () => {
     const { container } = render(inShell(<AltersvorsorgeproduktePage />, '/altersvorsorgeprodukte-vergleichen'))
-    expect(container.textContent).toContain('Stand: 2026-05-06')
+    expect(container.textContent).toContain('Stand: 2026-08-02')
     expect(container.textContent).toContain('Deutschland 2026')
   })
 

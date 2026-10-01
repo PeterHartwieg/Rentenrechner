@@ -1,5 +1,5 @@
 import './forms.css'
-import { useState, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { formatNumber } from '../utils/format'
 import { useFeedbackTarget } from '../features/qa-feedback'
 
@@ -19,11 +19,13 @@ function decimalsFromStep(step: number): number {
   return dotIdx === -1 ? 0 : s.length - dotIdx - 1
 }
 
-interface NumberFieldProps {
+interface NumberFieldBaseProps {
   label: string
   /** Optional inline content rendered next to the label (e.g. <InfoTip />). */
   labelSuffix?: ReactNode
-  value: number
+  value: number | null
+  required?: boolean
+  placeholder?: string
   min?: number
   max?: number
   step?: number
@@ -45,8 +47,6 @@ interface NumberFieldProps {
    * omitted (defaults to enabled).
    */
   disabled?: boolean
-  /** Fires on every keystroke. Use for live preview of unconstrained inputs. */
-  onChange?: (value: string) => void
   /** Fires on blur or Enter. Use for clamped/validated inputs so partial keystrokes don't trigger range corrections. */
   onCommit?: (value: string) => void
   /**
@@ -71,6 +71,19 @@ interface NumberFieldProps {
   feedbackSensitive?: boolean
 }
 
+type NumberFieldProps = NumberFieldBaseProps & (
+  | {
+    /** Opt in to emitting null when the input is cleared. */
+    allowEmpty: true
+    onChange?: (value: number | null) => void
+  }
+  | {
+    allowEmpty?: false
+    /** Emits numbers while typing; clearing preserves the caller's value. */
+    onChange?: (value: number) => void
+  }
+)
+
 export function NumberField({
   label,
   labelSuffix,
@@ -81,11 +94,15 @@ export function NumberField({
   decimals,
   suffix,
   disabled,
+  required,
+  placeholder,
+  allowEmpty,
   onChange,
   onCommit,
   feedbackTargetId,
   feedbackSensitive,
 }: NumberFieldProps) {
+  const id = useId()
   const { targetProps } = useFeedbackTarget({
     id: feedbackTargetId ?? '',
     label,
@@ -99,7 +116,7 @@ export function NumberField({
   const effectiveDecimals = decimals ?? decimalsFromStep(step)
   // toFixed gives us bounded precision; Number(...) drops trailing zeros so
   // integer-step fields render as "110" rather than "110.00".
-  const canonical = Number.isFinite(value)
+  const canonical = value === null ? '' : Number.isFinite(value)
     ? Number(value.toFixed(effectiveDecimals)).toString()
     : '0'
   const displayValue = draft ?? canonical
@@ -117,7 +134,7 @@ export function NumberField({
   // Show a recovery hint while the user is typing a value that lies outside
   // the allowed range. Without this, callers' clampNumber would silently
   // overwrite the value on commit and the user would not understand why.
-  const draftNum = draft !== null ? Number(draft) : null
+  const draftNum = draft !== null && draft.trim() !== '' ? Number(draft) : null
   const outOfRange =
     draftNum !== null && Number.isFinite(draftNum)
       ? (min !== undefined && draftNum < min) ||
@@ -137,19 +154,27 @@ export function NumberField({
   }
 
   return (
-    <label className="field" {...qaProps}>
+    <label htmlFor={id} className="field" {...qaProps}>
       <span>{label}{labelSuffix}</span>
       <div className="input-shell">
         <input
+          id={id}
           type="number"
           min={min}
           max={max}
           step={step}
           disabled={disabled}
+          required={required}
+          placeholder={placeholder}
           value={displayValue}
           onChange={(event) => {
-            setDraft(event.target.value)
-            onChange?.(event.target.value)
+            const raw = event.target.value
+            setDraft(raw)
+            if (raw.trim() === '') {
+              if (allowEmpty) onChange?.(null)
+            } else if (Number.isFinite(Number(raw))) {
+              onChange?.(Number(raw))
+            }
           }}
           onBlur={commit}
           onKeyDown={(event) => {

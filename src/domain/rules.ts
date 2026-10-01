@@ -8,8 +8,7 @@ export interface GermanRules {
   entlastungsbetragAlleinerziehendePro: number
   /**
    * Altersvorsorgedepot 2027 constants.
-   * Source: Altersvorsorgereformgesetz (Bundestag 2026-03-27; Bundesrat consent expected 2026-05-08).
-   * Values are from the Bundestag-adopted text (Bundesrat Drucksache 206/26).
+   * Source: Altersvorsorgereformgesetz vom 26.05.2026 (BGBl. 2026 I Nr. 156).
    */
   altersvorsorgedepot: {
     /** First year new AVD contracts are available (2027). */
@@ -62,6 +61,34 @@ export interface GermanRules {
     firstProgressionEnd: number
     secondProgressionEnd: number
     topTaxStart: number
+    /**
+     * §32a Abs. 1 Satz 2 EStG Grundtarif formula coefficients, named by
+     * their role in the expanded polynomial. Year-specific rules data —
+     * values live in the active year file; the engine holds no tariff
+     * literals of its own.
+     */
+    tariff: {
+      /** First progression zone: coefficient of the squared progression term (y²). */
+      zoneBQuadratic: number
+      /** First progression zone: coefficient of the linear progression term (y). */
+      zoneBLinear: number
+      /** Second progression zone: coefficient of the squared progression term (z²). */
+      zoneCQuadratic: number
+      /** Second progression zone: coefficient of the linear progression term (z). */
+      zoneCLinear: number
+      /** Second progression zone: additive constant. */
+      zoneCConstant: number
+      /** Proportional zone: marginal rate. */
+      proportionalRate: number
+      /** Proportional zone: fixed deduction from the proportional amount. */
+      proportionalDeduction: number
+      /** Top zone: marginal rate. */
+      topRate: number
+      /** Top zone: fixed deduction from the top-rate amount. */
+      topRateDeduction: number
+      /** Denominator scaling (x − zone start) into the progression variables. */
+      progressionDenominator: number
+    }
     /** §3 Abs. 3 SolzG: Soli-Freigrenze for Einzelveranlagung. */
     solidarityFreeTax: number
     /** §3 Abs. 3 SolzG: Soli-Freigrenze for Zusammenveranlagung (= 2 × Einzelveranlagung). */
@@ -75,6 +102,8 @@ export interface GermanRules {
     unemploymentEmployeeRate: number
     unemploymentEmployerRate: number
     healthGeneralRate: number
+  /** Average additional rate (§242a SGB V), used for the §106 PKV subsidy. */
+  healthAverageAdditionalRate: number
     // ermäßigter Beitragssatz (without Krankengeld) — used for Vorsorgepauschale §39b EStG
     healthReducedRate: number
     careEmployeeBaseRate: number
@@ -124,6 +153,8 @@ export interface GermanRules {
     sockelbetrag: number
     /** §10a EStG annual deductible cap including own contributions + allowances (2,100 EUR). */
     annualCapInclAllowances: number
+    /** AltZertG: payout plan must run at least through this age (85). */
+    payoutPlanMinEndAge: number
   }
   capitalGains: {
     taxRate: number

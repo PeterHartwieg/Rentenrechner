@@ -129,7 +129,7 @@ export const EVIDENCE_FIELD_GERMAN_LABELS: Record<string, string> = {
   monthlyContribution: 'Monatlicher Beitrag',
   annualAssetFee: 'Jährliche Verwaltungsgebühr',
   monthlyGrossConversion: 'Monatlicher Brutto-Umwandlungsbetrag',
-  'fees.wrapperAssetFee': 'Effektivkosten p.a.',
+  'fees.wrapperAssetFee': 'Laufende Mantelgebühr p.a.',
   'fees.fundAssetFee': 'Fondskosten (TER)',
   'fees.acquisitionCostPct': 'Abschlusskosten',
   'fees.pensionPayoutFeePct': 'Rentenphase-Verwaltungsgebühr',

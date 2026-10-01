@@ -7,6 +7,7 @@ import {
   computeChildAllowance,
   calculateAvdFunding,
   netAvdPayout,
+  resolveAvdEligibility,
   validateAvdPayoutAge,
 } from '../altersvorsorgedepot'
 import { AVD_UI_SELECTABLE_PAYOUT_MODES } from './altersvorsorgedepot.validation'
@@ -154,6 +155,26 @@ describe('computeAvdAllowances', () => {
     expect(result.childAllowanceAnnual).toBeCloseTo(600, 4)
     expect(result.totalAllowanceAnnual).toBeCloseTo(990, 4)
   })
+
+  it('drops only the child allowance when another parent holds the claim (#371)', () => {
+    const withClaim = computeAvdAllowances(
+      1_200,
+      { ...baseEligibility, eligibleChildren: 2 },
+      rules,
+    )
+    const withoutClaim = computeAvdAllowances(
+      1_200,
+      { ...baseEligibility, eligibleChildren: 2, claimsChildAllowance: false },
+      rules,
+    )
+    expect(withoutClaim.childAllowanceAnnual).toBe(0)
+    expect(withoutClaim.basicAllowanceAnnual).toBe(withClaim.basicAllowanceAnnual)
+    expect(withoutClaim.careerStarterBonusAnnual).toBe(withClaim.careerStarterBonusAnnual)
+    expect(withoutClaim.indirectSpouseAllowanceAnnual).toBe(withClaim.indirectSpouseAllowanceAnnual)
+    expect(withoutClaim.totalAllowanceAnnual).toBe(
+      withClaim.totalAllowanceAnnual - withClaim.childAllowanceAnnual,
+    )
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -264,6 +285,114 @@ describe('calculateAvdFunding', () => {
       },
     )
     expect(result.childAllowanceAnnual).toBeCloseTo(300, 4)
+  })
+
+  it('grants no child allowance when another parent holds the claim (#371)', () => {
+    const profile = { ...defaultProfile, childBirthYears: [rules.year] }
+    const withClaim = calculateAvdFunding(
+      rules,
+      { taxableIncome: 50_000 } as never,
+      avdBase,
+      { profile },
+    )
+    const withoutClaim = calculateAvdFunding(
+      rules,
+      { taxableIncome: 50_000 } as never,
+      { ...avdBase, eligibility: { ...avdBase.eligibility, claimsChildAllowance: false } },
+      { profile },
+    )
+    expect(withClaim.childAllowanceAnnual).toBeCloseTo(avd.childAllowanceMax, 4)
+    expect(withoutClaim.childAllowanceAnnual).toBe(0)
+    expect(withoutClaim.basicAllowanceAnnual).toBe(withClaim.basicAllowanceAnnual)
+    expect(withoutClaim.careerStarterBonusAnnual).toBe(withClaim.careerStarterBonusAnnual)
+    expect(withoutClaim.totalAllowanceAnnual).toBe(withClaim.totalAllowanceAnnual - withClaim.childAllowanceAnnual)
+  })
+})
+
+describe('calculateAvdFunding — §10a eligibility gate (#363)', () => {
+  const avdBase: Parameters<typeof calculateAvdFunding>[2] = {
+    ...defaultAssumptions.altersvorsorgedepot,
+    monthlyOwnContribution: 150, // 1 800 EUR/year
+    eligibility: {
+      directlyEligible: false,
+      indirectSpouseEligible: false,
+      eligibleChildren: 0,
+      ageAtContractStart: 30,
+      careerStarterBonusUsed: true,
+    },
+  }
+  // zvE 60 000, single — the measurement setup from the issue.
+  const salary = { taxableIncome: 60_000, deductionFilingStatus: 'single' } as never
+
+  it('grants no §10a deduction or Günstigerprüfung refund outside the begünstigter Personenkreis', () => {
+    const result = calculateAvdFunding(rules, salary, avdBase)
+    expect(result.totalAllowanceAnnual).toBe(0)
+    expect(result.specialExpenseBaseAnnual).toBe(0)
+    expect(result.guenstigerpruefungBenefitAnnual).toBe(0)
+    expect(result.monthlyNetCost).toBe(avdBase.monthlyOwnContribution)
+  })
+
+  it.each([
+    { annualOwnContribution: 5 * 12, eligible: false },
+    { annualOwnContribution: rules.altersvorsorgedepot.minimumOwnContributionAnnual - 0.01, eligible: false },
+    { annualOwnContribution: rules.altersvorsorgedepot.minimumOwnContributionAnnual, eligible: true },
+  ])('gates mittelbar §10a at the own-contribution minimum: $annualOwnContribution/year', ({ annualOwnContribution, eligible }) => {
+    const contribution = {
+      ...avdBase,
+      monthlyOwnContribution: annualOwnContribution / 12,
+      eligibility: { ...avdBase.eligibility, indirectSpouseEligible: true },
+    }
+    const result = calculateAvdFunding(rules, salary, contribution)
+    if (eligible) {
+      expect(result.specialExpenseBaseAnnual).toBeCloseTo(annualOwnContribution + result.totalAllowanceAnnual, 8)
+      expect(result.totalAllowanceAnnual).toBeGreaterThan(0)
+    } else {
+      expect(result.specialExpenseBaseAnnual).toBe(0)
+      expect(result.guenstigerpruefungBenefitAnnual).toBe(0)
+      expect(result.totalAllowanceAnnual).toBe(0)
+      expect(result.monthlyNetCost).toBe(contribution.monthlyOwnContribution)
+    }
+  })
+
+  it('keeps the mittelbar spouse inside the gate (§79 Satz 2)', () => {
+    const result = calculateAvdFunding(rules, salary, {
+      ...avdBase,
+      eligibility: { ...avdBase.eligibility, indirectSpouseEligible: true },
+    })
+    // base = min(1 800, 1 800) + 175 Grundzulage über Ehegatte = 1 975
+    expect(result.specialExpenseBaseAnnual).toBeCloseTo(1_975, 4)
+    expect(result.guenstigerpruefungBenefitAnnual).toBeGreaterThan(0)
+  })
+
+  it('keeps the §10a deduction for a directly eligible saver below the 120 EUR minimum contribution', () => {
+    // For directly eligible savers, the minimum gates only the Zulage.
+    const result = calculateAvdFunding(rules, salary, {
+      ...avdBase,
+      monthlyOwnContribution: 5, // 60 EUR/year — below minimumOwnContributionAnnual
+      eligibility: { ...avdBase.eligibility, directlyEligible: true },
+    })
+    expect(result.totalAllowanceAnnual).toBe(0)
+    expect(result.specialExpenseBaseAnnual).toBeCloseTo(60, 4)
+    expect(result.guenstigerpruefungBenefitAnnual).toBeCloseTo(23, 0)
+  })
+})
+
+describe('resolveAvdEligibility', () => {
+  it('preserves claimsChildAllowance while resolving profile child years (#371)', () => {
+    const resolved = resolveAvdEligibility(
+      {
+        directlyEligible: true,
+        indirectSpouseEligible: false,
+        eligibleChildren: 0,
+        ageAtContractStart: 30,
+        careerStarterBonusUsed: true,
+        claimsChildAllowance: false,
+      },
+      { ...defaultProfile, childBirthYears: [2018] },
+      rules.year,
+    )
+    expect(resolved.eligibleChildren).toBe(1)
+    expect(resolved.claimsChildAllowance).toBe(false)
   })
 })
 

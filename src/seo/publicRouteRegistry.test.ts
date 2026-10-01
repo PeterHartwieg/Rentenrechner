@@ -31,6 +31,7 @@ describe('publicRouteRegistry — entry shape', () => {
       '/rente-netto-berechnen',
       '/altersvorsorgeprodukte-vergleichen',
       '/methode',
+      '/vergleich',
       '/vergleich/details',
       '/eingaben',
       '/eingaben/produkte',

@@ -5,7 +5,6 @@ import type {
   PersonalProfile,
   ProductId,
   ReturnScenario,
-  ScenarioAssumptions,
 } from '../domain'
 import { projectAccumulation, type AccumulationPolicy } from './accumulation'
 import { computeRIY } from './fees'
@@ -30,6 +29,18 @@ export interface ProductPayoutContext {
   payoutReturn: number
 }
 
+/**
+ * Structural assumption slice `buildProductResult` actually reads (issue #380):
+ * inflation for the real-value columns and the payout horizon. Declared
+ * structurally so every simulator can keep forwarding its full
+ * `ScenarioAssumptions`, while narrow per-product contexts (ETF first) only
+ * have to carry these two fields.
+ */
+export interface PayoutHorizonAssumptions {
+  inflationRate: number
+  retirementEndAge: number
+}
+
 export interface ProductPayoutFields {
   afterTaxLumpSum: number | null
   grossMonthlyPayout: number
@@ -49,6 +60,12 @@ export interface ProductPayoutFields {
  */
 export interface BuildProductPolicy {
   yearlyReturn?: (yearIndex: number) => number
+  /**
+   * Set by `withMarketReturnPolicy` when `yearlyReturn` follows a stochastic
+   * Monte-Carlo market path. RIY is never read from MC results, so
+   * `buildProductResult` skips the zero-fee reference rerun for these paths.
+   */
+  stochasticReturnPath?: boolean
   /**
    * `saverAllowanceOverride(yearIndex)` (0-based contract year) lets combine-mode
    * share the §20 Abs. 9 EStG Sparerpauschbetrag across multiple ETF instances
@@ -85,7 +102,8 @@ export interface BuildProductResultParams<
   scenario: ReturnScenario
   profile: PersonalProfile
   rules: GermanRules
-  assumptions: ScenarioAssumptions
+  /** Structural slice — see `PayoutHorizonAssumptions`. */
+  assumptions: PayoutHorizonAssumptions
   monthlyUserCost: number
   monthlyProductContribution: number
   monthlyEmployerContribution: number
@@ -126,6 +144,23 @@ function applyCapitalGuarantee(
     realCapital: guaranteeFloor / Math.pow(1 + inflationRate, projection.rows.length),
     rows,
   }
+}
+
+function hasCustomGrossReturnPath(
+  policy: AccumulationPolicy | undefined,
+  scenarioAnnualReturn: number,
+  months: number,
+): boolean {
+  if (!policy?.yearlyReturn) return false
+
+  const years = Math.ceil(months / 12)
+  for (let yearIndex = 0; yearIndex < years; yearIndex += 1) {
+    if (Math.abs(policy.yearlyReturn(yearIndex) - scenarioAnnualReturn) > 1e-12) {
+      return true
+    }
+  }
+
+  return false
 }
 
 export function buildProductResult<
@@ -198,6 +233,30 @@ export function buildProductResult<
     fees: params.fees,
     policy: accumulationPolicy,
   })
+  // A tax-bearing accumulation also needs a like-for-like benchmark: comparing
+  // its capital with a tax-free annuity would report Vorabpauschale as fees.
+  const zeroFeeProjection = !params.policy?.stochasticReturnPath
+    && (accumulationPolicy?.vorabpauschale || hasCustomGrossReturnPath(
+      accumulationPolicy,
+      params.scenario.annualReturn,
+      monthsToRetirement,
+    ))
+    ? projectAccumulation({
+        productId: params.productId,
+        currentAge: params.profile.age,
+        months: monthsToRetirement,
+        monthlyUserCost: params.monthlyUserCost,
+        monthlyProductContribution: params.monthlyProductContribution,
+        monthlyEmployerContribution: params.monthlyEmployerContribution,
+        annualReturn: params.scenario.annualReturn,
+        inflationRate: params.assumptions.inflationRate,
+        scenario: params.scenario,
+        fees: zeroFeeModel,
+        // Keep the complete policy, including Vorabpauschale. Taxes therefore
+        // remain in both projections and RIY isolates fees from return-path drag.
+        policy: accumulationPolicy,
+      })
+    : undefined
   const rawCapitalAtRetirement = projection.capital
   const guaranteeFloor =
     params.guarantee
@@ -218,6 +277,16 @@ export function buildProductResult<
     payoutYears,
     payoutReturn,
   })
+
+  // The ETF RIY inversion models one opening balance and level monthly payments.
+  // A changing contribution or dated transfer has a different cashflow shape;
+  // returning 0 keeps fee-bearing results behind availableRiy's unavailable gate.
+  const unsupportedRiyCashflows = params.productId === 'etf' && !!(
+    accumulationPolicy?.contributionGrowth?.annualRate
+    || accumulationPolicy?.yearlyContributions
+    || accumulationPolicy?.capitalInjections?.length
+    || accumulationPolicy?.capitalWithdrawals?.length
+  )
 
   return {
     productId: params.productId,
@@ -248,11 +317,13 @@ export function buildProductResult<
       payout.afterTaxLumpSum !== null
         ? capitalMultipleAnnualized(payout.afterTaxLumpSum, effectiveProjection.totalUserCost, yearsToRetirement)
         : 0,
-    accumulationRiy: computeRIY(
+    accumulationRiy: unsupportedRiyCashflows ? 0 : computeRIY(
       params.monthlyProductContribution,
       monthsToRetirement,
       params.scenario.annualReturn,
       effectiveProjection.capital,
+      zeroFeeProjection?.capital,
+      params.productId === 'etf' ? accumulationPolicy?.initialCapital : undefined,
     ),
     rows: effectiveProjection.rows,
     ...payout,

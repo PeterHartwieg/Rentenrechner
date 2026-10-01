@@ -106,7 +106,6 @@ export const COMPACT_SHARE_DEFAULTS_BY_VERSION: Record<string, CompactShareDefau
           careerStarterBonusUsed: true,
         },
         riskAllocationPct: 0.80,
-        riskAnnualReturn: 0.05,
         lowRiskAnnualReturn: 0.02,
         fees: {
           wrapperAssetFee: 0.003,

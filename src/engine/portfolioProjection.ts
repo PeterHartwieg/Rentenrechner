@@ -28,6 +28,7 @@ import type {
   InsuranceAssumptions,
   RiesterAssumptions,
   ScenarioAssumptions,
+  ReturnScenario,
 } from '../domain'
 import type { Workspace, WorkspaceAssumptionsV2 } from '../domain/workspace'
 import type {
@@ -143,7 +144,6 @@ export const NEUTRALISED_ALTERSVORSORGEDEPOT: AltersvorsorgedepotAssumptions = {
     careerStarterBonusUsed: true,
   },
   riskAllocationPct: 0,
-  riskAnnualReturn: 0,
   lowRiskAnnualReturn: 0,
   fees: {
     wrapperAssetFee: 0,
@@ -238,6 +238,7 @@ export function paidUpFeeModel(fees: FeeModel): FeeModel {
  * singleton can use this list to drop them.
  */
 export const INSTANCE_COMMON_KEYS = [
+  'expectedReturn',
   'instanceId',
   'label',
   'anbieter',
@@ -401,6 +402,26 @@ export function applyPaidUpOverridesToProjection(
 }
 
 // ---------------------------------------------------------------------------
+// Per-product instance slices (issue #380 — narrow per-instance ETF path)
+// ---------------------------------------------------------------------------
+
+/**
+ * Project a single ETF instance into the `EtfAssumptions` slice the ETF
+ * simulator consumes. Extracted from `projectInstanceToScenarioAssumptions`
+ * so the narrow per-instance ETF path (`EtfCalculationContext`) can build its
+ * assumption slice without reconstructing the six-product singleton shape.
+ *
+ * The instance's per-instance `monthlyContribution` rides along inertly —
+ * `EtfAssumptions` has no such field and the simulator never reads it; the
+ * adapter passes the contribution explicitly as `monthlyUserCost`. Keeping it
+ * here (instead of stripping) preserves the projected-singleton shape the
+ * compare-mode round-trip tests pin.
+ */
+export function projectEtfInstanceToAssumptions(instance: EtfInstance): EtfAssumptions {
+  return stripInstanceCommonKeys(instance as unknown as Record<string, unknown>) as unknown as EtfAssumptions
+}
+
+// ---------------------------------------------------------------------------
 // `projectInstanceToScenarioAssumptions`
 // ---------------------------------------------------------------------------
 
@@ -448,8 +469,7 @@ export function projectInstanceToScenarioAssumptions(
       bav = stripInstanceCommonKeys(instance as unknown as Record<string, unknown>) as unknown as BavAssumptions
       break
     case 'etf': {
-      const stripped = stripInstanceCommonKeys(instance as unknown as Record<string, unknown>) as unknown as EtfAssumptions
-      etf = stripped
+      etf = projectEtfInstanceToAssumptions(instance as EtfInstance)
       break
     }
     case 'insurance': {
@@ -563,6 +583,14 @@ export function singletonViewOfWorkspace(
     // projection. Undefined → callers get today's `equal_cash` behaviour.
     compareSubMode: wsa.compareSubMode,
     equalInputAmountEUR: wsa.equalInputAmountEUR,
+    // Round-trip the compare-mode contribution-input mode. Copied by name like
+    // every field here, so a new field that is not listed silently disappears
+    // on projection.
+    contributionInput: wsa.contributionInput,
+    // Scenario-level input-status metadata (state contract §2.5). Carried by
+    // name like every field here; `statutoryPension` below carries
+    // `pensionEntryMethod` wholesale because the whole block is copied.
+    inputStatus: wsa.inputStatus,
     statutoryPension: wsa.statutoryPension,
     bav: defaultsForEmptySlots.bav,
     etf: defaultsForEmptySlots.etf,
@@ -577,4 +605,15 @@ export function singletonViewOfWorkspace(
     ...slotProjection(avdInst),
     ...slotProjection(riesterInst),
   }
+}
+
+
+/** Absolute contract return override; scenario identity and shared inputs stay intact. */
+export function scenarioForInstance(
+  scenario: ReturnScenario,
+  instance: InstanceCommon,
+): ReturnScenario {
+  return instance.expectedReturn === undefined
+    ? scenario
+    : { ...scenario, annualReturn: instance.expectedReturn }
 }

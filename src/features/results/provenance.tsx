@@ -24,9 +24,30 @@ import type { ReactNode } from 'react'
  *   - `'confirmed'` — user confirmed (or statement) without modifying.
  *   - `'model'`     — model estimate, not yet reviewed.
  *   - `'default'`   — system default, no evidence at all.
+ *   - `'unknown'`   — the user explicitly answered "weiß ich nicht"
+ *                     (`InputStatus === 'unknown'`); distinct from `'default'`,
+ *                     which means "nobody has said anything about this field".
  */
 
-export type ProvKind = 'user' | 'default' | 'model' | 'confirmed'
+export type ProvKind = 'user' | 'default' | 'model' | 'confirmed' | 'unknown'
+
+/** German badge label per display kind. Single source for pills and exports. */
+const PROV_LABELS: Record<ProvKind, string> = {
+  user: 'von dir',
+  confirmed: 'geprüft',
+  model: 'Modellwert',
+  default: 'Standardwert',
+  unknown: 'Unbekannt',
+}
+
+/**
+ * The pill for a `ProvKind` that a caller already resolved — the only way to
+ * render `'unknown'`, which the boolean props below cannot express. Surfaces
+ * that read `InputStatus` (via `inputStatusToProvKind`) use this one.
+ */
+export function ProvKindLabel({ kind }: { kind: ProvKind }) {
+  return <span className={`pec-prov pec-prov--${kind}`}>{PROV_LABELS[kind]}</span>
+}
 
 export function ProvLabel({
   isModified,
@@ -44,15 +65,7 @@ export function ProvLabel({
       : isModel
         ? 'model'
         : 'default'
-  const label =
-    kind === 'user'
-      ? 'von dir'
-      : kind === 'confirmed'
-        ? 'geprüft'
-        : kind === 'model'
-          ? 'Modellwert'
-          : 'Standardwert'
-  return <span className={`pec-prov pec-prov--${kind}`}>{label}</span>
+  return <ProvKindLabel kind={kind} />
 }
 
 interface FieldWithProvProps {

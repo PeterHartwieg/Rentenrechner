@@ -1,0 +1,143 @@
+{
+  "insurance-to-etf": {
+    "kind": "combine",
+    "workspace": {
+      "schemaVersion": 2,
+      "mode": "combine",
+      "baseline": {
+        "id": "baseline",
+        "label": "Baseline",
+        "profile": {
+          "age": 40,
+          "retirementAge": 67,
+          "grossSalaryYear": 60000,
+          "taxClass": 1,
+          "childBirthYears": [],
+          "churchTax": false,
+          "publicHealthInsurance": true,
+          "healthAdditionalContributionPct": 2.9,
+          "pkvMonthlyPremium": 0,
+          "pPVMonthlyPremium": 0,
+          "desiredNetMonthlyPension": 0
+        },
+        "assumptions": {
+          "bav": [],
+          "etf": [
+            {
+              "annualAssetFee": 0.002,
+              "equityPartialExemption": 0.3,
+              "annualContributionGrowthRate": 0,
+              "instanceId": "etf-1",
+              "label": "ETF Zieldepot",
+              "status": "active",
+              "contractStartYear": 2020,
+              "currentValueEUR": 6000,
+              "evidenceMap": {},
+              "monthlyContribution": 100,
+              "transferEvents": [
+                {
+                  "type": "surrender_reinvest",
+                  "year": 2029,
+                  "sourceInstanceId": "ins-1",
+                  "targetInstanceId": "etf-1",
+                  "amountEUR": 20000,
+                  "surrenderHaircutPct": 0.05
+                }
+              ]
+            }
+          ],
+          "insurance": [
+            {
+              "contractStartYear": 2015,
+              "oldContractTaxFreeEligible": false,
+              "monthlyOtherRetirementIncome": 0,
+              "capitalGuarantee": {
+                "enabled": true,
+                "floorPctOfContributions": 1
+              },
+              "payoutMode": "leibrente",
+              "rentenfaktor": 28,
+              "rentenfaktorConfirmed": false,
+              "zeitrenteYears": 20,
+              "fees": {
+                "wrapperAssetFee": 0.003,
+                "fundAssetFee": 0.002,
+                "contributionFee": 0,
+                "fixedMonthlyFee": 3,
+                "acquisitionCostPct": 0.025,
+                "acquisitionCostSpreadYears": 5,
+                "pensionPayoutFeePct": 0.015
+              },
+              "surrenderHaircutPct": 0.05,
+              "annualContributionGrowthRate": 0,
+              "instanceId": "ins-1",
+              "label": "pAV Altvertrag",
+              "status": "surrendered",
+              "currentValueEUR": 20000,
+              "evidenceMap": {},
+              "monthlyContribution": 150,
+              "transferEvents": [
+                {
+                  "type": "surrender_reinvest",
+                  "year": 2029,
+                  "sourceInstanceId": "ins-1",
+                  "targetInstanceId": "etf-1",
+                  "amountEUR": 20000,
+                  "surrenderHaircutPct": 0.05
+                }
+              ]
+            }
+          ],
+          "basisrente": [],
+          "altersvorsorgedepot": [],
+          "riester": [],
+          "statutoryPension": {
+            "pensionBaselineType": "grv",
+            "manualMonthlyGross": null,
+            "currentEntgeltpunkte": 18,
+            "includeGrvReduction": false,
+            "annualSalaryGrowthRate": 0,
+            "rentenwertGrowthRate": 0,
+            "versorgungswerkMonthlyContribution": 0,
+            "versorgungswerkEmployerMonthly": 0,
+            "retirementHealthStatus": "kvdr"
+          },
+          "inflationRate": 0,
+          "retirementEndAge": 90,
+          "returnScenarios": [
+            {
+              "id": "konservativ",
+              "label": "Konservativ",
+              "annualReturn": 0.03
+            },
+            {
+              "id": "basis",
+              "label": "Basis",
+              "annualReturn": 0.05
+            },
+            {
+              "id": "optimistisch",
+              "label": "Optimistisch",
+              "annualReturn": 0.07
+            }
+          ],
+          "monteCarlo": {
+            "enabled": false,
+            "runs": 200,
+            "annualVolatility": 0.15,
+            "seed": 20260908
+          },
+          "visibleProducts": [
+            "versicherung",
+            "etf"
+          ],
+          "equalInputAmountEUR": 200
+        },
+        "createdAt": "2026-09-08T00:00:00.000Z",
+        "origin": "baseline"
+      },
+      "whatIfs": [],
+      "pinnedComparisonIds": []
+    }
+  }
+}

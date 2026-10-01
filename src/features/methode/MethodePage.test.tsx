@@ -40,6 +40,26 @@ describe('MethodePage — /methode route content', () => {
     expect(lead!.textContent).toBe(publicRouteRegistry['/methode'].summary)
   })
 
+  it('explains the shared comparison return and per-contract plan overrides below the return assumptions table', () => {
+    const { getByRole } = render(<MethodePage />)
+    const table = getByRole('table', { name: 'Renditeannahmen je Szenario' })
+    expect(table.nextElementSibling?.textContent).toContain(
+      'Die Szenariorendite ist die angenommene Rendite des risikobehafteten Markts und gilt im Vergleich bewusst je Szenario für alle Produkte gleichermaßen.',
+    )
+    expect(table.nextElementSibling?.textContent).toContain(
+      'beim Altersvorsorgedepot zusätzlich durch die eigene Aufteilung zwischen Risiko- und Sicherheitsanteil',
+    )
+    expect(table.nextElementSibling?.textContent).toContain(
+      'Rendite des Sicherheitsanteils und den gesetzlichen Glidepath',
+    )
+    expect(table.nextElementSibling?.textContent).toContain(
+      'In Mein Plan kannst du in den Vertragsdetails unter „Erwartete Marktrendite vor Kosten“ eine eigene Vertragsrendite festlegen, die den Szenariowert für diesen Vertrag in allen drei Szenarien ersetzt.',
+    )
+    expect(table.nextElementSibling?.textContent).toContain(
+      'Diese vertragsspezifische Rendite wird in den Vertragsdetails, im Druckbericht und im CSV-Export ausgewiesen.',
+    )
+  })
+
   it('renders every § section as an h2 with a stable slug id', () => {
     const { container } = render(<MethodePage />)
     const h2 = Array.from(container.querySelectorAll('h2'))
@@ -110,12 +130,14 @@ describe('MethodePage — /methode route content', () => {
     expect(github!.getAttribute('target')).toBe('_blank')
   })
 
-  it('renders the GitHub Sponsors donation link in the licence card', () => {
+  it('links the licence card to the project development pledge', () => {
     const { container } = render(<MethodePage />)
     const sponsorLinks = Array.from(container.querySelectorAll('a')).filter((a) =>
-      (a.getAttribute('href') ?? '').includes('github.com/sponsors/PeterHartwieg'),
+      a.getAttribute('href') === '#unterstuetzen',
     )
     expect(sponsorLinks.length).toBeGreaterThan(0)
+    expect(container.querySelector('#unterstuetzen')).not.toBeNull()
+    expect(container.textContent).toContain('zurück in die Weiterentwicklung von RentenWiki.de')
   })
 
   it('renders the commercial-license contact email', () => {

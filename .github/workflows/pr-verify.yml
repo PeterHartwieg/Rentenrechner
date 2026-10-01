@@ -1,12 +1,19 @@
 name: pr-verify
 
-# Standalone `npm run verify` for agent PRs. Replaces the verify step that
-# claude-review.yml used to invoke under Opus — runs the same lint+test+build
-# without burning model tokens. claude-review.yml now reads this check's
-# result via `gh pr checks` instead of running verify itself.
+# Standalone `npm run verify` for EVERY pull request, regardless of head
+# branch (agent/issue-*, automation/retro-curate-*, codex/*, feat/*, forks).
+# Replaces the verify step that claude-review.yml used to invoke under Opus —
+# runs the same lint+test+build without burning model tokens. claude-review.yml
+# reads this check's result via `gh pr checks` instead of running verify
+# itself.
 #
 # Also gates review-loop's merge step (review-loop re-checks before
 # `gh pr merge --squash --delete-branch` per its own contract).
+#
+# Fork-safe by construction: `pull_request` (never `pull_request_target`)
+# runs in the base repo with a read-only GITHUB_TOKEN, and this workflow
+# declares `permissions: contents: read` and references no secrets — so PRs
+# from forks can never reach credentials even though their code executes.
 
 on:
   pull_request:
@@ -32,7 +39,6 @@ concurrency:
 
 jobs:
   verify:
-    if: ${{ startsWith(github.event.pull_request.head.ref || inputs.head_ref, 'agent/issue-') || startsWith(github.event.pull_request.head.ref || inputs.head_ref, 'automation/retro-curate-') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

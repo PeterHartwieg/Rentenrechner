@@ -1,11 +1,16 @@
 .chart-panel {
   min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
 }
 
 /* Visually hidden but accessible to screen readers */
 .sr-only {
+  /* Tables otherwise retain their intrinsic minimum width despite width: 1px. */
+  display: block;
+  min-width: 0;
+  max-width: 1px;
   position: absolute;
   width: 1px;
   height: 1px;
@@ -13,11 +18,14 @@
   margin: -1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
 }
 
 .chart-frame {
+  min-width: 0;
+  max-width: 100%;
   width: 100%;
   height: 320px;
   min-height: 320px;
@@ -34,5 +42,7 @@
 }
 
 .chart-panel.compact .chart-frame {
+  min-width: 0;
+  max-width: 100%;
   flex: 1 1 auto;
 }

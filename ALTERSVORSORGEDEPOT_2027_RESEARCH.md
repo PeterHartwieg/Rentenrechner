@@ -168,6 +168,7 @@ The new Sec. 10a amount is planned as own contributions up to 1,800 EUR/year plu
 
 Modeling approach:
 
+0. Check the eligible-person gate first: the Sec. 10a deduction (and its Guenstigerpruefung) only exists for the eligible-person groups defined alongside the allowance eligibility — directly eligible savers, or the spouse of a directly eligible saver (indirect eligibility). A saver outside these groups gets no Sec. 10a deduction at all, regardless of contribution. For directly eligible savers, the 120 EUR/year minimum own contribution gates the allowance only; their Sec. 10a deduction has no minimum. For the indirect spouse, that minimum is constitutive for eligibility itself under Sec. 79 sentence 2 no. 4 EStG (2027). Sec. 10a(3) includes the spouse's contributions only when that spouse is eligible under Sec. 79 sentence 2: below 120 EUR/year, the indirect spouse therefore has a zero special-expense base and no Guenstigerpruefung benefit.
 1. Compute own contributions eligible for deduction: `min(ownContribution, 1800)`.
 2. Compute allowance entitlement.
 3. Compute `specialExpenseBase = min(ownContribution, 1800) + allowanceEntitlement`.
