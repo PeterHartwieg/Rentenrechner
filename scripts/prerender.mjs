@@ -195,6 +195,24 @@ const EDITORIAL_ROUTE_IDS = new Set([
   '/altersvorsorgeprodukte-vergleichen',
 ])
 
+/**
+ * Client-only app routes that are NOT public SEO pages (not in
+ * PUBLIC_ROUTE_IDS, no sitemap entry). Without a file on disk, a direct load
+ * or refresh of these URLs gets Workers' native 404 status plus a flash of the
+ * "Seite nicht gefunden" page before the SPA router takes over. We emit an
+ * AppShell-only page (chrome + disclaimer, empty body) so the request returns
+ * 200 and the client renders the real page on mount.
+ *
+ * `/vertrag/:instanceId` is dynamic, so it gets one shared shell at
+ * `/app-shell/` and `public/_redirects` rewrites `/vertrag/*` onto it. The
+ * shell lives outside `/vertrag/` so the rewrite target cannot match its own
+ * pattern (the loop described in `_redirects`).
+ */
+const APP_SHELL_ROUTES = [
+  { routePath: '/kapital', file: 'kapital/index.html', title: 'Kapital &amp; Auszahlungen | RentenWiki.de' },
+  { routePath: '/vertrag/shell', file: 'app-shell/index.html', title: 'RentenWiki.de' },
+]
+
 function pickComponent(routeId, componentMap) {
   if (!Object.prototype.hasOwnProperty.call(componentMap, routeId)) {
     console.error(
@@ -483,6 +501,29 @@ async function main() {
       console.log(
         `[prerender] ${routeId.padEnd(28)} -> ${target.replace(projectRoot + '\\', '').replace(projectRoot + '/', '')} (${publicRouteRegistry[routeId].title.slice(0, 60)})`,
       )
+    }
+
+    for (const shell of APP_SHELL_ROUTES) {
+      const html = renderToString(
+        React.createElement(modules.prerenderShellMod.PrerenderShell, {
+          route: pathToRoute(shell.routePath),
+          editorial: false,
+        }),
+      )
+      let pageHtml = indexHtml
+      pageHtml = pageHtml.replace(/<title>[^<]*<\/title>\s*/, '')
+      pageHtml = pageHtml.replace(/<meta name="description"[^>]*\/>\s*/i, '')
+      pageHtml = pageHtml.replace(
+        '<!--SSG_HEAD-->',
+        `<title>${shell.title}</title>\n    <meta name="robots" content="noindex,follow" />`,
+      )
+      // No hydration marker: these pages read localStorage on mount, so the
+      // client always mounts via `createRoot` and replaces the static shell.
+      pageHtml = pageHtml.replace('<div id="root"></div>', `<div id="root">${html}</div>`)
+      const target = join(distDir, shell.file)
+      await ensureDir(target)
+      await writeFile(target, pageHtml, 'utf8')
+      console.log(`[prerender] ${shell.routePath.padEnd(28)} -> ${shell.file} (app shell)`)
     }
 
     await writeFile(join(distDir, 'sitemap.xml'), generateSitemap(), 'utf8')
