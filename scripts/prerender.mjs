@@ -505,9 +505,8 @@ async function main() {
 
     for (const shell of APP_SHELL_ROUTES) {
       const html = renderToString(
-        React.createElement(modules.appShellMod.AppShell, {
+        React.createElement(modules.prerenderShellMod.PrerenderShell, {
           route: pathToRoute(shell.routePath),
-          navigate: () => {},
           editorial: false,
         }),
       )
