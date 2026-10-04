@@ -14,3 +14,9 @@
 # so a proper 404-returning catch-all is not possible via _redirects alone.
 # Use wrangler.toml not_found_handling = "404-page" if a custom 404 page is
 # needed for unknown paths.
+#
+# Exception: /vertrag/:instanceId is a dynamic client-only route, so it is
+# rewritten (200, not redirected) onto the shared AppShell page emitted by
+# scripts/prerender.mjs. The target lives outside /vertrag/ so it can never
+# match its own pattern.
+/vertrag/* /app-shell/ 200
