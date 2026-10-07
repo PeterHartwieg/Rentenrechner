@@ -570,7 +570,7 @@ export function AngabenPage({ navigate }: Props) {
               <p className="angaben-aside-body">
                 Methodische Details und die zugehörigen Paragrafen findest du auf{' '}
                 <a
-                  href="/methode"
+                  href="/methode/"
                   className="angaben-aside-list-val"
                   style={{ textDecoration: 'underline', color: 'var(--rw-accent)' }}
                   onClick={(event) => {

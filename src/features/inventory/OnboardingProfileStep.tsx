@@ -82,7 +82,7 @@ export function OnboardingProfileStep({ draft, errors, mode, showErrors }: {
           <p className="onboarding-hint">{profile.childBirthYears.length
             ? profile.childBirthYears.join(', ') : 'Keine Kinder angegeben.'}</p>
         </div>
-        <a href="/eingaben">Weitere Angaben unter Deine Angaben</a>
+        <a href="/eingaben/">Weitere Angaben unter Deine Angaben</a>
       </OnboardingDisclosure>
     </div>
   )

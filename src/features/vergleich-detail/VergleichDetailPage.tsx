@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import './VergleichDetailPage.css'
 import type { Route } from '../../app/useRoute'
-import { ROUTES, routeToPath } from '../../app/useRoute'
+import { ROUTES, routeToHref } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { useCalculatorState } from '../../app/useCalculatorState'
 import { useSimulationResult } from '../../app/useSimulationResult'
@@ -271,7 +271,7 @@ export function VergleichDetailPage({ navigate, selectedScenarioId, onSelectScen
 
           <div className="vd-backline">
             <a
-              href={routeToPath(ROUTES.vergleich)}
+              href={routeToHref(ROUTES.vergleich)}
               className="vd-backlink"
               onClick={(event) => {
                 if (!shouldUseSpaNavigation(event)) return
@@ -325,7 +325,7 @@ function EmptyComparisonState({ navigate }: EmptyComparisonProps) {
             wegnehmen und was monatlich im Alter übrig bleibt.
           </p>
           <a
-            href={routeToPath(ROUTES.vergleich)}
+            href={routeToHref(ROUTES.vergleich)}
             className="vd-empty-cta"
             onClick={(event) => {
               if (!shouldUseSpaNavigation(event)) return

@@ -3,7 +3,7 @@ import './VergleichPage.css'
 import type { ProductId, ScenarioAssumptions, PersonalProfile } from '../../domain'
 import type { SimulationResultBundle } from '../../app/useSimulationResult'
 import type { Route } from '../../app/useRoute'
-import { ROUTES, routeToPath } from '../../app/useRoute'
+import { ROUTES, routeToHref } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
 import { resolveEffectiveScenarioId } from '../../app/simulationSelectors'
@@ -100,12 +100,12 @@ export function VergleichPage({
   const retirementAge = profile.retirementAge
 
   const scenarioQuery = `?scenario=${encodeURIComponent(effectiveScenarioId)}`
-  const drillInHref = `${routeToPath(ROUTES.vergleichDetail)}${scenarioQuery}`
+  const drillInHref = `${routeToHref(ROUTES.vergleichDetail)}${scenarioQuery}`
   // `/kapital` is dual-source (compare vs. plan) and picks its source from the
   // saved workspace mode by default. A user arriving from the comparison must
   // see the comparison, so the link names its origin explicitly.
   const kapitalQuery = `?quelle=vergleich&scenario=${encodeURIComponent(effectiveScenarioId)}`
-  const kapitalHref = `${routeToPath(ROUTES.kapital)}${kapitalQuery}`
+  const kapitalHref = `${routeToHref(ROUTES.kapital)}${kapitalQuery}`
 
   return (
     <section className="vergleich-shell" aria-label="Vergleich">

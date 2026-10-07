@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import './KapitalPage.css'
 import type { Route } from '../../app/useRoute'
-import { ROUTES, routeToPath } from '../../app/useRoute'
+import { ROUTES, routeToHref } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { usePortfolioState } from '../../app/portfolioState'
 import { useCombineSimulation } from '../../app/useCombineSimulation'
@@ -270,7 +270,7 @@ export function KapitalPage({ navigate }: Props) {
           <h1 className="kapital-headline">Kapital und Auszahlungen über das Leben</h1>
           <div className="kapital-backline">
             <a
-              href={routeToPath(backTarget.route)}
+              href={routeToHref(backTarget.route)}
               className="kapital-backlink"
               onClick={(event) => {
                 if (!shouldUseSpaNavigation(event)) return
@@ -297,7 +297,7 @@ export function KapitalPage({ navigate }: Props) {
             <p className="kapital-empty">
               Noch keine Verträge oder Produkte ausgewählt. Lege deinen Plan auf{' '}
               <a
-                href={routeToPath(ROUTES.eingabenProdukte)}
+                href={routeToHref(ROUTES.eingabenProdukte)}
                 onClick={(event) => {
                   if (!shouldUseSpaNavigation(event)) return
                   event.preventDefault()

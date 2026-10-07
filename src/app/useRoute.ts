@@ -142,6 +142,21 @@ export function routeToPath(route: Route): string {
 }
 
 /**
+ * Render a `Route` to the URL used in links and history entries. Prerendered
+ * routes are served as `<path>/index.html`, so the host 307-redirects the
+ * slash-less form; emitting the trailing slash avoids that redirect hop (and
+ * Search Console's "Seite mit Weiterleitung" report). `routeToPath` stays the
+ * slash-less key used for registry lookups. `/`, `/404` and the dynamic
+ * `/vertrag/...` routes (rewritten by `_redirects`, never redirected) are
+ * returned unchanged.
+ */
+export function routeToHref(route: Route): string {
+  const path = routeToPath(route)
+  if (path === '/' || path === '/404' || path.startsWith('/vertrag/')) return path
+  return `${path}/`
+}
+
+/**
  * Parse a `pathname` into a `Route`. Unknown paths fall through to
  * `{ kind: 'not-found' }` (NOT 'home' as before issue #02 — the legacy
  * `404.html = index.html` copy made every unknown URL look like the calculator).
@@ -378,7 +393,7 @@ export function useRoute(): UseRouteResult {
    */
   function navigate(target: Route, search?: string, hash?: string): void {
     if (typeof window === 'undefined') return
-    const path = routeToPath(target)
+    const path = routeToHref(target)
     const url = `${path}${search ?? ''}${hash ?? ''}`
     if (window.location.pathname + window.location.search + window.location.hash !== url) {
       window.history.pushState(null, '', url)

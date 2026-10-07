@@ -16,7 +16,7 @@ import type { Route } from '../../app/useRoute'
 import type { PlanSourceRow, PlanSummary } from '../../app/planSummary'
 import type { ResultReadiness } from '../../app/resultReadiness'
 import { countContractsWithOwnReturn, ownReturnAnnotation } from '../../app/contractReturns'
-import { ROUTES, routeToPath } from '../../app/useRoute'
+import { ROUTES, routeToHref } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { getProductMeta } from '../../app/productPresentation'
 import { PRODUCT_REGISTRY } from '../../engine/productRegistry'
@@ -499,7 +499,7 @@ function LegacyMeinPlanPage({
                 {' '}
                 <a
                   className="mein-plan-headline-aside-link"
-                  href={`${routeToPath(ROUTES.kapital)}${kapitalSearch(selectedScenarioId)}`}
+                  href={`${routeToHref(ROUTES.kapital)}${kapitalSearch(selectedScenarioId)}`}
                   onClick={(event) => {
                     if (!navigate) return
                     if (!shouldUseSpaNavigation(event)) return
@@ -561,7 +561,7 @@ function LegacyMeinPlanPage({
               <div className="mein-plan-context-links">
                 <a href={`#${SECTION_SENSITIVITAET.id}`}>Getestete Änderungen ansehen ↓</a>
                 <a
-                  href={routeToPath(ROUTES.methode)}
+                  href={routeToHref(ROUTES.methode)}
                   onClick={(event) => {
                     if (!navigate || !shouldUseSpaNavigation(event)) return
                     event.preventDefault()
@@ -763,7 +763,7 @@ function MeinPlanReceiptAside({ profile, assumptions, navigate }: MeinPlanReceip
   const editLink = (
     <a
       className="mein-plan-receipt-edit"
-      href="/eingaben"
+      href="/eingaben/"
       onClick={(event) => {
         if (!navigate) return
         if (!shouldUseSpaNavigation(event)) return
@@ -1087,7 +1087,7 @@ function ZusammenRowView({
   // `navigate` is absent would break right-click → open-in-new-tab.
   const isInstanceRow = row.kind === 'instance'
   const target: Route | null = isInstanceRow ? ROUTES.vertrag(row.instanceId) : null
-  const href = target ? routeToPath(target) : undefined
+  const href = target ? routeToHref(target) : undefined
   const labelNode = (
     <>
       <div className="mein-plan-zusammen-source">{row.label}</div>

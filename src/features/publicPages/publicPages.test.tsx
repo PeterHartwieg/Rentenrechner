@@ -1288,7 +1288,7 @@ describe('ArticleLayout wrapper — applied to every publicPages/*Page.tsx', () 
       text: a.textContent ?? '',
     }))
     expect(crumbLinks.find((l) => l.href === '/')?.text).toBe('Startseite')
-    expect(crumbLinks.find((l) => l.href === '/artikel')?.text).toBe('Alle Artikel')
+    expect(crumbLinks.find((l) => l.href === '/artikel/')?.text).toBe('Alle Artikel')
   })
 
   it('renders the "Wartung: Peter Hartwieg" maintainer line (no fictional bylines)', () => {

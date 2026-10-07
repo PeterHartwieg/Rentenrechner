@@ -1,6 +1,6 @@
 import { activeChromeNavId, type ChromeNavId } from './chromeRoutes'
 import type { AppView, Route } from '../../app/useRoute'
-import { ROUTES, routeToPath } from '../../app/useRoute'
+import { ROUTES, routeToHref } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 
 interface MobileNavProps {
@@ -72,7 +72,7 @@ export function MobileNav({ route, navigate, appView }: MobileNavProps) {
           return (
             <a
               key={item.id}
-              href={routeToPath(target) + (search ?? '')}
+              href={routeToHref(target) + (search ?? '')}
               aria-current={isActive ? 'page' : undefined}
               className={className}
               onClick={(event) => {

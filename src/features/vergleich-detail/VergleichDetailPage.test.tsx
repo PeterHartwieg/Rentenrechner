@@ -184,7 +184,7 @@ describe('VergleichDetailPage — compare-mode per-product breakdown surface', (
     const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
     const backlink = container.querySelector<HTMLAnchorElement>('.vd-backlink')
     expect(backlink).not.toBeNull()
-    expect(backlink!.getAttribute('href')).toBe('/vergleich')
+    expect(backlink!.getAttribute('href')).toBe('/vergleich/')
   })
 
   it('lead paragraph cites live Beitrag / Laufzeit / Renteneintritt with € + Jahre + age', () => {
@@ -263,7 +263,7 @@ describe('VergleichDetailPage — demo-mode (R3.3 audit decision Q4)', () => {
     const { container } = render(inShell(<VergleichDetailPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={() => {}} />))
     const cta = container.querySelector<HTMLAnchorElement>('.vd-empty-cta')
     expect(cta).not.toBeNull()
-    expect(cta!.getAttribute('href')).toBe('/vergleich')
+    expect(cta!.getAttribute('href')).toBe('/vergleich/')
   })
 
   it('a combine-mode workspace still renders its comparison, not a mode empty state', () => {

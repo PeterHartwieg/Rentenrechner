@@ -189,7 +189,7 @@ it('reviews the clicked offer at its quoted contribution without activating the 
   await waitForCalculator()
   fireEvent.click(await screen.findByRole('button', { name: 'Angebot prüfen: Zweites Angebot' }))
   expect(await screen.findByText('Danach: 350 € / Monat')).toBeInTheDocument()
-  expect(window.location.pathname).toBe('/alternativen')
+  expect(window.location.pathname).toBe('/alternativen/')
   const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_V2)!) as Workspace
   expect(saved.baseline.assumptions.insurance.map(i => i.status)).toEqual(['offered', 'offered'])
 })
