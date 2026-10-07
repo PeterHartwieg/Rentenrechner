@@ -278,7 +278,7 @@ export function ArticleLayout({
           </a>
           <span className="article-breadcrumb-sep" aria-hidden="true">›</span>
           <a
-            href="/artikel"
+            href="/artikel/"
             className="article-breadcrumb-back"
             onClick={(event) => {
               if (!navigate) return

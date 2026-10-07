@@ -255,7 +255,7 @@ describe('AppHeader', () => {
     render(<AppHeader route={R('/')} title="" navigate={() => {}} />)
     const tab = screen.getByText('Vergleich')
     expect(tab.tagName).toBe('A')
-    expect(tab.getAttribute('href')).toBe('/vergleich')
+    expect(tab.getAttribute('href')).toBe('/vergleich/')
     expect(tab.classList.contains('rw-app-header__nav-item--placeholder')).toBe(false)
   })
 
@@ -393,7 +393,7 @@ describe('MobileNav', () => {
     const nav = screen.getByRole('navigation', { name: /Mobile Hauptnavigation/ })
     expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['Mein Plan', 'Vergleich'])
     expect(within(nav).getByRole('link', { name: 'Mein Plan' })).toHaveAttribute('href', '/')
-    expect(within(nav).getByRole('link', { name: 'Vergleich' })).toHaveAttribute('href', '/vergleich')
+    expect(within(nav).getByRole('link', { name: 'Vergleich' })).toHaveAttribute('href', '/vergleich/')
   })
 
   it.each([

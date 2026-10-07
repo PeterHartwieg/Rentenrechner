@@ -1,5 +1,5 @@
 import type { Route } from '../../app/useRoute'
-import { ROUTES, routeToPath } from '../../app/useRoute'
+import { ROUTES, routeToHref } from '../../app/useRoute'
 import './legal.css'
 import { useFeedbackTarget } from '../qa-feedback/useFeedbackTarget'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
@@ -41,7 +41,7 @@ export function LegalFooter({ navigate }: Props) {
   return (
     <footer className="app-footer" {...containerTargetProps}>
       <nav className="app-footer-nav" aria-label="Weitere Informationen">
-        <a href={routeToPath(ROUTES.methode)} onClick={go(ROUTES.methode)}>
+        <a href={routeToHref(ROUTES.methode)} onClick={go(ROUTES.methode)}>
           Methode &amp; Quellen
         </a>
         <a href="/impressum/" onClick={go(ROUTES.impressum)} {...impressumLinkProps}>

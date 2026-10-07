@@ -223,7 +223,7 @@ export function LandingPage({ onChoice, navigate }: Props) {
               ))}
             </ul>
             <a
-              href="/artikel"
+              href="/artikel/"
               className="landing-featured-all"
               onClick={(event) => {
                 if (!navigate) return

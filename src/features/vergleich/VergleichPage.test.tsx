@@ -197,7 +197,7 @@ describe('VergleichPage — R1 layout', () => {
     )
     const drilldown = container.querySelector<HTMLAnchorElement>('.vergleich-drilldown__link')
     expect(drilldown).not.toBeNull()
-    expect(drilldown!.getAttribute('href')).toBe('/vergleich/details?scenario=optimistisch')
+    expect(drilldown!.getAttribute('href')).toBe('/vergleich/details/?scenario=optimistisch')
   })
 
   it('drill-in link encodes the EFFECTIVE scenario id, not a stale selectedScenarioId (CodeRabbit R1 Major)', () => {
@@ -226,7 +226,7 @@ describe('VergleichPage — R1 layout', () => {
     // The URL must NOT carry the stale id.
     expect(href).not.toContain('does-not-exist')
     // It must carry the fallback (basis) which is what the page rendered.
-    expect(href).toBe('/vergleich/details?scenario=basis')
+    expect(href).toBe('/vergleich/details/?scenario=basis')
   })
 
   it('renders BOTH drill-in links side by side: details + Kapital im Verlauf', () => {
@@ -246,11 +246,11 @@ describe('VergleichPage — R1 layout', () => {
     const links = container.querySelectorAll<HTMLAnchorElement>('.vergleich-drilldown__link')
     expect(links.length).toBe(2)
     // The existing drill-in to /vergleich/details carries the active scenario.
-    expect(links[0].getAttribute('href')).toBe('/vergleich/details?scenario=basis')
+    expect(links[0].getAttribute('href')).toBe('/vergleich/details/?scenario=basis')
     expect(links[0].textContent ?? '').toContain('Wohin geht das Geld')
     // The /kapital drill-in names its origin so the dual-source page renders
     // the comparison rather than the saved plan (F2).
-    expect(links[1].getAttribute('href')).toBe('/kapital?quelle=vergleich&scenario=basis')
+    expect(links[1].getAttribute('href')).toBe('/kapital/?quelle=vergleich&scenario=basis')
     expect(links[1].textContent ?? '').toContain('Kapital im Verlauf')
   })
 
@@ -272,7 +272,7 @@ describe('VergleichPage — R1 layout', () => {
     )
     const links = container.querySelectorAll<HTMLAnchorElement>('.vergleich-drilldown__link')
     const kapitalLink = links[1]
-    expect(kapitalLink.getAttribute('href')).toBe(`/kapital?quelle=vergleich&scenario=${expectedId}`)
+    expect(kapitalLink.getAttribute('href')).toBe(`/kapital/?quelle=vergleich&scenario=${expectedId}`)
 
     // Plain click → shouldUseSpaNavigation returns true → SPA intercept fires.
     // `cancelable: true` so we can inspect defaultPrevented after the click.

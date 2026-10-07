@@ -619,7 +619,7 @@ export const publicRouteRegistry = {
     ],
     calculatorCta: {
       label: 'Vergleich öffnen',
-      href: '/vergleich',
+      href: '/vergleich/',
     },
   },
   '/vergleich/details': {

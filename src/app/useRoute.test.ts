@@ -20,6 +20,7 @@ import {
   detectSavedMode,
   pathToRoute,
   routeToPath,
+  routeToHref,
   ROUTES,
 } from './useRoute'
 
@@ -251,5 +252,26 @@ describe('pathToRoute / routeToPath — simplification routes', () => {
     expect(pathToRoute('/vergleich/')).toEqual({ kind: 'vergleich' })
     expect(pathToRoute('/vorsorge/neu/')).toEqual({ kind: 'vorsorge-neu' })
     expect(pathToRoute('/alternativen/')).toEqual({ kind: 'alternativen' })
+  })
+})
+
+describe('routeToHref — trailing-slash link form (Search Console "Seite mit Weiterleitung")', () => {
+  it('appends a trailing slash to prerendered directory routes so links skip the 307 hop', () => {
+    expect(routeToHref(ROUTES.methode)).toBe('/methode/')
+    expect(routeToHref(ROUTES.vergleichDetail)).toBe('/vergleich/details/')
+    expect(routeToHref(ROUTES.eingabenProdukte)).toBe('/eingaben/produkte/')
+  })
+
+  it('leaves /, /404 and the rewritten /vertrag/... routes unchanged', () => {
+    expect(routeToHref(ROUTES.home)).toBe('/')
+    expect(routeToHref(ROUTES.notFound)).toBe('/404')
+    expect(routeToHref(ROUTES.vertrag('bav:1'))).toBe('/vertrag/bav%3A1')
+    expect(routeToHref(ROUTES.vertragBearbeiten('bav:1'))).toBe('/vertrag/bav%3A1/bearbeiten')
+  })
+
+  it('round-trips through pathToRoute', () => {
+    for (const route of [ROUTES.methode, ROUTES.kapital, ROUTES.vergleichDetail, ROUTES.datenschutz]) {
+      expect(pathToRoute(routeToHref(route))).toEqual(route)
+    }
   })
 })

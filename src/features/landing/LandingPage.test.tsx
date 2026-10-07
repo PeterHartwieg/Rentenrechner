@@ -605,7 +605,7 @@ describe('LandingPage — editorial layout (PR 2)', () => {
     const { container } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
     const link = container.querySelector('a.landing-featured-all') as HTMLAnchorElement | null
     expect(link).not.toBeNull()
-    expect(link!.getAttribute('href')).toBe('/artikel')
+    expect(link!.getAttribute('href')).toBe('/artikel/')
   })
 
   it('does NOT carry the mock\'s fictional "47 Artikel" / "318 Contributor" numbers', () => {

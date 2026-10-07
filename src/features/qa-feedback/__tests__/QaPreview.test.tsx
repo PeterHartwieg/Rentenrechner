@@ -132,7 +132,7 @@ describe('QaPreview — send-to-GitHub layout with explicit consent (ADR-0001)',
     renderPreview()
     const checkbox = screen.getByTestId('qa-preview-consent-checkbox')
     const label = checkbox.closest('label') as HTMLLabelElement
-    const link = label.querySelector('a[href="/datenschutz#qa-feedback"]')
+    const link = label.querySelector('a[href="/datenschutz/#qa-feedback"]')
     expect(link).not.toBeNull()
   })
 

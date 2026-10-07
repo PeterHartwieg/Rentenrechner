@@ -3,7 +3,7 @@ import { useViewport } from './useViewport'
 import { MobileSheet } from './MobileSheet'
 import { activeChromeNavId, type ChromeNavId } from './chromeRoutes'
 import type { AppView, Route } from '../../app/useRoute'
-import { ROUTES, routeToPath } from '../../app/useRoute'
+import { ROUTES, routeToHref } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 
 interface NavTarget {
@@ -159,7 +159,7 @@ export function AppHeader({ route, kicker, title, editorial, appView, navigate }
           {NAV_ITEM_IDS.map((id) => {
             const isActive = id === active
             const target = clickableTarget(id)
-            const href = routeToPath(target.route) + (target.search ?? '')
+            const href = routeToHref(target.route) + (target.search ?? '')
             return (
               <a
                 key={id}

@@ -1,5 +1,5 @@
 import { RightRailAccordion } from '../../ui/chrome/RightRailAccordion'
-import { ROUTES, routeToPath } from '../../app/useRoute'
+import { ROUTES, routeToHref } from '../../app/useRoute'
 import type { Route } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import type { InstanceCommon } from '../../domain/instances'
@@ -62,7 +62,7 @@ export function VertragMetadataAside({ instance, productId, navigate }: Props) {
             product list on /eingaben, which cannot change these values. */}
         <a
           className="vertrag-metadata-edit"
-          href={routeToPath(ROUTES.vertragBearbeiten(instance.instanceId))}
+          href={routeToHref(ROUTES.vertragBearbeiten(instance.instanceId))}
           onClick={(event) => {
             if (!shouldUseSpaNavigation(event)) return
             event.preventDefault()

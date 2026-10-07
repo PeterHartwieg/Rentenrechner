@@ -167,7 +167,7 @@ describe('AngabenPage — /eingaben route content', () => {
     const navigate = vi.fn()
     const { container } = render(<AngabenPage navigate={navigate} />)
     const methodeLinks = Array.from(container.querySelectorAll('a')).filter((a) =>
-      (a.getAttribute('href') ?? '') === '/methode',
+      (a.getAttribute('href') ?? '') === '/methode/',
     )
     expect(methodeLinks.length).toBeGreaterThan(0)
     fireEvent.click(methodeLinks[0])
@@ -177,7 +177,7 @@ describe('AngabenPage — /eingaben route content', () => {
   it('preserves modified-click default on the Methode aside link', () => {
     const navigate = vi.fn()
     const { container } = render(<AngabenPage navigate={navigate} />)
-    const methodeLink = container.querySelector('a[href="/methode"]') as HTMLAnchorElement | null
+    const methodeLink = container.querySelector('a[href="/methode/"]') as HTMLAnchorElement | null
     expect(methodeLink).not.toBeNull()
     fireEvent.click(methodeLink!, { ctrlKey: true })
     expect(navigate).not.toHaveBeenCalled()
@@ -442,7 +442,7 @@ describe('AngabenPage — right-rail accordion a11y', () => {
     // visible to the click event.
     fireEvent.click(toggles[1])
     const methodeLink = container.querySelector(
-      'a[href="/methode"]',
+      'a[href="/methode/"]',
     ) as HTMLAnchorElement | null
     expect(methodeLink).not.toBeNull()
     fireEvent.click(methodeLink!)

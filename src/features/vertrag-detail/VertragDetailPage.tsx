@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import './VertragDetailPage.css'
 import type { Route } from '../../app/useRoute'
-import { ROUTES, routeToPath } from '../../app/useRoute'
+import { ROUTES, routeToHref } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
 import { usePortfolioState } from '../../app/portfolioState'
 import { useCombineSimulation } from '../../app/useCombineSimulation'
@@ -200,7 +200,7 @@ export function VertragDetailPage({ instanceId, navigate }: Props) {
             <div className="vertrag-subtitle">{subtitleParts.join(' · ')}</div>
             <div className="vertrag-backline">
               <a
-                href={routeToPath(ROUTES.home)}
+                href={routeToHref(ROUTES.home)}
                 className="vertrag-backlink"
                 onClick={(event) => {
                   if (!shouldUseSpaNavigation(event)) return
@@ -227,7 +227,7 @@ export function VertragDetailPage({ instanceId, navigate }: Props) {
                 sind vorläufig und rechnen mit dem Modellwert.{' '}
                 <a
                   className="vertrag-missing-note-link"
-                  href={routeToPath(ROUTES.vertragBearbeiten(instance.instanceId))}
+                  href={routeToHref(ROUTES.vertragBearbeiten(instance.instanceId))}
                   onClick={(event) => {
                     if (!shouldUseSpaNavigation(event)) return
                     event.preventDefault()
@@ -312,7 +312,7 @@ interface EmptyStateProps {
 }
 
 function EmptyState({ title, body, ctaLabel, ctaTarget, navigate }: EmptyStateProps) {
-  const ctaHref = routeToPath(ctaTarget)
+  const ctaHref = routeToHref(ctaTarget)
   return (
     <div className="vertrag-shell">
       <div className="vertrag-main">

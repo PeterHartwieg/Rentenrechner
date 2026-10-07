@@ -52,7 +52,7 @@ describe('LegalFooter', () => {
     renderFooter()
     const link = screen.getByText(/Methode & Quellen/)
     expect(link.tagName).toBe('A')
-    expect(link.getAttribute('href')).toBe('/methode')
+    expect(link.getAttribute('href')).toBe('/methode/')
   })
 
   it('uses SPA navigation for a primary click on the methodology link', () => {

@@ -58,7 +58,7 @@ describe('ArticleLayout — chrome and metadata invariants', () => {
       a.getAttribute('href'),
     )
     expect(anchors).toContain('/')
-    expect(anchors).toContain('/artikel')
+    expect(anchors).toContain('/artikel/')
     // /etf-vs-bav lives in the "bAV und ETF" cluster of HUB_CLUSTERS.
     expect(crumb!.textContent).toContain('bAV und ETF')
   })

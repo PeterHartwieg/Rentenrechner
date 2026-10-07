@@ -98,7 +98,7 @@ export function ContractEditor(props: ContractEditorProps) {
           </fieldset>
           {sharedHorizon && <p className="contract-editor__note">
             Die gemeinsame Entnahmedauer bis Alter {props.retirementEndAge} gilt für alle Depots und Kapitalverzehr-Verträge.{' '}
-            <a href="/eingaben" onClick={(event) => { event.preventDefault(); props.onEditSharedHorizon() }}>Gemeinsame Entnahmedauer ändern</a>
+            <a href="/eingaben/" onClick={(event) => { event.preventDefault(); props.onEditSharedHorizon() }}>Gemeinsame Entnahmedauer ändern</a>
           </p>}
           <button type="button" className="contract-editor__link" onClick={props.onOpenFurtherInputs}>Weitere Angaben & Produktdetails</button>
         </details>

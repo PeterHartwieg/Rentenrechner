@@ -156,7 +156,7 @@ describe('KapitalPage — empty-state branches', () => {
     // PR #344 R2 (Codex CX3): the empty paragraph names "Verträge oder Produkte"
     // and must deep-link Schritt 2 (/eingaben/produkte) where the contract editor
     // lives, NOT Schritt 1 (/eingaben) which only carries Person/Einkommen.
-    const produkteLink = empty!.querySelector<HTMLAnchorElement>('a[href="/eingaben/produkte"]')
+    const produkteLink = empty!.querySelector<HTMLAnchorElement>('a[href="/eingaben/produkte/"]')
     expect(produkteLink).not.toBeNull()
     // And it must not point to Schritt 1 (which has no contract editor visible).
     expect(empty!.querySelector('a[href="/eingaben"]')).toBeNull()
@@ -220,7 +220,7 @@ describe('KapitalPage — source selection', () => {
     window.history.pushState(null, '', '/kapital?quelle=vergleich')
     const { container } = render(inShell(<KapitalPage navigate={() => {}} />))
     const backlink = container.querySelector<HTMLAnchorElement>('.kapital-backlink')
-    expect(backlink!.getAttribute('href')).toBe('/vergleich')
+    expect(backlink!.getAttribute('href')).toBe('/vergleich/')
     expect(backlink!.textContent ?? '').toContain('Zurück zum Vergleich')
   })
 

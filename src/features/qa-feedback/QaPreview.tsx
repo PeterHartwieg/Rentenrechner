@@ -192,7 +192,7 @@ export function QaPreview({
               Issue-Schließung gespeichert werden kann. Weitere Informationen in
               der{' '}
               <a
-                href="/datenschutz#qa-feedback"
+                href="/datenschutz/#qa-feedback"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="qa-preview__privacy-link"
