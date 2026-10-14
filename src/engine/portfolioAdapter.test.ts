@@ -2456,8 +2456,7 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
     expect(schedule[0]).toEqual(acceptedYearOne)
     const expectedYearOneProductAnnual =
       acceptedYearOne.annualOwnContribution +
-      acceptedYearOne.totalAllowanceAnnual +
-      acceptedYearOne.guenstigerpruefungBenefitAnnual
+      acceptedYearOne.totalAllowanceAnnual
     expect(result.rows[0].yearlyProductContribution).toBeCloseTo(
       expectedYearOneProductAnnual,
       8,
@@ -2489,8 +2488,7 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
     )
     const expectedYearTwoProductAnnual =
       yearTwoFunding.annualOwnContribution +
-      yearTwoFunding.totalAllowanceAnnual +
-      yearTwoFunding.guenstigerpruefungBenefitAnnual
+      yearTwoFunding.totalAllowanceAnnual
 
     expect(result.rows[1].yearlyProductContribution).toBeCloseTo(
       expectedYearTwoProductAnnual,

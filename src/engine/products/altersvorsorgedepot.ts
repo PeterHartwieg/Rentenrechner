@@ -39,14 +39,13 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
 
   // Total monthly contribution into the depot:
   //   regulated contract inflow (own + allowances), capped at the annual AltZertG
-  //   contract ceiling (6 840 EUR/year for 2026), plus the Günstigerprüfung tax
-  //   refund that the user reinvests on top.
+  //   contract ceiling (6 840 EUR/year for 2026). The tax refund is retained by
+  //   the household and already reduces monthlyNetCost; it is not reinvested.
   // Above the cap, the excess own contribution is simply not paid into the contract
   // (Anbieter would refuse it) — the funding helper exposes `cappedAtContractMax`
   // for the UI warning and comparison-card badge.
   const avdMonthlyContribution =
-    altersvorsorgedepotFunding.totalContractContributionAnnual / 12 +
-    altersvorsorgedepotFunding.guenstigerpruefungBenefitAnnual / 12
+    altersvorsorgedepotFunding.totalContractContributionAnnual / 12
   const fundingForYear = (yearIndex: number) => {
     const scheduled = ctx.altersvorsorgedepotFundingSchedule?.[yearIndex]
     if (scheduled) return scheduled
@@ -137,8 +136,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Alte
         return {
           monthlyUserCost: funding.monthlyNetCost,
           monthlyProductContribution:
-            funding.totalContractContributionAnnual / 12 +
-            funding.guenstigerpruefungBenefitAnnual / 12,
+            funding.totalContractContributionAnnual / 12,
         }
       },
     }),
