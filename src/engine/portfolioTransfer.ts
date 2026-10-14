@@ -166,9 +166,9 @@ export function collectTransferEvents(
  *
  * Approach: routes through per-channel surrender helpers to derive the tax
  * that matches the helper's normal payout-year math. The surrender proceeds
- * are passed directly (cost basis approximation: zero own contributions to
- * date, so the entire surrender amount is treated as gain unless the helper
- * short-circuits — e.g. pre-2005 insurance contracts are tax-free).
+ * are passed directly (historical paid-in premiums as cost basis when supplied; missing
+ * basis makes dependent plan outputs incomplete via result readiness.
+ * The helper short-circuits — e.g. pre-2005 insurance contracts are tax-free).
  *
  * Pre-2005 insurance: helper short-circuits to zero tax. Other modes use the
  * standard gain-ratio × marginal-rate cascade.
@@ -198,11 +198,10 @@ export function computeSurrenderTax(
 
   if (slot === 'insurance') {
     const ins = sourceInstance as InsuranceInstance
-    // Conservative cost-basis approximation: zero monthly contribution, so the
-    // entire surrender amount is treated as gain unless the helper short-
-    // circuits (pre-2005 contracts). Scope-limited per spec: other surrender
-    // modes follow the same direct-helper invocation pattern.
-    const totalContributedToDate = 0
+    // Historical premiums belong to the surrendered contract, separately from
+    // the after-tax principal reinvested into the target. Missing basis remains
+    // an incomplete input at the readiness boundary, never a confirmed zero.
+    const totalContributedToDate = ins.historicalCostBasisEUR ?? 0
     const effectiveEventCalendarYear = Math.max(eventCalendarYear, rules.year)
     const ageAtEventYear = profile.age + (effectiveEventCalendarYear - rules.year)
     const taxMode = deriveInsuranceTaxMode(
@@ -307,6 +306,10 @@ export function buildInstanceCapitalPolicy(
   const slot = detectProductSlot(instance)
   if (hasCurrentValue && slot !== 'altersvorsorgedepot' && slot !== 'riester') {
     policy.initialCapital = instance.currentValueEUR
+    if (slot === 'etf' || slot === 'insurance') {
+      policy.initialCostBasis = instance.historicalCostBasisEUR
+      if (slot === 'etf') policy.initialVorabpauschale = instance.historicalVorabpauschaleEUR
+    }
   }
 
   const capitalInjections: { year: number; amount: number }[] = []

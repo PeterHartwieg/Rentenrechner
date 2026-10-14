@@ -37,6 +37,8 @@ export interface AccumulationPolicy {
    *  (#71 Riester → AVD per AltZertG transfer; paid-up insurance phase 2).
    *  Default 0. */
   initialCapital?: number
+  initialCostBasis?: number
+  initialVorabpauschale?: number
   /** Beitragsdynamik: each year's monthly user cost, product contribution and
    *  employer contribution scale by `(1 + annualRate)^yearIndex`. Total
    *  planned contributions used by `acquisitionCostPct` are expanded to the
@@ -138,7 +140,7 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
   let feesInCurrentYear = 0
   let contributionsInCurrentYear = 0
   let balanceAtYearStart = capital
-  let cumulativeVorabpauschale = 0
+  let cumulativeVorabpauschale = policy?.initialVorabpauschale ?? 0
   // Issue 15 (TransferEvents): cumulative principal added by inbound transfers.
   // Bumps cost basis on `totalContributionsBeforeFees` so ETF / Vorabpauschale
   // logic does not retax already-taxed surrender proceeds reinvested into ETF.
@@ -304,8 +306,8 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
     // Cost-basis tracker: user-paid contributions plus injectedPrincipal from
     // inbound transfer events. ETF / pAV exit-tax helpers consume this as the
     // already-taxed basis to subtract from the gain. For a vanilla product
-    // with no transfers it equals totalProductContributions (oracle-stable).
-    totalContributionsBeforeFees: totalProductContributions + injectedPrincipal,
+    // Historical principal is tax basis only; never new user/product contributions.
+    totalContributionsBeforeFees: totalProductContributions + injectedPrincipal + (policy?.initialCostBasis ?? 0),
     cumulativeVorabpauschale,
     rows,
   }

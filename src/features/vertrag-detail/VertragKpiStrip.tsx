@@ -18,6 +18,7 @@ interface Props {
    * The plan's shared deflator (`realDeflator` in `planSummary.ts`); `1`
    * or undefined means no inflation assumption, so no second figure is shown.
    */
+  netAvailable?: boolean
   deflator?: number
   /**
    * This contract's back-allocated share of the household net income
@@ -51,6 +52,7 @@ export function VertragKpiStrip({
   currentAge,
   deflator,
   inPlanMonthlyNet,
+  netAvailable = true,
 }: Props) {
   const monthlyContribution = useMemo(
     () => extractMonthlyContribution(instance, productId),
@@ -91,8 +93,8 @@ export function VertragKpiStrip({
     },
     {
       label: 'Netto-Rente',
-      value: `${formatCurrency(netMonthlyPayout, 0)}`,
-      sublabel: 'pro Monat · nominal · nur dieser Vertrag',
+      value: netAvailable ? `${formatCurrency(netMonthlyPayout, 0)}` : '—',
+      sublabel: netAvailable ? 'pro Monat · nominal · nur dieser Vertrag' : 'Historische Steuerdaten fehlen',
       accent: 'rente',
     },
   ]

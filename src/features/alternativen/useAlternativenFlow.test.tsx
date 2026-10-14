@@ -27,6 +27,8 @@ function etf(instanceId: string, monthlyContribution: number): EtfInstance {
     label: `Depot ${instanceId.slice(-4)}`,
     monthlyContribution,
     currentValueEUR: 10_000,
+    historicalCostBasisEUR: 10_000,
+    historicalVorabpauschaleEUR: 0,
   }
 }
 
