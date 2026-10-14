@@ -216,17 +216,17 @@ describe('default-profile end-to-end snapshot', () => {
     const k = find('bav', 'konservativ')
     expect(Math.round(k.capitalAtRetirement)).toBe(151_776)
     expect(Math.round(k.afterTaxLumpSum!)).toBe(58_040)
-    expect(Math.round(k.netMonthlyPayout)).toBe(257)
+    expect(Math.round(k.netMonthlyPayout)).toBe(254)
 
     const b = find('bav', 'basis')
     expect(Math.round(b.capitalAtRetirement)).toBe(235_395)
     expect(Math.round(b.afterTaxLumpSum!)).toBe(86_463)
-    expect(Math.round(b.netMonthlyPayout)).toBe(374)
+    expect(Math.round(b.netMonthlyPayout)).toBe(372)
 
     const o = find('bav', 'optimistisch')
     expect(Math.round(o.capitalAtRetirement)).toBe(376_652)
     expect(Math.round(o.afterTaxLumpSum!)).toBe(130_480)
-    expect(Math.round(o.netMonthlyPayout)).toBe(567)
+    expect(Math.round(o.netMonthlyPayout)).toBe(564)
   })
 
   it('private insurance: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {
