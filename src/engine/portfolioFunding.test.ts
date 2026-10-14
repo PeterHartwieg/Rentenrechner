@@ -241,6 +241,75 @@ describe('buildPortfolioFunding — bAV', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildPortfolioFunding — Basisrente', () => {
+  it.each([
+    { totalMonthly: 1000, taxClass: 1 as const, pensionAnnual: undefined },
+    { totalMonthly: 4000, taxClass: 1 as const, pensionAnnual: undefined },
+    { totalMonthly: 2000, taxClass: 3 as const, pensionAnnual: 20_000 },
+  ])('preserves household saving across partitions and order ($totalMonthly, class $taxClass)', ({ totalMonthly, taxClass, pensionAnnual }) => {
+    const ws = makeBaseWorkspace()
+    ws.baseline.profile = { ...ws.baseline.profile, grossSalaryYear: 50_000, taxClass }
+    ws.baseline.assumptions.bav = []
+    const template = ws.baseline.assumptions.basisrente[0]
+    const run = (amounts: number[]) => {
+      ws.baseline.assumptions.basisrente = amounts.map((amount, i) => ({
+        ...template, instanceId: `basis-${i}`, monthlyGrossContribution: amount,
+      }))
+      ws.baseline.assumptions.basisrente.push({
+        ...template, instanceId: 'paid-up', status: 'paid_up', monthlyGrossContribution: 500,
+      })
+      return buildPortfolioFunding(ws, de2026Rules).basisrenteByInstanceId
+    }
+    // Use the same pension-system cap override as the real workspace path.
+    if (pensionAnnual !== undefined) {
+      ws.baseline.assumptions.statutoryPension = {
+        ...ws.baseline.assumptions.statutoryPension,
+        pensionBaselineType: 'versorgungswerk',
+        versorgungswerkMonthlyContribution: pensionAnnual / 24,
+        versorgungswerkEmployerMonthly: pensionAnnual / 24,
+      }
+    }
+    const single = run([totalMonthly])['basis-0']
+    if (pensionAnnual !== undefined) {
+      expect(single.annualPensionContributionsTowardsCap).toBeCloseTo(pensionAnnual, 8)
+    }
+    expect(single.annualDeductible).toBeCloseTo(
+      Math.min(totalMonthly * 12, single.remainingSchicht1Cap) * de2026Rules.basisrente.deductibleFraction,
+      8,
+    )
+    for (const amounts of [[totalMonthly / 2, totalMonthly / 2], [totalMonthly * 0.2, totalMonthly * 0.8], [totalMonthly * 0.8, totalMonthly * 0.2]]) {
+      const split = run(amounts)
+      const active = amounts.map((_, i) => split[`basis-${i}`])
+      expect(active.reduce((sum, f) => sum + f.annualTaxSaving, 0)).toBeCloseTo(single.annualTaxSaving, 8)
+      expect(active.reduce((sum, f) => sum + f.annualDeductible, 0)).toBeCloseTo(single.annualDeductible, 8)
+      expect(active.reduce((sum, f) => sum + f.monthlyNetCost, 0)).toBeCloseTo(single.monthlyNetCost, 8)
+      expect(active.reduce((sum, f) => sum + f.annualGrossContribution, 0)).toBeCloseTo(single.annualGrossContribution, 8)
+      expect(active[0].annualTaxSaving / single.annualTaxSaving).toBeCloseTo(amounts[0] / totalMonthly, 8)
+      expect(split['paid-up'].annualTaxSaving).toBe(0)
+      expect(split['paid-up'].annualDeductible).toBe(0)
+    }
+  })
+
+  it('keeps zero-deduction contracts finite when pension contributions exhaust the cap', () => {
+    const ws = makeBaseWorkspace()
+    ws.baseline.assumptions.statutoryPension = {
+      ...ws.baseline.assumptions.statutoryPension,
+      pensionBaselineType: 'versorgungswerk',
+      versorgungswerkMonthlyContribution: de2026Rules.basisrente.schicht1CapSingle / 12,
+      versorgungswerkEmployerMonthly: 0,
+    }
+    const template = ws.baseline.assumptions.basisrente[0]
+    ws.baseline.assumptions.basisrente = [0, 500].map((amount, i) => ({
+      ...template, instanceId: `basis-${i}`, monthlyGrossContribution: amount,
+    }))
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+    for (const entry of Object.values(funding.basisrenteByInstanceId)) {
+      expect(entry.annualDeductible).toBe(0)
+      expect(entry.annualTaxSaving).toBe(0)
+      expect(entry.monthlyTaxSaving).toBe(0)
+      expect(entry.monthlyNetCost).toBe(0)
+    }
+  })
+
   it('two active Basisrente instances: aggregate is scaled when over Schicht-1 cap', () => {
     const ws = makeBaseWorkspace()
     // remainingSchicht1Cap = schicht1CapSingle - GRV contributions.

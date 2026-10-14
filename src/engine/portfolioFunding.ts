@@ -43,6 +43,7 @@ import { calculateAvdFunding, maxAvdMonthlyOwnContribution } from './altersvorso
 import { allocateRiesterHouseholdFunding, calculateRiesterFunding } from './riester'
 import { stripInstanceCommonKeys } from './portfolioProjection'
 import { childBirthYearsUnder25InYear } from './childEligibility'
+import { calculateSalaryPhaseTaxDelta } from './salaryPhaseFunding'
 
 // ---------------------------------------------------------------------------
 // Paid-up funding helpers
@@ -190,9 +191,9 @@ export function hasUsedCareerStarterBonus(
  *     calculateSalaryResult once with the aggregate. Downstream Basisrente / AVD /
  *     Riester funding uses this combined baseline.
  *   - Basisrente §10 Abs. 3: sum monthlyGrossContribution; scale; call
- *     `calculateBasisrenteFunding` with the scaled value. The §10 Abs. 3
- *     deductible cap then no longer binds inside the funding helper because
- *     the aggregate is already capped.
+ *     `calculateBasisrenteFunding` with the scaled value. Compute tax relief
+ *     once on the aggregate deduction and apportion by deductible share so
+ *     splitting contracts cannot reuse the highest marginal tax brackets.
  *   - Riester §10a / §86: sum monthlyOwnContribution; scale; call
  *     `calculateRiesterFunding` with the scaled value. Allowance + Mindesteigen-
  *     beitrag are computed at the per-instance level by the existing helper
@@ -431,6 +432,26 @@ export function buildPortfolioFunding(
       scaledSingleton,
       pensionSystemAnnualContributionOverride,
     )
+  }
+  // A progressive tariff is not additive: each contract must not independently
+  // deduct from the same original zvE. Apply the combined accepted deduction
+  // once, then allocate that household saving in proportion to deductions.
+  const totalBasisrenteDeductible = Object.values(basisrenteByInstanceId).reduce(
+    (sum, funding) => sum + funding.annualDeductible,
+    0,
+  )
+  const { taxSavingAnnual: basisrenteTaxSavingAnnual } = calculateSalaryPhaseTaxDelta(
+    rules,
+    salaryForOtherFunding.taxableIncomeForDeductions ?? salaryForOtherFunding.taxableIncome,
+    totalBasisrenteDeductible,
+    salaryForOtherFunding.deductionFilingStatus ?? 'single',
+  )
+  for (const funding of Object.values(basisrenteByInstanceId)) {
+    funding.annualTaxSaving = totalBasisrenteDeductible > 0
+      ? basisrenteTaxSavingAnnual * (funding.annualDeductible / totalBasisrenteDeductible)
+      : 0
+    funding.monthlyTaxSaving = funding.annualTaxSaving / 12
+    funding.monthlyNetCost = Math.max(0, funding.monthlyGrossContribution - funding.monthlyTaxSaving)
   }
   for (const inst of paidUpBasisrente) {
     const singleton = stripInstanceCommonKeys(
