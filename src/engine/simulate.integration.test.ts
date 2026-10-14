@@ -195,6 +195,7 @@ describe('default-profile end-to-end snapshot', () => {
   const find = (productId: string, scenarioId: string) =>
     sim.products.find((p) => p.productId === productId && p.scenarioId === scenarioId)!
 
+  // Math audit: monthly average-cost sales include payout-year gains; capital/lump sums unchanged.
   it('ETF: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {
     const k = find('etf', 'konservativ')
     expect(Math.round(k.capitalAtRetirement)).toBe(92_024)
@@ -204,12 +205,12 @@ describe('default-profile end-to-end snapshot', () => {
     const b = find('etf', 'basis')
     expect(Math.round(b.capitalAtRetirement)).toBe(144_628)
     expect(Math.round(b.afterTaxLumpSum!)).toBe(135_904)
-    expect(Math.round(b.netMonthlyPayout)).toBe(827)
+    expect(Math.round(b.netMonthlyPayout)).toBe(824)
 
     const o = find('etf', 'optimistisch')
     expect(Math.round(o.capitalAtRetirement)).toBe(234_090)
     expect(Math.round(o.afterTaxLumpSum!)).toBe(212_056)
-    expect(Math.round(o.netMonthlyPayout)).toBe(1_515)
+    expect(Math.round(o.netMonthlyPayout)).toBe(1_510)
   })
 
   it('bAV: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {
