@@ -890,7 +890,6 @@ export function buildPortfolioFunding(
   const altersvorsorgedepotHeadroomByInstanceId = Object.fromEntries(
     activeAvd.map((instance) => {
       const funding = altersvorsorgedepotByInstanceId[instance.instanceId]
-      const requestedAnnual = funding.annualOwnContribution + funding.totalAllowanceAnnual
       const fundedAnnual = funding.totalContractContributionAnnual
       const capAnnual = rules.altersvorsorgedepot.contractContributionCapAnnual
       const effectiveEligibility = {
@@ -903,6 +902,9 @@ export function buildPortfolioFunding(
           rules.year,
         ).length,
       }
+      // Funding amounts now describe accepted cash; retain the original own
+      // request for warnings while using the funding helper's eligible allowance.
+      const requestedAnnual = instance.monthlyOwnContribution * 12 + funding.totalAllowanceAnnual
       const maximumOwnAnnual = maxAvdMonthlyOwnContribution(
         effectiveEligibility,
         rules,
