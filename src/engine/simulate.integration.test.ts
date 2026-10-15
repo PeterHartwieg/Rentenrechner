@@ -144,6 +144,10 @@ describe('simulateRetirementComparison — golden snapshots (basis, 5 %)', () =>
     expect(r.netMonthlyPayout).toMatchSnapshot('netMonthlyPayout')
   })
 
+  // Refund conservation correction: retained Günstigerprüfung lowers user cost,
+  // never adds contract capital. AVD capital drops by €27,993.57 (net €119.33/month);
+  // Riester capital drops by €46,579.45 (net €89.17/month) versus the old snapshots.
+  // These are engine snapshots, not amended external tax-oracle fixtures.
   it('Altersvorsorgedepot', () => {
     const r = resultFor(products, 'altersvorsorgedepot', 'basis')
     expect(r.capitalAtRetirement).toMatchSnapshot('capitalAtRetirement')

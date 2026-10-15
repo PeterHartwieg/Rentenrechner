@@ -48,10 +48,10 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
     : { ...riester, monthlyOwnContribution: effectiveMonthlyOwnContribution }
 
   // Total monthly contribution = portfolio-capped Eigenbeitrag
-  // + state allowances + Günstigerprüfung tax refund flowing back into the contract.
+  // + state allowances. The tax refund is retained by the household and already
+  // reduces monthlyNetCost; investing it as well would count the refund twice.
   const totalMonthlyContribution =
     effectiveMonthlyOwnContribution +
-    riesterFunding.guenstigerpruefungBenefitAnnual / 12 +
     riesterFunding.totalAllowanceAnnual / 12
   const yearlyFundingCache = new Map<number, ReturnType<typeof calculateRiesterFunding>>()
   const calculateFundingForYear = (yearIndex: number) => {
@@ -120,7 +120,6 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
             monthlyUserCost: funding.monthlyNetCost,
             monthlyProductContribution:
               funding.monthlyOwnContribution +
-              funding.guenstigerpruefungBenefitAnnual / 12 +
               funding.totalAllowanceAnnual / 12,
           }
         },

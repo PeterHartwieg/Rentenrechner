@@ -420,8 +420,7 @@ describe('buildPortfolioFunding — AVD', () => {
       const result = perInstance[instance.instanceId][0]
       for (const yearIndex of [0, 1]) {
         const expectedProductContribution =
-          schedule[yearIndex].totalContractContributionAnnual +
-          schedule[yearIndex].guenstigerpruefungBenefitAnnual
+          schedule[yearIndex].totalContractContributionAnnual
         expect(result.rows[yearIndex].yearlyProductContribution).toBeCloseTo(
           expectedProductContribution,
           8,
