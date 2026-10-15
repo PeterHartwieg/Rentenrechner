@@ -152,6 +152,7 @@ export interface ContractFieldSpec {
   readonly supportsUnknown: boolean
   /** Clearing this optional field removes its stored override. */
   readonly clearOnUnknown?: boolean
+  readonly unknownWhenAbsent?: boolean
   readonly unknownMode: ContractUnknownMode
   /**
    * A core field: the contract is not answerable without it. An `empty` core
@@ -251,6 +252,22 @@ const statusSpec: ContractFieldSpec = {
   supportsUnknown: false,
   unknownMode: 'none',
 }
+
+function historicalTaxSpec(id: string, label: string, hint: string): ContractFieldSpec {
+  return {
+    id, path: id, labelKey: `contract.${id}`, label, hint,
+    kind: 'number', unit: 'EUR', section: 'details', min: 0,
+    step: 100, supportsUnknown: true, unknownMode: 'explicit-unknown',
+    unknownWhenAbsent: true,
+    visibleWhen: (draft) => Number(draftFieldValue(draft, 'currentValueEUR')) > 0,
+  }
+}
+const historicalBasisSpec = historicalTaxSpec('historicalCostBasisEUR',
+  'Bisherige Anschaffungskosten / Beiträge',
+  'ETF: Anschaffungskosten des heutigen Bestands. Versicherung: bisher eingezahlte Beiträge. Kein aktueller Marktwert. Ohne diese Angabe bleibt das Nettoergebnis unvollständig.')
+const historicalVorabSpec = historicalTaxSpec('historicalVorabpauschaleEUR',
+  'Bisher angesetzte Vorabpauschalen',
+  'Summe der Vorabpauschalen des heutigen ETF-Bestands vor Teilfreistellung, nicht die gezahlte Steuer. 0 eingeben, wenn keine angesetzt wurden.')
 
 function currentValueSpec(mirrorPaths?: readonly string[]): ContractFieldSpec {
   return {
@@ -696,6 +713,7 @@ const VERSICHERUNG_SPECS: readonly ContractFieldSpec[] = [
   anbieterSpec,
   statusSpec,
   currentValueSpec(),
+  historicalBasisSpec,
   contributionSpec('monthlyContribution', 'Monatlicher Beitrag', 'contract.pav.contribution'),
   contractStartYearSpec('minimum'),
   {
@@ -869,6 +887,8 @@ const ETF_SPECS: readonly ContractFieldSpec[] = [
   anbieterSpec,
   statusSpec,
   currentValueSpec(),
+  historicalBasisSpec,
+  historicalVorabSpec,
   contributionSpec('monthlyContribution', 'Monatliche Sparrate', 'contract.etf.contribution'),
   contractStartYearSpec('details'),
   {
@@ -1045,7 +1065,7 @@ export function draftFromInstance(
     const raw = getAtPath(instance, spec.path)
     const value = isFieldValue(raw) ? raw : fallbackFor(spec)
     const status = resolveInputStatus(inputStatus, evidenceMap[spec.id], spec.id)
-    fields[spec.id] = fieldFromStatus(value, spec.clearOnUnknown && raw === undefined ? 'unknown' : status)
+    fields[spec.id] = fieldFromStatus(value, (spec.clearOnUnknown || spec.unknownWhenAbsent) && raw === undefined ? 'unknown' : status)
   }
 
   return {
@@ -1100,7 +1120,7 @@ export function newDraft(
   for (const spec of CONTRACT_FIELD_SPECS[productId]) {
     const raw = getAtPath(base, spec.path)
     fields[spec.id] = fieldFromStatus(isFieldValue(raw) ? raw : fallbackFor(spec),
-      spec.clearOnUnknown && raw === undefined ? 'unknown' : 'assumed')
+      (spec.clearOnUnknown || spec.unknownWhenAbsent) && raw === undefined ? 'unknown' : 'assumed')
     if (spec.core) pending.push(spec.id)
   }
 

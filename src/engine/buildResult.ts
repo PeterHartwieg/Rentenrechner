@@ -78,6 +78,8 @@ export interface BuildProductPolicy {
     saverAllowanceOverride?: (yearIndex: number) => number
   }
   initialCapital?: number
+  initialCostBasis?: number
+  initialVorabpauschale?: number
   contributionGrowth?: { annualRate: number }
   yearlyContributions?: AccumulationPolicy['yearlyContributions']
   /** Issue 15 — TransferEvent inbound capital injections. See `AccumulationPolicy`. */
@@ -213,6 +215,8 @@ export function buildProductResult<
             }
           : undefined,
         initialCapital: params.policy.initialCapital,
+        initialCostBasis: params.policy.initialCostBasis,
+        initialVorabpauschale: params.policy.initialVorabpauschale,
         contributionGrowth: params.policy.contributionGrowth,
         yearlyContributions: params.policy.yearlyContributions,
         capitalInjections: params.policy.capitalInjections,

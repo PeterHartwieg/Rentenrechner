@@ -94,6 +94,9 @@ export function simulateEtf(ctx: EtfCalculationContext, scenario: ReturnScenario
       )
 
       return {
+        ...(ctx.instanceCapitalPolicy?.initialVorabpauschale !== undefined
+          ? { initialVorabpauschale: ctx.instanceCapitalPolicy.initialVorabpauschale }
+          : {}),
         afterTaxLumpSum,
         grossMonthlyPayout,
         netMonthlyPayout: etfPayoutRows.length > 0

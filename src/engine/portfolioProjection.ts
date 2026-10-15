@@ -245,6 +245,8 @@ export const INSTANCE_COMMON_KEYS = [
   'status',
   'contractStartYear',
   'currentValueEUR',
+  'historicalCostBasisEUR',
+  'historicalVorabpauschaleEUR',
   'evidenceMap',
   'ownedBy',
   'transferEvents',

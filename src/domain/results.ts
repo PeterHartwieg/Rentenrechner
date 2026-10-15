@@ -115,6 +115,8 @@ export interface BaseProductResult {
 }
 
 export interface EtfProductResult extends BaseProductResult {
+  /** Opening credit; excluded from forecast-year allowance demand. */
+  initialVorabpauschale?: number
   productId: 'etf'
   afterTaxLumpSum: number       // ETF always has an after-tax value (never locked)
   etfPayoutRows: EtfPayoutRow[] // required; only ETF produces a payout schedule

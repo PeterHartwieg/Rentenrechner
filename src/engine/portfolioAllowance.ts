@@ -75,7 +75,7 @@ export function calculateEtfAllowanceDemand(
   const yearly: number[] = new Array(totalYears).fill(0)
 
   // Accumulation phase demand: per-year VP = Δ cumulativeVorabpauschale.
-  let prevCumVp = 0
+  let prevCumVp = result.initialVorabpauschale ?? 0
   for (const row of result.rows) {
     const yearIdx = row.year - 1
     if (yearIdx < 0 || yearIdx >= totalYears) continue
