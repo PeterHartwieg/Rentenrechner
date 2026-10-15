@@ -17,6 +17,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import { CombineDetailView } from './CombineDetailView'
 import { runCombineSimulation } from '../../app/useCombineSimulation'
+import { selectResultReadiness } from '../../app/resultReadiness'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 import { de2026Rules } from '../../rules/de2026'
 import { migrateV1ToV2 } from '../../storage'
@@ -87,6 +88,26 @@ function defaultProps(workspace: Workspace) {
 }
 
 describe('CombineDetailView — blocked household total (#395)', () => {
+  it('withholds after-tax capital when a real existing ETF has unknown historical basis', () => {
+    const ws = makeBaseWorkspace()
+    const a = ws.baseline.assumptions
+    a.bav = []; a.insurance = []; a.basisrente = []; a.altersvorsorgedepot = []; a.riester = []
+    a.etf[0].currentValueEUR = 100000
+    delete a.etf[0].historicalCostBasisEUR
+    const bundle = runCombineSimulation(ws, de2026Rules)
+    const readiness = selectResultReadiness(ws, bundle)
+    expect(readiness.blocking.some((reason) => reason.code === 'instance-tax-basis-unknown')).toBe(true)
+    const props = defaultProps(ws)
+    const { container } = render(<CombineDetailView {...props}
+      combinedForScenario={bundle.combinedByScenarioId[props.selectedScenarioId]}
+      householdTotalBlocked={!readiness.canShowHouseholdTotal} />)
+    const cells = container.querySelector('tbody tr')!.querySelectorAll('td')
+    expect(cells[3].textContent).not.toBe('—')
+    expect(cells[5].textContent).toBe('—')
+    expect(cells[5].getAttribute('title')).toBeNull()
+    expect(cells[6].textContent).toBe('—')
+  })
+
   it('dashes the Netto-Rente column and leaves the per-contract columns alone', () => {
     const ws = makeBaseWorkspace()
     const props = defaultProps(ws)
@@ -547,4 +568,25 @@ describe('CombineDetailView — provenance markers (#28)', () => {
     expect(rows.length).toBe(1)
     expect(confirmedPills.length).toBe(1)
   })
+})
+
+it('keeps annuity monthly income visible while withholding capital tax with absent premiums, then restores known capital', () => {
+  const ws = makeBaseWorkspace(); const a = ws.baseline.assumptions
+  a.bav = []; a.etf = []; a.basisrente = []; a.altersvorsorgedepot = []; a.riester = []
+  ws.baseline.profile.age = 66; ws.baseline.profile.retirementAge = 67
+  a.returnScenarios = [{ id: 'basis', label: 'Null', annualReturn: 0 }]
+  const instance = a.insurance[0]
+  Object.assign(instance, { currentValueEUR: 100000, monthlyContribution: 0, payoutMode: 'leibrente', contractStartYear: 2020 })
+  delete instance.historicalCostBasisEUR
+  expect(selectResultReadiness(ws, runCombineSimulation(ws, de2026Rules)).canShowHouseholdTotal).toBe(true)
+  const { container, rerender } = render(<CombineDetailView {...defaultProps(ws)} />)
+  let cells = container.querySelector('tbody tr')!.querySelectorAll('td')
+  expect(cells[5].textContent).not.toBe('—')
+  expect(cells[6].textContent).toBe('—')
+  expect(container.querySelector('.break-even-note')).toBeNull()
+  instance.historicalCostBasisEUR = 100000
+  rerender(<CombineDetailView {...defaultProps(ws)} />)
+  cells = container.querySelector('tbody tr')!.querySelectorAll('td')
+  expect(cells[5].textContent).not.toBe('—')
+  expect(cells[6].textContent).not.toBe('—')
 })

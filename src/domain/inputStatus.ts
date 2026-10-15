@@ -1,3 +1,5 @@
+import type { EvidenceState } from './instances'
+
 /**
  * Input-status metadata — "known, assumed, unknown" at the scenario boundary.
  *
@@ -174,4 +176,23 @@ export function sanitizePensionEntryMethod(value: unknown): PensionEntryMethod |
     default:
       return undefined
   }
+}
+
+/** Shared evidence fallback; explicit unknown always wins in resolveInputStatus. */
+export function evidenceStateToInputStatus(
+  evidence: EvidenceState | undefined | null,
+): InputStatus {
+  if (evidence === 'statement') return 'document'
+  if (evidence === 'user_confirmed') return 'entered'
+  return 'assumed'
+}
+
+export function resolveInputStatus(
+  map: InputStatusMap | undefined,
+  evidence: EvidenceState | undefined,
+  key: string,
+): InputStatus {
+  const explicit = map?.[key]
+  if (explicit !== undefined) return explicit
+  return evidenceStateToInputStatus(evidence)
 }

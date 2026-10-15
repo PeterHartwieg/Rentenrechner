@@ -24,7 +24,7 @@ import type { InputStatus } from '../domain/inputStatus'
 import type { InstanceCommon } from '../domain/instances'
 import type { Workspace, WorkspaceAssumptionsV2 } from '../domain/workspace'
 import type { ProductId } from '../engine/productRegistry'
-import { deriveInsuranceTaxMode } from '../engine/insurancePayout'
+import { capitalTaxReadinessForInstance } from '../engine/capitalTaxReadiness'
 import { activeRules } from '../rules'
 import { PRODUCT_REGISTRY } from '../engine/productRegistry'
 import { resolveInputStatus } from '../features/results/provenanceHelpers'
@@ -292,21 +292,14 @@ export function selectResultReadiness(
         label: `Die zukünftige Teilkündigung / Übertragung von „${label}“ kann noch nicht verlässlich berechnet werden.`,
         target, instanceId: instance.instanceId })
     }
-    const insuranceGainTaxed = productId === 'versicherung' && (hasSurrenderTransfer || instance.payoutMode !== 'leibrente') &&
-      deriveInsuranceTaxMode(instance.contractStartYear,
-        activeRules.year + profile.retirementAge - profile.age - instance.contractStartYear,
-        profile.retirementAge, instance.oldContractTaxFreeEligible) !== 'pre2005'
-    if ((instance.currentValueEUR ?? 0) > 0 && (productId === 'etf' || insuranceGainTaxed)) {
-      const fields = productId === 'etf'
-        ? ['historicalCostBasisEUR', 'historicalVorabpauschaleEUR'] as const
-        : ['historicalCostBasisEUR'] as const
-      if (fields.some((key) => instance[key] === undefined || statusOf(instance, key) === 'unknown')) {
-        reasons.push({
-          code: 'instance-tax-basis-unknown', severity: 'blocking',
-          label: `Historische Steuerdaten von „${label}“ fehlen (Anschaffungskosten / Beiträge${productId === 'etf' ? ' und Vorabpauschalen' : ''}).`,
-          target, instanceId: instance.instanceId,
-        })
-      }
+    const capitalReadiness = capitalTaxReadinessForInstance(productId, instance, profile, activeRules)
+    const needsCapitalBasisForMonthly = productId === 'etf' || (productId === 'versicherung' && (hasSurrenderTransfer || instance.payoutMode !== 'leibrente'))
+    if (needsCapitalBasisForMonthly && capitalReadiness.missingFields.some((key) => key !== 'currentValueEUR')) {
+      reasons.push({
+        code: 'instance-tax-basis-unknown', severity: 'blocking',
+        label: `Historische Steuerdaten von „${label}“ fehlen (Anschaffungskosten / Beiträge${productId === 'etf' ? ' und Vorabpauschalen' : ''}).`,
+        target, instanceId: instance.instanceId,
+      })
     }
     const contributionField = CONTRIBUTION_FIELD_BY_PRODUCT[productId]
     if (instance.status !== 'paid_up' && statusOf(instance, contributionField) === 'unknown') {
