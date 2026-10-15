@@ -87,3 +87,20 @@ invented. The raw engine retains its legacy numeric estimate for compatibility, 
 claiming forecast-valued basis; readiness prevents publishing that estimate. Current-year surrender and annuity baselines without surrender remain
 supported. Applied decision previews check both baseline and applied readiness;
 unavailable results carry a null delta and reason through the cache and UI.
+
+
+Yearly historical-basis outputs use `YearlyProjection.cumulativeTaxBasis`: the
+basis at that specific row, after opening principal, transfer injections and
+proportional disposals. An absent field means it equals that row's cumulative
+new product contributions, preserving old result/fixture compatibility. The
+cashflow table and both export projection modes consume this row basis rather
+than a final-horizon basis or the new-contribution total alone.
+
+Combine CSV yearly ETF net capital is a hypothetical full liquidation for each
+scenario/year. Its allowance is apportioned from the actual row's liquidation
+demand (basis and VP credit included), independently of future payout demand.
+The caller supplies joint filing explicitly from `workspace.baseline.partner`.
+Readiness-blocked CSVs keep dependent yearly net capital and ETF payout gain,
+allowance, tax and net cells blank. The remaining-allowance recommendation uses
+current accumulation-year taxable VP, excluding historical credits and applying
+partial exemption; future payout rows are used only after accumulation ends.

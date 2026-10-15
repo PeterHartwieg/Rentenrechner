@@ -26,6 +26,7 @@ import { activeRules } from '../rules'
 import { halbeinkuenfteMinAgeForContractStartYear } from '../rules/legalConstants'
 import { deriveInsuranceTaxMode, computeRuntimeYearsAtRetirement } from '../engine/insurancePayout'
 import { deriveBavLumpSumTaxMode } from '../engine/bavPayout'
+import { calculateEtfAllowanceDemand } from '../engine/portfolioAllowance'
 import { buildPortfolioFunding } from '../engine/portfolioFunding'
 import { childBirthYearsUnder25InYear } from '../engine/childEligibility'
 import { defaultHaircutFor } from './contractPolicy'
@@ -444,9 +445,8 @@ const avdCapRemainingRule: Rule = (input: RuleEngineInput): Atom[] | null => {
 /**
  * Sparerpauschbetrag remaining (§20 Abs. 9 EStG).
  *
- * €1,000 single / €2,000 married. Used = sum of annual Vorabpauschale across ETF
- * and AVD instances from the first accumulation year, or payout-year `saverAllowanceUsed`
- * for ETF instances that have payout rows.
+ * Used = current-year taxable ETF demand after partial exemption and historical
+ * VP credit. Payout demand applies only once accumulation has ended.
  *
  * Married status is detected from `workspace.baseline.partner`.
  */
@@ -462,16 +462,15 @@ const sparerpauschbetragRemainingRule: Rule = (input: RuleEngineInput): Atom | n
   let usedAnnual = 0
   for (const result of input.simulationResult.products) {
     if (result.productId === 'etf') {
-      // Either accumulation-phase first-year Vorabpauschale, OR payout-phase
-      // saverAllowanceUsed (mutually exclusive — payout-phase takes precedence).
-      const payoutRow = result.etfPayoutRows?.[0]
-      if (payoutRow) {
-        usedAnnual += payoutRow.saverAllowanceUsed
-      } else if (result.rows.length > 0) {
-        // rows[0].cumulativeVorabpauschale equals year-1 Vorabpauschale because the
-        // running total starts at 0 (see accumulation.ts:95-165).
-        usedAnnual += result.rows[0].cumulativeVorabpauschale
-      }
+      const instances = input.workspace.baseline.assumptions.etf
+      const instance = instances.find((entry) => entry.instanceId === result.instanceId) ??
+        (instances.length === 1 ? instances[0] : undefined)
+      // Future payout rows also exist during accumulation. Demand index 0 is
+      // today's taxable VP; retirement demand only enters when there are no
+      // accumulation rows. The shared helper excludes the opening VP credit.
+      usedAnnual += result.rows.length > 0
+        ? calculateEtfAllowanceDemand(result, instance?.equityPartialExemption ?? 0, result.rows.length, 1)[0]
+        : result.etfPayoutRows[0]?.saverAllowanceUsed ?? 0
     } else if (result.productId === 'altersvorsorgedepot') {
       // AVD Vorabpauschale during accumulation.
       if (result.rows.length > 0) {

@@ -173,6 +173,9 @@ function expectMatchesFixture(actual: unknown, expected: unknown, path = '$'): v
 /** Full-precision projection of a result onto the frozen fixture slice. */
 function frozenView(r: ProductResult) {
   const etf = r as EtfProductResult
+  const originalRow = (row: ProductResult['rows'][number] | undefined) => row
+    ? Object.fromEntries(Object.entries(row).filter(([key]) => key !== 'cumulativeTaxBasis'))
+    : undefined
   return {
     productId: r.productId,
     scenarioId: r.scenarioId,
@@ -198,9 +201,9 @@ function frozenView(r: ProductResult) {
     netMonthlyPayout: r.netMonthlyPayout,
     payoutEndAge: etf.payoutEndAge,
     rowCount: r.rows.length,
-    rowFirst: r.rows[0],
-    rowLast: r.rows[r.rows.length - 1],
-    rowVorabPeak: r.rows.reduce((a, b) => (b.cumulativeVorabpauschale > a.cumulativeVorabpauschale ? b : a), r.rows[0]),
+    rowFirst: originalRow(r.rows[0]),
+    rowLast: originalRow(r.rows[r.rows.length - 1]),
+    rowVorabPeak: originalRow(r.rows.reduce((a, b) => (b.cumulativeVorabpauschale > a.cumulativeVorabpauschale ? b : a), r.rows[0])),
     payoutRowCount: etf.etfPayoutRows.length,
     payoutRowFirst: etf.etfPayoutRows[0],
     payoutRowLast: etf.etfPayoutRows[etf.etfPayoutRows.length - 1],

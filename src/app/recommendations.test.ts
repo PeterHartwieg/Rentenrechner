@@ -861,7 +861,7 @@ describe('sparerpauschbetrag_remaining rule', () => {
       etfPayoutRows: [],
       rows: [
         {
-          year: 2026, age: 36, productId: 'etf', scenarioId: 'basis',
+          year: 1, age: 36, productId: 'etf', scenarioId: 'basis',
           balance: 50_000, realBalance: 45_000, yearlyUserCost: 2_400,
           yearlyProductContribution: 2_400, yearlyEmployerContribution: 0,
           yearlyFees: 100, cumulativeFees: 100, cumulativeProductContributions: 2_400,
