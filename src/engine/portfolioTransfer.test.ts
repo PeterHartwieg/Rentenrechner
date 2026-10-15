@@ -656,7 +656,7 @@ describe('portfolioTransfer — buildInstanceCapitalPolicy', () => {
     const ws = makeBaseWorkspace()
     const ev = {
       type: 'surrender_reinvest' as const,
-      year: de2026Rules.year + 5,
+      year: de2026Rules.year,
       sourceInstanceId: 'versicherung-src',
       targetInstanceId: 'etf-tgt',
       amountEUR: 40_000,
@@ -703,7 +703,7 @@ describe('portfolioTransfer — buildInstanceCapitalPolicy', () => {
     // Halbeinkuenfte source
     const ev = {
       type: 'surrender_reinvest' as const,
-      year: de2026Rules.year + 5,
+      year: de2026Rules.year,
       sourceInstanceId: 'versicherung-taxable',
       targetInstanceId: 'etf-injection',
       amountEUR: 50_000,
@@ -750,7 +750,7 @@ describe('portfolioTransfer — buildInstanceCapitalPolicy', () => {
     )
   })
 
-  it('surrender_reinvest source: capitalWithdrawal = post-haircut proceeds', () => {
+  it('surrender_reinvest source: gross disposed amount leaves the contract', () => {
     const ws = makeBaseWorkspace()
     const ev = {
       type: 'surrender_reinvest' as const,
@@ -768,8 +768,8 @@ describe('portfolioTransfer — buildInstanceCapitalPolicy', () => {
     }
     const srcPolicy = buildInstanceCapitalPolicy(pavSrc, ws, de2026Rules, [ev], [])
     expect(srcPolicy!.capitalWithdrawals).toHaveLength(1)
-    // Source loses post-haircut proceeds = 20_000 × 0.90 = 18_000
-    expect(srcPolicy!.capitalWithdrawals![0].amount).toBeCloseTo(18_000, 4)
+    // Source loses the gross disposed amount; the haircut reduces target proceeds.
+    expect(srcPolicy!.capitalWithdrawals![0].amount).toBeCloseTo(20_000, 4)
   })
 
   it('source instance missing from workspace → inbound event is skipped gracefully', () => {

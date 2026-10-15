@@ -26,6 +26,7 @@ import {
   defaultBeitragErhoehenEUR,
   type ContractDecision,
 } from './contractDecisions'
+import { selectResultReadiness } from './resultReadiness'
 import { runCombineSimulation } from './useCombineSimulation'
 import { runRules, type Atom } from './recommendations'
 
@@ -34,8 +35,9 @@ import { runRules, type Atom } from './recommendations'
 // ---------------------------------------------------------------------------
 
 export interface DecisionDelta {
-  /** Raw EUR/month change in combined Netto-Rente vs. baseline. Unrounded. */
-  deltaMonthlyNetEUR: number
+  /** Raw EUR/month change; null when either side is incomplete or invalid. */
+  deltaMonthlyNetEUR: number | null
+  unavailableReason?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -86,7 +88,22 @@ export function simulateContractDecision(
   const applied = applyContractDecision(workspace, decision)
 
   // 2. Run the full combine simulation on the what-if workspace.
-  const bundle = runCombineSimulation(applied, rules)
+  let bundle: ReturnType<typeof runCombineSimulation>
+  try {
+    bundle = runCombineSimulation(applied, rules)
+  } catch {
+    return { deltaMonthlyNetEUR: null, unavailableReason: 'Die Berechnung konnte nicht abgeschlossen werden.' }
+  }
+  // Both sides must be publishable. Use the caller's baseline headline for the
+  // baseline finite-result check, and each workspace's own input metadata.
+  const baselineReadiness = selectResultReadiness(workspace, {
+    ...bundle, combinedByScenarioId: { [scenarioId]: baselineCombined },
+  })
+  const appliedReadiness = selectResultReadiness(applied, bundle)
+  if (!baselineReadiness.canShowHouseholdTotal || !appliedReadiness.canShowHouseholdTotal) {
+    return { deltaMonthlyNetEUR: null,
+      unavailableReason: [...baselineReadiness.blocking, ...appliedReadiness.blocking].map((reason) => reason.label).join(' ') }
+  }
 
   // 3. Read the applied result at the SAME scenarioId the caller used for the
   //    baseline. Falls back to 'basis' then returnScenarios[0] only if the
@@ -99,11 +116,13 @@ export function simulateContractDecision(
     bundle.combinedByScenarioId['basis'] ??
     bundle.combinedByScenarioId[applied.baseline.assumptions.returnScenarios[0]?.id ?? '']
   if (!appliedCombined) {
-    return { deltaMonthlyNetEUR: 0 }
+    return { deltaMonthlyNetEUR: null, unavailableReason: 'Für dieses Szenario liegt kein Ergebnis vor.' }
   }
 
   const delta = appliedCombined.monthlyNetIncome - baselineCombined.monthlyNetIncome
-  return { deltaMonthlyNetEUR: delta }
+  return Number.isFinite(delta)
+    ? { deltaMonthlyNetEUR: delta }
+    : { deltaMonthlyNetEUR: null, unavailableReason: 'Für dieses Szenario liegt kein gültiges Ergebnis vor.' }
 }
 
 // ---------------------------------------------------------------------------

@@ -233,6 +233,8 @@ function makeEtfWorkspace(monthlyContribution: number): Workspace {
     status: 'active',
     contractStartYear: 2024,
     currentValueEUR: 5_000,
+    historicalCostBasisEUR: 5_000,
+    historicalVorabpauschaleEUR: 0,
     monthlyContribution,
     annualAssetFee: 0.002,
     annualContributionGrowthRate: 0,
@@ -300,7 +302,7 @@ describe('simulateContractDecision — bAV beitragsfrei (1.5% RIY)', () => {
     // contributions offset each other in the simulation).
     // Accept: either clearly negative OR within a very small range (the engine
     // models a 28-year-old with 39 years to go; paid-up dramatically reduces accumulation).
-    expect(result.deltaMonthlyNetEUR).toBeLessThan(0)
+    expect(result.deltaMonthlyNetEUR!).toBeLessThan(0)
   })
 })
 
@@ -314,7 +316,7 @@ describe('simulateContractDecision — weiterfuehren (identity)', () => {
     const result = simulateContractDecision(ws, decision, de2026Rules, baselineCombined, basisScenarioIdFor(ws))
 
     // Identity delta — no change to workspace; re-simulation must equal baseline.
-    expect(Math.abs(result.deltaMonthlyNetEUR)).toBeLessThan(1e-6)
+    expect(Math.abs(result.deltaMonthlyNetEUR!)).toBeLessThan(1e-6)
   })
 })
 
@@ -343,17 +345,17 @@ describe('simulateContractDecision — Riester → AVD certified transfer', () =
     const manualDelta = appliedCombined.monthlyNetIncome - baselineCombined.monthlyNetIncome
 
     // The delta must be non-zero (the certified transfer changes capital allocation).
-    expect(Math.abs(result.deltaMonthlyNetEUR)).toBeGreaterThan(0)
+    expect(Math.abs(result.deltaMonthlyNetEUR!)).toBeGreaterThan(0)
 
     // Sign must match the manual diff.
     if (manualDelta > 0) {
-      expect(result.deltaMonthlyNetEUR).toBeGreaterThan(0)
+      expect(result.deltaMonthlyNetEUR!).toBeGreaterThan(0)
     } else if (manualDelta < 0) {
-      expect(result.deltaMonthlyNetEUR).toBeLessThan(0)
+      expect(result.deltaMonthlyNetEUR!).toBeLessThan(0)
     }
 
     // Value must be within ±1 EUR/month of the manual diff.
-    expect(Math.abs(result.deltaMonthlyNetEUR - manualDelta)).toBeLessThan(1)
+    expect(Math.abs(result.deltaMonthlyNetEUR! - manualDelta)).toBeLessThan(1)
   })
 
   it('returns a non-zero delta for virtual Riester→AVD transfer (no existing AVD)', () => {
@@ -367,8 +369,8 @@ describe('simulateContractDecision — Riester → AVD certified transfer', () =
     const result = simulateContractDecision(ws, decision, de2026Rules, baselineCombined, basisScenarioIdFor(ws))
 
     // The simulation must produce a result (not throw or return 0 from a missing scenario).
-    expect(typeof result.deltaMonthlyNetEUR).toBe('number')
-    expect(isFinite(result.deltaMonthlyNetEUR)).toBe(true)
+    expect(typeof result.deltaMonthlyNetEUR!).toBe('number')
+    expect(isFinite(result.deltaMonthlyNetEUR!)).toBe(true)
   })
 })
 
@@ -397,7 +399,7 @@ describe('simulateContractDecision — ETF contribution increase', () => {
     const result = simulateContractDecision(wsHigh, decision, de2026Rules, baselineCombined, basisScenarioIdFor(wsHigh))
 
     // Higher contribution → more capital → higher payout → positive delta.
-    expect(result.deltaMonthlyNetEUR).toBeGreaterThan(0)
+    expect(result.deltaMonthlyNetEUR!).toBeGreaterThan(0)
   })
 })
 
@@ -416,6 +418,8 @@ function makeEtfOnlyWorkspace(monthlyContribution: number): Workspace {
     status: 'active',
     contractStartYear: 2022,
     currentValueEUR: 3_000,
+    historicalCostBasisEUR: 3_000,
+    historicalVorabpauschaleEUR: 0,
     monthlyContribution,
     annualAssetFee: 0.002,
     annualContributionGrowthRate: 0,
@@ -452,6 +456,8 @@ function makePavEtfWorkspace(etfMonthlyContribution: number): Workspace {
     status: 'active',
     contractStartYear: 2002,
     currentValueEUR: 20_000,
+    historicalCostBasisEUR: 20_000,
+    historicalVorabpauschaleEUR: 0,
     monthlyContribution: 100,
     oldContractTaxFreeEligible: true,
     monthlyOtherRetirementIncome: 0,
@@ -480,6 +486,8 @@ function makePavEtfWorkspace(etfMonthlyContribution: number): Workspace {
     status: 'active',
     contractStartYear: 2023,
     currentValueEUR: 5_000,
+    historicalCostBasisEUR: 5_000,
+    historicalVorabpauschaleEUR: 0,
     monthlyContribution: etfMonthlyContribution,
     annualAssetFee: 0.002,
     annualContributionGrowthRate: 0,
@@ -519,7 +527,7 @@ describe('simulateContractDecision — ETF-only beitrag-erhoehen (gh#20 regressi
     const result = simulateContractDecision(ws, decision!, de2026Rules, baselineCombined, basisScenarioIdFor(ws))
 
     // Higher contribution → more capital → higher payout → positive delta.
-    expect(result.deltaMonthlyNetEUR).toBeGreaterThan(0)
+    expect(result.deltaMonthlyNetEUR!).toBeGreaterThan(0)
   })
 })
 
@@ -537,7 +545,7 @@ describe('simulateContractDecision — PAV pre-2005 + ETF beitrag-erhoehen (gh#2
 
     // Higher ETF contribution → more capital → higher payout → positive delta.
     // This pins the user-reported scenario: ETF +180 €/month should not produce a negative delta.
-    expect(result.deltaMonthlyNetEUR).toBeGreaterThan(0)
+    expect(result.deltaMonthlyNetEUR!).toBeGreaterThan(0)
   })
 })
 
@@ -578,7 +586,7 @@ describe('createDecisionSimulationCache', () => {
     // If second call had re-run the simulation it would produce a different object.
     // Same reference is the proof that no re-run occurred.
     expect(second).toBe(first)
-    expect(second.deltaMonthlyNetEUR).toBe(first.deltaMonthlyNetEUR)
+    expect(second.deltaMonthlyNetEUR!).toBe(first.deltaMonthlyNetEUR!)
   })
 
   it('returns a different object reference after invalidate() (cache miss)', () => {
@@ -596,7 +604,7 @@ describe('createDecisionSimulationCache', () => {
     // After invalidate() the cache was cleared; result2 is a newly-created object.
     expect(result2).not.toBe(result1)
     // But the values should be numerically equal (same simulation, same inputs).
-    expect(result2.deltaMonthlyNetEUR).toBeCloseTo(result1.deltaMonthlyNetEUR, 6)
+    expect(result2.deltaMonthlyNetEUR!).toBeCloseTo(result1.deltaMonthlyNetEUR!, 6)
   })
 
   it('returns the cached value for one decision while computing fresh for a different decision', () => {
@@ -618,7 +626,7 @@ describe('createDecisionSimulationCache', () => {
     expect(a2).toBe(a1)
     expect(b2).toBe(b1)
     // Sanity: the two decisions produce different deltas.
-    expect(a1.deltaMonthlyNetEUR).not.toBeCloseTo(b1.deltaMonthlyNetEUR, 3)
+    expect(a1.deltaMonthlyNetEUR!).not.toBeCloseTo(b1.deltaMonthlyNetEUR!, 3)
   })
 })
 
@@ -703,6 +711,8 @@ function makeAuditFixtureWorkspace(): Workspace {
     status: 'active',
     contractStartYear: 2020,
     currentValueEUR: 5_000,
+    historicalCostBasisEUR: 5_000,
+    historicalVorabpauschaleEUR: 0,
     monthlyContribution: 200,
     annualAssetFee: 0.002,
     annualContributionGrowthRate: 0,
@@ -923,7 +933,7 @@ describe('simulateContractDecision — Bug A: basis-scenario baseline must use s
     // for the applied result but the caller provided a baseline at 'basis' (5 %).
     // The 2 pp gap compounded over 39 years flips the sign and produces a large
     // negative delta (many EUR/month). The correct value is < 1 EUR/month.
-    expect(Math.abs(result.deltaMonthlyNetEUR)).toBeLessThan(1)
+    expect(Math.abs(result.deltaMonthlyNetEUR!)).toBeLessThan(1)
   })
 
   // The original fix (hardcoded 'basis' inside simulateContractDecision) only
@@ -955,7 +965,7 @@ describe('simulateContractDecision — Bug A: basis-scenario baseline must use s
     // Identity decision on the same scenario → delta must be ≈ 0. With the
     // pre-canonical fix (hardcoded basis), the applied side runs at 5 % while
     // the baseline runs at 7 %, producing a multi-EUR negative delta.
-    expect(Math.abs(result.deltaMonthlyNetEUR)).toBeLessThan(1)
+    expect(Math.abs(result.deltaMonthlyNetEUR!)).toBeLessThan(1)
   })
 })
 
@@ -984,6 +994,6 @@ describe('createDecisionSimulationCache — Bug B: different newMonthlyEUR must 
 
     // A higher monthly contribution produces a higher delta.
     // Bug B: result400 === result300 (stale cache hit) → this assertion fails.
-    expect(result400.deltaMonthlyNetEUR).toBeGreaterThan(result300.deltaMonthlyNetEUR)
+    expect(result400.deltaMonthlyNetEUR!).toBeGreaterThan(result300.deltaMonthlyNetEUR!)
   })
 })

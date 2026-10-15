@@ -175,10 +175,9 @@ export function VertragDetailPage({ instanceId, navigate }: Props) {
   const instanceResult = productResultsForInstance.find((r) => r.scenarioId === scenarioId)
     ?? productResultsForInstance[0]
   const combinedForScenario = simulation.combinedByScenarioId[scenarioId]
-  const historicalTaxBlockers = selectResultReadiness(workspace, simulation).blocking
-    .filter((reason) => reason.code === 'instance-tax-basis-unknown')
-  const netAvailable = !historicalTaxBlockers.some((reason) => reason.instanceId === instanceId)
-  const householdNetAvailable = historicalTaxBlockers.length === 0
+  const readiness = selectResultReadiness(workspace, simulation)
+  const netAvailable = readiness.canShowHouseholdTotal
+  const householdNetAvailable = readiness.canShowHouseholdTotal
 
   const meta = getProductMeta(slotInfo.slot)
   const productLabel = meta?.label ?? slotInfo.slot
@@ -274,7 +273,7 @@ export function VertragDetailPage({ instanceId, navigate }: Props) {
             {/* Single-contract Gebühren-Vergleich (relocated from the legacy
                 Vergleich pane dispatcher in PR 9). Shows this contract's
                 Nettoaufwand / Netto-Rendite / Gebühren stack. */}
-            {!householdNetAvailable && <p>Historische Steuerdaten fehlen. Bitte ergänze Anschaffungskosten / Beiträge und bei ETFs die bisherigen Vorabpauschalen in den Vertragsangaben.</p>}
+            {!householdNetAvailable && <p>{readiness.blocking.map((reason) => reason.label).join(' ')}</p>}
             <VertragFeeImpact
               instanceResult={netAvailable ? instanceResult : undefined}
               productId={slotInfo.slot}

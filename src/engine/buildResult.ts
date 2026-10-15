@@ -78,6 +78,8 @@ export interface BuildProductPolicy {
     saverAllowanceOverride?: (yearIndex: number) => number
   }
   initialCapital?: number
+  /** Remove the same fraction of basis as capital on each withdrawal. */
+  proportionalCostBasisWithdrawals?: boolean
   initialCostBasis?: number
   initialVorabpauschale?: number
   contributionGrowth?: { annualRate: number }
@@ -216,6 +218,7 @@ export function buildProductResult<
           : undefined,
         initialCapital: params.policy.initialCapital,
         initialCostBasis: params.policy.initialCostBasis,
+        proportionalCostBasisWithdrawals: params.policy.proportionalCostBasisWithdrawals,
         initialVorabpauschale: params.policy.initialVorabpauschale,
         contributionGrowth: params.policy.contributionGrowth,
         yearlyContributions: params.policy.yearlyContributions,

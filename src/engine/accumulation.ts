@@ -37,6 +37,8 @@ export interface AccumulationPolicy {
    *  (#71 Riester → AVD per AltZertG transfer; paid-up insurance phase 2).
    *  Default 0. */
   initialCapital?: number
+  /** Remove the same fraction of basis as capital on each withdrawal. */
+  proportionalCostBasisWithdrawals?: boolean
   initialCostBasis?: number
   initialVorabpauschale?: number
   /** Beitragsdynamik: each year's monthly user cost, product contribution and
@@ -145,6 +147,7 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
   // Bumps cost basis on `totalContributionsBeforeFees` so ETF / Vorabpauschale
   // logic does not retax already-taxed surrender proceeds reinvested into ETF.
   let injectedPrincipal = 0
+  let withdrawnBasis = 0
   // Index injection / withdrawal / cost-basis maps by year for O(1) lookup at
   // the start of each year. Multi-entry-same-year sums (per spec one-line note).
   // Multi-source same-target-same-year: events are summed (additive injections).
@@ -213,13 +216,15 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
         capital += inj
         balanceAtYearStart += inj
       }
+      if (cb > 0) injectedPrincipal += cb
       if (wd > 0) {
         const actualWithdrawal = Math.min(wd, capital)
+        if (policy?.proportionalCostBasisWithdrawals && capital > 0) {
+          const basis = totalProductContributions + injectedPrincipal + (policy.initialCostBasis ?? 0) - withdrawnBasis
+          withdrawnBasis += basis * actualWithdrawal / capital
+        }
         capital -= actualWithdrawal
         balanceAtYearStart -= actualWithdrawal
-      }
-      if (cb > 0) {
-        injectedPrincipal += cb
       }
     }
 
@@ -307,7 +312,7 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
     // inbound transfer events. ETF / pAV exit-tax helpers consume this as the
     // already-taxed basis to subtract from the gain. For a vanilla product
     // Historical principal is tax basis only; never new user/product contributions.
-    totalContributionsBeforeFees: totalProductContributions + injectedPrincipal + (policy?.initialCostBasis ?? 0),
+    totalContributionsBeforeFees: totalProductContributions + injectedPrincipal + (policy?.initialCostBasis ?? 0) - withdrawnBasis,
     cumulativeVorabpauschale,
     rows,
   }

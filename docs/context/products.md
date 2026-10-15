@@ -73,6 +73,17 @@ The engine's numeric result types retain their existing incomplete-input
 placeholders; callers consuming raw `simulatePortfolio` results must also consume
 readiness rather than publish a net value from missing historical tax inputs.
 The public Simulate API accepts compare-mode inputs, which do not include these
-combine-only current holdings. Insurance surrender now consumes known historical
-premium basis; its existing dated-premium and partial-surrender allocation
-approximations are not expanded by this change.
+combine-only current holdings. Current-year insurance surrender allocates historical premium basis in the same
+proportion as gross contract capital disposed, removes that basis from the source,
+and reinvests only proceeds after haircut and tax. Repeated withdrawals consume
+remaining capital and basis in source-array order. The target receives a new
+basis equal to its after-tax injection, not the source's historical principal.
+See [BMF EStH 2025, Anhang 22a I, Rn. 61–64](https://stberh.bundesfinanzministerium.de/esth/2025/B-Anhaenge/Anhang-22a/I/inhalt.html).
+
+Future-dated insurance surrender is explicitly incomplete and blocks dependent
+net results. Its tax basis cannot currently be valued consistently for every
+return scenario / Monte Carlo path; no separate baseline-return projection is
+invented. The raw engine retains its legacy numeric estimate for compatibility, without
+claiming forecast-valued basis; readiness prevents publishing that estimate. Current-year surrender and annuity baselines without surrender remain
+supported. Applied decision previews check both baseline and applied readiness;
+unavailable results carry a null delta and reason through the cache and UI.
