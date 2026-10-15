@@ -34,6 +34,8 @@ describe('makeBasisrenteCandidate — visible candidate behavior', () => {
     ws.baseline.profile = { ...ws.baseline.profile, grossSalaryYear: 80_000, taxClass: 3 }
     ws.baseline.partner = { ...ws.baseline.profile, grossSalaryYear: 0, taxClass: 5 }
     ws.baseline.assumptions.bav = []
+    ws.baseline.assumptions.riester = []
+    ws.baseline.assumptions.altersvorsorgedepot = []
     ws.baseline.assumptions.basisrente = [{
       ...defaultAssumptions.basisrente, instanceId: 'basis-existing', label: 'Bestehend',
       status: 'active', contractStartYear: de2026Rules.year, evidenceMap: {}, monthlyGrossContribution: 1000,
@@ -48,6 +50,32 @@ describe('makeBasisrenteCandidate — visible candidate behavior', () => {
     const netCost = (funding: typeof after) => Object.values(funding.basisrenteByInstanceId).reduce((sum, f) => sum + f.monthlyNetCost, 0)
     expect(netCost(after) - netCost(g.portfolioFunding)).toBeCloseTo(draft.netCashOutEUR, 8)
     expect(draft.netCashOutEUR).toBeCloseTo(1500, 1)
+  })
+
+  it.each([1000, 1500])('prices lost existing certified refunds inside the %i EUR net budget', (budget) => {
+    const ws = buildBerndWorkspace()
+    ws.baseline.profile = { ...ws.baseline.profile, grossSalaryYear: 60_000, childBirthYears: [] }
+    ws.baseline.assumptions.bav = []
+    ws.baseline.assumptions.basisrente = []
+    ws.baseline.assumptions.riester = [{
+      ...defaultAssumptions.riester, instanceId: 'riester-existing', label: 'Riester', status: 'active',
+      contractStartYear: de2026Rules.year, evidenceMap: {}, monthlyOwnContribution: 150,
+    }]
+    ws.baseline.assumptions.altersvorsorgedepot = [{
+      ...defaultAssumptions.altersvorsorgedepot, instanceId: 'avd-existing', label: 'AVD', status: 'active',
+      contractStartYear: de2026Rules.year, evidenceMap: {}, monthlyOwnContribution: 150,
+    }]
+    const g = buildGeneratorContext(ws, budget)
+    const draft = makeBasisrenteCandidate(g)!
+    const prospective = structuredClone(ws)
+    prospective.baseline.assumptions.basisrente.push(draft.newInstance as typeof ws.baseline.assumptions.basisrente[number])
+    const after = buildPortfolioFunding(prospective, de2026Rules)
+    const netCost = (funding: typeof after) => [funding.basisrenteByInstanceId, funding.riesterByInstanceId, funding.altersvorsorgedepotByInstanceId]
+      .flatMap((entries) => Object.values(entries)).reduce((sum, f) => sum + f.monthlyNetCost, 0)
+    const incrementalCost = netCost(after) - netCost(g.portfolioFunding)
+    expect(incrementalCost).toBeCloseTo(draft.netCashOutEUR, 8)
+    expect(incrementalCost).toBeLessThanOrEqual(budget + 0.01)
+    if (!draft.cappedToRemaining) expect(incrementalCost).toBeCloseTo(budget, 1)
   })
 
   it('always emits a NEW-instance candidate (no top-up path)', () => {
