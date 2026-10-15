@@ -46,7 +46,7 @@ import type {
 import type { EtfProductResult } from '../domain/results'
 import type { WorkspaceAssumptionsV2 } from '../domain/workspace'
 import type { EtfInstance } from '../domain/instances'
-import { afterTaxInvestmentCapital } from './etfPayout'
+import { afterTaxInvestmentCapital, etfLiquidationTaxableDemand } from './etfPayout'
 import { capitalMultipleAnnualized } from './buildResult'
 
 // ---------------------------------------------------------------------------
@@ -256,9 +256,10 @@ export function applyCrossInstanceSparerpauschbetrag(
       if (!result || result.productId !== 'etf') continue
       const partialExemption = inst.equityPartialExemption
       const vp = result.rows.at(-1)?.cumulativeVorabpauschale ?? result.initialVorabpauschale ?? 0
-      const gain = Math.max(0, result.capitalAtRetirement - result.totalContributionsBeforeFees - vp)
       liquidationResults.set(inst.instanceId, { result, partialExemption, vp })
-      liquidationDemand.set(inst.instanceId, [gain * (1 - partialExemption)])
+      liquidationDemand.set(inst.instanceId, [etfLiquidationTaxableDemand(
+        result.capitalAtRetirement, result.totalContributionsBeforeFees, vp, partialExemption,
+      )])
     }
     const liquidationAllowances = apportionSparerpauschbetrag(liquidationDemand, fullAllowance, 1)
     for (const [id, { result, partialExemption, vp }] of liquidationResults) {

@@ -142,3 +142,20 @@ it('real CSV keeps unknown-basis yearly net capital and payout tax/net values bl
     for (const index of [6, 7, 8, 9]) expect(cells[index]).toBe('')
   }
 })
+
+
+it('integrated household liquidation headlines match terminal CSV rows with unequal ETF gains', () => {
+  const w = fixture()
+  w.baseline.partner = { ...defaultProfile }
+  const a = w.baseline.assumptions
+  a.insurance = []
+  a.returnScenarios[0].annualReturn = 0.05
+  a.etf[0].historicalCostBasisEUR = 50000
+  a.etf.push({ ...a.etf[0], instanceId: 'etf-small', currentValueEUR: 3000,
+    historicalCostBasisEUR: 2900, equityPartialExemption: 0.2 })
+  const { rows, bundle } = exportRows(w)
+  for (const instance of a.etf) {
+    const terminal = rows.find((row) => row[0] === instance.instanceId && numeric(row[3]) === 68)!
+    expect(numeric(terminal[10])).toBeCloseTo(bundle.perInstance[instance.instanceId][0].afterTaxLumpSum!, 1)
+  }
+})
