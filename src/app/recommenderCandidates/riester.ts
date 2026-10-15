@@ -29,7 +29,7 @@ export function makeRiesterTopUpCandidate(g: GeneratorContext): CandidateDraft |
   const target = wsa.riester.find((r) => r.status !== 'surrendered' && r.status !== 'offered')
   if (!target) return null
   const profile = g.workspace.baseline.profile
-  const salary = g.portfolioFunding.salaryForOtherFunding
+  const salary = g.portfolioFunding.salaryAfterBasisrenteDeduction
 
   const isolatedOwn = solveRiesterOwnFromNet(
     g.marginalMonthlyEUR,

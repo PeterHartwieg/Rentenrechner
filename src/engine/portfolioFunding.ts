@@ -38,7 +38,7 @@ import type {
 } from '../domain'
 import type { PortfolioFunding, Workspace } from '../domain/workspace'
 import { calculateBavFunding, calculateSalaryResult } from './salary'
-import { calculateBasisrenteFunding } from './basisrente'
+import { basisrenteDeductionHeadroom, calculateBasisrenteFunding } from './basisrente'
 import { calculateAvdFunding, maxAvdMonthlyOwnContribution } from './altersvorsorgedepot'
 import { allocateRiesterHouseholdFunding, calculateRiesterFunding } from './riester'
 import { stripInstanceCommonKeys } from './portfolioProjection'
@@ -390,22 +390,34 @@ export function buildPortfolioFunding(
   // workspace level (after subtracting the GRV / VW pension-system contributions
   // that count toward the cap), then proportionally scale Basisrente
   // contributions if the aggregate exceeds it.
-  let annualPensionContributionsTowardsCap: number
-  if (pensionSystemAnnualContributionOverride !== undefined) {
-    annualPensionContributionsTowardsCap = pensionSystemAnnualContributionOverride
-  } else {
-    const annualGrvEmployee = salaryForOtherFunding.social.pension
-    const annualGrvEmployer =
-      rules.socialSecurity.pensionEmployeeRate > 0
-        ? (annualGrvEmployee / rules.socialSecurity.pensionEmployeeRate) *
-          rules.socialSecurity.pensionEmployerRate
-        : annualGrvEmployee
-    annualPensionContributionsTowardsCap = annualGrvEmployee + annualGrvEmployer
-  }
-  const remainingSchicht1CapAnnual = Math.max(
-    0,
-    rules.basisrente.schicht1CapSingle - annualPensionContributionsTowardsCap,
+  const jointAssessment = workspace.baseline.partner !== undefined ||
+    salaryForOtherFunding.deductionFilingStatus === 'married'
+  const ownHeadroom = basisrenteDeductionHeadroom(
+    rules, salaryForOtherFunding, pensionSystemAnnualContributionOverride, jointAssessment,
   )
+  // Only the partner salary profile is available; no partner-specific
+  // Versorgungswerk or bAV input is stored in this workspace schema.
+  const partnerSalary = workspace.baseline.partner
+    ? calculateSalaryResult(workspace.baseline.partner, rules)
+    : undefined
+  const partnerPensionAnnual = partnerSalary
+    ? basisrenteDeductionHeadroom(rules, partnerSalary).annualPensionContributionsTowardsCap
+    : 0
+  // Payroll remains per employee. Joint Sonderausgaben tax deltas use both
+  // available taxable-income baselines under the splitting tariff.
+  const salaryForBasisrenteFunding: SalaryResult = {
+    ...salaryForOtherFunding,
+    taxableIncomeForDeductions:
+      (salaryForOtherFunding.taxableIncomeForDeductions ?? salaryForOtherFunding.taxableIncome) +
+      (partnerSalary ? (partnerSalary.taxableIncomeForDeductions ?? partnerSalary.taxableIncome) : 0),
+    deductionFilingStatus: jointAssessment ? 'married' : salaryForOtherFunding.deductionFilingStatus,
+  }
+  const annualPensionContributionsTowardsCap =
+    ownHeadroom.annualPensionContributionsTowardsCap + partnerPensionAnnual
+  const { capAnnual: schicht1CapAnnual, remainingSchicht1Cap: remainingSchicht1CapAnnual } =
+    basisrenteDeductionHeadroom(
+      rules, salaryForOtherFunding, annualPensionContributionsTowardsCap, jointAssessment,
+    )
   const remainingSchicht1CapMonthly = remainingSchicht1CapAnnual / 12
   const totalBasisrenteAnnual = totalBasisrenteGrossMonthly * 12
 
@@ -428,9 +440,10 @@ export function buildPortfolioFunding(
       : { ...singleton, monthlyGrossContribution: singleton.monthlyGrossContribution * basisrenteScale }
     basisrenteByInstanceId[inst.instanceId] = calculateBasisrenteFunding(
       rules,
-      salaryForOtherFunding,
+      salaryForBasisrenteFunding,
       scaledSingleton,
-      pensionSystemAnnualContributionOverride,
+      annualPensionContributionsTowardsCap,
+      jointAssessment,
     )
   }
   // A progressive tariff is not additive: each contract must not independently
@@ -442,9 +455,9 @@ export function buildPortfolioFunding(
   )
   const { taxSavingAnnual: basisrenteTaxSavingAnnual } = calculateSalaryPhaseTaxDelta(
     rules,
-    salaryForOtherFunding.taxableIncomeForDeductions ?? salaryForOtherFunding.taxableIncome,
+    salaryForBasisrenteFunding.taxableIncomeForDeductions ?? salaryForBasisrenteFunding.taxableIncome,
     totalBasisrenteDeductible,
-    salaryForOtherFunding.deductionFilingStatus ?? 'single',
+    salaryForBasisrenteFunding.deductionFilingStatus ?? 'single',
   )
   for (const funding of Object.values(basisrenteByInstanceId)) {
     funding.annualTaxSaving = totalBasisrenteDeductible > 0
@@ -457,13 +470,22 @@ export function buildPortfolioFunding(
     const singleton = stripInstanceCommonKeys(
       inst as unknown as Record<string, unknown>,
     ) as unknown as BasisrenteAssumptions
-    basisrenteByInstanceId[inst.instanceId] = paidUpBasisrenteFunding(
+    basisrenteByInstanceId[inst.instanceId] = calculateBasisrenteFunding(
       rules,
-      salaryForOtherFunding,
-      singleton,
-      pensionSystemAnnualContributionOverride,
-      calculateBasisrenteFunding,
+      salaryForBasisrenteFunding,
+      { ...singleton, monthlyGrossContribution: 0 },
+      annualPensionContributionsTowardsCap,
+      jointAssessment,
     )
+  }
+
+  const salaryAfterBasisrenteDeduction: SalaryResult = {
+    ...salaryForBasisrenteFunding,
+    taxableIncomeForDeductions: Math.max(
+      0,
+      (salaryForBasisrenteFunding.taxableIncomeForDeductions ?? salaryForBasisrenteFunding.taxableIncome) -
+        totalBasisrenteDeductible,
+    ),
   }
 
   // -------------------------------------------------------------------------
@@ -493,7 +515,7 @@ export function buildPortfolioFunding(
             ) as unknown as AltersvorsorgedepotAssumptions
             const withBonus = calculateAvdFunding(
               rules,
-              salaryForOtherFunding,
+              salaryAfterBasisrenteDeduction,
               singleton,
               {
                 profile,
@@ -503,7 +525,7 @@ export function buildPortfolioFunding(
             )
             const withoutBonus = calculateAvdFunding(
               rules,
-              salaryForOtherFunding,
+              salaryAfterBasisrenteDeduction,
               singleton,
               {
                 profile,
@@ -535,7 +557,7 @@ export function buildPortfolioFunding(
             ) as unknown as RiesterAssumptions
             const withBonus = calculateRiesterFunding(
               rules,
-              salaryForOtherFunding,
+              salaryAfterBasisrenteDeduction,
               {
                 ...singleton,
                 monthlyOwnContribution: householdRiesterOwnMonthly,
@@ -548,7 +570,7 @@ export function buildPortfolioFunding(
             )
             const withoutBonus = calculateRiesterFunding(
               rules,
-              salaryForOtherFunding,
+              salaryAfterBasisrenteDeduction,
               {
                 ...singleton,
                 monthlyOwnContribution: householdRiesterOwnMonthly,
@@ -617,7 +639,7 @@ export function buildPortfolioFunding(
       ),
     }
     const schedule = Array.from({ length: accumulationYears }, (_, yearIndex) =>
-      calculateAvdFunding(rules, salaryForOtherFunding, singleton, {
+      calculateAvdFunding(rules, salaryAfterBasisrenteDeduction, singleton, {
         profile,
         contributionYear: rules.year + yearIndex,
         isFirstContributionYear:
@@ -633,7 +655,7 @@ export function buildPortfolioFunding(
     ) as unknown as AltersvorsorgedepotAssumptions
     altersvorsorgedepotByInstanceId[inst.instanceId] = paidUpAvdFunding(
       rules,
-      salaryForOtherFunding,
+      salaryAfterBasisrenteDeduction,
       singleton,
       calculateAvdFunding,
     )
@@ -685,7 +707,7 @@ export function buildPortfolioFunding(
       eligibility: singleton.eligibility,
       funding: calculateRiesterFunding(
         rules,
-        salaryForOtherFunding,
+        salaryAfterBasisrenteDeduction,
         { ...singleton, monthlyOwnContribution: householdOwnMonthly },
         profile,
         {
@@ -707,7 +729,7 @@ export function buildPortfolioFunding(
     return Object.fromEntries(entries.map(({ instance, singleton }) => {
       const ownFunding = calculateRiesterFunding(
         rules,
-        salaryForOtherFunding,
+        salaryAfterBasisrenteDeduction,
         singleton,
         profile,
         {
@@ -832,7 +854,7 @@ export function buildPortfolioFunding(
     ) as unknown as RiesterAssumptions
     const funding = paidUpRiesterFunding(
       rules,
-      salaryForOtherFunding,
+      salaryAfterBasisrenteDeduction,
       singleton,
       (r, s, si) => calculateRiesterFunding(r, s, si, profile),
     )
@@ -949,6 +971,7 @@ export function buildPortfolioFunding(
     riesterByInstanceId,
     riesterYearlyByInstanceId,
     salaryForOtherFunding,
+    salaryAfterBasisrenteDeduction,
     headroom: {
       bav: {
         capAnnual: bavTaxFreeLimitAnnual,
@@ -967,22 +990,22 @@ export function buildPortfolioFunding(
         ),
       },
       basisrente: {
-        capAnnual: rules.basisrente.schicht1CapSingle,
+        capAnnual: schicht1CapAnnual,
         requestedAnnual:
           annualPensionContributionsTowardsCap + requestedBasisrenteProductAnnual,
         fundedAnnual:
           annualPensionContributionsTowardsCap + fundedBasisrenteProductAnnual,
         remainingAnnual: Math.max(
           0,
-          rules.basisrente.schicht1CapSingle -
+          schicht1CapAnnual -
             annualPensionContributionsTowardsCap -
             fundedBasisrenteProductAnnual,
         ),
-        usedPct: rules.basisrente.schicht1CapSingle > 0
+        usedPct: schicht1CapAnnual > 0
           ? Math.min(
               1,
               (annualPensionContributionsTowardsCap + fundedBasisrenteProductAnnual) /
-                rules.basisrente.schicht1CapSingle,
+                schicht1CapAnnual,
             )
           : 0,
         constrained: basisrenteScale < 1,

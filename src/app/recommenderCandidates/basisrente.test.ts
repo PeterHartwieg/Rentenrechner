@@ -16,6 +16,8 @@
  */
 
 import { describe, expect, it } from 'vitest'
+import { defaultAssumptions } from '../../data/defaultScenario'
+import { buildPortfolioFunding } from '../../engine/portfolioFunding'
 import { de2026Rules } from '../../rules/de2026'
 import {
   buildWhatIfFromCandidate,
@@ -27,6 +29,27 @@ import { makeBasisrenteCandidate } from './basisrente'
 import { buildBerndWorkspace, buildGeneratorContext } from './testHelpers'
 
 describe('makeBasisrenteCandidate — visible candidate behavior', () => {
+  it('sizes a joint-household candidate to the same incremental cost as portfolio simulation', () => {
+    const ws = buildBerndWorkspace()
+    ws.baseline.profile = { ...ws.baseline.profile, grossSalaryYear: 80_000, taxClass: 3 }
+    ws.baseline.partner = { ...ws.baseline.profile, grossSalaryYear: 0, taxClass: 5 }
+    ws.baseline.assumptions.bav = []
+    ws.baseline.assumptions.basisrente = [{
+      ...defaultAssumptions.basisrente, instanceId: 'basis-existing', label: 'Bestehend',
+      status: 'active', contractStartYear: de2026Rules.year, evidenceMap: {}, monthlyGrossContribution: 1000,
+    }]
+    const g = buildGeneratorContext(ws, 1500)
+    const draft = makeBasisrenteCandidate(g)!
+    expect(draft).not.toBeNull()
+    expect(draft.grossMonthlyEUR).toBeGreaterThan(1000)
+    const prospective = structuredClone(ws)
+    prospective.baseline.assumptions.basisrente.push(draft.newInstance as typeof ws.baseline.assumptions.basisrente[number])
+    const after = buildPortfolioFunding(prospective, de2026Rules)
+    const netCost = (funding: typeof after) => Object.values(funding.basisrenteByInstanceId).reduce((sum, f) => sum + f.monthlyNetCost, 0)
+    expect(netCost(after) - netCost(g.portfolioFunding)).toBeCloseTo(draft.netCashOutEUR, 8)
+    expect(draft.netCashOutEUR).toBeCloseTo(1500, 1)
+  })
+
   it('always emits a NEW-instance candidate (no top-up path)', () => {
     const ws = buildBerndWorkspace()
     const g = buildGeneratorContext(ws, 200)

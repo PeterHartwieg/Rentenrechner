@@ -28,7 +28,7 @@ export function makeBasisrenteCandidate(g: GeneratorContext): CandidateDraft | n
   // Build a synthetic Basisrente assumption block from the default plus a
   // typical fee profile. Use the same post-bAV salary and Schicht-1 headroom
   // snapshot as combine simulation.
-  const salary = g.portfolioFunding.salaryForOtherFunding
+  const salary = g.portfolioFunding.salaryAfterBasisrenteDeduction
   const synthetic = {
     monthlyGrossContribution: 0,
     payoutMode: 'leibrente' as const,
@@ -37,11 +37,16 @@ export function makeBasisrenteCandidate(g: GeneratorContext): CandidateDraft | n
     monthlyOtherRetirementIncome: 0,
     fees: defaultAssumptions.basisrente.fees,
   }
+  const headroom = g.portfolioFunding.headroom.basisrente
+  const pensionAndExistingBasisAnnual = headroom.pensionSystemAnnual + headroom.productAnnual
+  const jointAssessment = g.workspace.baseline.partner !== undefined || salary.deductionFilingStatus === 'married'
   const isolatedGross = solveBasisrenteGrossFromNet(
     g.marginalMonthlyEUR,
     g.rules,
     salary,
     synthetic,
+    pensionAndExistingBasisAnnual,
+    jointAssessment,
   )
   if (isolatedGross <= 0) return null
 
@@ -54,7 +59,7 @@ export function makeBasisrenteCandidate(g: GeneratorContext): CandidateDraft | n
   const fundingForGross = calculateBasisrenteFunding(g.rules, salary, {
     ...synthetic,
     monthlyGrossContribution: gross,
-  })
+  }, pensionAndExistingBasisAnnual, jointAssessment)
   const netCash = Math.max(0, fundingForGross.monthlyNetCost)
 
   const fees = (synthetic.fees.wrapperAssetFee ?? 0) + (synthetic.fees.fundAssetFee ?? 0)

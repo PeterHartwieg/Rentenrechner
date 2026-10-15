@@ -19,6 +19,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { defaultAssumptions } from '../../data/defaultScenario'
+import { calculateRiesterFunding } from '../../engine/riester'
 import { de2026Rules } from '../../rules/de2026'
 import {
   buildWhatIfFromCandidate,
@@ -49,6 +50,28 @@ function injectRiesterInstance(
 }
 
 describe('makeRiesterTopUpCandidate — visible candidate behavior', () => {
+  it('sizes against salary after the accepted simultaneous Basisrente deduction', () => {
+    const ws = buildBerndWorkspace()
+    ws.baseline.profile.grossSalaryYear = 60_000
+    ws.baseline.assumptions.bav = []
+    ws.baseline.assumptions.basisrente = [{
+      ...defaultAssumptions.basisrente, instanceId: 'basis-existing', label: 'Basis', status: 'active',
+      contractStartYear: de2026Rules.year, evidenceMap: {}, monthlyGrossContribution: 1000,
+    }]
+    injectRiesterInstance(ws, { monthlyOwnContribution: 50 })
+    const g = buildGeneratorContext(ws, 100)
+    const draft = makeRiesterTopUpCandidate(g)!
+    const target = ws.baseline.assumptions.riester[0]
+    const expected = calculateRiesterFunding(de2026Rules, g.portfolioFunding.salaryAfterBasisrenteDeduction, {
+      ...target, monthlyOwnContribution: draft.grossMonthlyEUR,
+    }, ws.baseline.profile)
+    const withoutBasisDeduction = calculateRiesterFunding(de2026Rules, g.portfolioFunding.salaryForOtherFunding, {
+      ...target, monthlyOwnContribution: draft.grossMonthlyEUR,
+    }, ws.baseline.profile)
+    expect(expected.monthlyNetCost).toBeGreaterThan(withoutBasisDeduction.monthlyNetCost)
+    expect(draft.netCashOutEUR).toBeCloseTo(expected.monthlyNetCost, 8)
+  })
+
   it('produces an "add to existing" candidate when an active Riester instance exists', () => {
     const ws = buildBerndWorkspace()
     injectRiesterInstance(ws)

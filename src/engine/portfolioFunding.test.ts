@@ -31,6 +31,7 @@ import {
   paidUpRiesterFunding,
 } from './portfolioFunding'
 import { calculateBavFunding, calculateSalaryResult } from './salary'
+import { calculateSalaryPhaseTaxDelta } from './salaryPhaseFunding'
 import { calculateBasisrenteFunding } from './basisrente'
 import {
   calculateAvdFunding,
@@ -307,6 +308,79 @@ describe('buildPortfolioFunding — Basisrente', () => {
       expect(entry.annualTaxSaving).toBe(0)
       expect(entry.monthlyTaxSaving).toBe(0)
       expect(entry.monthlyNetCost).toBe(0)
+    }
+  })
+
+  it('uses the joint Schicht-1 cap and counts both partners’ GRV contributions', () => {
+    const ws = makeBaseWorkspace()
+    ws.baseline.profile = { ...ws.baseline.profile, grossSalaryYear: 80_000, taxClass: 3 }
+    ws.baseline.partner = { ...ws.baseline.profile, grossSalaryYear: 0, taxClass: 5 }
+    ws.baseline.assumptions.bav = []
+    ws.baseline.assumptions.basisrente[0].monthlyGrossContribution = 2500
+    const id = ws.baseline.assumptions.basisrente[0].instanceId
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+    expect(funding.basisrenteByInstanceId[id].monthlyGrossContribution).toBe(2500)
+    expect(funding.basisrenteByInstanceId[id].annualDeductible).toBe(30_000)
+    expect(funding.basisrenteByInstanceId[id].annualTaxSaving).toBe(7860)
+    expect(funding.headroom.basisrente.capAnnual).toBe(61_652)
+    expect(funding.headroom.basisrente.remainingAnnual).toBe(16_772)
+
+    ws.baseline.partner.grossSalaryYear = 50_000
+    ws.baseline.assumptions.basisrente[0].monthlyGrossContribution = 5000
+    const capped = buildPortfolioFunding(ws, de2026Rules)
+    const partnerSalary = calculateSalaryResult(ws.baseline.partner, de2026Rules)
+    const partnerPension = partnerSalary.social.pension *
+      (1 + de2026Rules.socialSecurity.pensionEmployerRate / de2026Rules.socialSecurity.pensionEmployeeRate)
+    expect(capped.headroom.basisrente.pensionSystemAnnual).toBeCloseTo(14_880 + partnerPension, 8)
+    expect(capped.headroom.basisrente.fundedAnnual).toBeCloseTo(61_652, 8)
+    expect(capped.headroom.basisrente.remainingAnnual).toBeCloseTo(0, 8)
+    const ownSalary = capped.salaryForOtherFunding
+    const householdTaxable = (ownSalary.taxableIncomeForDeductions ?? ownSalary.taxableIncome) +
+      (partnerSalary.taxableIncomeForDeductions ?? partnerSalary.taxableIncome)
+    const acceptedDeduction = capped.basisrenteByInstanceId[id].annualDeductible
+    const expectedSaving = calculateSalaryPhaseTaxDelta(de2026Rules, householdTaxable, acceptedDeduction, 'married').taxSavingAnnual
+    expect(capped.basisrenteByInstanceId[id].annualTaxSaving).toBe(expectedSaving)
+    expect(capped.salaryAfterBasisrenteDeduction.taxableIncomeForDeductions).toBeCloseTo(householdTaxable - acceptedDeduction, 8)
+  })
+
+  it.each([{ salary: 40_000, basisMonthly: 1000 }, { salary: 60_000, basisMonthly: 1000 }, { salary: 80_000, basisMonthly: 1000 }, { salary: 60_000, basisMonthly: 4000 }])('applies accepted Basisrente deductions before simultaneous certified-product refunds ($salary, $basisMonthly)', ({ salary: grossSalaryYear, basisMonthly }) => {
+    const ws = makeBaseWorkspace()
+    ws.baseline.profile = { ...ws.baseline.profile, grossSalaryYear, age: 40, retirementAge: 67 }
+    ws.baseline.assumptions.bav = []
+    const assumptions = ws.baseline.assumptions
+    assumptions.basisrente[0].monthlyGrossContribution = basisMonthly
+    assumptions.basisrente.push({ ...assumptions.basisrente[0], instanceId: 'paid-up-extra', status: 'paid_up', monthlyGrossContribution: 5000 })
+    assumptions.riester[0].monthlyOwnContribution = 150
+    assumptions.altersvorsorgedepot[0].monthlyOwnContribution = 150
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+    const salary = funding.salaryForOtherFunding
+    const acceptedDeduction = funding.basisrenteByInstanceId[assumptions.basisrente[0].instanceId].annualDeductible
+    expect(acceptedDeduction).toBeGreaterThan(0)
+    if (basisMonthly === 4000) expect(acceptedDeduction).toBeLessThan(basisMonthly * 12)
+    const adjusted = {
+      ...salary,
+      taxableIncomeForDeductions: Math.max(0, (salary.taxableIncomeForDeductions ?? salary.taxableIncome) - acceptedDeduction),
+    }
+    const simulation = simulatePortfolio(ws, de2026Rules)
+    const riesterResult = simulation.perInstance[assumptions.riester[0].instanceId][0]
+    const avdResult = simulation.perInstance[assumptions.altersvorsorgedepot[0].instanceId][0]
+    for (const yearIndex of [0, 1, 20]) {
+      const riester = funding.riesterYearlyByInstanceId[assumptions.riester[0].instanceId][yearIndex]
+      const avd = funding.altersvorsorgedepotYearlyByInstanceId[assumptions.altersvorsorgedepot[0].instanceId][yearIndex]
+      const expectedRiester = calculateRiesterFunding(de2026Rules, adjusted, {
+        ...assumptions.riester[0], monthlyOwnContribution: riester.monthlyOwnContribution,
+      }, ws.baseline.profile, { contributionYear: de2026Rules.year + yearIndex, isFirstContributionYear: yearIndex === 0 })
+      const expectedAvd = calculateAvdFunding(de2026Rules, adjusted, assumptions.altersvorsorgedepot[0], {
+        profile: ws.baseline.profile, contributionYear: de2026Rules.year + yearIndex, isFirstContributionYear: yearIndex === 0,
+      })
+      expect(riester.guenstigerpruefungBenefitAnnual).toBeCloseTo(expectedRiester.guenstigerpruefungBenefitAnnual, 8)
+      expect(avd.guenstigerpruefungBenefitAnnual).toBeCloseTo(expectedAvd.guenstigerpruefungBenefitAnnual, 8)
+      expect(riesterResult.rows[yearIndex].yearlyProductContribution).toBeCloseTo(
+        riester.annualOwnContribution + riester.totalAllowanceAnnual + expectedRiester.guenstigerpruefungBenefitAnnual, 8,
+      )
+      expect(avdResult.rows[yearIndex].yearlyProductContribution).toBeCloseTo(
+        avd.totalContractContributionAnnual + expectedAvd.guenstigerpruefungBenefitAnnual, 8,
+      )
     }
   })
 
@@ -1307,7 +1381,7 @@ describe('gh#56 — multi-Riester simulator uses capped contributions', () => {
     const householdOwnMonthly = fundA.monthlyOwnContribution + fundB.monthlyOwnContribution
     const household = calculateRiesterFunding(
       de2026Rules,
-      funding.salaryForOtherFunding,
+      funding.salaryAfterBasisrenteDeduction,
       {
         ...defaultAssumptions.riester,
         eligibility: ws.baseline.assumptions.riester[0].eligibility,
