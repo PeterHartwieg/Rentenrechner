@@ -37,6 +37,7 @@ import type {
   YearlyProjection,
 } from '../domain'
 import type { WorkspaceAssumptionsV2 } from '../domain/workspace'
+import { capitalTaxReadinessForInstance } from './capitalTaxReadiness'
 import { afterTaxBavLumpSum } from './bavPayout'
 import { afterTaxCertifiedPensionLumpSum } from './certifiedPensionPayout'
 import { apportionSparerpauschbetrag } from './portfolioAllowance'
@@ -341,6 +342,9 @@ export function buildCombineExportProjection(
     for (const r of results) {
       const slot = r.productId === 'versicherung' ? 'insurance' : r.productId
       const instance = opts.assumptions?.[slot].find(inst => inst.instanceId === instanceId)
+      const capitalAvailable = !instance || !opts.rules ||
+        capitalTaxReadinessForInstance(r.productId, instance, opts.profile, opts.rules,
+          taxModes?.insuranceTaxMode).canShowAfterTaxCapital
       const scenario = opts.assumptions?.returnScenarios.find(s => s.id === r.scenarioId)
       const marketReturnAssumption = instance?.expectedReturn ?? scenario?.annualReturn ?? null
       // Use the back-allocated monthlyNet from the aggregate progressive
@@ -363,7 +367,7 @@ export function buildCombineExportProjection(
         monthlyUserCost: r.monthlyUserCost,
         monthlyProductContribution: r.monthlyProductContribution,
         capitalAtRetirement: r.capitalAtRetirement,
-        afterTaxLumpSum: r.afterTaxLumpSum,
+        afterTaxLumpSum: capitalAvailable ? r.afterTaxLumpSum : null,
         grossMonthlyPayout: r.grossMonthlyPayout,
         netMonthlyPayout: netMonthly,
         totalFees: r.totalFees,
@@ -372,14 +376,14 @@ export function buildCombineExportProjection(
       })
 
       for (const row of r.rows) {
-        const afterTax = dispatchAfterTaxBalanceCombine(
+        const afterTax = capitalAvailable ? dispatchAfterTaxBalanceCombine(
           r.productId,
           row,
           taxModes,
           opts.rules,
           opts.profile,
           liquidationAllowances.get(r.scenarioId)?.get(instanceId)?.[row.year - 1],
-        )
+        ) : null
         const realAfterTax =
           afterTax !== null && row.balance > 0
             ? afterTax * (row.realBalance / row.balance)

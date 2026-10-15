@@ -104,3 +104,13 @@ Readiness-blocked CSVs keep dependent yearly net capital and ETF payout gain,
 allowance, tax and net cells blank. The remaining-allowance recommendation uses
 current accumulation-year taxable VP, excluding historical credits and applying
 partial exemption; future payout rows are used only after accumulation ends.
+
+
+Monthly readiness and capital-tax readiness are distinct. The shared
+`capitalTaxReadinessForInstance` uses the same input-status resolution and
+insurance tax classifier as monthly readiness, but ignores monthly payout mode:
+an Ertragsanteil annuity can show its monthly net while its hypothetical capital
+liquidation stays unavailable without historical premiums. Explicit zero basis
+is valid; opening zero and tax-free pre-2005 capital need no historical basis.
+Combine details and export projection apply this per-metric check. A household
+block also hides monthly tax tooltips and dependent break-even notes.

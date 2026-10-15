@@ -142,3 +142,50 @@ it('real CSV keeps unknown-basis yearly net capital and payout tax/net values bl
     for (const index of [6, 7, 8, 9]) expect(cells[index]).toBe('')
   }
 })
+
+it.each(['absent', 'explicit-unknown'])('annuity monthly income remains available but CSV capital tax is unavailable for %s premiums', (state) => {
+  const w = fixture(); const a = w.baseline.assumptions
+  a.etf = []
+  const instance = a.insurance[0]
+  instance.payoutMode = 'leibrente'
+  if (state === 'absent') delete instance.historicalCostBasisEUR
+  else instance.inputStatus = { historicalCostBasisEUR: 'unknown' }
+  const bundle = runCombineSimulation(w, rules)
+  expect(selectResultReadiness(w, bundle).canShowHouseholdTotal).toBe(true)
+  const csv = buildCombinePortfolioCsv({ assumptions: a, ...bundle, scenarioLabels: { basis: 'Null' }, rules,
+    profile: w.baseline.profile, perInstanceTaxModes: deriveCombinePerInstanceTaxModes(a, w.baseline.profile) })
+  const rows = csv.split('Jahres-Cashflows je Instanz\n')[1].split('\n\n')[0].split('\n').slice(1).filter(Boolean)
+  expect(rows).toHaveLength(2)
+  for (const line of rows) expect(line.split(',')[10]).toBe('')
+})
+
+it.each(['explicit-zero', 'new-zero', 'tax-free-old', 'restored'])('capital tax remains available for %s without inventing basis', (state) => {
+  const w = fixture(); const a = w.baseline.assumptions
+  a.etf = []
+  const instance = a.insurance[0]
+  instance.payoutMode = 'leibrente'
+  if (state === 'explicit-zero') {
+    instance.historicalCostBasisEUR = 0
+    instance.inputStatus = { historicalCostBasisEUR: 'entered' }
+  } else if (state === 'new-zero') {
+    instance.currentValueEUR = 0; delete instance.historicalCostBasisEUR
+  } else if (state === 'tax-free-old') {
+    instance.contractStartYear = 2000; instance.oldContractTaxFreeEligible = true
+    delete instance.historicalCostBasisEUR
+  } else instance.inputStatus = { historicalCostBasisEUR: 'entered' }
+  const { rows } = exportRows(w)
+  expect(rows).toHaveLength(2)
+  for (const row of rows) expect(row[10]).not.toBe('')
+  if (state === 'tax-free-old' || state === 'restored') for (const row of rows) expect(numeric(row[10])).toBe(100000)
+})
+
+it('CSV capital readiness still applies without the optional profile when tax mode is supplied', () => {
+  const w = fixture(); const a = w.baseline.assumptions
+  a.etf = []; a.insurance[0].payoutMode = 'leibrente'; delete a.insurance[0].historicalCostBasisEUR
+  const bundle = runCombineSimulation(w, rules)
+  const csv = buildCombinePortfolioCsv({ assumptions: a, ...bundle, scenarioLabels: { basis: 'Null' }, rules,
+    perInstanceTaxModes: deriveCombinePerInstanceTaxModes(a, w.baseline.profile) })
+  const rows = csv.split('Jahres-Cashflows je Instanz\n')[1].split('\n\n')[0].split('\n').slice(1).filter(Boolean)
+  expect(rows).toHaveLength(2)
+  for (const row of rows) expect(row.split(',')[10]).toBe('')
+})
