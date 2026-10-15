@@ -1,9 +1,9 @@
 {
   "label": "INTERNAL REGRESSION",
-  "baseSha": "dfe70e1b6e32cdda26e957b6d360bee5b0c6aed7",
-  "baseShaCapturedAt": "2026-10-14T20:01:09.337Z",
+  "baseSha": "3d24f29a7620d2fe1ad32daa3d44d4168ab87116",
+  "baseShaCapturedAt": "2026-10-15T05:30:43.224Z",
   "engineSources": {
-    "digestSha": "0a76d727f53fb1aa",
+    "digestSha": "1a20d699ba618eab",
     "dirty": false,
     "paths": []
   },
@@ -569,5 +569,5 @@
       "pvBeitragszuschlagKinderloseMinAge": 23
     }
   },
-  "notes": "Erfasst mit: npm run scenario:update -- --reason \"Correct bAV single-employee aggregate payroll: shared SV/tax exemptions, employer subsidy savings and GRV loss are allocated across contracts; retain proportional tax-cap scaling with a strictly feasible bisection boundary. Affects combine-mixed-household, combine-cap-thresholds and combine-zero-return; external oracle anchors unchanged.\". rulesIdentity friert die RuleSetIdentity aus src/rules/ruleMetadata.ts (ruleSetId, Revision, Content-Fingerprint über Jahresregeln UND legalRuleData-Katalog), den Snapshot-Sha des kanonischen Regel-Snapshots, die evaluierten Kohortentabellen (Code, den kein JSON-Snapshot sehen kann) und die vollen Jahresregeln als kanonisches JSON ein; engineSources.digestSha identifiziert den Rechenwerkscode der Basis-Revision (sha256-Präfix). Rules-Identität dieser Erfassung: 0dafb7f96476e43c. Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise."
+  "notes": "Erfasst mit: npm run scenario:update -- --reason \"Integrate the nine audited math fixes: shared payroll and progressive deductions, certified refund conservation, Riester partial capital, historical cost basis, bAV tax routing, ETF withdrawal gains, and household allowance accounting. Partial insurance surrender conserves gross cash and proportional basis; unavailable decision previews are suppressed. External oracle expectations remain unchanged.\". rulesIdentity friert die RuleSetIdentity aus src/rules/ruleMetadata.ts (ruleSetId, Revision, Content-Fingerprint über Jahresregeln UND legalRuleData-Katalog), den Snapshot-Sha des kanonischen Regel-Snapshots, die evaluierten Kohortentabellen (Code, den kein JSON-Snapshot sehen kann) und die vollen Jahresregeln als kanonisches JSON ein; engineSources.digestSha identifiziert den Rechenwerkscode der Basis-Revision (sha256-Präfix). Rules-Identität dieser Erfassung: 0dafb7f96476e43c. Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise."
 }
