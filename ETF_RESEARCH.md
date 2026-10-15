@@ -119,11 +119,15 @@ EStG Sec. 20 Abs. 4 includes FIFO for fungible securities in collective custody:
 The app does not track tax lots. It uses a proportional gain ratio:
 
 ```text
-taxable gain in withdrawal year =
-  gross withdrawal * max(0, capitalAtStart - remainingCostBasis) / capitalAtStart
+taxable gain in withdrawal year = sum over monthly sales of
+  gross monthly withdrawal - proportionally disposed cost basis
+(the annual sum is floored at zero)
 ```
 
-Then it proportionally reduces cost basis by the gross withdrawal fraction.
+Each month, growth is applied before the end-of-month withdrawal. The sale removes
+the same fraction of capital and average cost basis; basis may exceed market value
+while losses remain unrealized. Monthly realized gains and losses are netted within each year before the
+annual allowance and partial exemption are applied.
 
 Tool implication:
 
