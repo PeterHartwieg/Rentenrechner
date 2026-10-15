@@ -78,6 +78,10 @@ export interface BuildProductPolicy {
     saverAllowanceOverride?: (yearIndex: number) => number
   }
   initialCapital?: number
+  /** Remove the same fraction of basis as capital on each withdrawal. */
+  proportionalCostBasisWithdrawals?: boolean
+  initialCostBasis?: number
+  initialVorabpauschale?: number
   contributionGrowth?: { annualRate: number }
   yearlyContributions?: AccumulationPolicy['yearlyContributions']
   /** Issue 15 — TransferEvent inbound capital injections. See `AccumulationPolicy`. */
@@ -114,7 +118,7 @@ export interface BuildProductResultParams<
   buildPayout: (context: ProductPayoutContext) => TPayoutFields
 }
 
-function capitalMultipleAnnualized(finalValue: number, totalUserCost: number, years: number): number {
+export function capitalMultipleAnnualized(finalValue: number, totalUserCost: number, years: number): number {
   if (finalValue <= 0 || totalUserCost <= 0 || years <= 0) {
     return 0
   }
@@ -213,6 +217,9 @@ export function buildProductResult<
             }
           : undefined,
         initialCapital: params.policy.initialCapital,
+        initialCostBasis: params.policy.initialCostBasis,
+        proportionalCostBasisWithdrawals: params.policy.proportionalCostBasisWithdrawals,
+        initialVorabpauschale: params.policy.initialVorabpauschale,
         contributionGrowth: params.policy.contributionGrowth,
         yearlyContributions: params.policy.yearlyContributions,
         capitalInjections: params.policy.capitalInjections,

@@ -138,11 +138,17 @@ export interface PortfolioFunding {
    */
   headroom: PortfolioFundingHeadroom
   /**
-   * Household salary after all accepted active bAV employee conversions.
-   * Downstream Schicht-1 / Riester / AVD funding and marginal recommenders
-   * share this exact salary baseline.
+   * Main employee payroll after all accepted active bAV conversions.
+   * Preserved for payroll net-cost reporting and as the starting salary for
+   * the household deduction context.
    */
   salaryForOtherFunding: SalaryResult
+  /** Household deduction baseline after accepted simultaneous Basisrente deductions.
+   * Includes an explicit partner's salary taxable-income baseline for joint filing.
+   * Combine-mode AVD/Riester funding, yearly schedules and marginal candidates
+   * use this baseline; compare mode keeps products as alternatives.
+   */
+  salaryAfterBasisrenteDeduction: SalaryResult
   /**
    * Free-form portfolio-level notes surfaced to the UI for portfolio-wide
    * caveats that don't belong on a single instance (e.g. cap-driven funding

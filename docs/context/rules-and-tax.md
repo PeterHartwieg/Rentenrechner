@@ -70,3 +70,52 @@ use the corrected helper. No oracle snapshot was affected — the engine was alw
 | `RIESTER_RESEARCH.md` | Legacy Riester allowances, Mindesteigenbeitrag, Sec. 10a, payout taxation, partial lump sum |
 | `LEGAL_IMPLEMENTATION_AUDIT_2026.md` | 2026-04-28 legal-vs-implementation audit findings, fixes, and remaining modeling gaps |
 | `docs/validation.md` | External golden-test strategy, official calculator/source map, tolerances, and validation backlog |
+
+
+## bAV monthly classification (math audit, October 2026)
+
+`classifyBavMonthlyIncome` in `bavPayout.ts` is shared by the compare simulator
+and `portfolioCombine.ts`. §3 Nr. 63 Direktversicherung, Pensionskasse and
+Pensionsfonds payments enter the fully taxable §22 Nr. 5 channel, for every
+mode. Direktzusage and Unterstützungskasse retain the §19 channel and its
+Versorgungsfreibetrag. KV/PV classification remains independently §229 SGB V.
+
+For §40b old contracts, lifelong pensions use the retirement-age Ertragsanteil,
+even when the capital-payout eligibility flag is true. Nonlife payments reuse
+the existing insurance gain-ratio base (with a zero loss floor); a confirmed
+`pre2005EligibleTaxFree` flag makes that base zero. These amounts enter the
+personal tariff as §22 income, never the §32d flat tax.
+
+Primary sources checked on 2026-10-14:
+
+- [§22 Nr. 5 EStG, DRV legal text](https://rvrecht.deutsche-rentenversicherung.de/SharedDocs/rvRecht/05_Normen_und_Vertraege/02_C-K/EStG/0022/0022_2025_01_01.html):
+  Satz 1 (funded benefits), Satz 2 a/b (unfunded lifetime/other benefits),
+  Satz 11 (narrow Pensionsfonds grandfather exception).
+- [BMF EStH 2025, Anhang 1a I](https://amtliche-handbuecher.bundesfinanzministerium.de/esth/2025/B-Anhaenge/Anhang-01a/I/inhalt.html):
+  Rn. 128 excludes Abgeltungsteuer for §22 Nr. 5; Rn. 145–147 distinguish
+  lifetime Ertragsanteil from other insurance benefits and old-contract
+  capital-payout eligibility.
+
+Model limits: the schema does not represent mixed funded/unfunded portions or
+already-paying §3 Nr. 66 commitments transferred into Pensionsfonds (Satz 11).
+`pensionsfonds_3_63` is an ordinary funded contract, not that exception. For
+nonqualifying old-contract nonlife benefits the existing proportional positive
+gain model is retained; no vintage-specific interest ledger or loss deduction
+is added. Retirement KV/PV income-tax deductions and the tax pipeline's
+existing §22 Werbungskosten scope are outside this classification correction.
+
+Reproduction: GRV €2,000/month plus funded bAV €1,000/month, retirement 2027,
+single filing, active 2026 tariff: annual aggregate tax €4,452 → €4,828
+(+€376); bAV marginal net before KV/PV €762.75 → €731.4166667/month.
+Internal default-profile bAV net snapshots fall by €32/year (€2.6666667/month)
+in each return scenario; capital, funding and lump-sum results stay unchanged.
+The two-bAV combine example's aggregate tax is €8,931 → €8,965 (+€34/year).
+External §19 tax oracle fixtures are unchanged. Tax formula model metadata is
+unchanged because this fixes payout classification, outside its narrow scope.
+
+The frozen scenario suite changes 19 of 27 cases, exclusively 306 tax stages
+and 174 net stages (480 of 5,872 total); funding, accumulation, KV/PV and all
+external anchors are unchanged. For example `combine-single-bav/single-conversion`
+annual aggregate tax rises €59/€66/€76 in conservative/baseline/optimistic
+returns; household net falls €4.9166667/€5.5/€6.3333333 per month. These are
+intentional internal regression re-pins caused by removing §19 allowances.

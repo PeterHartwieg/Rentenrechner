@@ -24,6 +24,8 @@ import type { InputStatus } from '../domain/inputStatus'
 import type { InstanceCommon } from '../domain/instances'
 import type { Workspace, WorkspaceAssumptionsV2 } from '../domain/workspace'
 import type { ProductId } from '../engine/productRegistry'
+import { capitalTaxReadinessForInstance } from '../engine/capitalTaxReadiness'
+import { activeRules } from '../rules'
 import { PRODUCT_REGISTRY } from '../engine/productRegistry'
 import { resolveInputStatus } from '../features/results/provenanceHelpers'
 import type { CombineSimulationBundle } from './useCombineSimulation'
@@ -35,6 +37,8 @@ export type ReadinessCode =
   | 'statutory-pension-unknown'
   | 'pension-entry-skipped'
   | 'instance-capital-unknown'
+  | 'instance-tax-basis-unknown'
+  | 'future-insurance-surrender-unsupported'
   | 'instance-contribution-unknown'
   | 'pkv-premium-unknown'
   | 'pkv-retirement-premium-assumed'
@@ -79,6 +83,7 @@ export type AnyWorkspaceInstance = InstanceCommon &
     monthlyGrossConversion: number
     monthlyGrossContribution: number
     monthlyOwnContribution: number
+    oldContractTaxFreeEligible: boolean
     payoutMode: string
     zeitrenteYears: number
     payoutPlanEndAge: number
@@ -264,7 +269,10 @@ export function selectResultReadiness(
   const drawdownInstanceIds: string[] = []
 
   for (const { productId, instance } of listWorkspaceInstances(wsa)) {
-    if (!isCountedInstance(instance)) continue
+    const surrenderTransfers = listWorkspaceInstances(wsa).flatMap(({ instance: owner }) =>
+      (owner.transferEvents ?? []).filter((event) => event.type === 'surrender_reinvest' && event.sourceInstanceId === instance.instanceId))
+    const hasSurrenderTransfer = surrenderTransfers.length > 0
+    if (!isCountedInstance(instance) && !hasSurrenderTransfer) continue
     const label = instanceLabel(instance, productId)
     // The editor, not the read-only detail page: a blocking reason is a
     // request to fill something in, so the link must land where the user can.
@@ -277,6 +285,20 @@ export function selectResultReadiness(
         label: `Aktueller Wert von „${label}" ist unbekannt.`,
         target,
         instanceId: instance.instanceId,
+      })
+    }
+    if (productId === 'versicherung' && surrenderTransfers.some((event) => event.year > activeRules.year)) {
+      reasons.push({ code: 'future-insurance-surrender-unsupported', severity: 'blocking',
+        label: `Die zukünftige Teilkündigung / Übertragung von „${label}“ kann noch nicht verlässlich berechnet werden.`,
+        target, instanceId: instance.instanceId })
+    }
+    const capitalReadiness = capitalTaxReadinessForInstance(productId, instance, profile, activeRules)
+    const needsCapitalBasisForMonthly = productId === 'etf' || (productId === 'versicherung' && (hasSurrenderTransfer || instance.payoutMode !== 'leibrente'))
+    if (needsCapitalBasisForMonthly && capitalReadiness.missingFields.some((key) => key !== 'currentValueEUR')) {
+      reasons.push({
+        code: 'instance-tax-basis-unknown', severity: 'blocking',
+        label: `Historische Steuerdaten von „${label}“ fehlen (Anschaffungskosten / Beiträge${productId === 'etf' ? ' und Vorabpauschalen' : ''}).`,
+        target, instanceId: instance.instanceId,
       })
     }
     const contributionField = CONTRIBUTION_FIELD_BY_PRODUCT[productId]

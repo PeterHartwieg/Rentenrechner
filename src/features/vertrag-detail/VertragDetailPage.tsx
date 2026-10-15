@@ -1,3 +1,4 @@
+import { selectResultReadiness } from '../../app/resultReadiness'
 import { useEffect, useMemo } from 'react'
 import './VertragDetailPage.css'
 import type { Route } from '../../app/useRoute'
@@ -174,6 +175,9 @@ export function VertragDetailPage({ instanceId, navigate }: Props) {
   const instanceResult = productResultsForInstance.find((r) => r.scenarioId === scenarioId)
     ?? productResultsForInstance[0]
   const combinedForScenario = simulation.combinedByScenarioId[scenarioId]
+  const readiness = selectResultReadiness(workspace, simulation)
+  const netAvailable = readiness.canShowHouseholdTotal
+  const householdNetAvailable = readiness.canShowHouseholdTotal
 
   const meta = getProductMeta(slotInfo.slot)
   const productLabel = meta?.label ?? slotInfo.slot
@@ -243,6 +247,7 @@ export function VertragDetailPage({ instanceId, navigate }: Props) {
               instance={instance}
               productId={slotInfo.slot}
               instanceResult={instanceResult}
+              netAvailable={netAvailable}
               retirementAge={workspace.baseline.profile.retirementAge}
               currentAge={workspace.baseline.profile.age}
               deflator={realDeflator(
@@ -250,7 +255,7 @@ export function VertragDetailPage({ instanceId, navigate }: Props) {
                 workspace.baseline.profile.retirementAge - workspace.baseline.profile.age,
               )}
               inPlanMonthlyNet={
-                instance.status === 'active' || instance.status === 'paid_up'
+                householdNetAvailable && (instance.status === 'active' || instance.status === 'paid_up')
                   ? combinedForScenario?.byInstance[instanceId]?.monthlyNet
                   : undefined
               }
@@ -262,14 +267,15 @@ export function VertragDetailPage({ instanceId, navigate }: Props) {
               productId={slotInfo.slot}
               rules={rules}
               scenarioId={scenarioId}
-              combinedForScenario={combinedForScenario}
+              combinedForScenario={householdNetAvailable ? combinedForScenario : undefined}
             />
 
             {/* Single-contract Gebühren-Vergleich (relocated from the legacy
                 Vergleich pane dispatcher in PR 9). Shows this contract's
                 Nettoaufwand / Netto-Rendite / Gebühren stack. */}
+            {!householdNetAvailable && <p>{readiness.blocking.map((reason) => reason.label).join(' ')}</p>}
             <VertragFeeImpact
-              instanceResult={instanceResult}
+              instanceResult={netAvailable ? instanceResult : undefined}
               productId={slotInfo.slot}
               retirementAge={workspace.baseline.profile.retirementAge}
               retirementEndAge={workspace.baseline.assumptions.retirementEndAge}

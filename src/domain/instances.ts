@@ -34,6 +34,11 @@ export interface InstanceCommon {
   /** Combine-only nominal market return before costs; replaces every scenario rate. */
   expectedReturn?: number
   currentValueEUR?: number
+  /** Historical principal; excludes all future contributions and transfer injections. */
+  historicalCostBasisEUR?: number
+  /** ETF Vorabpauschalen already assessed, before partial exemption (not taxes paid). */
+  historicalVorabpauschaleEUR?: number
+
   evidenceMap: Record<string, EvidenceState>
   /**
    * Per-field input status ("known / assumed / unknown"), keyed identically to

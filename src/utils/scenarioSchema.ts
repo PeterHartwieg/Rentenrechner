@@ -278,6 +278,10 @@ function validateInstanceCommon(inst: unknown): inst is InstanceCommon {
     (typeof i.inputStatus !== 'object' || i.inputStatus === null || Array.isArray(i.inputStatus))
   ) return false
   if (i.expectedReturn !== undefined && !inRange(i.expectedReturn, EXPECTED_RETURN_BOUNDS.min, EXPECTED_RETURN_BOUNDS.max)) return false
+  for (const key of ['historicalCostBasisEUR', 'historicalVorabpauschaleEUR'] as const) {
+    const value = i[key]
+    if (value !== undefined && (!isFiniteNumber(value) || value < 0)) return false
+  }
   // Optional currentValueEUR
   if (i.currentValueEUR !== undefined && (!isFiniteNumber(i.currentValueEUR as unknown) || (i.currentValueEUR as number) < 0)) return false
   // Optional ownedBy

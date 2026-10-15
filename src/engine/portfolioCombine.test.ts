@@ -376,11 +376,11 @@ describe('combinePortfolio — 2 bAV + 1 ETF combine oracle', () => {
     const expectedTax = calculateRetirementTax(
       {
         statutoryPensionAnnual: grvGross * 12,
-        bavPensionAnnual: bavSumGross * 12,
+        bavPensionAnnual: 0,
         bavIsLumpSum: false,
         privateInsuranceTaxableAnnual: 0,
         privateInsuranceTaxMode: 'abgeltungsteuer',
-        otherTaxableAnnual: 0,
+        otherTaxableAnnual: bavSumGross * 12,
         retirementYear: ctx.retirementYear,
       },
       de2026Rules,
@@ -809,3 +809,28 @@ describe('combinePortfolio — regression #65: pAV gain ratio uses totalContribu
 
 // Suppress unused-import warnings for types kept for documentation completeness.
 void undefined as void | EtfInstance | AltersvorsorgedepotInstance | BasisrenteInstance | RiesterInstance
+
+// Exercise both real callers with every represented Durchführungsweg/payout mode.
+describe.each([
+  'direktversicherung_3_63', 'pensionskasse_3_63', 'pensionsfonds_3_63',
+  'direktversicherung_40b_alt', 'direktzusage', 'unterstuetzungskasse',
+] as const)('bAV monthly compare/combine parity: %s', (durchfuehrungsweg) => {
+  it.each(['leibrente', 'zeitrente', 'kapitalverzehr'] as const)('%s', (payoutMode) => {
+    const workspace = makeWorkspaceFromV1(200)
+    const inst = workspace.baseline.assumptions.bav[0]
+    Object.assign(inst, { durchfuehrungsweg, payoutMode, pre2005EligibleTaxFree: false, includeGrvReduction: false })
+    workspace.baseline.assumptions.visibleProducts = ['bav']
+    const { perInstance } = simulatePortfolio(workspace, de2026Rules)
+    const result = perInstance[inst.instanceId]!.find((r) => r.scenarioId === 'basis')!
+    const singleton = { ...defaultAssumptions,
+      bav: { ...defaultAssumptions.bav, monthlyGrossConversion: 200,
+        durchfuehrungsweg, payoutMode, pre2005EligibleTaxFree: false, includeGrvReduction: false },
+      visibleProducts: ['bav'] as const }
+    const compare = simulateRetirementComparison(defaultProfile,
+      { ...singleton, visibleProducts: ['bav'] }, de2026Rules)
+    const expected = compare.products.find((r) => r.scenarioId === 'basis' && r.productId === 'bav')!
+    expect(result.netMonthlyPayout).toBe(expected.netMonthlyPayout)
+    const combined = combinePortfolio(workspace, [result], makeBaseCombineContext(defaultProfile, compare.statutoryPension.grossMonthlyPension))
+    expect(combined.byInstance[inst.instanceId].monthlyNet).toBeCloseTo(expected.netMonthlyPayout, 8)
+  })
+})

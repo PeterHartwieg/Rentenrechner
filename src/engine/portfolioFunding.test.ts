@@ -31,6 +31,7 @@ import {
   paidUpRiesterFunding,
 } from './portfolioFunding'
 import { calculateBavFunding, calculateSalaryResult } from './salary'
+import { calculateSalaryPhaseTaxDelta } from './salaryPhaseFunding'
 import { calculateBasisrenteFunding } from './basisrente'
 import {
   calculateAvdFunding,
@@ -241,6 +242,155 @@ describe('buildPortfolioFunding — bAV', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildPortfolioFunding — Basisrente', () => {
+  it.each([
+    { totalMonthly: 1000, taxClass: 1 as const, pensionAnnual: undefined },
+    { totalMonthly: 4000, taxClass: 1 as const, pensionAnnual: undefined },
+    { totalMonthly: 2000, taxClass: 3 as const, pensionAnnual: 20_000 },
+  ])('preserves household saving across partitions and order ($totalMonthly, class $taxClass)', ({ totalMonthly, taxClass, pensionAnnual }) => {
+    const ws = makeBaseWorkspace()
+    ws.baseline.profile = { ...ws.baseline.profile, grossSalaryYear: 50_000, taxClass }
+    ws.baseline.assumptions.bav = []
+    const template = ws.baseline.assumptions.basisrente[0]
+    const run = (amounts: number[]) => {
+      ws.baseline.assumptions.basisrente = amounts.map((amount, i) => ({
+        ...template, instanceId: `basis-${i}`, monthlyGrossContribution: amount,
+      }))
+      ws.baseline.assumptions.basisrente.push({
+        ...template, instanceId: 'paid-up', status: 'paid_up', monthlyGrossContribution: 500,
+      })
+      return buildPortfolioFunding(ws, de2026Rules).basisrenteByInstanceId
+    }
+    // Use the same pension-system cap override as the real workspace path.
+    if (pensionAnnual !== undefined) {
+      ws.baseline.assumptions.statutoryPension = {
+        ...ws.baseline.assumptions.statutoryPension,
+        pensionBaselineType: 'versorgungswerk',
+        versorgungswerkMonthlyContribution: pensionAnnual / 24,
+        versorgungswerkEmployerMonthly: pensionAnnual / 24,
+      }
+    }
+    const single = run([totalMonthly])['basis-0']
+    if (pensionAnnual !== undefined) {
+      expect(single.annualPensionContributionsTowardsCap).toBeCloseTo(pensionAnnual, 8)
+    }
+    expect(single.annualDeductible).toBeCloseTo(
+      Math.min(totalMonthly * 12, single.remainingSchicht1Cap) * de2026Rules.basisrente.deductibleFraction,
+      8,
+    )
+    for (const amounts of [[totalMonthly / 2, totalMonthly / 2], [totalMonthly * 0.2, totalMonthly * 0.8], [totalMonthly * 0.8, totalMonthly * 0.2]]) {
+      const split = run(amounts)
+      const active = amounts.map((_, i) => split[`basis-${i}`])
+      expect(active.reduce((sum, f) => sum + f.annualTaxSaving, 0)).toBeCloseTo(single.annualTaxSaving, 8)
+      expect(active.reduce((sum, f) => sum + f.annualDeductible, 0)).toBeCloseTo(single.annualDeductible, 8)
+      expect(active.reduce((sum, f) => sum + f.monthlyNetCost, 0)).toBeCloseTo(single.monthlyNetCost, 8)
+      expect(active.reduce((sum, f) => sum + f.annualGrossContribution, 0)).toBeCloseTo(single.annualGrossContribution, 8)
+      expect(active[0].annualTaxSaving / single.annualTaxSaving).toBeCloseTo(amounts[0] / totalMonthly, 8)
+      expect(split['paid-up'].annualTaxSaving).toBe(0)
+      expect(split['paid-up'].annualDeductible).toBe(0)
+    }
+  })
+
+  it('keeps zero-deduction contracts finite when pension contributions exhaust the cap', () => {
+    const ws = makeBaseWorkspace()
+    ws.baseline.assumptions.statutoryPension = {
+      ...ws.baseline.assumptions.statutoryPension,
+      pensionBaselineType: 'versorgungswerk',
+      versorgungswerkMonthlyContribution: de2026Rules.basisrente.schicht1CapSingle / 12,
+      versorgungswerkEmployerMonthly: 0,
+    }
+    const template = ws.baseline.assumptions.basisrente[0]
+    ws.baseline.assumptions.basisrente = [0, 500].map((amount, i) => ({
+      ...template, instanceId: `basis-${i}`, monthlyGrossContribution: amount,
+    }))
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+    for (const entry of Object.values(funding.basisrenteByInstanceId)) {
+      expect(entry.annualDeductible).toBe(0)
+      expect(entry.annualTaxSaving).toBe(0)
+      expect(entry.monthlyTaxSaving).toBe(0)
+      expect(entry.monthlyNetCost).toBe(0)
+    }
+  })
+
+  it('uses the joint Schicht-1 cap and counts both partners’ GRV contributions', () => {
+    const ws = makeBaseWorkspace()
+    ws.baseline.profile = { ...ws.baseline.profile, grossSalaryYear: 80_000, taxClass: 3 }
+    ws.baseline.partner = { ...ws.baseline.profile, grossSalaryYear: 0, taxClass: 5 }
+    ws.baseline.assumptions.bav = []
+    ws.baseline.assumptions.basisrente[0].monthlyGrossContribution = 2500
+    const id = ws.baseline.assumptions.basisrente[0].instanceId
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+    expect(funding.basisrenteByInstanceId[id].monthlyGrossContribution).toBe(2500)
+    expect(funding.basisrenteByInstanceId[id].annualDeductible).toBe(30_000)
+    expect(funding.basisrenteByInstanceId[id].annualTaxSaving).toBe(7860)
+    expect(funding.headroom.basisrente.capAnnual).toBe(61_652)
+    expect(funding.headroom.basisrente.remainingAnnual).toBe(16_772)
+
+    ws.baseline.partner.grossSalaryYear = 50_000
+    ws.baseline.assumptions.basisrente[0].monthlyGrossContribution = 5000
+    const capped = buildPortfolioFunding(ws, de2026Rules)
+    const partnerSalary = calculateSalaryResult(ws.baseline.partner, de2026Rules)
+    const partnerPension = partnerSalary.social.pension *
+      (1 + de2026Rules.socialSecurity.pensionEmployerRate / de2026Rules.socialSecurity.pensionEmployeeRate)
+    expect(capped.headroom.basisrente.pensionSystemAnnual).toBeCloseTo(14_880 + partnerPension, 8)
+    expect(capped.headroom.basisrente.fundedAnnual).toBeCloseTo(61_652, 8)
+    expect(capped.headroom.basisrente.remainingAnnual).toBeCloseTo(0, 8)
+    const ownSalary = capped.salaryForOtherFunding
+    const householdTaxable = (ownSalary.taxableIncomeForDeductions ?? ownSalary.taxableIncome) +
+      (partnerSalary.taxableIncomeForDeductions ?? partnerSalary.taxableIncome)
+    const acceptedDeduction = capped.basisrenteByInstanceId[id].annualDeductible
+    const expectedSaving = calculateSalaryPhaseTaxDelta(de2026Rules, householdTaxable, acceptedDeduction, 'married').taxSavingAnnual
+    expect(capped.basisrenteByInstanceId[id].annualTaxSaving).toBe(expectedSaving)
+    expect(capped.salaryAfterBasisrenteDeduction.taxableIncomeForDeductions).toBeCloseTo(householdTaxable - acceptedDeduction, 8)
+  })
+
+  it.each([{ salary: 40_000, basisMonthly: 1000 }, { salary: 60_000, basisMonthly: 1000 }, { salary: 80_000, basisMonthly: 1000 }, { salary: 60_000, basisMonthly: 4000 }])('applies accepted Basisrente deductions before simultaneous certified-product refunds ($salary, $basisMonthly)', ({ salary: grossSalaryYear, basisMonthly }) => {
+    const ws = makeBaseWorkspace()
+    ws.baseline.profile = { ...ws.baseline.profile, grossSalaryYear, age: 40, retirementAge: 67 }
+    ws.baseline.assumptions.bav = []
+    const assumptions = ws.baseline.assumptions
+    assumptions.basisrente[0].monthlyGrossContribution = basisMonthly
+    assumptions.basisrente.push({ ...assumptions.basisrente[0], instanceId: 'paid-up-extra', status: 'paid_up', monthlyGrossContribution: 5000 })
+    assumptions.riester[0].monthlyOwnContribution = 150
+    assumptions.altersvorsorgedepot[0].monthlyOwnContribution = 150
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+    const salary = funding.salaryForOtherFunding
+    const acceptedDeduction = funding.basisrenteByInstanceId[assumptions.basisrente[0].instanceId].annualDeductible
+    expect(acceptedDeduction).toBeGreaterThan(0)
+    if (basisMonthly === 4000) expect(acceptedDeduction).toBeLessThan(basisMonthly * 12)
+    const adjusted = {
+      ...salary,
+      taxableIncomeForDeductions: Math.max(0, (salary.taxableIncomeForDeductions ?? salary.taxableIncome) - acceptedDeduction),
+    }
+    const simulation = simulatePortfolio(ws, de2026Rules)
+    const riesterResult = simulation.perInstance[assumptions.riester[0].instanceId][0]
+    const avdResult = simulation.perInstance[assumptions.altersvorsorgedepot[0].instanceId][0]
+    for (const yearIndex of [0, 1, 20]) {
+      const riester = funding.riesterYearlyByInstanceId[assumptions.riester[0].instanceId][yearIndex]
+      const avd = funding.altersvorsorgedepotYearlyByInstanceId[assumptions.altersvorsorgedepot[0].instanceId][yearIndex]
+      const expectedRiester = calculateRiesterFunding(de2026Rules, adjusted, {
+        ...assumptions.riester[0], monthlyOwnContribution: riester.monthlyOwnContribution,
+      }, ws.baseline.profile, { contributionYear: de2026Rules.year + yearIndex, isFirstContributionYear: yearIndex === 0 })
+      const expectedAvd = calculateAvdFunding(de2026Rules, adjusted, assumptions.altersvorsorgedepot[0], {
+        profile: ws.baseline.profile, contributionYear: de2026Rules.year + yearIndex, isFirstContributionYear: yearIndex === 0,
+      })
+      expect(riester.guenstigerpruefungBenefitAnnual).toBeCloseTo(expectedRiester.guenstigerpruefungBenefitAnnual, 8)
+      expect(avd.guenstigerpruefungBenefitAnnual).toBeCloseTo(expectedAvd.guenstigerpruefungBenefitAnnual, 8)
+      expect(riesterResult.rows[yearIndex].yearlyProductContribution).toBeCloseTo(
+        riester.annualOwnContribution + riester.totalAllowanceAnnual, 8,
+      )
+      expect(avdResult.rows[yearIndex].yearlyProductContribution).toBeCloseTo(
+        avd.totalContractContributionAnnual, 8,
+      )
+      // Refunds reduce household cost once; they are not a second deposit.
+      expect(riesterResult.rows[yearIndex].yearlyUserCost).toBeCloseTo(
+        riester.annualOwnContribution - expectedRiester.guenstigerpruefungBenefitAnnual, 8,
+      )
+      expect(avdResult.rows[yearIndex].yearlyUserCost).toBeCloseTo(
+        avd.annualOwnContribution - expectedAvd.guenstigerpruefungBenefitAnnual, 8,
+      )
+    }
+  })
+
   it('two active Basisrente instances: aggregate is scaled when over Schicht-1 cap', () => {
     const ws = makeBaseWorkspace()
     // remainingSchicht1Cap = schicht1CapSingle - GRV contributions.
@@ -420,8 +570,7 @@ describe('buildPortfolioFunding — AVD', () => {
       const result = perInstance[instance.instanceId][0]
       for (const yearIndex of [0, 1]) {
         const expectedProductContribution =
-          schedule[yearIndex].totalContractContributionAnnual +
-          schedule[yearIndex].guenstigerpruefungBenefitAnnual
+          schedule[yearIndex].totalContractContributionAnnual
         expect(result.rows[yearIndex].yearlyProductContribution).toBeCloseTo(
           expectedProductContribution,
           8,
@@ -1238,7 +1387,7 @@ describe('gh#56 — multi-Riester simulator uses capped contributions', () => {
     const householdOwnMonthly = fundA.monthlyOwnContribution + fundB.monthlyOwnContribution
     const household = calculateRiesterFunding(
       de2026Rules,
-      funding.salaryForOtherFunding,
+      funding.salaryAfterBasisrenteDeduction,
       {
         ...defaultAssumptions.riester,
         eligibility: ws.baseline.assumptions.riester[0].eligibility,
@@ -1339,5 +1488,75 @@ describe('paidUpRiesterFunding', () => {
       (r, s, si) => calculateRiesterFunding(r, s, si, defaultProfile),
     )
     expect(result.annualOwnContribution).toBe(0)
+  })
+})
+
+describe('bAV employee payroll partition invariance', () => {
+  it('keeps asymmetric contractual cash flows and shares statutory employer savings once', () => {
+    const ws = makeBaseWorkspace()
+    ws.baseline.profile.grossSalaryYear = de2026Rules.socialSecurity.pensionCapYear + 100
+    const first = ws.baseline.assumptions.bav[0]
+    ws.baseline.assumptions.bav = [
+      { ...first, instanceId: 'bav-eligible', monthlyGrossConversion: 350,
+        statutoryMinimumSubsidyEnabled: true, contractualMatchPercent: 0.1, contractualFixedMonthly: 20 },
+      { ...first, instanceId: 'bav-ineligible', monthlyGrossConversion: 150,
+        statutoryMinimumSubsidyEnabled: false, contractualMatchPercent: 0, contractualFixedMonthly: 10 },
+      { ...first, instanceId: 'bav-fixed-only', monthlyGrossConversion: 0,
+        statutoryMinimumSubsidyEnabled: true, contractualMatchPercent: 0, contractualFixedMonthly: 30 },
+    ]
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+    const eligible = funding.bavByInstanceId['bav-eligible']
+    const ineligible = funding.bavByInstanceId['bav-ineligible']
+    expect(eligible.monthlyGrossConversion).toBe(350)
+    expect(ineligible.monthlyGrossConversion).toBe(150)
+    expect(eligible.monthlyContractualEmployerContribution).toBe(55)
+    expect(ineligible.monthlyContractualEmployerContribution).toBe(10)
+    expect(ineligible.monthlyStatutoryEmployerSubsidy).toBe(0)
+    const fixedOnly = funding.bavByInstanceId['bav-fixed-only']
+    expect(fixedOnly.monthlyNetCost).toBe(0)
+    expect(fixedOnly.monthlyEmployerContribution).toBe(30)
+    expect(fixedOnly.monthlyStatutoryEmployerSubsidy).toBe(0)
+    const reversed = structuredClone(ws)
+    reversed.baseline.assumptions.bav.reverse()
+    expect(buildPortfolioFunding(reversed, de2026Rules).bavByInstanceId).toEqual(funding.bavByInstanceId)
+    for (const result of Object.values(funding.bavByInstanceId)) {
+      expect(result.taxableOverflowAnnual).toBeGreaterThanOrEqual(0)
+      expect(result.svLiableOverflowAnnual).toBeGreaterThanOrEqual(0)
+    }
+    const savings = eligible.employerSocialSecuritySavingAnnual + ineligible.employerSocialSecuritySavingAnnual
+    expect(eligible.monthlyStatutoryEmployerSubsidy * 12).toBeLessThanOrEqual(savings * 0.7 + 1e-8)
+    expect(eligible.monthlyNetCost + ineligible.monthlyNetCost).toBeCloseTo(funding.headroom.bav.monthlyNetCost, 8)
+    expect(eligible.salaryWithBav).toEqual(funding.salaryForOtherFunding)
+    expect(ineligible.salaryWithBav).toEqual(funding.salaryForOtherFunding)
+  })
+  it.each([50_000, 70_000, 102_000])('preserves funding when contracts split at gross %s', (grossSalaryYear) => {
+    for (const subsidy of [false, true]) {
+      for (const monthlyGrossConversion of [600, 1_200]) {
+        const single = makeBaseWorkspace()
+        single.baseline.profile.grossSalaryYear = grossSalaryYear
+        const contract = { ...single.baseline.assumptions.bav[0], monthlyGrossConversion,
+          statutoryMinimumSubsidyEnabled: subsidy, contractualMatchPercent: subsidy ? 0.1 : 0,
+          contractualFixedMonthly: subsidy ? 40 : 0 }
+        single.baseline.assumptions.bav = [contract]
+        const split = structuredClone(single)
+        split.baseline.assumptions.bav = [1, 2].map(i => ({ ...contract, instanceId: `bav-split-${i}`,
+          monthlyGrossConversion: monthlyGrossConversion / 2, contractualFixedMonthly: contract.contractualFixedMonthly / 2 }))
+        const one = buildPortfolioFunding(single, de2026Rules)
+        const two = buildPortfolioFunding(split, de2026Rules)
+        const fields = ['monthlyNetCost', 'annualTaxAndSvSavings', 'taxFreePortionAnnual', 'svFreePortionAnnual', 'annualEmployerContribution',
+          'employerSocialSecuritySavingAnnual', 'monthlyStatutoryEmployerSubsidy',
+          'estimatedMonthlyGrvReduction', 'totalBavContributionAnnual'] as const
+        for (const field of fields) {
+          expect(Object.values(two.bavByInstanceId).reduce((s, f) => s + f[field], 0)).toBeCloseTo(one.bavByInstanceId[contract.instanceId][field], 6)
+        }
+        expect(Object.values(two.bavByInstanceId).reduce((s, f) => s + f.svFreePortionAnnual, 0))
+          .toBeLessThanOrEqual(de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.socialSecurityFreePctOfPensionCap)
+        const a = simulatePortfolio(single, de2026Rules)
+        const b = simulatePortfolio(split, de2026Rules)
+        expect(b.portfolioFunding.headroom.bav.monthlyNetCost).toBeCloseTo(a.portfolioFunding.headroom.bav.monthlyNetCost, 6)
+        const splitCapital = split.baseline.assumptions.bav.reduce((sum, c) => sum + b.perInstance[c.instanceId][0].capitalAtRetirement, 0)
+        expect(splitCapital).toBeCloseTo(a.perInstance[contract.instanceId][0].capitalAtRetirement, 5)
+      }
+    }
   })
 })

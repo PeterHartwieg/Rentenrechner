@@ -17,6 +17,7 @@
  *
  *   3. ETF re-run orchestration: re-simulate each ETF instance with its
  *      per-year allowance schedule and replace the result in `perInstance`.
+ *      Then allocate an independent allowance for the alternative full liquidation.
  *      Only runs when ≥2 active ETF instances are present; length-1 workspaces
  *      are skipped (the shared schedule reduces to the full allowance every
  *      year — byte-identical oracle goldens).
@@ -45,6 +46,8 @@ import type {
 import type { EtfProductResult } from '../domain/results'
 import type { WorkspaceAssumptionsV2 } from '../domain/workspace'
 import type { EtfInstance } from '../domain/instances'
+import { afterTaxInvestmentCapital, etfLiquidationTaxableDemand } from './etfPayout'
+import { capitalMultipleAnnualized } from './buildResult'
 
 // ---------------------------------------------------------------------------
 // Cross-instance Sparerpauschbetrag demand calculation
@@ -75,7 +78,7 @@ export function calculateEtfAllowanceDemand(
   const yearly: number[] = new Array(totalYears).fill(0)
 
   // Accumulation phase demand: per-year VP = Δ cumulativeVorabpauschale.
-  let prevCumVp = 0
+  let prevCumVp = result.initialVorabpauschale ?? 0
   for (const row of result.rows) {
     const yearIdx = row.year - 1
     if (yearIdx < 0 || yearIdx >= totalYears) continue
@@ -241,6 +244,39 @@ export function applyCrossInstanceSparerpauschbetrag(
       if (!arr) continue
       const idx = arr.findIndex((r) => r.scenarioId === scenario.id)
       if (idx >= 0) arr[idx] = tagged
+    }
+
+    // Full liquidation is an alternative to the recurring payout schedule,
+    // with its own household allowance in the liquidation year. Derive demand
+    // only AFTER re-running accumulation: shared VP taxes can change capital.
+    const liquidationResults = new Map<string, { result: EtfProductResult; partialExemption: number; vp: number }>()
+    const liquidationDemand = new Map<string, number[]>()
+    for (const inst of activeEtf) {
+      const result = perInstance[inst.instanceId]?.find(r => r.scenarioId === scenario.id)
+      if (!result || result.productId !== 'etf') continue
+      const partialExemption = inst.equityPartialExemption
+      const vp = result.rows.at(-1)?.cumulativeVorabpauschale ?? result.initialVorabpauschale ?? 0
+      liquidationResults.set(inst.instanceId, { result, partialExemption, vp })
+      liquidationDemand.set(inst.instanceId, [etfLiquidationTaxableDemand(
+        result.capitalAtRetirement, result.totalContributionsBeforeFees, vp, partialExemption,
+      )])
+    }
+    const liquidationAllowances = apportionSparerpauschbetrag(liquidationDemand, fullAllowance, 1)
+    for (const [id, { result, partialExemption, vp }] of liquidationResults) {
+      result.afterTaxLumpSum = afterTaxInvestmentCapital(
+        result.capitalAtRetirement,
+        result.totalContributionsBeforeFees,
+        rules,
+        partialExemption,
+        vp,
+        liquidationAllowances.get(id)![0],
+      )
+      result.valueMultipleOnUserCost = result.totalUserCost > 0
+        ? result.afterTaxLumpSum / result.totalUserCost
+        : null
+      result.capitalMultipleAnnualized = capitalMultipleAnnualized(
+        result.afterTaxLumpSum, result.totalUserCost, yearsToRetirement,
+      )
     }
   }
 }

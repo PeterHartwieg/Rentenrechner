@@ -16,6 +16,21 @@ const allVisibleAssumptions = {
 describe('#61 calculateBasisrenteFunding', () => {
   const baseSalary = calculateSalaryResult(defaultProfile, de2026Rules)
 
+  it('uses the joint cap for the declared class-3 one-earner compare model', () => {
+    const profile = { ...defaultProfile, grossSalaryYear: 80_000, taxClass: 3 as const }
+    const assumptions = { ...allVisibleAssumptions, bav: { ...allVisibleAssumptions.bav, monthlyGrossConversion: 0, contractualFixedMonthly: 0 }, basisrente: { ...defaultAssumptions.basisrente, monthlyGrossContribution: 2500 } }
+    const comparison = simulateRetirementComparison(profile, assumptions, de2026Rules)
+    expect(comparison.basisrenteFunding.annualDeductible).toBe(30_000)
+    expect(comparison.basisrenteFunding.annualTaxSaving).toBe(7860)
+    const withoutBasis = simulateRetirementComparison(profile, {
+      ...assumptions, basisrente: { ...assumptions.basisrente, monthlyGrossContribution: 0 },
+    }, de2026Rules)
+    // Compare products are alternatives, so simultaneous-product stacking is
+    // confined to combine mode.
+    expect(comparison.riesterFunding).toEqual(withoutBasis.riesterFunding)
+    expect(comparison.altersvorsorgedepotFunding).toEqual(withoutBasis.altersvorsorgedepotFunding)
+  })
+
   it('tax saving is positive for nonzero contribution within cap', () => {
     const result = calculateBasisrenteFunding(de2026Rules, baseSalary, defaultAssumptions.basisrente)
     expect(result.annualTaxSaving).toBeGreaterThan(0)

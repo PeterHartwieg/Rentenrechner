@@ -12,7 +12,7 @@ function fixture() {
   ws.baseline.profile = { ...ws.baseline.profile, age: 30, retirementAge: 67, grossSalaryYear: 50160 }
   const asm = ws.baseline.assumptions
   asm.inflationRate = 0.02
-  asm.etf = [{ ...INVENTORY_PRODUCT_REGISTRY.etf.createDefault(2026, 1, () => 'etf-target01'), monthlyContribution: 270, currentValueEUR: 10000 }]
+  asm.etf = [{ ...INVENTORY_PRODUCT_REGISTRY.etf.createDefault(2026, 1, () => 'etf-target01'), monthlyContribution: 270, currentValueEUR: 10000, historicalCostBasisEUR: 10000, historicalVorabpauschaleEUR: 0 }]
   asm.bav = []
   asm.insurance = []
   return ws

@@ -342,7 +342,7 @@ describe('buildInstanceCapitalPolicy — generated conservation properties', () 
           const ws = makeTransferWorkspace(source, target, ev.slot)
           const event: TransferEvent = {
             type: 'surrender_reinvest',
-            year: ev.year,
+            year: ev.slot === 'versicherung' ? RULES_YEAR : ev.year,
             sourceInstanceId: 'src',
             targetInstanceId: 'tgt',
             amountEUR: ev.amountEUR,
@@ -350,16 +350,16 @@ describe('buildInstanceCapitalPolicy — generated conservation properties', () 
           }
 
           // Source model: withdrawal = proceeds = amount × (1 − haircut).
-          const proceeds = ev.amountEUR * (1 - ev.surrenderHaircutPct)
+          const proceeds = (ev.slot === 'versicherung' ? Math.min(ev.amountEUR, capital.currentValue) : ev.amountEUR) * (1 - ev.surrenderHaircutPct)
           const sourcePolicy = buildInstanceCapitalPolicy(source, ws, de2026Rules, [event], [])
           expect(sourcePolicy).toBeDefined()
           const withdrawals = sourcePolicy!.capitalWithdrawals ?? []
           expect(withdrawals).toHaveLength(1)
-          expect(closeTo(withdrawals[0].amount, proceeds)).toBe(true)
-          expect(withdrawals[0].year).toBe(eventCalendarYearToContractYear(ev.year, RULES_YEAR))
+          expect(closeTo(withdrawals[0].amount, ev.slot === 'versicherung' ? ev.amountEUR : proceeds)).toBe(true)
+          expect(withdrawals[0].year).toBe(eventCalendarYearToContractYear(event.year, RULES_YEAR))
 
           // Target model: injection = proceeds − surrenderTax, basis mirrors injection.
-          const expectedTax = computeSurrenderTax(source, proceeds, ws, de2026Rules, ev.year)
+          const expectedTax = computeSurrenderTax(source, proceeds, ws, de2026Rules, event.year)
           expect(expectedTax).toBeGreaterThanOrEqual(0)
           const targetPolicy = buildInstanceCapitalPolicy(target, ws, de2026Rules, [], [event])
           expect(targetPolicy).toBeDefined()

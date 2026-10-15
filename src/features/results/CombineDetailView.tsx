@@ -6,6 +6,8 @@ import type { Workspace } from '../../domain/workspace'
 import type { ProductId } from '../../domain'
 import type { CombinedResult } from '../../engine/portfolioCombine'
 import type { InstanceCommon } from '../../domain/instances'
+import { activeRules } from '../../rules'
+import { capitalTaxReadinessForInstance } from '../../engine/capitalTaxReadiness'
 import { getProductMeta } from '../../app/productPresentation'
 import { ProvLabel } from './provenance'
 import { evidenceStateToProvKind } from './provenanceHelpers'
@@ -40,6 +42,7 @@ interface CombineDetailRow {
   productId: ProductId
   instanceLabel: string
   status: InstanceCommon['status']
+  canShowAfterTaxCapital: boolean
   result: ProductResult | undefined
   /** Back-allocated share from the aggregate retirement-tax + KV/PV pipeline. */
   combinedShare: CombinedResult['byInstance'][string] | undefined
@@ -64,7 +67,8 @@ interface CombineDetailViewProps {
    * "Netto-Rente mtl." column then renders '—': every value in it is a share of
    * that blocked total, back-allocated from the aggregate tax + KV/PV pipeline,
    * so printing one is the same approximation the total was withheld to avoid
-   * (issue #395). Every other column is per-contract and stays.
+   * (issue #395). Gross per-contract values remain; after-tax capital has its
+   * own input-readiness check as well.
    */
   householdTotalBlocked?: boolean
   onExportCsv: () => void
@@ -198,7 +202,7 @@ function CombineDetailRowView({
   // user can see how the aggregate progressive pipeline apportioned costs to
   // this contract. Only rendered when the combined share is available.
   const combinedShare = row.combinedShare
-  const netCellTitle = combinedShare != null
+  const netCellTitle = !householdTotalBlocked && combinedShare != null
     ? `Steuer ${formatCurrency(combinedShare.taxShareAnnual / 12, 0)}/mo (${formatCurrency(combinedShare.taxShareAnnual, 0)}/Jahr) · KV/PV ${formatCurrency(combinedShare.kvPvShare, 0)}/mo`
     : undefined
 
@@ -233,7 +237,7 @@ function CombineDetailRowView({
           : monthlyNet !== undefined
             ? formatCurrency(monthlyNet, 0)
             : '–'}
-        {breakEvenAge !== undefined && (
+        {!householdTotalBlocked && row.canShowAfterTaxCapital && breakEvenAge !== undefined && (
           <span className="break-even-note">
             {' '}(Break-even Alter {Math.round(breakEvenAge)})
           </span>
@@ -242,7 +246,9 @@ function CombineDetailRowView({
       <td>
         {lumpSum === null
           ? <span className="combine-detail-locked" title="Kapitalauszahlung gesetzlich ausgeschlossen">gesperrt</span>
-          : lumpSum !== undefined
+          : householdTotalBlocked || !row.canShowAfterTaxCapital
+            ? '—'
+            : lumpSum !== undefined
             ? formatCurrency(lumpSum, 0)
             : '–'}
       </td>
@@ -302,7 +308,7 @@ function collectRows(
   const wsa = workspace.baseline.assumptions
   const rows: CombineDetailRow[] = []
 
-  const productSlots: Array<{ id: ProductId; instances: { instanceId: string; label: string; status: InstanceCommon['status'] }[] }> = [
+  const productSlots: Array<{ id: ProductId; instances: InstanceCommon[] }> = [
     { id: 'bav', instances: wsa.bav },
     { id: 'etf', instances: wsa.etf },
     { id: 'versicherung', instances: wsa.insurance },
@@ -323,6 +329,7 @@ function collectRows(
         productId: slot.id,
         instanceLabel: label,
         status: inst.status,
+        canShowAfterTaxCapital: capitalTaxReadinessForInstance(slot.id, inst, workspace.baseline.profile, activeRules).canShowAfterTaxCapital,
         result,
         combinedShare,
       })

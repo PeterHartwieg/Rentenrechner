@@ -24,6 +24,10 @@ export interface YearlyProjection {
   yearlyFees: number
   cumulativeFees: number
   cumulativeProductContributions: number
+  /** Tax basis at this row, after opening principal, injections and disposals.
+   * Absent when equal to cumulativeProductContributions (also legacy fixtures).
+   * Does not include the separate cumulative Vorabpauschale credit. */
+  cumulativeTaxBasis?: number
   // Gross Vorabpauschale accumulated so far (0 for bAV/insurance); reduces exit taxable gain
   cumulativeVorabpauschale: number
 }
@@ -115,6 +119,8 @@ export interface BaseProductResult {
 }
 
 export interface EtfProductResult extends BaseProductResult {
+  /** Opening credit; excluded from forecast-year allowance demand. */
+  initialVorabpauschale?: number
   productId: 'etf'
   afterTaxLumpSum: number       // ETF always has an after-tax value (never locked)
   etfPayoutRows: EtfPayoutRow[] // required; only ETF produces a payout schedule

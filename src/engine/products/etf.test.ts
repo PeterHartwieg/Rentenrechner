@@ -219,15 +219,19 @@ describe('#37 ETF payout schedule (etfPayoutSchedule)', () => {
   // Compute the correct PMT so capital depletes to ~0 in payoutYears
   const grossMonthly = monthlyPayoutFromCapital(capital, payoutReturn, payoutYears)
 
-  it('year-1 net monthly payout matches constant-ratio approximation', () => {
+  it('year-1 net monthly payout accounts for growth before each monthly sale', () => {
     const rows = etfPayoutSchedule(
       capital, contributions, cumulativeVP, grossMonthly,
       payoutYears, payoutReturn, retirementAge, de2026Rules, partialExemption,
     )
     expect(rows).toHaveLength(payoutYears)
-    // Year-1 gain ratio: (capital - contributions - VP) / capital = 195000/400000
-    const gainRatio = (capital - contributions - cumulativeVP) / capital
-    const taxableGain = grossMonthly * 12 * gainRatio
+    // At opening share price 1, month m sells PMT / (1+r)^(m/12) shares.
+    // Each share carries the same opening average basis, independent of its sale date.
+    const sharesSold = Array.from({ length: 12 }, (_, month) =>
+      grossMonthly / Math.pow(1 + payoutReturn, (month + 1) / 12),
+    ).reduce((sum, shares) => sum + shares, 0)
+    const disposedBasis = sharesSold * (contributions + cumulativeVP) / capital
+    const taxableGain = grossMonthly * 12 - disposedBasis
     const effectiveTaxRate = de2026Rules.capitalGains.taxRate * (1 + de2026Rules.capitalGains.solidarityRate)
     const expectedTax = Math.max(0, taxableGain * (1 - partialExemption) - de2026Rules.capitalGains.saverAllowance) * effectiveTaxRate
     const expectedNet = (grossMonthly * 12 - expectedTax) / 12

@@ -8,8 +8,8 @@
  * policy + shared saver allowance) with NO neutralised unrelated-product
  * inputs and no `buildContext` funding pre-pass.
  *
- * Every expectation except the documented ETF accumulation RIY corrections
- * is a FROZEN PRE-CHANGE value (see `etfContextParity.fixture.ts`): captured
+ * Every expectation except the documented ETF RIY, monthly payout and shared
+ * household allowance corrections is a FROZEN PRE-CHANGE value (see `etfContextParity.fixture.ts`): captured
  * from the engine BEFORE the migration, with full float precision. These are
  * internal regression anchors — do not regenerate to make a failing test pass. The combined
  * fixtures cover the interaction cases the issue calls out: multi-ETF
@@ -173,6 +173,9 @@ function expectMatchesFixture(actual: unknown, expected: unknown, path = '$'): v
 /** Full-precision projection of a result onto the frozen fixture slice. */
 function frozenView(r: ProductResult) {
   const etf = r as EtfProductResult
+  const originalRow = (row: ProductResult['rows'][number] | undefined) => row
+    ? Object.fromEntries(Object.entries(row).filter(([key]) => key !== 'cumulativeTaxBasis'))
+    : undefined
   return {
     productId: r.productId,
     scenarioId: r.scenarioId,
@@ -198,9 +201,9 @@ function frozenView(r: ProductResult) {
     netMonthlyPayout: r.netMonthlyPayout,
     payoutEndAge: etf.payoutEndAge,
     rowCount: r.rows.length,
-    rowFirst: r.rows[0],
-    rowLast: r.rows[r.rows.length - 1],
-    rowVorabPeak: r.rows.reduce((a, b) => (b.cumulativeVorabpauschale > a.cumulativeVorabpauschale ? b : a), r.rows[0]),
+    rowFirst: originalRow(r.rows[0]),
+    rowLast: originalRow(r.rows[r.rows.length - 1]),
+    rowVorabPeak: originalRow(r.rows.reduce((a, b) => (b.cumulativeVorabpauschale > a.cumulativeVorabpauschale ? b : a), r.rows[0])),
     payoutRowCount: etf.etfPayoutRows.length,
     payoutRowFirst: etf.etfPayoutRows[0],
     payoutRowLast: etf.etfPayoutRows[etf.etfPayoutRows.length - 1],
@@ -419,7 +422,7 @@ describe('ETF narrow context — compare-mode parity (frozen pre-change)', () =>
 // ---------------------------------------------------------------------------
 
 describe('ETF narrow context — combine-mode parity (frozen pre-change)', () => {
-  it('multi-ETF workspace with transfers and a paid-up contract reproduces the pre-change engine', () => {
+  it('multi-ETF workspace with transfers and a paid-up contract preserves the corrected household anchor', () => {
     const { perInstance } = simulatePortfolio(makeCombineWorkspace(), de2026Rules)
     for (const id of ['etf-core', 'etf-side', 'etf-old'] as const) {
       const actual = (perInstance[id] ?? []).map(frozenView)

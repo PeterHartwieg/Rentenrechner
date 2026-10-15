@@ -248,7 +248,7 @@ export function calculateAvdFunding(
   options: AvdFundingOptions = {},
 ): AltersvorsorgedepotFundingResult {
   const avdRules = rules.altersvorsorgedepot
-  const annualOwnContribution = avd.monthlyOwnContribution * 12
+  const requestedOwnContributionAnnual = avd.monthlyOwnContribution * 12
   const contributionYear = options.contributionYear ?? rules.year
   const effectiveEligibility = resolveAvdEligibility(
     avd.eligibility,
@@ -257,6 +257,16 @@ export function calculateAvdFunding(
   )
   const isFirstContributionYear =
     options.isFirstContributionYear ?? !avd.eligibility.careerStarterBonusUsed
+
+  // Providers reject contributions above own + allowances cap. All funding
+  // amounts and net cost describe accepted cash, not the requested excess.
+  const maximumOwnContributionAnnual = maxAvdMonthlyOwnContribution(
+    effectiveEligibility,
+    rules,
+    isFirstContributionYear,
+  ) * 12
+  const annualOwnContribution = Math.min(requestedOwnContributionAnnual, maximumOwnContributionAnnual)
+  const monthlyOwnContribution = annualOwnContribution / 12
 
   // -------------------------------------------------------------------------
   // 1. Allowances (using first-year logic: career bonus only in year 1).
@@ -281,7 +291,7 @@ export function calculateAvdFunding(
     uncappedContractContributionAnnual,
     avdRules.contractContributionCapAnnual,
   )
-  const cappedAtContractMax = uncappedContractContributionAnnual > avdRules.contractContributionCapAnnual
+  const cappedAtContractMax = requestedOwnContributionAnnual > maximumOwnContributionAnnual
 
   // -------------------------------------------------------------------------
   // 3. §10a EStG special-expense deductible base.
@@ -328,10 +338,10 @@ export function calculateAvdFunding(
   // 5. Net monthly cost: the actual net cash the user pays after the
   //    Günstigerprüfung refund. Allowances go to the contract, not the user.
   // -------------------------------------------------------------------------
-  const monthlyNetCost = Math.max(0, avd.monthlyOwnContribution - guenstigerpruefungBenefitAnnual / 12)
+  const monthlyNetCost = Math.max(0, monthlyOwnContribution - guenstigerpruefungBenefitAnnual / 12)
 
   return {
-    monthlyOwnContribution: avd.monthlyOwnContribution,
+    monthlyOwnContribution,
     annualOwnContribution,
     basicAllowanceAnnual,
     childAllowanceAnnual,

@@ -18,7 +18,7 @@ function contributionBase(annualGross: number, cap: number): number {
   return Math.min(Math.max(0, annualGross), cap)
 }
 
-function bavHasStatutoryMinimumSubsidyRoute(
+export function bavHasStatutoryMinimumSubsidyRoute(
   durchfuehrungsweg: BavDurchfuehrungsweg,
 ): boolean {
   return (
@@ -308,6 +308,9 @@ export function calculateBavFunding(
   profile: PersonalProfile,
   rules: GermanRules,
   bav: BavAssumptions,
+  // Combine mode: share of conversion eligible for the statutory subsidy.
+  // Both the candidate and its employer-SV-savings cap use this share.
+  statutorySavingsShare = 1,
 ): BavFundingResult {
   const annualGrossConversion = bav.monthlyGrossConversion * 12
   const taxFreeLimit = rules.socialSecurity.pensionCapYear * rules.bav.taxFreePctOfPensionCap
@@ -345,8 +348,8 @@ export function calculateBavFunding(
       bav.statutoryMinimumSubsidyEnabled &&
       bavHasStatutoryMinimumSubsidyRoute(bav.durchfuehrungsweg)
       ? Math.min(
-          annualGrossConversion * rules.bav.statutoryEmployerSubsidyPct,
-          employerSocialSecuritySavingAnnual,
+          annualGrossConversion * rules.bav.statutoryEmployerSubsidyPct * statutorySavingsShare,
+          employerSocialSecuritySavingAnnual * statutorySavingsShare,
         )
       : 0
     const next = statutorySubsidyAnnual + contractualSubsidyAnnual
@@ -364,14 +367,14 @@ export function calculateBavFunding(
     bav.statutoryMinimumSubsidyEnabled &&
     bavHasStatutoryMinimumSubsidyRoute(bav.durchfuehrungsweg)
   const uncappedStatutorySubsidyAnnual = statutorySubsidyEnabled
-    ? annualGrossConversion * rules.bav.statutoryEmployerSubsidyPct
+    ? annualGrossConversion * rules.bav.statutoryEmployerSubsidyPct * statutorySavingsShare
     : 0
   const statutorySubsidyCapAnnual = statutorySubsidyEnabled
-    ? employerSocialSecuritySavingAnnual
+    ? employerSocialSecuritySavingAnnual * statutorySavingsShare
     : 0
   const statutorySubsidyCapApplied =
     statutorySubsidyEnabled &&
-    uncappedStatutorySubsidyAnnual > employerSocialSecuritySavingAnnual
+    uncappedStatutorySubsidyAnnual > statutorySubsidyCapAnnual
 
   const salaryWithBav = calculateSalaryResult(
     profile,

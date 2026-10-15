@@ -52,6 +52,8 @@ function enteredEtfInstance(): EtfInstance {
     status: 'active',
     contractStartYear: new Date().getFullYear(),
     currentValueEUR: 25000,
+    historicalCostBasisEUR: 20000,
+    historicalVorabpauschaleEUR: 0,
     monthlyContribution: 200,
     annualAssetFee: 0.002,
     equityPartialExemption: defaultAssumptions.etf.equityPartialExemption,

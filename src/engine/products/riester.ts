@@ -48,10 +48,10 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
     : { ...riester, monthlyOwnContribution: effectiveMonthlyOwnContribution }
 
   // Total monthly contribution = portfolio-capped Eigenbeitrag
-  // + state allowances + Günstigerprüfung tax refund flowing back into the contract.
+  // + state allowances. The tax refund is retained by the household and already
+  // reduces monthlyNetCost; investing it as well would count the refund twice.
   const totalMonthlyContribution =
     effectiveMonthlyOwnContribution +
-    riesterFunding.guenstigerpruefungBenefitAnnual / 12 +
     riesterFunding.totalAllowanceAnnual / 12
   const yearlyFundingCache = new Map<number, ReturnType<typeof calculateRiesterFunding>>()
   const calculateFundingForYear = (yearIndex: number) => {
@@ -120,7 +120,6 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
             monthlyUserCost: funding.monthlyNetCost,
             monthlyProductContribution:
               funding.monthlyOwnContribution +
-              funding.guenstigerpruefungBenefitAnnual / 12 +
               funding.totalAllowanceAnnual / 12,
           }
         },
@@ -128,15 +127,16 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
     ),
     taxAndSvSavings: yearlySavings,
     buildPayout: ({ projection, payoutYears, payoutReturn }) => {
-      const grossMonthlyPayout = computeGrossMonthlyPayout(projection.capital, {
+      const partialPct = Math.min(riester.partialCapitalPct, 0.30)
+      const partialCapital = projection.capital * partialPct
+      const monthlyCapital = projection.capital - partialCapital
+      const grossMonthlyPayout = computeGrossMonthlyPayout(monthlyCapital, {
         mode: riester.payoutMode,
         rentenfaktor: riester.rentenfaktor,
         zeitrenteYears: riester.zeitrenteYears,
         kapitalverzehrYears: payoutYears,
         payoutReturn,
       })
-      const partialPct = Math.min(riester.partialCapitalPct, 0.30)
-      const partialCapital = projection.capital * partialPct
       const otherAnnual = riester.monthlyOtherRetirementIncome * 12
 
       const riesterPayout = netCertifiedPensionPayoutFull(
@@ -164,7 +164,9 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
         kvPvMonthly: riesterPayout.kvPvMonthly,
         leibrenteBreakEvenAge: calculateLeibrenteBreakEvenAge(
           profile.retirementAge,
-          projection.capital,
+          // The lump sum is already returned at retirement; only the capital
+          // exchanged for the annuity remains to be recovered by monthly payments.
+          monthlyCapital,
           grossMonthlyPayout,
           riester.payoutMode === 'leibrente',
         ),

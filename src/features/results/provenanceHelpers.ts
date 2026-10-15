@@ -28,7 +28,9 @@
  */
 
 import type { EvidenceState } from '../../domain/instances'
-import type { InputStatus, InputStatusMap } from '../../domain/inputStatus'
+import type { InputStatus } from '../../domain/inputStatus'
+import { evidenceStateToInputStatus } from '../../domain/inputStatus'
+export { evidenceStateToInputStatus, resolveInputStatus } from '../../domain/inputStatus'
 import type { ProvKind } from './provenance'
 
 // ---------------------------------------------------------------------------
@@ -115,13 +117,7 @@ export function inputStatusToEvidenceState(status: InputStatus): EvidenceState |
  * never `'unknown'` (which would claim the user declined) and never
  * `'entered'` (which would claim a default is user-supplied).
  */
-export function evidenceStateToInputStatus(
-  evidence: EvidenceState | undefined | null,
-): InputStatus {
-  if (evidence === 'statement') return 'document'
-  if (evidence === 'user_confirmed') return 'entered'
-  return 'assumed'
-}
+
 
 /**
  * Map an `InputStatus` to the display-layer `ProvKind`.
@@ -185,12 +181,3 @@ export function formatExportProvenance(
  * Precedence: explicit `inputStatus[key]` → mapped `evidenceMap` value →
  * `'assumed'`. Reading never writes; opening a screen must not stamp metadata.
  */
-export function resolveInputStatus(
-  map: InputStatusMap | undefined,
-  evidence: EvidenceState | undefined,
-  key: string,
-): InputStatus {
-  const explicit = map?.[key]
-  if (explicit !== undefined) return explicit
-  return evidenceStateToInputStatus(evidence)
-}

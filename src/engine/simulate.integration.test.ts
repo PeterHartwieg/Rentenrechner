@@ -144,6 +144,10 @@ describe('simulateRetirementComparison — golden snapshots (basis, 5 %)', () =>
     expect(r.netMonthlyPayout).toMatchSnapshot('netMonthlyPayout')
   })
 
+  // Refund conservation correction: retained Günstigerprüfung lowers user cost,
+  // never adds contract capital. AVD capital drops by €27,993.57 (net €119.33/month);
+  // Riester capital drops by €46,579.45 (net €89.17/month) versus the old snapshots.
+  // These are engine snapshots, not amended external tax-oracle fixtures.
   it('Altersvorsorgedepot', () => {
     const r = resultFor(products, 'altersvorsorgedepot', 'basis')
     expect(r.capitalAtRetirement).toMatchSnapshot('capitalAtRetirement')
@@ -195,6 +199,7 @@ describe('default-profile end-to-end snapshot', () => {
   const find = (productId: string, scenarioId: string) =>
     sim.products.find((p) => p.productId === productId && p.scenarioId === scenarioId)!
 
+  // Math audit: monthly average-cost sales include payout-year gains; capital/lump sums unchanged.
   it('ETF: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {
     const k = find('etf', 'konservativ')
     expect(Math.round(k.capitalAtRetirement)).toBe(92_024)
@@ -204,29 +209,29 @@ describe('default-profile end-to-end snapshot', () => {
     const b = find('etf', 'basis')
     expect(Math.round(b.capitalAtRetirement)).toBe(144_628)
     expect(Math.round(b.afterTaxLumpSum!)).toBe(135_904)
-    expect(Math.round(b.netMonthlyPayout)).toBe(827)
+    expect(Math.round(b.netMonthlyPayout)).toBe(824)
 
     const o = find('etf', 'optimistisch')
     expect(Math.round(o.capitalAtRetirement)).toBe(234_090)
     expect(Math.round(o.afterTaxLumpSum!)).toBe(212_056)
-    expect(Math.round(o.netMonthlyPayout)).toBe(1_515)
+    expect(Math.round(o.netMonthlyPayout)).toBe(1_510)
   })
 
   it('bAV: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {
     const k = find('bav', 'konservativ')
     expect(Math.round(k.capitalAtRetirement)).toBe(151_776)
     expect(Math.round(k.afterTaxLumpSum!)).toBe(58_040)
-    expect(Math.round(k.netMonthlyPayout)).toBe(257)
+    expect(Math.round(k.netMonthlyPayout)).toBe(254)
 
     const b = find('bav', 'basis')
     expect(Math.round(b.capitalAtRetirement)).toBe(235_395)
     expect(Math.round(b.afterTaxLumpSum!)).toBe(86_463)
-    expect(Math.round(b.netMonthlyPayout)).toBe(374)
+    expect(Math.round(b.netMonthlyPayout)).toBe(372)
 
     const o = find('bav', 'optimistisch')
     expect(Math.round(o.capitalAtRetirement)).toBe(376_652)
     expect(Math.round(o.afterTaxLumpSum!)).toBe(130_480)
-    expect(Math.round(o.netMonthlyPayout)).toBe(567)
+    expect(Math.round(o.netMonthlyPayout)).toBe(564)
   })
 
   it('private insurance: capitalAtRetirement, afterTaxLumpSum, netMonthlyPayout per scenario', () => {

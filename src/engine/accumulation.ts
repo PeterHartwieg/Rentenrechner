@@ -37,6 +37,10 @@ export interface AccumulationPolicy {
    *  (#71 Riester → AVD per AltZertG transfer; paid-up insurance phase 2).
    *  Default 0. */
   initialCapital?: number
+  /** Remove the same fraction of basis as capital on each withdrawal. */
+  proportionalCostBasisWithdrawals?: boolean
+  initialCostBasis?: number
+  initialVorabpauschale?: number
   /** Beitragsdynamik: each year's monthly user cost, product contribution and
    *  employer contribution scale by `(1 + annualRate)^yearIndex`. Total
    *  planned contributions used by `acquisitionCostPct` are expanded to the
@@ -138,11 +142,13 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
   let feesInCurrentYear = 0
   let contributionsInCurrentYear = 0
   let balanceAtYearStart = capital
-  let cumulativeVorabpauschale = 0
+  let cumulativeVorabpauschale = policy?.initialVorabpauschale ?? 0
   // Issue 15 (TransferEvents): cumulative principal added by inbound transfers.
   // Bumps cost basis on `totalContributionsBeforeFees` so ETF / Vorabpauschale
   // logic does not retax already-taxed surrender proceeds reinvested into ETF.
   let injectedPrincipal = 0
+  let withdrawnBasis = 0
+  const currentTaxBasis = () => totalProductContributions + injectedPrincipal + (policy?.initialCostBasis ?? 0) - withdrawnBasis
   // Index injection / withdrawal / cost-basis maps by year for O(1) lookup at
   // the start of each year. Multi-entry-same-year sums (per spec one-line note).
   // Multi-source same-target-same-year: events are summed (additive injections).
@@ -211,13 +217,15 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
         capital += inj
         balanceAtYearStart += inj
       }
+      if (cb > 0) injectedPrincipal += cb
       if (wd > 0) {
         const actualWithdrawal = Math.min(wd, capital)
+        if (policy?.proportionalCostBasisWithdrawals && capital > 0) {
+          const basis = currentTaxBasis()
+          withdrawnBasis += basis * actualWithdrawal / capital
+        }
         capital -= actualWithdrawal
         balanceAtYearStart -= actualWithdrawal
-      }
-      if (cb > 0) {
-        injectedPrincipal += cb
       }
     }
 
@@ -272,6 +280,7 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
       }
 
       const year = Math.ceil(month / 12)
+      const rowBasis = currentTaxBasis()
       rows.push({
         year,
         age: input.currentAge + year,
@@ -285,6 +294,7 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
         yearlyFees: feesInCurrentYear,
         cumulativeFees: totalFees,
         cumulativeProductContributions: totalProductContributions,
+        ...(rowBasis !== totalProductContributions ? { cumulativeTaxBasis: rowBasis } : {}),
         cumulativeVorabpauschale,
       })
       balanceAtYearStart = capital
@@ -304,8 +314,8 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
     // Cost-basis tracker: user-paid contributions plus injectedPrincipal from
     // inbound transfer events. ETF / pAV exit-tax helpers consume this as the
     // already-taxed basis to subtract from the gain. For a vanilla product
-    // with no transfers it equals totalProductContributions (oracle-stable).
-    totalContributionsBeforeFees: totalProductContributions + injectedPrincipal,
+    // Historical principal is tax basis only; never new user/product contributions.
+    totalContributionsBeforeFees: currentTaxBasis(),
     cumulativeVorabpauschale,
     rows,
   }

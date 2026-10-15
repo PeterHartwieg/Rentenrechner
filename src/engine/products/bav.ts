@@ -77,6 +77,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): BavP
         bav.kvdrMember,
         payoutYear,
         ctx.grvGrossMonthlyPension,
+        { bav, capital: projection.capital, totalContributions: projection.totalContributionsBeforeFees },
       )
       let netMonthlyPayout = bavPayout.netMonthly
       if (bav.includeGrvReduction) {

@@ -123,6 +123,10 @@ export interface SimulationContext {
  */
 export interface InstanceCapitalPolicy {
   initialCapital?: number
+  /** Remove the same fraction of basis as capital on each withdrawal. */
+  proportionalCostBasisWithdrawals?: boolean
+  initialCostBasis?: number
+  initialVorabpauschale?: number
   capitalInjections?: { year: number; amount: number }[]
   capitalWithdrawals?: { year: number; amount: number }[]
   costBasisInjections?: { year: number; amount: number }[]

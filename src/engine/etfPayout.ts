@@ -2,6 +2,12 @@ import type { EtfPayoutRow, GermanRules } from '../domain'
 import { monthlyRate } from './payoutMath'
 import { calculateCapitalGainsTax } from './tax'
 
+/** Taxable demand before allowance for a hypothetical full liquidation. */
+export function etfLiquidationTaxableDemand(capital: number, costBasis: number,
+  cumulativeVorabpauschale: number, partialExemption: number): number {
+  return Math.max(0, capital - costBasis - cumulativeVorabpauschale) * (1 - partialExemption)
+}
+
 export function afterTaxInvestmentCapital(
   capital: number,
   totalContributions: number,
@@ -14,8 +20,8 @@ export function afterTaxInvestmentCapital(
   // Sparer-Pauschbetrag applies in the liquidation year (EStG §20 Abs. 9), consistent with etfPayoutSchedule.
   // `saverAllowance` defaults to the full statutory amount; combine-mode passes a
   // shared share so 2+ ETF instances do not each claim the full allowance.
-  const gain = Math.max(0, capital - totalContributions - cumulativeVorabpauschale)
-  return capital - calculateCapitalGainsTax(gain, rules, partialExemption, saverAllowance)
+  const demand = etfLiquidationTaxableDemand(capital, totalContributions, cumulativeVorabpauschale, partialExemption)
+  return capital - calculateCapitalGainsTax(demand, rules, 0, saverAllowance)
 }
 
 // Year-by-year ETF payout schedule (#37). Tracks remaining capital, cost basis, and tax each year.
@@ -41,25 +47,32 @@ export function etfPayoutSchedule(
 ): EtfPayoutRow[] {
   if (capitalAtRetirement <= 0 || payoutYears <= 0) return []
 
-  const annualWithdrawal = grossMonthlyPayout * 12
   let capital = capitalAtRetirement
-  // VP already taxed during accumulation extends the cost basis — double-tax protection §19 InvStG.
-  let costBasis = Math.min(totalContributions + cumulativeVorabpauschale, capitalAtRetirement)
-
-  // Annuity factor r/r_m aligns the yearly capital formula with monthlyPayoutFromCapital.
-  // C_end = C_start*(1+r) − PMT*(r/r_m) depletes to 0 in exactly payoutYears years when
-  // PMT = monthlyPayoutFromCapital(C0, r, payoutYears).
-  const r_m = Math.abs(payoutReturn) < 1e-9 ? 0 : monthlyRate(payoutReturn)
-  const annuityFactor = Math.abs(r_m) < 1e-9 ? 12 : payoutReturn / r_m
-
+  // Keep basis above market value for portfolios with unrealized losses. Already-taxed
+  // VP extends basis; neither it nor losses disappear before the corresponding sale.
+  let costBasis = Math.max(0, totalContributions + cumulativeVorabpauschale)
+  // Match the return bound used by monthlyPayoutFromCapital.
+  const monthlyReturn = monthlyRate(Math.max(-0.99, payoutReturn))
   const rows: EtfPayoutRow[] = []
 
   for (let year = 1; year <= payoutYears; year++) {
-    const capitalAtStart = Math.max(0, capital)
-    const gainRatio = capitalAtStart > 0
-      ? Math.max(0, (capitalAtStart - costBasis) / capitalAtStart)
-      : 0
-    const rawTaxableGain = annualWithdrawal * gainRatio
+    const capitalAtStart = capital
+    let annualWithdrawal = 0
+    let rawTaxableGain = 0
+    // Average-cost simplification (not FIFO): growth precedes each end-of-month
+    // sale, whose proceeds and disposed basis use the same fraction of holdings.
+    for (let month = 0; month < 12; month++) {
+      capital *= 1 + monthlyReturn
+      const withdrawal = Math.min(capital, Math.max(0, grossMonthlyPayout))
+      const fractionSold = capital > 0 ? withdrawal / capital : 0
+      const disposedBasis = costBasis * fractionSold
+      rawTaxableGain += withdrawal - disposedBasis
+      annualWithdrawal += withdrawal
+      costBasis *= 1 - fractionSold
+      capital = Math.max(0, capital - withdrawal)
+    }
+    // Net this year's realized losses against gains before the annual tax calculation.
+    rawTaxableGain = Math.max(0, rawTaxableGain)
     const taxableAfterExemption = rawTaxableGain * (1 - partialExemption)
     const allowanceThisYear = saverAllowanceOverride
       ? saverAllowanceOverride(year - 1)
@@ -72,10 +85,6 @@ export function etfPayoutSchedule(
       allowanceThisYear,
     )
     const netAnnualPayout = Math.max(0, annualWithdrawal - taxDue)
-
-    const fractionWithdrawn = capitalAtStart > 0 ? Math.min(1, annualWithdrawal / capitalAtStart) : 0
-    costBasis = Math.max(0, costBasis * (1 - fractionWithdrawn))
-    capital = Math.max(0, capitalAtStart * (1 + payoutReturn) - grossMonthlyPayout * annuityFactor)
 
     rows.push({
       year,

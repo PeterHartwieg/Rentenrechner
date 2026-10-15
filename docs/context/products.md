@@ -52,3 +52,65 @@ For each product: simulator, validator, domain types, tests, UI input, engine he
 ## Adding a product
 
 See `src/engine/products/README.md` for the registry-based checklist.
+
+### Existing ETF and private-insurance tax basis
+
+`InstanceCommon.historicalCostBasisEUR` records acquisition costs of the current
+ETF holdings or premiums already paid into an insurance contract. It is optional
+for old saved workspaces, nonnegative, and may exceed current market value.
+`historicalVorabpauschaleEUR` records the ETF holding's previously assessed
+Vorabpauschalen before partial exemption, not tax paid; an explicit zero is valid.
+The contract editor exposes both inputs with unknown handling. Missing historical
+inputs block dependent plan net results through `selectResultReadiness`; insurance
+Leibrente (Ertragsanteil) and tax-free old-contract capital payouts do not need
+premium basis for monthly results. No basis is inferred from current market value.
+The capital policy carries these amounts separately from initial capital and
+transfer basis injections. Historical principal feeds tax basis only, never
+reported new user contributions. Historical Vorabpauschalen enter the cumulative
+credit once, then newly assessed amounts accumulate normally.
+
+The engine's numeric result types retain their existing incomplete-input
+placeholders; callers consuming raw `simulatePortfolio` results must also consume
+readiness rather than publish a net value from missing historical tax inputs.
+The public Simulate API accepts compare-mode inputs, which do not include these
+combine-only current holdings. Current-year insurance surrender allocates historical premium basis in the same
+proportion as gross contract capital disposed, removes that basis from the source,
+and reinvests only proceeds after haircut and tax. Repeated withdrawals consume
+remaining capital and basis in source-array order. The target receives a new
+basis equal to its after-tax injection, not the source's historical principal.
+See [BMF EStH 2025, Anhang 22a I, Rn. 61–64](https://stberh.bundesfinanzministerium.de/esth/2025/B-Anhaenge/Anhang-22a/I/inhalt.html).
+
+Future-dated insurance surrender is explicitly incomplete and blocks dependent
+net results. Its tax basis cannot currently be valued consistently for every
+return scenario / Monte Carlo path; no separate baseline-return projection is
+invented. The raw engine retains its legacy numeric estimate for compatibility, without
+claiming forecast-valued basis; readiness prevents publishing that estimate. Current-year surrender and annuity baselines without surrender remain
+supported. Applied decision previews check both baseline and applied readiness;
+unavailable results carry a null delta and reason through the cache and UI.
+
+
+Yearly historical-basis outputs use `YearlyProjection.cumulativeTaxBasis`: the
+basis at that specific row, after opening principal, transfer injections and
+proportional disposals. An absent field means it equals that row's cumulative
+new product contributions, preserving old result/fixture compatibility. The
+cashflow table and both export projection modes consume this row basis rather
+than a final-horizon basis or the new-contribution total alone.
+
+Combine CSV yearly ETF net capital is a hypothetical full liquidation for each
+scenario/year. Its allowance is apportioned from the actual row's liquidation
+demand (basis and VP credit included), independently of future payout demand.
+The caller supplies joint filing explicitly from `workspace.baseline.partner`.
+Readiness-blocked CSVs keep dependent yearly net capital and ETF payout gain,
+allowance, tax and net cells blank. The remaining-allowance recommendation uses
+current accumulation-year taxable VP, excluding historical credits and applying
+partial exemption; future payout rows are used only after accumulation ends.
+
+
+Monthly readiness and capital-tax readiness are distinct. The shared
+`capitalTaxReadinessForInstance` uses the same input-status resolution and
+insurance tax classifier as monthly readiness, but ignores monthly payout mode:
+an Ertragsanteil annuity can show its monthly net while its hypothetical capital
+liquidation stays unavailable without historical premiums. Explicit zero basis
+is valid; opening zero and tax-free pre-2005 capital need no historical basis.
+Combine details and export projection apply this per-metric check. A household
+block also hides monthly tax tooltips and dependent break-even notes.
