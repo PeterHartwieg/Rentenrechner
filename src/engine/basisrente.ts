@@ -40,31 +40,17 @@ import {
 } from './retirementPayout'
 import { calculateSalaryPhaseTaxDelta } from './salaryPhaseFunding'
 
-/**
- * Computes the §10 Abs. 3 EStG Schicht-1 deduction and resulting tax saving.
- *
- * @param rules        - Year-specific German rules (Schicht-1 cap, tax rates)
- * @param salaryResult - Salary calculation result (provides the salary-phase zvE and GRV amounts)
- * @param basisrente   - Basisrente assumption block
- * @param pensionSystemAnnualContributionOverride
- *   When provided, replaces the GRV-derived pension-system contribution toward the Schicht-1 cap.
- *   Use for Versorgungswerk members: pass (employeeMonthly + employerMonthly) × 12.
- *   Pass 0 for Beamtenpension/none (no GRV-equivalent contributions).
+/** Shared §10 Abs. 3 headroom for funding, portfolio allocation and candidates.
+ * Joint assessment follows the existing salary model (class 3: one-earner
+ * splitting) unless the caller explicitly supplies household filing status.
+ * A supplied pension override includes all known household pension contributions.
  */
-export function calculateBasisrenteFunding(
+export function basisrenteDeductionHeadroom(
   rules: GermanRules,
   salaryResult: SalaryResult,
-  basisrente: BasisrenteAssumptions,
   pensionSystemAnnualContributionOverride?: number,
-): BasisrenteFundingResult {
-  const annualGrossContribution = basisrente.monthlyGrossContribution * 12
-
-  // -------------------------------------------------------------------------
-  // 1. Pension-system contributions that count against the Schicht-1 cap.
-  //    §10 Abs. 3 Satz 2 Nr. 1 EStG: GRV employee + employer contributions count.
-  //    §10 Abs. 3 Satz 2 Nr. 2 EStG: berufsständische Versorgungswerk contributions count similarly.
-  //    When override provided (VW members), use it directly instead of deriving from salary.
-  // -------------------------------------------------------------------------
+  jointAssessment = salaryResult.deductionFilingStatus === 'married',
+): { capAnnual: number; annualPensionContributionsTowardsCap: number; remainingSchicht1Cap: number } {
   let annualPensionContributionsTowardsCap: number
   if (pensionSystemAnnualContributionOverride !== undefined) {
     annualPensionContributionsTowardsCap = pensionSystemAnnualContributionOverride
@@ -78,12 +64,40 @@ export function calculateBasisrenteFunding(
     annualPensionContributionsTowardsCap = annualGrvEmployee + annualGrvEmployer
   }
 
-  // -------------------------------------------------------------------------
-  // 2. Remaining Schicht-1 cap and deductible Basisrente portion.
-  // -------------------------------------------------------------------------
-  const remainingSchicht1Cap = Math.max(
-    0,
-    rules.basisrente.schicht1CapSingle - annualPensionContributionsTowardsCap,
+  // §10 Abs. 3 Satz 2: joint assessment has one single cap per spouse.
+  const capAnnual = rules.basisrente.schicht1CapSingle +
+    (jointAssessment ? rules.basisrente.schicht1CapSingle : 0)
+  return {
+    capAnnual,
+    annualPensionContributionsTowardsCap,
+    remainingSchicht1Cap: Math.max(0, capAnnual - annualPensionContributionsTowardsCap),
+  }
+}
+
+/**
+ * Computes the §10 Abs. 3 EStG Schicht-1 deduction and resulting tax saving.
+ *
+ * @param rules        - Year-specific German rules (Schicht-1 cap, tax rates)
+ * @param salaryResult - Salary calculation result (provides the salary-phase zvE and GRV amounts)
+ * @param basisrente   - Basisrente assumption block
+ * @param pensionSystemAnnualContributionOverride
+ *   When provided, replaces the GRV-derived pension-system contribution toward the Schicht-1 cap.
+ *   Use for Versorgungswerk members: pass (employeeMonthly + employerMonthly) × 12.
+ *   Pass 0 for Beamtenpension/none (no GRV-equivalent contributions).
+ *   Portfolio callers include the partner's known pension contributions;
+ *   marginal candidates also reserve existing accepted Basisrente contributions.
+ * @param jointAssessment - Defaults to the salary model's filing status.
+ */
+export function calculateBasisrenteFunding(
+  rules: GermanRules,
+  salaryResult: SalaryResult,
+  basisrente: BasisrenteAssumptions,
+  pensionSystemAnnualContributionOverride?: number,
+  jointAssessment = salaryResult.deductionFilingStatus === 'married',
+): BasisrenteFundingResult {
+  const annualGrossContribution = basisrente.monthlyGrossContribution * 12
+  const { annualPensionContributionsTowardsCap, remainingSchicht1Cap } = basisrenteDeductionHeadroom(
+    rules, salaryResult, pensionSystemAnnualContributionOverride, jointAssessment,
   )
   const annualDeductible =
     Math.min(annualGrossContribution, remainingSchicht1Cap) * rules.basisrente.deductibleFraction
@@ -97,7 +111,7 @@ export function calculateBasisrenteFunding(
     rules,
     salaryResult.taxableIncomeForDeductions ?? salaryResult.taxableIncome,
     annualDeductible,
-    salaryResult.deductionFilingStatus ?? 'single',
+    jointAssessment ? 'married' : 'single',
   )
   const monthlyTaxSaving = annualTaxSaving / 12
   const monthlyNetCost = Math.max(0, basisrente.monthlyGrossContribution - monthlyTaxSaving)
@@ -197,6 +211,7 @@ export function solveBasisrenteGrossFromNet(
   salaryResult: SalaryResult,
   basisrente: BasisrenteAssumptions,
   pensionSystemAnnualContributionOverride?: number,
+  jointAssessment = salaryResult.deductionFilingStatus === 'married',
 ): number {
   if (targetMonthlyNet <= 0) return 0
 
@@ -206,6 +221,7 @@ export function solveBasisrenteGrossFromNet(
       salaryResult,
       { ...basisrente, monthlyGrossContribution: monthlyGross },
       pensionSystemAnnualContributionOverride,
+      jointAssessment,
     ).monthlyNetCost
 
   let lo = 0

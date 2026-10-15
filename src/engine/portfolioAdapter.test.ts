@@ -2128,6 +2128,9 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
   // workspace must preserve the singleton financial outcome and fee-only RIY.
   it('AVD multi-instance: primary result matches compare-mode with fee-only RIY', () => {
     const baseV1 = makeRichV1()
+    // These are alternative-product equivalence checks. Simultaneous Basisrente
+    // deductions intentionally reduce certified refunds only in combine mode.
+    baseV1.assumptions.basisrente.monthlyGrossContribution = 0
     const workspace = migrateV1ToV2(
       baseV1.profile as unknown as Record<string, unknown>,
       baseV1.assumptions as unknown as Record<string, unknown>,
@@ -2282,6 +2285,9 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
   // code paths must produce the same floating-point result.
   it('Riester length-1: capitalAtRetirement and netMonthlyPayout match compare-mode', () => {
     const baseV1 = makeRichV1()
+    // These are alternative-product equivalence checks. Simultaneous Basisrente
+    // deductions intentionally reduce certified refunds only in combine mode.
+    baseV1.assumptions.basisrente.monthlyGrossContribution = 0
     const workspace = migrateV1ToV2(
       baseV1.profile as unknown as Record<string, unknown>,
       baseV1.assumptions as unknown as Record<string, unknown>,
@@ -2363,7 +2369,7 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
       portfolioFunding.riesterYearlyByInstanceId[riester.instanceId][1]
     const expectedYearTwo = calculateRiesterFunding(
       de2026Rules,
-      portfolioFunding.salaryForOtherFunding,
+      portfolioFunding.salaryAfterBasisrenteDeduction,
       { ...riester, monthlyOwnContribution: scheduledYearTwo.monthlyOwnContribution },
       workspace.baseline.profile,
       { contributionYear: de2026Rules.year + 1, isFirstContributionYear: false },
@@ -2468,7 +2474,7 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
     ) / 12
     const expectedYearTwoFunding = calculateRiesterFunding(
       de2026Rules,
-      portfolioFunding.salaryForOtherFunding,
+      portfolioFunding.salaryAfterBasisrenteDeduction,
       { ...riester, monthlyOwnContribution: yearTwoOwnMonthly },
       workspace.baseline.profile,
       { contributionYear: de2026Rules.year + 1, isFirstContributionYear: false },

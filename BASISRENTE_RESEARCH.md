@@ -24,7 +24,7 @@ It is not legal, tax, or financial advice. The goal is to make the assumptions i
 | Item | 2026 value / rule | Tool effect |
 |---|---:|---|
 | Schicht-1 cap, single | 30,826 EUR/year | Maximum annual amount considered for statutory/professional/basic-pension contributions before joint-assessment doubling. |
-| Schicht-1 cap, joint | 61,652 EUR/year | Needed for Ehegatten / Lebenspartner joint assessment; current app stores only the single cap. |
+| Schicht-1 cap, joint | 61,652 EUR/year | Ehegatten / Lebenspartner joint assessment uses two single caps in the shared funding helper. |
 | Deductible fraction | 100% | Contributions inside the cap are fully deductible since 2023. |
 | Pension contributions counted against cap | Employee plus employer statutory-pension contribution; comparable professional-pension contributions; agricultural pension fund | Basisrente deduction room is the cap left after these contributions. |
 | Earliest old-age payout | Not before age 62 | Validate/warn when `retirementAge < 62` for Basisrente. |
@@ -64,7 +64,7 @@ Where `pensionSystemContributionsTowardsCap` should include at least:
 
 The 2026 cap is 30,826 EUR for single assessment. Joint assessment doubles it. Since 2023 the deductible fraction is 100%, so there is no phase-in percentage left to model for 2026.
 
-Implementation implication: the app's single-filer formula is directionally right for employees and Versorgungswerk override cases, but joint assessment is missing.
+Implementation: `basisrenteDeductionHeadroom` applies the single cap or its joint-assessment doubling consistently in funding, portfolio allocation, headroom and candidate sizing. The existing class-3 salary model declares a one-earner joint household even without a partner profile. An explicit combine-mode partner also selects joint assessment; available partner salary GRV contributions consume the shared cap. The schema has no partner-specific Versorgungswerk or bAV inputs, so those offsets cannot be represented. When a partner profile is supplied, joint Sonderausgaben tax deltas use the sum of both salary taxable-income baselines; payroll remains calculated per employee. Without a partner profile, class 3 retains the existing one-earner assumption.
 
 ### Contract Restrictions And Certification
 
@@ -136,7 +136,7 @@ Potential gaps / audit findings:
 
 - **High priority: `zeitrente` is likely not compliant for Basisrente old-age payout.** EStG Sec. 10 points to monthly lifelong Leibrente for old-age Basisrente. The app currently allows `payoutMode: 'zeitrente'` in domain types, validation, UI, product simulation, and tests.
 - **High priority: KV/PV treatment lacks KVdR vs freiwillig distinction.** `netBasisrentePayout` applies freiwillig-style full KV/PV whenever `profile.publicHealthInsurance` is true. For KVdR / compulsory statutory retirees, Basisrente should normally have no KV/PV deduction. This can materially understate net Basisrente for employees who qualify for KVdR.
-- **Medium priority: joint assessment is missing.** The rules file only stores `schicht1CapSingle`, and the funding/tax-saving path uses single-filer tax logic.
+- **Joint cap and simultaneous deductions implemented (math audit).** The shared helper doubles the cap for declared joint assessment and counts available partner GRV contributions. Combine-mode AVD/Riester refunds and yearly schedules use the salary deduction baseline after accepted Basisrente deductions; compare products remain alternatives. Partitioning Basisrente contracts allocates one aggregate progressive tax saving by deductible share. Explicit partner salary taxable income is aggregated for joint deduction tax deltas. Basisrente candidate net-budget sizing re-runs shared portfolio funding, including lost AVD/Riester refunds caused by the additional deduction. Partner-specific Versorgungswerk offsets remain outside the current input model.
 - **Medium priority: retirement age under 62 is not enforced for Basisrente.** UI text warns, but validation should block or warn if the product is modeled with payout before age 62.
 - **Medium priority: cap-source comment in `src/rules/de2026.ts` should be rechecked.** The 2026 value is correct, but the comment appears to describe the derivation imprecisely; official 2026 tables tie the 30,826 EUR value to the statutory Schicht-1 cap / pension framework rather than the app's general RV BBG field.
 - **Lower priority: no full annual payout schedule / fixed Rentenfreibetrag.** Current representative monthly output is acceptable for comparison, but a future schedule should lock the euro tax-free pension amount.

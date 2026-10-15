@@ -127,7 +127,7 @@ export function simulatePortfolio(
   const withBavFundingAnchor = (overrides: BuildContextOverrides): BuildContextOverrides =>
     ({
       ...(bavFundingAnchor ? { bavFundingOverride: bavFundingAnchor } : {}),
-      salaryForOtherFundingOverride: portfolioFunding.salaryForOtherFunding,
+      salaryForOtherFundingOverride: portfolioFunding.salaryAfterBasisrenteDeduction,
       ...overrides,
     })
 

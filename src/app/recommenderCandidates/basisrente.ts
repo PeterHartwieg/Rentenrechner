@@ -5,9 +5,9 @@
  * an existing Basisrente contract because Basisrente contributions have no
  * per-contract minimum and a new contract can be opened at any time.
  *
- * Net-cost sizing uses `solveBasisrenteGrossFromNet` (bisection on the §10
- * Abs. 3 EStG Sonderausgabenabzug marginal saving). Gross is clamped to the
- * remaining Schicht-1 cap.
+ * Net-cost sizing bisects the actual incremental portfolio funding cost,
+ * including any loss of existing AVD/Riester refunds after the new Basisrente
+ * deduction. Gross stays within the remaining Schicht-1 cap.
  *
  * Basisrente has no capital payout option (§10 Abs. 1 Nr. 2 b EStG), so
  * `afterTaxLumpSum` is always null and the candidate is flagged `payoutOnly`.
@@ -15,7 +15,8 @@
 
 import type { BasisrenteInstance } from '../../domain/instances'
 import { defaultAssumptions } from '../../data/defaultScenario'
-import { calculateBasisrenteFunding, solveBasisrenteGrossFromNet } from '../../engine/basisrente'
+import { buildPortfolioFunding } from '../../engine/portfolioFunding'
+import type { PortfolioFunding } from '../../domain/workspace'
 import { newInstanceId } from '../workspaceIdentity'
 import {
   type CandidateDraft,
@@ -28,7 +29,6 @@ export function makeBasisrenteCandidate(g: GeneratorContext): CandidateDraft | n
   // Build a synthetic Basisrente assumption block from the default plus a
   // typical fee profile. Use the same post-bAV salary and Schicht-1 headroom
   // snapshot as combine simulation.
-  const salary = g.portfolioFunding.salaryForOtherFunding
   const synthetic = {
     monthlyGrossContribution: 0,
     payoutMode: 'leibrente' as const,
@@ -37,25 +37,54 @@ export function makeBasisrenteCandidate(g: GeneratorContext): CandidateDraft | n
     monthlyOtherRetirementIncome: 0,
     fees: defaultAssumptions.basisrente.fees,
   }
-  const isolatedGross = solveBasisrenteGrossFromNet(
-    g.marginalMonthlyEUR,
-    g.rules,
-    salary,
-    synthetic,
-  )
-  if (isolatedGross <= 0) return null
-
-  // Clamp to remaining Schicht-1 cap.
   const remainingMonthly = g.portfolioFunding.headroom.basisrente.remainingAnnual / 12
-  const cappedToRemaining = isolatedGross > remainingMonthly
-  const gross = Math.min(isolatedGross, Math.max(0, remainingMonthly))
-  if (gross <= 0) return null
-
-  const fundingForGross = calculateBasisrenteFunding(g.rules, salary, {
+  if (g.marginalMonthlyEUR <= 0 || remainingMonthly <= 0) return null
+  const newInstanceIdStr = newInstanceId('basisrente')
+  const makeInstance = (monthlyGrossContribution: number): BasisrenteInstance => ({
     ...synthetic,
-    monthlyGrossContribution: gross,
+    instanceId: newInstanceIdStr,
+    label: 'Neue Rürup-Rente',
+    status: 'active',
+    contractStartYear: g.rules.year,
+    evidenceMap: {},
+    monthlyGrossContribution,
+    fees: { ...synthetic.fees },
   })
-  const netCash = Math.max(0, fundingForGross.monthlyNetCost)
+  const netFundingCost = (funding: PortfolioFunding): number => [
+    funding.basisrenteByInstanceId,
+    funding.altersvorsorgedepotByInstanceId,
+    funding.riesterByInstanceId,
+  ].flatMap((entries) => Object.values(entries))
+    .reduce((sum, entry) => sum + entry.monthlyNetCost, 0)
+  const baselineNetCost = netFundingCost(g.portfolioFunding)
+  const incrementalCost = (monthlyGrossContribution: number): number => {
+    const prospectiveFunding = buildPortfolioFunding({
+      ...g.workspace,
+      baseline: {
+        ...g.workspace.baseline,
+        assumptions: {
+          ...g.workspace.baseline.assumptions,
+          basisrente: [...g.workspace.baseline.assumptions.basisrente, makeInstance(monthlyGrossContribution)],
+        },
+      },
+    }, g.rules)
+    return Math.max(0, netFundingCost(prospectiveFunding) - baselineNetCost)
+  }
+  const maximumNetCost = incrementalCost(remainingMonthly)
+  const cappedToRemaining = maximumNetCost < g.marginalMonthlyEUR
+  let gross = remainingMonthly
+  if (maximumNetCost > g.marginalMonthlyEUR) {
+    let lo = 0
+    let hi = remainingMonthly
+    for (let i = 0; i < 40; i++) {
+      const mid = (lo + hi) / 2
+      if (incrementalCost(mid) <= g.marginalMonthlyEUR) lo = mid
+      else hi = mid
+    }
+    gross = lo
+  }
+  if (gross <= 0) return null
+  const netCash = incrementalCost(gross)
 
   const fees = (synthetic.fees.wrapperAssetFee ?? 0) + (synthetic.fees.fundAssetFee ?? 0)
   const netReturn = Math.max(-0.5, g.basis.annualReturn - fees)
@@ -63,7 +92,6 @@ export function makeBasisrenteCandidate(g: GeneratorContext): CandidateDraft | n
   const totalContributions = gross * 12 * g.yearsToRetirement
   const grossPayout = (capital / 10_000) * synthetic.rentenfaktor
 
-  const newInstanceIdStr = newInstanceId('basisrente')
   const candidateResult = synthesizeProductResult({
     productId: 'basisrente',
     instanceId: newInstanceIdStr,
@@ -77,19 +105,7 @@ export function makeBasisrenteCandidate(g: GeneratorContext): CandidateDraft | n
     label: 'Neue Rürup-Rente',
   })
 
-  const newInstance: BasisrenteInstance = {
-    instanceId: newInstanceIdStr,
-    label: 'Neue Rürup-Rente',
-    status: 'active',
-    contractStartYear: g.rules.year,
-    evidenceMap: {},
-    monthlyGrossContribution: gross,
-    payoutMode: 'leibrente',
-    rentenfaktor: synthetic.rentenfaktor,
-    rentenfaktorConfirmed: false,
-    monthlyOtherRetirementIncome: 0,
-    fees: { ...synthetic.fees },
-  }
+  const newInstance = makeInstance(gross)
 
   return {
     id: 'new_basisrente',
