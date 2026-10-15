@@ -62,9 +62,10 @@ function DeltaChip({
   value,
   decisionKind,
 }: {
-  value: number | 'pending' | 'error'
+  value: number | null | 'pending' | 'error'
   decisionKind: ContractDecision['kind']
 }) {
+  if (value === null) return <span className="contract-decision-delta-chip">Nicht verfügbar</span>
   if (value === 'pending') {
     return (
       <span className="contract-decision-delta-chip contract-decision-delta-chip--pending">
@@ -114,11 +115,12 @@ export interface ContractDecisionCardsProps {
    * Optional delta Netto-Rente / Monat per decision id; consumed by the
    * Optimiere modal in B6. Per-key value:
    *   number    - display chip e.g. "+ 23 EUR/Monat"
+   *   null      - unavailable result, never a zero chip
    *   'pending' - loading skeleton
    *   'error'   - short error indicator
    * Undefined / missing key - no chip (current ContractDecisionMenu behaviour).
    */
-  deltaByDecisionId?: Record<string, number | 'pending' | 'error'>
+  deltaByDecisionId?: Record<string, number | null | 'pending' | 'error'>
 }
 
 // ---------------------------------------------------------------------------

@@ -108,19 +108,12 @@ export function eventCalendarYearToContractYear(eventYear: number, rulesYear: nu
  * The discriminated union is preserved so the caller can branch on type when
  * computing surrender tax (only relevant for `surrender_reinvest`).
  *
- * Routing convention: events are dual-stored under both source and target
- * instances (see `applyContractDecision` in `src/app/contractDecisions.ts` —
- * the source carries the "capital left" record and the target carries the
- * "capital received" record). To avoid double-counting we route by
- * **which instance the event was found in**, not by event metadata:
- *   - found in source's array  → push only to outbound bucket.
- *   - found in target's array  → push only to inbound bucket.
- *   - neither (legacy/malformed) → warn and skip.
- *
- * Dual-storage invariant: `backfillWorkspaceTransferEvents` in `storage.ts`
- * ensures every event is present on both sides at load time, so single-sided
- * legacy data is repaired before reaching this function. A malformed event
- * (instanceId matches neither source nor target) is warned and skipped.
+ * Build one canonical occurrence list: source-array order wins, mirrored
+ * target occurrences pair with it, and unmatched one-sided occurrences are
+ * repaired in memory. Intentional repeated identical withdrawals remain
+ * distinct; their mirrored copies do not count twice. Both bucket maps use
+ * that same list. Storage backfill is still responsible for persisted parity.
+ * Events carried by neither source nor target are warned and skipped.
  */
 export function collectTransferEvents(
   wsa: WorkspaceAssumptionsV2,
@@ -134,27 +127,75 @@ export function collectTransferEvents(
     ...wsa.bav, ...wsa.etf, ...wsa.insurance,
     ...wsa.basisrente, ...wsa.altersvorsorgedepot, ...wsa.riester,
   ]
+  // Source order defines repeated withdrawals. Pair mirror occurrences rather
+  // than deduping by value: two identical deliberate withdrawals remain two.
+  const canonical: TransferEvent[] = []
   for (const inst of allInstances) {
-    for (const ev of inst.transferEvents ?? []) {
-      if (inst.instanceId === ev.sourceInstanceId) {
-        const outArr = outboundBy.get(ev.sourceInstanceId) ?? []
-        outArr.push(ev)
-        outboundBy.set(ev.sourceInstanceId, outArr)
-      } else if (inst.instanceId === ev.targetInstanceId) {
-        const inArr = inboundBy.get(ev.targetInstanceId) ?? []
-        inArr.push(ev)
-        inboundBy.set(ev.targetInstanceId, inArr)
-      } else {
-        // Event metadata refers to neither this instance's source nor target —
-        // legacy or malformed data. Warn and skip.
-        console.warn(
-          `[portfolioTransfer] transferEvent on ${inst.instanceId} references ` +
-          `source=${ev.sourceInstanceId} target=${ev.targetInstanceId} — skipped.`,
-        )
+    canonical.push(...(inst.transferEvents ?? []).filter((event) => event.sourceInstanceId === inst.instanceId))
+  }
+  const matched = new Set<number>()
+  for (const inst of allInstances) {
+    for (const event of inst.transferEvents ?? []) {
+      if (event.sourceInstanceId === inst.instanceId) continue
+      if (event.targetInstanceId !== inst.instanceId) {
+        console.warn(`[portfolioTransfer] transferEvent on ${inst.instanceId} references source=${event.sourceInstanceId} target=${event.targetInstanceId} — skipped.`)
+        continue
+      }
+      const index = canonical.findIndex((candidate, i) => !matched.has(i) && sameTransfer(candidate, event))
+      if (index >= 0) matched.add(index)
+      else {
+        matched.add(canonical.length)
+        canonical.push(event)
       }
     }
   }
+  for (const event of canonical) {
+    const outgoing = outboundBy.get(event.sourceInstanceId) ?? []
+    outgoing.push(event); outboundBy.set(event.sourceInstanceId, outgoing)
+    const incoming = inboundBy.get(event.targetInstanceId) ?? []
+    incoming.push(event); inboundBy.set(event.targetInstanceId, incoming)
+  }
   return { outboundBy, inboundBy }
+}
+
+/** Current-year surrender ledger: basis follows the disposed contract fraction.
+ * Future-dated insurance surrender is explicitly unavailable at result readiness:
+ * no alternate return projection is invented here to value the future source.
+ */
+function insuranceSurrenderPlan(source: InsuranceInstance, workspace: Workspace, rules: GermanRules, supplied: TransferEvent[]) {
+  const collected = collectTransferEvents(workspace.baseline.assumptions).outboundBy.get(source.instanceId) ?? []
+  // Direct policy callers may supply events before attaching them to a workspace.
+  const sourceEvents = collected.length ? collected : supplied.filter((event) => event.sourceInstanceId === source.instanceId)
+  const events = sourceEvents
+    .map((event, index) => ({ event, index })).sort((a, b) => a.event.year - b.event.year || a.index - b.index)
+  const plan: { event: TransferEvent; proceeds: number; tax: number }[] = []
+  let capital = source.currentValueEUR ?? 0
+  let basis = source.historicalCostBasisEUR ?? 0
+  for (const { event } of events) {
+    if (event.year > rules.year) {
+      // Retain the legacy raw estimate only as an incomplete placeholder.
+      // Readiness blocks publication; this is not a forecast-valued basis.
+      const proceeds = event.type === 'surrender_reinvest' ? event.amountEUR * (1 - event.surrenderHaircutPct) : event.amountEUR
+      const tax = event.type === 'surrender_reinvest' ? computeSurrenderTax(source, proceeds, workspace, rules, event.year) : 0
+      plan.push({ event, proceeds, tax })
+      continue
+    }
+    const disposed = Math.min(capital, event.amountEUR)
+    const allocatedBasis = capital > 0 ? basis * disposed / capital : 0
+    const proceeds = event.type === 'surrender_reinvest' ? disposed * (1 - event.surrenderHaircutPct) : disposed
+    const tax = event.type === 'surrender_reinvest'
+      ? computeSurrenderTax(source, proceeds, workspace, rules, event.year, allocatedBasis) : 0
+    plan.push({ event, proceeds, tax })
+    basis -= allocatedBasis
+    capital -= disposed
+  }
+  return plan
+}
+
+function sameTransfer(a: TransferEvent, b: TransferEvent): boolean {
+  return a.type === b.type && a.year === b.year && a.sourceInstanceId === b.sourceInstanceId &&
+    a.targetInstanceId === b.targetInstanceId && a.amountEUR === b.amountEUR &&
+    (a.type !== 'surrender_reinvest' || (b.type === 'surrender_reinvest' && a.surrenderHaircutPct === b.surrenderHaircutPct))
 }
 
 // ---------------------------------------------------------------------------
@@ -189,6 +230,7 @@ export function computeSurrenderTax(
   workspace: Workspace,
   rules: GermanRules,
   eventCalendarYear: number,
+  allocatedInsuranceBasis?: number,
 ): number {
   if (surrenderProceeds <= 0) return 0
   const profile = workspace.baseline.profile
@@ -201,7 +243,8 @@ export function computeSurrenderTax(
     // Historical premiums belong to the surrendered contract, separately from
     // the after-tax principal reinvested into the target. Missing basis remains
     // an incomplete input at the readiness boundary, never a confirmed zero.
-    const totalContributedToDate = ins.historicalCostBasisEUR ?? 0
+    const totalContributedToDate = allocatedInsuranceBasis ??
+      (ins.historicalCostBasisEUR ?? 0) * Math.min(1, surrenderProceeds / (ins.currentValueEUR || surrenderProceeds))
     const effectiveEventCalendarYear = Math.max(eventCalendarYear, rules.year)
     const ageAtEventYear = profile.age + (effectiveEventCalendarYear - rules.year)
     const taxMode = deriveInsuranceTaxMode(
@@ -312,6 +355,7 @@ export function buildInstanceCapitalPolicy(
     }
   }
 
+  if (slot === 'insurance') policy.proportionalCostBasisWithdrawals = true
   const capitalInjections: { year: number; amount: number }[] = []
   const capitalWithdrawals: { year: number; amount: number }[] = []
   const costBasisInjections: { year: number; amount: number }[] = []
@@ -323,8 +367,8 @@ export function buildInstanceCapitalPolicy(
       // Source loses gross amountEUR — tax-neutral on source side.
       capitalWithdrawals.push({ year: contractYear, amount: ev.amountEUR })
     } else {
-      // surrender_reinvest: source loses post-haircut proceeds. Per spec the
-      // capital removed from the contract = amountEUR × (1 - haircut).
+      // Insurance disposes gross contract capital; haircut only reduces cash
+      // proceeds. Other source channels retain their existing withdrawal model.
       const currentValue = instance.currentValueEUR ?? 0
       if (import.meta.env?.DEV && ev.amountEUR > currentValue) {
         console.warn(
@@ -333,11 +377,11 @@ export function buildInstanceCapitalPolicy(
           `Accumulation will clamp the withdrawal to actual capital at event year.`,
         )
       }
-      const proceeds = ev.amountEUR * (1 - ev.surrenderHaircutPct)
-      capitalWithdrawals.push({ year: contractYear, amount: proceeds })
+      capitalWithdrawals.push({ year: contractYear, amount: slot === 'insurance' ? ev.amountEUR : ev.amountEUR * (1 - ev.surrenderHaircutPct) })
     }
   }
 
+  const insurancePlans = new Map<string, ReturnType<typeof insuranceSurrenderPlan>>()
   // Inbound: this instance is the target.
   for (const ev of inbound) {
     const contractYear = eventCalendarYearToContractYear(ev.year, rules.year)
@@ -349,8 +393,18 @@ export function buildInstanceCapitalPolicy(
       // Need the source instance to compute surrender tax.
       const sourceInst = findInstanceById(workspace, ev.sourceInstanceId)
       if (!sourceInst) continue // Will fail validation; guard.
-      const proceeds = ev.amountEUR * (1 - ev.surrenderHaircutPct)
-      const surrenderTax = computeSurrenderTax(sourceInst, proceeds, workspace, rules, ev.year)
+      let proceeds = ev.amountEUR * (1 - ev.surrenderHaircutPct)
+      let surrenderTax: number
+      if (detectProductSlot(sourceInst) === 'insurance') {
+        if (!insurancePlans.has(sourceInst.instanceId)) {
+          insurancePlans.set(sourceInst.instanceId, insuranceSurrenderPlan(sourceInst as InsuranceInstance, workspace, rules, inbound))
+        }
+        const plan = insurancePlans.get(sourceInst.instanceId)!
+        const index = plan.findIndex((entry) => sameTransfer(entry.event, ev))
+        const entry = index >= 0 ? plan.splice(index, 1)[0] : undefined
+        proceeds = entry?.proceeds ?? 0
+        surrenderTax = entry?.tax ?? 0
+      } else surrenderTax = computeSurrenderTax(sourceInst, proceeds, workspace, rules, ev.year)
       const afterTaxInjection = Math.max(0, proceeds - surrenderTax)
       capitalInjections.push({ year: contractYear, amount: afterTaxInjection })
       // Cost basis on target = the after-tax injection (so future gain on

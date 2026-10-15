@@ -121,6 +121,7 @@ export function mergeInstanceCapitalPolicy(
   if (inst.initialCapital !== undefined && result.initialCapital === undefined) {
     result.initialCapital = inst.initialCapital
   }
+  result.proportionalCostBasisWithdrawals ??= inst.proportionalCostBasisWithdrawals
   result.initialCostBasis ??= inst.initialCostBasis
   result.initialVorabpauschale ??= inst.initialVorabpauschale
   if (inst.capitalInjections && inst.capitalInjections.length > 0) {

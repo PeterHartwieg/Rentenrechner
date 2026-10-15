@@ -38,6 +38,7 @@ export type ReadinessCode =
   | 'pension-entry-skipped'
   | 'instance-capital-unknown'
   | 'instance-tax-basis-unknown'
+  | 'future-insurance-surrender-unsupported'
   | 'instance-contribution-unknown'
   | 'pkv-premium-unknown'
   | 'pkv-retirement-premium-assumed'
@@ -268,8 +269,9 @@ export function selectResultReadiness(
   const drawdownInstanceIds: string[] = []
 
   for (const { productId, instance } of listWorkspaceInstances(wsa)) {
-    const hasSurrenderTransfer = listWorkspaceInstances(wsa).some(({ instance: owner }) =>
-      owner.transferEvents?.some((event) => event.type === 'surrender_reinvest' && event.sourceInstanceId === instance.instanceId))
+    const surrenderTransfers = listWorkspaceInstances(wsa).flatMap(({ instance: owner }) =>
+      (owner.transferEvents ?? []).filter((event) => event.type === 'surrender_reinvest' && event.sourceInstanceId === instance.instanceId))
+    const hasSurrenderTransfer = surrenderTransfers.length > 0
     if (!isCountedInstance(instance) && !hasSurrenderTransfer) continue
     const label = instanceLabel(instance, productId)
     // The editor, not the read-only detail page: a blocking reason is a
@@ -284,6 +286,11 @@ export function selectResultReadiness(
         target,
         instanceId: instance.instanceId,
       })
+    }
+    if (productId === 'versicherung' && surrenderTransfers.some((event) => event.year > activeRules.year)) {
+      reasons.push({ code: 'future-insurance-surrender-unsupported', severity: 'blocking',
+        label: `Die zukünftige Teilkündigung / Übertragung von „${label}“ kann noch nicht verlässlich berechnet werden.`,
+        target, instanceId: instance.instanceId })
     }
     const insuranceGainTaxed = productId === 'versicherung' && (hasSurrenderTransfer || instance.payoutMode !== 'leibrente') &&
       deriveInsuranceTaxMode(instance.contractStartYear,

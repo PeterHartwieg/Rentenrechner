@@ -1520,7 +1520,7 @@ describe('PortfolioAdapter — TransferEvents (issue 15)', () => {
     const workspace = rich()
     const karinTransferEvent = {
       type: 'surrender_reinvest' as const,
-      year: de2026Rules.year + 5,
+      year: de2026Rules.year,
       sourceInstanceId: 'versicherung-karin',
       targetInstanceId: 'etf-target',
       amountEUR: 30_000,
@@ -1572,15 +1572,15 @@ describe('PortfolioAdapter — TransferEvents (issue 15)', () => {
       noTransferEtf[0].capitalAtRetirement,
     )
     // Source pAV residual: pre-2005 tax-free, so afterTaxLumpSum = capital at retirement.
-    // The source loses the post-haircut proceeds (28_500) at contractYear 6 (month 61).
+    // The source loses gross disposed capital (30_000) in the current year.
     // From that point, both runs are identical — the delta at retirement is exactly
     // proceeds × netGrowthFactor^408 (remainingMonths after the withdrawal).
     // Net monthly factor = (1+r)^(1/12) × (1-insFee)^(1/12), insFee = 0.005.
     // We pin per scenario (each scenario has a different annualReturn).
     const karinEvent = pavSrc.transferEvents![0]
-    const proceeds = karinEvent.amountEUR * (1 - (karinEvent.type === 'surrender_reinvest' ? karinEvent.surrenderHaircutPct : 0))
+    const proceeds = karinEvent.amountEUR
     const insTotalFee = 0.003 + 0.002  // wrapperAssetFee + fundAssetFee from defaultScenario
-    const remainingMonthsKarin = (67 - 28 - 5) * 12  // 34 * 12 = 408
+    const remainingMonthsKarin = (67 - 28) * 12  // 34 * 12 = 408
     const returnRates = [0.03, 0.05, 0.07]  // konservativ, basis, optimistisch
     const noTransferSource = noTransferResult.perInstance['versicherung-karin']
     const withTransferSource = perInstance['versicherung-karin']
@@ -1602,7 +1602,7 @@ describe('PortfolioAdapter — TransferEvents (issue 15)', () => {
     // nonzero income tax, confirming the zero-cost-basis path is exercised.
     const halbeTransferEvent = {
       type: 'surrender_reinvest' as const,
-      year: de2026Rules.year + 5,
+      year: de2026Rules.year,
       sourceInstanceId: 'versicherung-halbe',
       targetInstanceId: 'etf-halbe-target',
       amountEUR: 50_000,
@@ -1662,7 +1662,7 @@ describe('PortfolioAdapter — TransferEvents (issue 15)', () => {
     // Source always loses the full post-haircut proceeds regardless of tax mode.
     const insRetentionFee = 0.003 + 0.002  // wrapperAssetFee + fundAssetFee (defaultScenario insurance)
     const mfIns = Math.pow(1 + 0.05, 1 / 12) * Math.pow(1 - insRetentionFee, 1 / 12)
-    const remainingMonths = (67 - 28 - 5) * 12  // 408
+    const remainingMonths = (67 - 28) * 12  // 408
     const proceeds = 50_000  // no haircut
     const expectedSourceDrop = proceeds * Math.pow(mfIns, remainingMonths)
     const sourceHalbe = withHalbe.perInstance['versicherung-halbe'][1]
@@ -1679,7 +1679,7 @@ describe('PortfolioAdapter — TransferEvents (issue 15)', () => {
     const profileAbgelt = { ...workspace.baseline.profile, retirementAge: 60 }
     const abgeltTransferEvent = {
       type: 'surrender_reinvest' as const,
-      year: de2026Rules.year + 3,
+      year: de2026Rules.year,
       sourceInstanceId: 'versicherung-abgelt',
       targetInstanceId: 'etf-abgelt-target',
       amountEUR: 15_000,
@@ -1735,7 +1735,7 @@ describe('PortfolioAdapter — TransferEvents (issue 15)', () => {
     // V1 zero-cost-basis: target gains LESS than the full proceeds compounded.
     const etfTotalFee = 0  // ETF default fee is minimal; use 0 as lower bound
     const mfBasis = Math.pow(1 + 0.05, 1 / 12) * Math.pow(1 - etfTotalFee, 1 / 12)
-    const remainingMonths = (60 - 28 - 3) * 12  // 29 * 12 = 348
+    const remainingMonths = (60 - 28) * 12  // 29 * 12 = 348
     const fullProceedsCompounded = proceedsAbgelt * Math.pow(mfBasis, remainingMonths)
     expect(targetDelta).toBeLessThan(fullProceedsCompounded)
     // Source loses full proceeds at event year.
@@ -1750,7 +1750,7 @@ describe('PortfolioAdapter — TransferEvents (issue 15)', () => {
     const workspace = rich()
     const clampTransferEvent = {
       type: 'surrender_reinvest' as const,
-      year: de2026Rules.year + 2,
+      year: de2026Rules.year,
       sourceInstanceId: 'versicherung-small',
       targetInstanceId: 'etf-clamp-target',
       amountEUR: 50_000,   // vastly exceeds currentValueEUR

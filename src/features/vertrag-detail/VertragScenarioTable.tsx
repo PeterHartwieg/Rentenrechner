@@ -48,7 +48,8 @@ interface ScenarioRow {
   /** Resulting combined Netto-Rente in EUR/month for this scenario. */
   resultingNetMonthly: number | null
   /** EUR/month difference vs. the current state (weiterfuehren ⇒ 0). */
-  delta: number
+  delta: number | null
+  unavailableReason?: string
   /** Drives the ▸ marker + paper background row. */
   isCurrent: boolean
 }
@@ -207,17 +208,18 @@ function buildScenarioRows({
   for (const decision of ordered) {
     if (!decision) continue
     const isCurrent = decision.kind === 'weiterfuehren'
-    let delta = 0
-    let resulting: number | null = baselineCombined.monthlyNetIncome
-    if (!isCurrent) {
-      try {
-        const computed = cache.get(workspace, decision, rules, baselineCombined, scenarioId)
-        delta = computed.deltaMonthlyNetEUR
-        resulting = baselineCombined.monthlyNetIncome + delta
-      } catch {
-        delta = 0
-        resulting = null
-      }
+    let delta: number | null
+    let unavailableReason: string | undefined
+    let resulting: number | null
+    try {
+      const computed = cache.get(workspace, decision, rules, baselineCombined, scenarioId)
+      delta = computed.deltaMonthlyNetEUR
+      resulting = delta === null ? null : baselineCombined.monthlyNetIncome + delta
+      unavailableReason = computed.unavailableReason
+    } catch {
+      delta = null
+      resulting = null
+      unavailableReason = 'Die Berechnung konnte nicht abgeschlossen werden.'
     }
     rows.push({
       id: decision.id,
@@ -225,6 +227,7 @@ function buildScenarioRows({
       detail: scenarioDetailFor(decision),
       resultingNetMonthly: resulting,
       delta,
+      unavailableReason,
       isCurrent,
     })
   }
@@ -306,10 +309,10 @@ function scenarioDetailFor(decision: ContractDecision): string {
 }
 
 function ScenarioRowView({ row }: { row: ScenarioRow }) {
-  const sign: 'pos' | 'neg' | 'neutral' = Math.abs(row.delta) < 1
+  const sign: 'pos' | 'neg' | 'neutral' = row.delta === null || Math.abs(row.delta) < 1
     ? 'neutral'
     : row.delta > 0 ? 'pos' : 'neg'
-  const deltaText = row.delta === 0 || sign === 'neutral'
+  const deltaText = row.delta === null || row.delta === 0 || sign === 'neutral'
     ? '—'
     : `${row.delta > 0 ? '+' : '−'}${formatCurrency(Math.abs(row.delta), 0)}`
   return (
@@ -318,7 +321,7 @@ function ScenarioRowView({ row }: { row: ScenarioRow }) {
         {row.isCurrent && <span className="vertrag-scenario-marker" aria-hidden="true">▸</span>}
         <span className="vertrag-scenario-label">{row.label}</span>
       </td>
-      <td className="vertrag-scenario-detail" data-label="Was sich ändert">{row.detail}</td>
+      <td className="vertrag-scenario-detail" data-label="Was sich ändert">{row.detail}{row.unavailableReason && <small> Noch offen: {row.unavailableReason}</small>}</td>
       <td className="vertrag-num" data-label="Netto-Rente gesamt">
         {row.resultingNetMonthly === null
           ? '—'
