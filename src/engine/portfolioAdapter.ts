@@ -186,6 +186,8 @@ export function simulatePortfolio(
   // inputs. Numbers are pinned against the pre-change engine freeze by
   // `etfContextParity.test.ts` (full precision, last-digit drift only).
   // ---------------------------------------------------------------------------
+  const fullEtfAllowance = rules.capitalGains.saverAllowance
+    * (workspace.baseline.partner !== undefined ? 2 : 1)
   const buildEtfInstanceContext = (
     inst: EtfInstance,
     saverAllowanceOverride?: (yearIndex: number) => number,
@@ -206,7 +208,7 @@ export function simulatePortfolio(
       // neutralised bAV projection, which is 0.
       monthlyUserCost: inst.status === 'paid_up' ? 0 : inst.monthlyContribution ?? 0,
       instanceCapitalPolicy: buildInstanceCapitalPolicy(inst, workspace, rules, outbound, inbound),
-      saverAllowanceOverride,
+      saverAllowanceOverride: saverAllowanceOverride ?? (() => fullEtfAllowance),
     })
   }
   const simulateEtfInstance = (
@@ -227,7 +229,7 @@ export function simulatePortfolio(
   }))
   for (const inst of wsa.etf) {
     if (inst.status === 'surrendered' || inst.status === 'offered') continue
-    // Initial pass uses the full per-instance Sparerpauschbetrag.
+    // Initial pass uses the full household Sparerpauschbetrag.
     // `applyCrossInstanceSparerpauschbetrag` below re-runs when ≥2 ETF instances
     // are present so they share the §20 Abs. 9 EStG allowance per year.
     perInstance[inst.instanceId] = wsa.returnScenarios.map((scenario) =>
@@ -261,13 +263,12 @@ export function simulatePortfolio(
   // The re-run reuses `simulateEtfInstance`, so it goes through the exact same
   // narrow per-instance context assembly as the initial pass — the allowance
   // schedule is the only delta.
-  const married = workspace.baseline.partner !== undefined
   applyCrossInstanceSparerpauschbetrag({
     wsa,
     perInstance,
     rules,
     profile,
-    fullAllowance: rules.capitalGains.saverAllowance * (married ? 2 : 1),
+    fullAllowance: fullEtfAllowance,
     resimulateEtfInstance: simulateEtfInstance,
   })
 

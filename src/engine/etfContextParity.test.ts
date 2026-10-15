@@ -419,7 +419,7 @@ describe('ETF narrow context — compare-mode parity (frozen pre-change)', () =>
 // ---------------------------------------------------------------------------
 
 describe('ETF narrow context — combine-mode parity (frozen pre-change)', () => {
-  it('multi-ETF workspace with transfers and a paid-up contract reproduces the pre-change engine', () => {
+  it('multi-ETF workspace with transfers and a paid-up contract preserves the corrected household anchor', () => {
     const { perInstance } = simulatePortfolio(makeCombineWorkspace(), de2026Rules)
     for (const id of ['etf-core', 'etf-side', 'etf-old'] as const) {
       const actual = (perInstance[id] ?? []).map(frozenView)
