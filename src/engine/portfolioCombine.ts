@@ -70,6 +70,7 @@ import type {
   InsuranceInstance,
   RiesterInstance,
 } from '../domain/instances'
+import { classifyBavMonthlyIncome } from './bavPayout'
 import { calculateRetirementTax } from './retirementTax'
 import {
   calculateProfileRetirementKvPv,
@@ -250,12 +251,17 @@ function buildPerSourceLines(
     if (result.productId === 'bav') {
       const inst = bavById.get(id)
       if (!inst) continue
+      const classified = classifyBavMonthlyIncome({
+        grossMonthlyPayout: grossMonthly, retirementAge: ctx.profile.retirementAge,
+        bav: inst, capital: result.capitalAtRetirement,
+        totalContributions: result.totalContributionsBeforeFees,
+      })
       lines.push({
         instanceId: id,
         productId: 'bav',
         monthlyGross: grossMonthly,
-        taxableAnnual: grossMonthly * 12,
-        taxChannel: 'bav_pension',
+        taxableAnnual: classified.taxableAnnual,
+        taxChannel: classified.taxChannel === 'other' ? 'other_22_5' : classified.taxChannel,
         kvPvChannel: ctx.bavKvChannel,
         // Note: bAV always routes via `bav_versorgungsbezug` (§229 Abs. 1 Nr. 5
         // SGB V) regardless of kvdrMember. The `kvdrMember` flag affects whether

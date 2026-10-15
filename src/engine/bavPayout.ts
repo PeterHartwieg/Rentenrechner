@@ -1,10 +1,12 @@
 import type {
+  BavAssumptions,
   BavDurchfuehrungsweg,
   BavLumpSumTaxMode,
   GermanRules,
   PersonalProfile,
 } from '../domain'
 import { legalConstants } from '../rules/legalConstants'
+import { classifyInsuranceMonthlyIncome } from './insurancePayout'
 import type { LumpSumDeductionBreakdown } from './lumpSumBreakdown'
 import {
   calculateMarginalRetirementTax,
@@ -12,6 +14,52 @@ import {
   calculateProfileRetirementKvPv,
   retirementIncomeBase,
 } from './retirementPayout'
+
+/** Monthly tax classification shared by compare and combine; KV/PV stays §229.
+ * §22 Nr. 5 Satz 1: §3 Nr. 63 funded insurance pensions are fully taxable.
+ * Satz 2 a/b: unpromoted §40b annuities use Ertragsanteil, other insurance
+ * benefits use §20 Abs. 1 Nr. 6. §19 applies to direct employer commitments.
+ * The narrow Satz 11 grandfather rule for already-paying §3 Nr. 66 transfers
+ * into Pensionsfonds is not represented by pensionsfonds_3_63.
+ * Sources and model limits: docs/context/rules-and-tax.md → bAV monthly classification.
+ */
+export function classifyBavMonthlyIncome(input: {
+  grossMonthlyPayout: number
+  retirementAge: number
+  bav: Pick<BavAssumptions, 'durchfuehrungsweg' | 'payoutMode' | 'pre2005EligibleTaxFree'>
+  capital: number
+  totalContributions: number
+}): {
+  taxChannel: 'bav_pension' | 'other'
+  taxableAnnual: number
+} {
+  const { grossMonthlyPayout, retirementAge, bav, capital, totalContributions } = input
+  if (bav.durchfuehrungsweg === 'direktzusage' || bav.durchfuehrungsweg === 'unterstuetzungskasse') {
+    return { taxChannel: 'bav_pension', taxableAnnual: grossMonthlyPayout * 12 }
+  }
+  if (bav.durchfuehrungsweg === 'direktversicherung_40b_alt') {
+    const classified = classifyInsuranceMonthlyIncome({
+      grossMonthlyPayout, capital, totalContributions, retirementAge,
+      payoutMode: bav.payoutMode,
+      // Only reuse the taxable-base computation; its tax mode is not propagated.
+      contractTaxMode: bav.pre2005EligibleTaxFree ? 'pre2005' : 'abgeltungsteuer',
+    })
+    return {
+      // §22 income uses the personal tariff, never §32d Abgeltungsteuer.
+      taxChannel: 'other',
+      taxableAnnual: classified.taxableAnnual,
+    }
+  }
+  return { taxChannel: 'other', taxableAnnual: grossMonthlyPayout * 12 }
+}
+
+type BavMonthlyTaxContext = Pick<Parameters<typeof classifyBavMonthlyIncome>[0],
+  'bav' | 'capital' | 'totalContributions'>
+const defaultMonthlyTaxContext: BavMonthlyTaxContext = {
+  bav: { durchfuehrungsweg: 'direktversicherung_3_63', payoutMode: 'leibrente', pre2005EligibleTaxFree: false },
+  capital: 0,
+  totalContributions: 0,
+}
 
 /**
  * Derives the income-tax mode for a bAV capital payout (Kapitalabfindung) from the
@@ -156,18 +204,10 @@ export function netBavPayout(
   /** Gross GRV monthly pension. Stacked into the marginal-tax base via
    *  statutoryPensionAnnual (Besteuerungsanteil applied) and into KV/PV. */
   grvBaselineMonthly = 0,
+  taxContext: BavMonthlyTaxContext = defaultMonthlyTaxContext,
 ): number {
-  return calculateMonthlyRetirementPayout({
-    rules,
-    retirementYear,
-    grvBaselineMonthly,
-    otherMonthlyIncome,
-    grossMonthlyPayout,
-    taxChannel: 'bav_pension',
-    kvPvChannel: 'bav_versorgungsbezug',
-    profile,
-    healthStatus: kvdrMember ? 'kvdr' : 'freiwillig_gkv',
-  }).netMonthly
+  return netBavPayoutFull(grossMonthlyPayout, profile, rules, otherMonthlyIncome,
+    kvdrMember, retirementYear, grvBaselineMonthly, taxContext).netMonthly
 }
 
 /** Like netBavPayout but returns both netMonthly and kvPvMonthly. Used by the product
@@ -180,14 +220,19 @@ export function netBavPayoutFull(
   kvdrMember = true,
   retirementYear = rules.year,
   grvBaselineMonthly = 0,
+  taxContext: BavMonthlyTaxContext = defaultMonthlyTaxContext,
 ): { netMonthly: number; kvPvMonthly: number } {
+  const classification = classifyBavMonthlyIncome({
+    ...taxContext, grossMonthlyPayout, retirementAge: profile.retirementAge,
+  })
   const r = calculateMonthlyRetirementPayout({
     rules,
     retirementYear,
     grvBaselineMonthly,
     otherMonthlyIncome,
     grossMonthlyPayout,
-    taxChannel: 'bav_pension',
+    taxChannel: classification.taxChannel,
+    taxableAnnualOverride: classification.taxableAnnual,
     kvPvChannel: 'bav_versorgungsbezug',
     profile,
     healthStatus: kvdrMember ? 'kvdr' : 'freiwillig_gkv',

@@ -82,7 +82,7 @@
     "tax.lumpSum.bav.konservativ.incomeTax": 71422.87,
     "tax.lumpSum.bav.konservativ.kvPv": 32630.730943435814,
     "kvPv.bav.konservativ.kvPvMonthly": 75.74419283030743,
-    "net.bav.konservativ.netMonthlyPayout": 300.3665268178067,
+    "net.bav.konservativ.netMonthlyPayout": 294.0331934844734,
     "accumulation.versicherung.konservativ.monthlyUserCost": 199.9977278645832,
     "accumulation.versicherung.konservativ.monthlyEmployerContribution": 0,
     "accumulation.versicherung.konservativ.totalUserCost": 64799.263828124684,
@@ -194,7 +194,7 @@
     "tax.lumpSum.bav.basis.incomeTax": 96680.625,
     "tax.lumpSum.bav.basis.kvPv": 45000.0913795869,
     "kvPv.bav.basis.kvPvMonthly": 112.85227413876072,
-    "net.bav.basis.netMonthlyPayout": 386.0134284976175,
+    "net.bav.basis.netMonthlyPayout": 378.84676183095075,
     "accumulation.versicherung.basis.monthlyUserCost": 199.9977278645832,
     "accumulation.versicherung.basis.monthlyEmployerContribution": 0,
     "accumulation.versicherung.basis.totalUserCost": 64799.263828124684,
@@ -306,7 +306,7 @@
     "tax.lumpSum.bav.optimistisch.incomeTax": 134119.41,
     "tax.lumpSum.bav.optimistisch.kvPv": 62504.85033855474,
     "kvPv.bav.optimistisch.kvPvMonthly": 165.3665510156642,
-    "net.bav.optimistisch.netMonthlyPayout": 504.25042755114475,
+    "net.bav.optimistisch.netMonthlyPayout": 496.75042755114475,
     "accumulation.versicherung.optimistisch.monthlyUserCost": 199.9977278645832,
     "accumulation.versicherung.optimistisch.monthlyEmployerContribution": 0,
     "accumulation.versicherung.optimistisch.totalUserCost": 64799.263828124684,
@@ -465,7 +465,7 @@
     "tax.lumpSum.bav.konservativ.incomeTax": 71422.87,
     "tax.lumpSum.bav.konservativ.kvPv": 32630.730943435814,
     "kvPv.bav.konservativ.kvPvMonthly": 75.74419283030743,
-    "net.bav.konservativ.netMonthlyPayout": 300.3665268178067,
+    "net.bav.konservativ.netMonthlyPayout": 294.0331934844734,
     "accumulation.etf.basis.monthlyUserCost": 199.9977278645832,
     "accumulation.etf.basis.monthlyEmployerContribution": 0,
     "accumulation.etf.basis.totalUserCost": 64799.263828124684,
@@ -503,7 +503,7 @@
     "tax.lumpSum.bav.basis.incomeTax": 96680.625,
     "tax.lumpSum.bav.basis.kvPv": 45000.0913795869,
     "kvPv.bav.basis.kvPvMonthly": 112.85227413876072,
-    "net.bav.basis.netMonthlyPayout": 386.0134284976175,
+    "net.bav.basis.netMonthlyPayout": 378.84676183095075,
     "accumulation.etf.optimistisch.monthlyUserCost": 199.9977278645832,
     "accumulation.etf.optimistisch.monthlyEmployerContribution": 0,
     "accumulation.etf.optimistisch.totalUserCost": 64799.263828124684,
@@ -541,6 +541,6 @@
     "tax.lumpSum.bav.optimistisch.incomeTax": 134119.41,
     "tax.lumpSum.bav.optimistisch.kvPv": 62504.85033855474,
     "kvPv.bav.optimistisch.kvPvMonthly": 165.3665510156642,
-    "net.bav.optimistisch.netMonthlyPayout": 504.25042755114475
+    "net.bav.optimistisch.netMonthlyPayout": 496.75042755114475
   }
 }
