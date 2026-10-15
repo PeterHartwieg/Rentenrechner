@@ -376,10 +376,17 @@ describe('buildPortfolioFunding — Basisrente', () => {
       expect(riester.guenstigerpruefungBenefitAnnual).toBeCloseTo(expectedRiester.guenstigerpruefungBenefitAnnual, 8)
       expect(avd.guenstigerpruefungBenefitAnnual).toBeCloseTo(expectedAvd.guenstigerpruefungBenefitAnnual, 8)
       expect(riesterResult.rows[yearIndex].yearlyProductContribution).toBeCloseTo(
-        riester.annualOwnContribution + riester.totalAllowanceAnnual + expectedRiester.guenstigerpruefungBenefitAnnual, 8,
+        riester.annualOwnContribution + riester.totalAllowanceAnnual, 8,
       )
       expect(avdResult.rows[yearIndex].yearlyProductContribution).toBeCloseTo(
-        avd.totalContractContributionAnnual + expectedAvd.guenstigerpruefungBenefitAnnual, 8,
+        avd.totalContractContributionAnnual, 8,
+      )
+      // Refunds reduce household cost once; they are not a second deposit.
+      expect(riesterResult.rows[yearIndex].yearlyUserCost).toBeCloseTo(
+        riester.annualOwnContribution - expectedRiester.guenstigerpruefungBenefitAnnual, 8,
+      )
+      expect(avdResult.rows[yearIndex].yearlyUserCost).toBeCloseTo(
+        avd.annualOwnContribution - expectedAvd.guenstigerpruefungBenefitAnnual, 8,
       )
     }
   })
