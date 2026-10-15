@@ -116,7 +116,7 @@ export interface BuildProductResultParams<
   buildPayout: (context: ProductPayoutContext) => TPayoutFields
 }
 
-function capitalMultipleAnnualized(finalValue: number, totalUserCost: number, years: number): number {
+export function capitalMultipleAnnualized(finalValue: number, totalUserCost: number, years: number): number {
   if (finalValue <= 0 || totalUserCost <= 0 || years <= 0) {
     return 0
   }
