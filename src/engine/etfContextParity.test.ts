@@ -8,8 +8,8 @@
  * policy + shared saver allowance) with NO neutralised unrelated-product
  * inputs and no `buildContext` funding pre-pass.
  *
- * Every expectation except the documented ETF accumulation RIY and monthly payout corrections
- * is a FROZEN PRE-CHANGE value (see `etfContextParity.fixture.ts`): captured
+ * Every expectation except the documented ETF RIY, monthly payout and shared
+ * household allowance corrections is a FROZEN PRE-CHANGE value (see `etfContextParity.fixture.ts`): captured
  * from the engine BEFORE the migration, with full float precision. These are
  * internal regression anchors — do not regenerate to make a failing test pass. The combined
  * fixtures cover the interaction cases the issue calls out: multi-ETF
