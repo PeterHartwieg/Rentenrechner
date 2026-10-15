@@ -1341,3 +1341,73 @@ describe('paidUpRiesterFunding', () => {
     expect(result.annualOwnContribution).toBe(0)
   })
 })
+
+describe('bAV employee payroll partition invariance', () => {
+  it('keeps asymmetric contractual cash flows and shares statutory employer savings once', () => {
+    const ws = makeBaseWorkspace()
+    ws.baseline.profile.grossSalaryYear = de2026Rules.socialSecurity.pensionCapYear + 100
+    const first = ws.baseline.assumptions.bav[0]
+    ws.baseline.assumptions.bav = [
+      { ...first, instanceId: 'bav-eligible', monthlyGrossConversion: 350,
+        statutoryMinimumSubsidyEnabled: true, contractualMatchPercent: 0.1, contractualFixedMonthly: 20 },
+      { ...first, instanceId: 'bav-ineligible', monthlyGrossConversion: 150,
+        statutoryMinimumSubsidyEnabled: false, contractualMatchPercent: 0, contractualFixedMonthly: 10 },
+      { ...first, instanceId: 'bav-fixed-only', monthlyGrossConversion: 0,
+        statutoryMinimumSubsidyEnabled: true, contractualMatchPercent: 0, contractualFixedMonthly: 30 },
+    ]
+    const funding = buildPortfolioFunding(ws, de2026Rules)
+    const eligible = funding.bavByInstanceId['bav-eligible']
+    const ineligible = funding.bavByInstanceId['bav-ineligible']
+    expect(eligible.monthlyGrossConversion).toBe(350)
+    expect(ineligible.monthlyGrossConversion).toBe(150)
+    expect(eligible.monthlyContractualEmployerContribution).toBe(55)
+    expect(ineligible.monthlyContractualEmployerContribution).toBe(10)
+    expect(ineligible.monthlyStatutoryEmployerSubsidy).toBe(0)
+    const fixedOnly = funding.bavByInstanceId['bav-fixed-only']
+    expect(fixedOnly.monthlyNetCost).toBe(0)
+    expect(fixedOnly.monthlyEmployerContribution).toBe(30)
+    expect(fixedOnly.monthlyStatutoryEmployerSubsidy).toBe(0)
+    const reversed = structuredClone(ws)
+    reversed.baseline.assumptions.bav.reverse()
+    expect(buildPortfolioFunding(reversed, de2026Rules).bavByInstanceId).toEqual(funding.bavByInstanceId)
+    for (const result of Object.values(funding.bavByInstanceId)) {
+      expect(result.taxableOverflowAnnual).toBeGreaterThanOrEqual(0)
+      expect(result.svLiableOverflowAnnual).toBeGreaterThanOrEqual(0)
+    }
+    const savings = eligible.employerSocialSecuritySavingAnnual + ineligible.employerSocialSecuritySavingAnnual
+    expect(eligible.monthlyStatutoryEmployerSubsidy * 12).toBeLessThanOrEqual(savings * 0.7 + 1e-8)
+    expect(eligible.monthlyNetCost + ineligible.monthlyNetCost).toBeCloseTo(funding.headroom.bav.monthlyNetCost, 8)
+    expect(eligible.salaryWithBav).toEqual(funding.salaryForOtherFunding)
+    expect(ineligible.salaryWithBav).toEqual(funding.salaryForOtherFunding)
+  })
+  it.each([50_000, 70_000, 102_000])('preserves funding when contracts split at gross %s', (grossSalaryYear) => {
+    for (const subsidy of [false, true]) {
+      for (const monthlyGrossConversion of [600, 1_200]) {
+        const single = makeBaseWorkspace()
+        single.baseline.profile.grossSalaryYear = grossSalaryYear
+        const contract = { ...single.baseline.assumptions.bav[0], monthlyGrossConversion,
+          statutoryMinimumSubsidyEnabled: subsidy, contractualMatchPercent: subsidy ? 0.1 : 0,
+          contractualFixedMonthly: subsidy ? 40 : 0 }
+        single.baseline.assumptions.bav = [contract]
+        const split = structuredClone(single)
+        split.baseline.assumptions.bav = [1, 2].map(i => ({ ...contract, instanceId: `bav-split-${i}`,
+          monthlyGrossConversion: monthlyGrossConversion / 2, contractualFixedMonthly: contract.contractualFixedMonthly / 2 }))
+        const one = buildPortfolioFunding(single, de2026Rules)
+        const two = buildPortfolioFunding(split, de2026Rules)
+        const fields = ['monthlyNetCost', 'annualTaxAndSvSavings', 'taxFreePortionAnnual', 'svFreePortionAnnual', 'annualEmployerContribution',
+          'employerSocialSecuritySavingAnnual', 'monthlyStatutoryEmployerSubsidy',
+          'estimatedMonthlyGrvReduction', 'totalBavContributionAnnual'] as const
+        for (const field of fields) {
+          expect(Object.values(two.bavByInstanceId).reduce((s, f) => s + f[field], 0)).toBeCloseTo(one.bavByInstanceId[contract.instanceId][field], 6)
+        }
+        expect(Object.values(two.bavByInstanceId).reduce((s, f) => s + f.svFreePortionAnnual, 0))
+          .toBeLessThanOrEqual(de2026Rules.socialSecurity.pensionCapYear * de2026Rules.bav.socialSecurityFreePctOfPensionCap)
+        const a = simulatePortfolio(single, de2026Rules)
+        const b = simulatePortfolio(split, de2026Rules)
+        expect(b.portfolioFunding.headroom.bav.monthlyNetCost).toBeCloseTo(a.portfolioFunding.headroom.bav.monthlyNetCost, 6)
+        const splitCapital = split.baseline.assumptions.bav.reduce((sum, c) => sum + b.perInstance[c.instanceId][0].capitalAtRetirement, 0)
+        expect(splitCapital).toBeCloseTo(a.perInstance[contract.instanceId][0].capitalAtRetirement, 5)
+      }
+    }
+  })
+})

@@ -23,6 +23,7 @@
  *      key fields match a legacy length-1 simulation.
  */
 
+import { calculateBavFunding } from './salary'
 import { describe, expect, it, vi } from 'vitest'
 import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules } from '../rules/de2026'
@@ -2369,7 +2370,7 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
     )
     const firstBavOnlyYearTwo = calculateRiesterFunding(
       de2026Rules,
-      portfolioFunding.bavByInstanceId[firstBav.instanceId].salaryWithBav,
+      calculateBavFunding(workspace.baseline.profile, de2026Rules, firstBav).salaryWithBav,
       { ...riester, monthlyOwnContribution: scheduledYearTwo.monthlyOwnContribution },
       workspace.baseline.profile,
       { contributionYear: de2026Rules.year + 1, isFirstContributionYear: false },
