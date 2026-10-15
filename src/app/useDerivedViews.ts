@@ -66,6 +66,7 @@ export interface CombineExportBundle {
   scenarioLabels: Record<string, string>
   /** Per-instance tax modes for Section 3 after-tax capital columns. */
   perInstanceTaxModes?: Record<string, InstanceTaxModes>
+  jointFiling?: boolean
   inflationRate?: number
 }
 

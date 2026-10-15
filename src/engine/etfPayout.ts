@@ -2,6 +2,12 @@ import type { EtfPayoutRow, GermanRules } from '../domain'
 import { monthlyRate } from './payoutMath'
 import { calculateCapitalGainsTax } from './tax'
 
+/** Taxable demand before allowance for a hypothetical full liquidation. */
+export function etfLiquidationTaxableDemand(capital: number, costBasis: number,
+  cumulativeVorabpauschale: number, partialExemption: number): number {
+  return Math.max(0, capital - costBasis - cumulativeVorabpauschale) * (1 - partialExemption)
+}
+
 export function afterTaxInvestmentCapital(
   capital: number,
   totalContributions: number,
@@ -14,8 +20,8 @@ export function afterTaxInvestmentCapital(
   // Sparer-Pauschbetrag applies in the liquidation year (EStG §20 Abs. 9), consistent with etfPayoutSchedule.
   // `saverAllowance` defaults to the full statutory amount; combine-mode passes a
   // shared share so 2+ ETF instances do not each claim the full allowance.
-  const gain = Math.max(0, capital - totalContributions - cumulativeVorabpauschale)
-  return capital - calculateCapitalGainsTax(gain, rules, partialExemption, saverAllowance)
+  const demand = etfLiquidationTaxableDemand(capital, totalContributions, cumulativeVorabpauschale, partialExemption)
+  return capital - calculateCapitalGainsTax(demand, rules, 0, saverAllowance)
 }
 
 // Year-by-year ETF payout schedule (#37). Tracks remaining capital, cost basis, and tax each year.

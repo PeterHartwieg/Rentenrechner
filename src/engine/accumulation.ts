@@ -148,6 +148,7 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
   // logic does not retax already-taxed surrender proceeds reinvested into ETF.
   let injectedPrincipal = 0
   let withdrawnBasis = 0
+  const currentTaxBasis = () => totalProductContributions + injectedPrincipal + (policy?.initialCostBasis ?? 0) - withdrawnBasis
   // Index injection / withdrawal / cost-basis maps by year for O(1) lookup at
   // the start of each year. Multi-entry-same-year sums (per spec one-line note).
   // Multi-source same-target-same-year: events are summed (additive injections).
@@ -220,7 +221,7 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
       if (wd > 0) {
         const actualWithdrawal = Math.min(wd, capital)
         if (policy?.proportionalCostBasisWithdrawals && capital > 0) {
-          const basis = totalProductContributions + injectedPrincipal + (policy.initialCostBasis ?? 0) - withdrawnBasis
+          const basis = currentTaxBasis()
           withdrawnBasis += basis * actualWithdrawal / capital
         }
         capital -= actualWithdrawal
@@ -279,6 +280,7 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
       }
 
       const year = Math.ceil(month / 12)
+      const rowBasis = currentTaxBasis()
       rows.push({
         year,
         age: input.currentAge + year,
@@ -292,6 +294,7 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
         yearlyFees: feesInCurrentYear,
         cumulativeFees: totalFees,
         cumulativeProductContributions: totalProductContributions,
+        ...(rowBasis !== totalProductContributions ? { cumulativeTaxBasis: rowBasis } : {}),
         cumulativeVorabpauschale,
       })
       balanceAtYearStart = capital
@@ -312,7 +315,7 @@ export function projectAccumulation(input: AccumulationInput): AccumulationResul
     // inbound transfer events. ETF / pAV exit-tax helpers consume this as the
     // already-taxed basis to subtract from the gain. For a vanilla product
     // Historical principal is tax basis only; never new user/product contributions.
-    totalContributionsBeforeFees: totalProductContributions + injectedPrincipal + (policy?.initialCostBasis ?? 0) - withdrawnBasis,
+    totalContributionsBeforeFees: currentTaxBasis(),
     cumulativeVorabpauschale,
     rows,
   }

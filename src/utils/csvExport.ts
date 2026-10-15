@@ -210,6 +210,8 @@ export interface CombinePortfolioCsvOptions {
   rules?: GermanRules
   /** Shared personal profile (used by bAV lump-sum KV/PV helper). */
   profile?: PersonalProfile
+  /** Explicit household joint-filing state; never inferred from tax class. */
+  jointFiling?: boolean
   /** Active modeled inflation assumption for export disclosure. */
   inflationRate?: number
   /**
@@ -279,6 +281,7 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
     perInstanceTaxModes: opts.perInstanceTaxModes,
     rules: opts.rules,
     profile: opts.profile,
+    jointFiling: opts.jointFiling,
   })
 
   // Section 2: Per-instance detail (one row per instance × scenario).
@@ -319,9 +322,9 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
       n(row.yearlyFees),
       n(row.cumulativeFees),
       n(row.balance),
-      nn(row.afterTaxBalance),
+      blocked ? '' : nn(row.afterTaxBalance),
       n(row.realBalance),
-      nn(row.realAfterTaxBalance),
+      blocked ? '' : nn(row.realAfterTaxBalance),
       row.marketReturnAssumption === null ? '' : `${n(row.marketReturnAssumption * 100)} %`,
     ))
   }
@@ -340,10 +343,10 @@ export function buildCombinePortfolioCsv(opts: CombinePortfolioCsvOptions): stri
         row.age,
         n(row.capitalAtStart),
         n(row.grossAnnualPayout),
-        n(row.taxableGain),
-        n(row.saverAllowanceUsed),
-        n(row.taxDue),
-        n(row.netMonthlyPayout),
+        blocked ? '' : n(row.taxableGain),
+        blocked ? '' : n(row.saverAllowanceUsed),
+        blocked ? '' : n(row.taxDue),
+        blocked ? '' : n(row.netMonthlyPayout),
         n(row.capitalAtEnd),
       ))
     }

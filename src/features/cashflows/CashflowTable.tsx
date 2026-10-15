@@ -62,7 +62,7 @@ export function CashflowTable({
             </thead>
             <tbody>
               {cashflowResult.rows.map((row) => {
-                const afterTax = rowAfterTaxBalance(row.balance, row.cumulativeProductContributions, row.cumulativeVorabpauschale)
+                const afterTax = rowAfterTaxBalance(row.balance, row.cumulativeTaxBasis ?? row.cumulativeProductContributions, row.cumulativeVorabpauschale)
                 const realAfterTax =
                   afterTax !== null && row.balance > 0
                     ? afterTax * (row.realBalance / row.balance)

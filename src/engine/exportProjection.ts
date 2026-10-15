@@ -39,7 +39,8 @@ import type {
 import type { WorkspaceAssumptionsV2 } from '../domain/workspace'
 import { afterTaxBavLumpSum } from './bavPayout'
 import { afterTaxCertifiedPensionLumpSum } from './certifiedPensionPayout'
-import { afterTaxInvestmentCapital } from './etfPayout'
+import { apportionSparerpauschbetrag } from './portfolioAllowance'
+import { afterTaxInvestmentCapital, etfLiquidationTaxableDemand } from './etfPayout'
 import { afterTaxInsuranceLumpSum } from './insurancePayout'
 import type { CombinedResult } from './portfolioCombine'
 
@@ -285,6 +286,8 @@ export interface BuildCombineProjectionOptions {
   readonly rules?: GermanRules
   /** Shared personal profile (used by bAV lump-sum KV/PV helper). */
   readonly profile?: PersonalProfile
+  /** Derived explicitly from workspace.baseline.partner by the caller. */
+  readonly jointFiling?: boolean
 }
 
 interface MarketReturnDisclosure {
@@ -304,6 +307,29 @@ export function buildCombineExportProjection(
   const summary: Array<ExportSummaryRow & MarketReturnDisclosure> = []
   const yearly: Array<ExportYearlyRow & MarketReturnDisclosure> = []
   const etfPayouts: ExportEtfPayoutRow[] = []
+
+  const liquidationAllowances = new Map<string, Map<string, number[]>>()
+  if (opts.rules) {
+    const scenarios = new Set(Object.values(opts.perInstance).flat().filter((r) => r.productId === 'etf').map((r) => r.scenarioId))
+    for (const scenarioId of scenarios) {
+      const demands = new Map<string, number[]>()
+      const results = Object.entries(opts.perInstance).flatMap(([id, results]) =>
+        results.filter((r) => r.productId === 'etf' && r.scenarioId === scenarioId).map((result) => ({ id, result })))
+      const totalYears = Math.max(0, ...results.map(({ result }) => result.rows.length))
+      for (const { id, result } of results) {
+        const partialExemption = opts.perInstanceTaxModes?.[id]?.equityPartialExemption ?? 0
+        const demand = new Array<number>(totalYears).fill(0)
+        for (const row of result.rows) {
+          demand[row.year - 1] = etfLiquidationTaxableDemand(row.balance,
+            row.cumulativeTaxBasis ?? row.cumulativeProductContributions,
+            row.cumulativeVorabpauschale, partialExemption)
+        }
+        demands.set(id, demand)
+      }
+      liquidationAllowances.set(scenarioId, apportionSparerpauschbetrag(demands,
+        opts.rules.capitalGains.saverAllowance * (opts.jointFiling ? 2 : 1), totalYears))
+    }
+  }
 
   // Sort by instanceId for stable output (matches buildCombinePortfolioCsv).
   const ids = Object.keys(opts.perInstance).sort()
@@ -352,6 +378,7 @@ export function buildCombineExportProjection(
           taxModes,
           opts.rules,
           opts.profile,
+          liquidationAllowances.get(r.scenarioId)?.get(instanceId)?.[row.year - 1],
         )
         const realAfterTax =
           afterTax !== null && row.balance > 0
@@ -420,7 +447,7 @@ function dispatchAfterTaxBalanceCompare(
     case 'etf':
       return afterTaxInvestmentCapital(
         row.balance,
-        row.cumulativeProductContributions,
+        row.cumulativeTaxBasis ?? row.cumulativeProductContributions,
         opts.rules,
         opts.equityPartialExemption,
         row.cumulativeVorabpauschale,
@@ -443,7 +470,7 @@ function dispatchAfterTaxBalanceCompare(
     case 'versicherung':
       return afterTaxInsuranceLumpSum(
         row.balance,
-        row.cumulativeProductContributions,
+        row.cumulativeTaxBasis ?? row.cumulativeProductContributions,
         opts.insuranceTaxMode,
         opts.rules,
         opts.insuranceOtherAnnualIncome,
@@ -470,6 +497,7 @@ function dispatchAfterTaxBalanceCombine(
   taxModes: InstanceTaxModes | undefined,
   rules: GermanRules | undefined,
   profile: PersonalProfile | undefined,
+  etfLiquidationAllowance?: number,
 ): number | null {
   // Preserve the existing combine-mode guard: when rules or per-instance
   // tax modes are missing, emit null rather than throwing.
@@ -493,10 +521,11 @@ function dispatchAfterTaxBalanceCombine(
     case 'etf':
       return afterTaxInvestmentCapital(
         row.balance,
-        row.cumulativeProductContributions,
+        row.cumulativeTaxBasis ?? row.cumulativeProductContributions,
         rules,
         taxModes.equityPartialExemption ?? 0,
         row.cumulativeVorabpauschale,
+        etfLiquidationAllowance,
       )
     case 'basisrente':
       // Capital payout legally prohibited (§10 Abs. 1 Nr. 2 EStG).
@@ -517,7 +546,7 @@ function dispatchAfterTaxBalanceCombine(
       if (!taxModes.insuranceTaxMode) return null
       return afterTaxInsuranceLumpSum(
         row.balance,
-        row.cumulativeProductContributions,
+        row.cumulativeTaxBasis ?? row.cumulativeProductContributions,
         taxModes.insuranceTaxMode,
         rules,
         0,

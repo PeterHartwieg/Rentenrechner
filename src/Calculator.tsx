@@ -302,6 +302,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
       combinedByScenarioId: combineSimulation.combinedByScenarioId,
       scenarioLabels,
       perInstanceTaxModes,
+      jointFiling: portfolioState.workspace.baseline.partner !== undefined,
       assumptions: wa,
       inflationRate: wa.inflationRate,
     }
@@ -310,6 +311,7 @@ function Calculator({ navigate, pendingChoice, onPendingChoiceConsumed, workspac
     combineSimulation.perInstance,
     combineSimulation.combinedByScenarioId,
     portfolioState.workspace.baseline.assumptions,
+    portfolioState.workspace.baseline.partner,
     combineProfile,
   ])
 
