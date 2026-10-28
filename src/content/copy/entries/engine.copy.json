@@ -1,0 +1,72 @@
+[
+  {
+    "key": "engine.altersvorsorgedepot.001",
+    "de": "Auszahlungsbeginn Alter liegt unter dem Mindestbeginn ( ). Nur bei vorgezogener gesetzlicher Rente möglich.",
+    "surface": "engine",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/engine/altersvorsorgedepot.ts:448"
+  },
+  {
+    "key": "engine.altersvorsorgedepot.002",
+    "de": "Auszahlungsbeginn Alter überschreitet das maximale Erstbezugsalter ( ).",
+    "surface": "engine",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/engine/altersvorsorgedepot.ts:451"
+  },
+  {
+    "key": "engine.basisrente.001",
+    "de": "Rentenbeginn mit Jahren liegt unter der gesetzlichen Mindestgrenze von Jahren für Basisrente-Auszahlungen. Das Ergebnis ist für eine regelkonforme Basisrente nicht gültig.",
+    "surface": "engine",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/engine/basisrente.ts:244"
+  },
+  {
+    "key": "engine.altersvorsorgedepot.003",
+    "de": "Altersvorsorgedepot (Riester-Übertrag)",
+    "surface": "engine",
+    "risk": "normal",
+    "description": "auto-import · string · src/engine/products/altersvorsorgedepot.ts:104"
+  },
+  {
+    "key": "engine.basisrente.002",
+    "de": "Rürup-Rente (Basisrente)",
+    "surface": "engine",
+    "risk": "normal",
+    "description": "auto-import · string · src/engine/products/basisrente.ts:15"
+  },
+  {
+    "key": "engine.basisrente.003",
+    "de": "Rürup",
+    "surface": "engine",
+    "risk": "normal",
+    "description": "auto-import · string · src/engine/products/basisrente.ts:16"
+  },
+  {
+    "key": "engine.bav.001",
+    "de": "Betriebliche Altersvorsorge (bAV)",
+    "surface": "engine",
+    "risk": "normal",
+    "description": "auto-import · string · src/engine/products/bav.ts:18"
+  },
+  {
+    "key": "engine.insurance.001",
+    "de": "Private Rentenversicherung",
+    "surface": "engine",
+    "risk": "normal",
+    "description": "auto-import · string · src/engine/products/insurance.ts:23"
+  },
+  {
+    "key": "engine.insurance.002",
+    "de": "Private Rente",
+    "surface": "engine",
+    "risk": "normal",
+    "description": "auto-import · string · src/engine/products/insurance.ts:24"
+  },
+  {
+    "key": "engine.riester.001",
+    "de": "Riester-Rente",
+    "surface": "engine",
+    "risk": "normal",
+    "description": "auto-import · string · src/engine/products/riester.ts:17"
+  }
+]

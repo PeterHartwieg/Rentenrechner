@@ -1,0 +1,121 @@
+[
+  {
+    "key": "workspace.disclaimerbanner.001",
+    "de": "Weitere Details anzeigen",
+    "surface": "workspace",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/workspace/DisclaimerBanner.tsx:63"
+  },
+  {
+    "key": "workspace.disclaimerbanner.002",
+    "de": "Modellrechnung. Keine Anlage-, Steuer- oder Rechtsberatung.",
+    "surface": "workspace",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/workspace/DisclaimerBanner.tsx:67"
+  },
+  {
+    "key": "workspace.disclaimerbanner.003",
+    "de": "Alle Berechnungen verwenden gesetzliche Werte mit Stand 2026 (Steuersätze, Sozialversicherungsbeiträge, Rentenwert; Quellen: BMF, Deutsche Rentenversicherung, GKV-Spitzenverband). Die Ergebnisse sind Schätzungen unter Ihren Annahmen. Renditen, Inflation, Lebenserwartung und künftige Gesetzesänderungen sind unbekannt.",
+    "surface": "workspace",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/workspace/DisclaimerBanner.tsx:72"
+  },
+  {
+    "key": "workspace.disclaimerbanner.004",
+    "de": "Hinweis für diese Sitzung ausblenden",
+    "surface": "workspace",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/workspace/DisclaimerBanner.tsx:82"
+  },
+  {
+    "key": "workspace.disclaimerbanner.005",
+    "de": "Nur für diese Sitzung ausblenden",
+    "surface": "workspace",
+    "risk": "normal",
+    "description": "auto-import · attr:title · src/features/workspace/DisclaimerBanner.tsx:83"
+  },
+  {
+    "key": "workspace.emptycomparison.001",
+    "de": "Empty-State Vergleich",
+    "surface": "workspace",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/workspace/EmptyComparison.tsx:16"
+  },
+  {
+    "key": "workspace.emptycomparison.002",
+    "de": "Empty-State Überschrift",
+    "surface": "workspace",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/workspace/EmptyComparison.tsx:21"
+  },
+  {
+    "key": "workspace.emptycomparison.003",
+    "de": "CTA Produkte auswählen",
+    "surface": "workspace",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/workspace/EmptyComparison.tsx:25"
+  },
+  {
+    "key": "workspace.emptycomparison.004",
+    "de": "Wähle mindestens ein Vorsorgeprodukt zum Vergleich",
+    "surface": "workspace",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/workspace/EmptyComparison.tsx:29"
+  },
+  {
+    "key": "workspace.emptycomparison.005",
+    "de": "Die gesetzliche Rente bildet den Sockel. Ergänze ein privates Produkt — z. B. ETF-Depot oder bAV — um den Unterschied für deine Situation zu sehen.",
+    "surface": "workspace",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/workspace/EmptyComparison.tsx:31"
+  },
+  {
+    "key": "workspace.emptycomparison.006",
+    "de": "Produkte auswählen",
+    "surface": "workspace",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/workspace/EmptyComparison.tsx:35"
+  },
+  {
+    "key": "workspace.scenariotoolbar.001",
+    "de": "Eigenes Szenario Rendite-Eingabe",
+    "surface": "workspace",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/workspace/ScenarioToolbar.tsx:56"
+  },
+  {
+    "key": "workspace.scenariotoolbar.002",
+    "de": "Eigenes Szenario hinzufügen",
+    "surface": "workspace",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/workspace/ScenarioToolbar.tsx:60"
+  },
+  {
+    "key": "workspace.scenariotoolbar.003",
+    "de": "Monte-Carlo Läufe",
+    "surface": "workspace",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/workspace/ScenarioToolbar.tsx:76"
+  },
+  {
+    "key": "workspace.scenariotoolbar.004",
+    "de": "Rendite-Szenario auswählen",
+    "surface": "workspace",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/workspace/ScenarioToolbar.tsx:128"
+  },
+  {
+    "key": "workspace.scenariotoolbar.005",
+    "de": "Eigene Rendite",
+    "surface": "workspace",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/workspace/ScenarioToolbar.tsx:146"
+  },
+  {
+    "key": "workspace.scenariotoolbar.006",
+    "de": "Läufe",
+    "surface": "workspace",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/workspace/ScenarioToolbar.tsx:188"
+  }
+]

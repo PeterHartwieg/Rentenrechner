@@ -1,0 +1,37 @@
+[
+  {
+    "key": "data.presets.001",
+    "de": "Günstigstes ETF-Depot als Hauptsparweg. Minimale Kosten über alle Produkte — zeigt den Basisfall ohne Arbeitgeber-Extras.",
+    "surface": "data",
+    "risk": "normal",
+    "description": "auto-import · string · src/data/presets.ts:76"
+  },
+  {
+    "key": "data.presets.002",
+    "de": "Klassische Entgeltumwandlung mit gesetzlichem AG-Mindestzuschuss (§1a Abs. 1a BetrAVG) und typischen Marktkosten. Kein vertraglicher AG-Zuschuss.",
+    "surface": "data",
+    "risk": "normal",
+    "description": "auto-import · string · src/data/presets.ts:110"
+  },
+  {
+    "key": "data.presets.003",
+    "de": "Großzügiger Arbeitgeber zahlt 50 % der Entgeltumwandlung obendrauf. Typisch bei Tarifverträgen oder freiwilligen AG-Programmen — erhöht die bAV-Rendite deutlich.",
+    "surface": "data",
+    "risk": "normal",
+    "description": "auto-import · string · src/data/presets.ts:129"
+  },
+  {
+    "key": "data.presets.004",
+    "de": "Traditioneller Hochkostenvertrag mit hohen Abschluss- und Verwaltungsgebühren — typisch für klassisch provisionierte Tarife ab ca. 2010.",
+    "surface": "data",
+    "risk": "normal",
+    "description": "auto-import · string · src/data/presets.ts:148"
+  },
+  {
+    "key": "data.presets.005",
+    "de": "Vor 2005 abgeschlossener Vertrag mit Kapitalwahlrecht steuerfrei nach §52 Abs. 28 EStG a.F. (mind. 12 Jahre Laufzeit, mind. 5 Beitragsjahre).",
+    "surface": "data",
+    "risk": "normal",
+    "description": "auto-import · string · src/data/presets.ts:165"
+  }
+]

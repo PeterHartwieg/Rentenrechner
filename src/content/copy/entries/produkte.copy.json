@@ -1,0 +1,345 @@
+[
+  {
+    "key": "produkte.combinewhatifsection.001",
+    "de": "Baseline hat sich geändert",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/produkte/CombineWhatIfSection.tsx:60"
+  },
+  {
+    "key": "produkte.combinewhatifsection.002",
+    "de": "Was-wäre-wenn-Pläne",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/produkte/CombineWhatIfSection.tsx:103, src/features/produkte/CombineWhatIfSection.tsx:106"
+  },
+  {
+    "key": "produkte.combinewhatifsection.003",
+    "de": "Mehrere Verträge pro Produkttyp werden im Archiv zu einem zusammengefasst.",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/produkte/CombineWhatIfSection.tsx:133"
+  },
+  {
+    "key": "produkte.combinewhatifsection.004",
+    "de": "Aktuellen Stand als Baseline speichern und neu starten?",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/CombineWhatIfSection.tsx:144"
+  },
+  {
+    "key": "produkte.combinewhatifsection.005",
+    "de": "• Verträge mit mehreren Instanzen werden in der Archiv-Vorschau auf je einen pro Produkttyp zusammengefasst.",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/CombineWhatIfSection.tsx:145"
+  },
+  {
+    "key": "produkte.combinewhatifsection.006",
+    "de": "• Alle aktuellen Was-wäre-wenn-Szenarien werden gelöscht.",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/CombineWhatIfSection.tsx:146"
+  },
+  {
+    "key": "produkte.combinewhatifsection.007",
+    "de": "Aktuellen Stand speichern und What-Ifs zurücksetzen",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · attr:title · src/features/produkte/CombineWhatIfSection.tsx:157"
+  },
+  {
+    "key": "produkte.combinewhatifsection.008",
+    "de": "Aktuellen Stand als Baseline speichern und neu starten",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/produkte/CombineWhatIfSection.tsx:159"
+  },
+  {
+    "key": "produkte.daddvertragbutton.001",
+    "de": "Vertrag hinzufügen",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/produkte/DAddVertragButton.tsx:28"
+  },
+  {
+    "key": "produkte.daddvertragbutton.002",
+    "de": "+ Vertrag hinzufügen",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/produkte/DAddVertragButton.tsx:31"
+  },
+  {
+    "key": "produkte.daddvertragbutton.003",
+    "de": "Du wählst die Art, dann fragen wir nur die relevanten Felder ab (10–14, je nach Schicht).",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/produkte/DAddVertragButton.tsx:33"
+  },
+  {
+    "key": "produkte.dproduktrow.001",
+    "de": "Diese Werte fließen direkt in dein Mein-Plan-Ergebnis ein.",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/produkte/DProduktRow.tsx:89"
+  },
+  {
+    "key": "produkte.dsparformoption.001",
+    "de": "hinzufügen",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/produkte/DSparformOption.tsx:26"
+  },
+  {
+    "key": "produkte.shared.001",
+    "de": "beitragsfrei",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/produkte/instances/_shared.tsx:205, src/features/produkte/ProdukteEingabenPanel.tsx:1177"
+  },
+  {
+    "key": "produkte.shared.002",
+    "de": "gekündigt",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/produkte/instances/_shared.tsx:206, src/features/produkte/ProdukteEingabenPanel.tsx:1179"
+  },
+  {
+    "key": "produkte.altersvorsorgedepotinstanceinputs.001",
+    "de": "Depot ohne Garantie",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/produkte/instances/AltersvorsorgedepotInstanceInputs.tsx:58"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.001",
+    "de": "Verträge und Sparformen",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/produkte/ProdukteEingabenPanel.tsx:227, src/features/produkte/ProdukteEingabenPanel.tsx:460"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.002",
+    "de": "Schließen",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/ProdukteEingabenPanel.tsx:242, src/features/produkte/ProdukteEingabenPanel.tsx:288, src/features/produkte/ProdukteEingabenPanel.tsx:496, src/features/produkte/ProdukteEingabenPanel.tsx:597"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.003",
+    "de": "Manuell überschreiben",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/ProdukteEingabenPanel.tsx:242, src/features/produkte/ProdukteEingabenPanel.tsx:497"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.004",
+    "de": "Du hast aktuell keine Verträge ausgewählt. Wähle unten in § 3 eine Sparform aus, um sie zu vergleichen.",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/produkte/ProdukteEingabenPanel.tsx:267"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.005",
+    "de": "Bearbeiten",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/ProdukteEingabenPanel.tsx:288, src/features/produkte/ProdukteEingabenPanel.tsx:597"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.006",
+    "de": "Du hast noch keinen Vertrag erfasst. Wähle unten in § 3 eine Sparform aus.",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/produkte/ProdukteEingabenPanel.tsx:548"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.007",
+    "de": "Vertrag-Detail öffnen",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · attr:title · src/features/produkte/ProdukteEingabenPanel.tsx:612"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.008",
+    "de": "Details ansehen für",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/produkte/ProdukteEingabenPanel.tsx:613"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.009",
+    "de": "Weitere Optionen für diesen Vertrag",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · attr:title · src/features/produkte/ProdukteEingabenPanel.tsx:625"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.010",
+    "de": "Weitere Optionen für",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/produkte/ProdukteEingabenPanel.tsx:626"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.011",
+    "de": "Für diese Sparform ist hier kein Editor verfügbar. Bitte über „Details ansehen ›\" öffnen.",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/produkte/ProdukteEingabenPanel.tsx:649"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.012",
+    "de": "Brutto-Rente, geschätzt",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/ProdukteEingabenPanel.tsx:728, src/features/produkte/ProdukteEingabenPanel.tsx:781"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.013",
+    "de": "Sparrate (Netto-Beitrag)",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/ProdukteEingabenPanel.tsx:807, src/features/produkte/ProdukteEingabenPanel.tsx:869"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.014",
+    "de": "Eff. Kosten",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/ProdukteEingabenPanel.tsx:819, src/features/produkte/ProdukteEingabenPanel.tsx:852, src/features/produkte/ProdukteEingabenPanel.tsx:881, src/features/produkte/ProdukteEingabenPanel.tsx:910, src/features/produkte/ProdukteEingabenPanel.tsx:939, src/features/produkte/ProdukteEingabenPanel.tsx:970"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.015",
+    "de": "keine",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/ProdukteEingabenPanel.tsx:831, src/features/produkte/ProdukteEingabenPanel.tsx:967, src/features/produkte/ProdukteEingabenPanel.tsx:1019, src/features/produkte/ProdukteEingabenPanel.tsx:1119"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.016",
+    "de": "Brutto-Umwandlung",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/ProdukteEingabenPanel.tsx:840, src/features/produkte/ProdukteEingabenPanel.tsx:1028"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.017",
+    "de": "Netto-Belastung",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/ProdukteEingabenPanel.tsx:844"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.018",
+    "de": "Durchführungsweg",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/ProdukteEingabenPanel.tsx:848, src/features/produkte/ProdukteEingabenPanel.tsx:1032"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.019",
+    "de": "Auszahlung",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/ProdukteEingabenPanel.tsx:856, src/features/produkte/ProdukteEingabenPanel.tsx:885, src/features/produkte/ProdukteEingabenPanel.tsx:914, src/features/produkte/ProdukteEingabenPanel.tsx:943, src/features/produkte/ProdukteEingabenPanel.tsx:974, src/features/produkte/ProdukteEingabenPanel.tsx:1044, src/features/produkte/ProdukteEingabenPanel.tsx:1065, src/features/produkte/ProdukteEingabenPanel.tsx:1086 +2 more"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.020",
+    "de": "KV in Rente",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/ProdukteEingabenPanel.tsx:860"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.021",
+    "de": "Auszahlung ab",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/ProdukteEingabenPanel.tsx:889"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.022",
+    "de": "Jahre",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/produkte/ProdukteEingabenPanel.tsx:890"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.023",
+    "de": "Beitrag",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/ProdukteEingabenPanel.tsx:898, src/features/produkte/ProdukteEingabenPanel.tsx:1054, src/features/produkte/ProdukteEingabenPanel.tsx:1074"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.024",
+    "de": "Förderfähig",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/ProdukteEingabenPanel.tsx:935, src/features/produkte/ProdukteEingabenPanel.tsx:960"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.025",
+    "de": "der Beiträge",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/produkte/ProdukteEingabenPanel.tsx:966, src/features/produkte/ProdukteEingabenPanel.tsx:1118"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.026",
+    "de": "Konfiguration siehe Bearbeiten",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/ProdukteEingabenPanel.tsx:985, src/features/produkte/ProdukteEingabenPanel.tsx:1127"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.027",
+    "de": "Unterstützungskasse",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/ProdukteEingabenPanel.tsx:1317"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.028",
+    "de": "Depot ohne Beitragsgarantie",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/ProdukteEingabenPanel.tsx:1326"
+  },
+  {
+    "key": "produkte.produkteeingabenpanel.029",
+    "de": "nicht zulagenberechtigt",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/ProdukteEingabenPanel.tsx:1345, src/features/produkte/ProdukteEingabenPanel.tsx:1355"
+  },
+  {
+    "key": "produkte.sparformdescriptions.001",
+    "de": "bAV · Entgeltumwandlung, 5 Durchführungswege",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/sparformDescriptions.ts:21"
+  },
+  {
+    "key": "produkte.sparformdescriptions.002",
+    "de": "Schicht 3 · private Rentenversicherung mit Garantie oder Fonds",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/sparformDescriptions.ts:22"
+  },
+  {
+    "key": "produkte.sparformdescriptions.003",
+    "de": "Rürup · Schicht 1 · steuerlich gefördert",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/sparformDescriptions.ts:23"
+  },
+  {
+    "key": "produkte.sparformdescriptions.004",
+    "de": "Schicht 2 · staatliche Zulagen & Steuer",
+    "surface": "produkte",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/produkte/sparformDescriptions.ts:25"
+  }
+]

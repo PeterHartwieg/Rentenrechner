@@ -1,0 +1,1843 @@
+[
+  {
+    "key": "content.optimierecopy.001",
+    "de": "Deine Verträge im Überblick",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:19"
+  },
+  {
+    "key": "content.optimierecopy.002",
+    "de": "Jede Zeile entspricht einem deiner Verträge — klicke auf „Anpassen\", um Optionen wie Weiterführen, Kündigen, Beitrag erhöhen oder Übertragen durchzuspielen. Ausgewählte Pläne werden am Ende als What-if-Szenarien gespeichert.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:22"
+  },
+  {
+    "key": "content.optimierecopy.003",
+    "de": "Hinweis: Modellrechnung, keine Beratung",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:28"
+  },
+  {
+    "key": "content.optimierecopy.004",
+    "de": "Mit „Optimiere deine Vorsorge“ kannst du durchspielen, was passiert, wenn du an deinen bestehenden Verträgen etwas änderst — zum Beispiel Beiträge erhöhst, einen Vertrag beitragsfrei stellst, kündigst oder zu einem anderen Anbieter überträgst.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:31"
+  },
+  {
+    "key": "content.optimierecopy.005",
+    "de": "Das Tool erstellt dazu unverbindliche Modellrechnungen auf Basis deiner Eingaben und der gesetzlichen Werte für 2026. **Es ersetzt keine persönliche Beratung durch Steuer-, Renten- oder Versicherungsexpertinnen und ‑experten.**",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:32"
+  },
+  {
+    "key": "content.optimierecopy.006",
+    "de": "Vor einer echten Vertragsänderung — vor allem bei Kündigung, Übertragung oder Reduzierung von Garantien — sprich bitte mit einer unabhängigen Fachperson. Stornoabzüge, Steuerprivilegien und Zulagenrückforderungen hängen vom konkreten Vertrag ab und können hier nur näherungsweise geschätzt werden.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:33"
+  },
+  {
+    "key": "content.optimierecopy.007",
+    "de": "Wenn du fortfährst, bleibt dein bestehender Plan unverändert. Du erstellst nur What-if-Szenarien, die du jederzeit wieder löschen kannst.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:34"
+  },
+  {
+    "key": "content.optimierecopy.008",
+    "de": "Verstanden, weiter",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:37"
+  },
+  {
+    "key": "content.optimierecopy.009",
+    "de": "Abbrechen",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:38"
+  },
+  {
+    "key": "content.optimierecopy.010",
+    "de": "Modellrechnung — keine Steuer-, Renten- oder Versicherungsberatung. Vor echten Vertragsänderungen bitte unabhängige Fachperson hinzuziehen.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:45"
+  },
+  {
+    "key": "content.optimierecopy.011",
+    "de": "Optimiere deine Vorsorge",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:51"
+  },
+  {
+    "key": "content.optimierecopy.012",
+    "de": "Sobald du mindestens einen Vertrag erfasst hast, kannst du Optionen durchspielen.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:54"
+  },
+  {
+    "key": "content.optimierecopy.013",
+    "de": "Ausgewählte Pläne",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:60"
+  },
+  {
+    "key": "content.optimierecopy.014",
+    "de": "Pläne erstellen",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:61"
+  },
+  {
+    "key": "content.optimierecopy.015",
+    "de": "Zurück",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:62"
+  },
+  {
+    "key": "content.optimierecopy.016",
+    "de": "Schließen",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:69"
+  },
+  {
+    "key": "content.optimierecopy.017",
+    "de": "Hohe Kosten",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:77, src/content/recommendationCopy.ts:383"
+  },
+  {
+    "key": "content.optimierecopy.018",
+    "de": "Geringe Flexibilität",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:79"
+  },
+  {
+    "key": "content.optimierecopy.019",
+    "de": "Fördergrenze überschritten",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:81"
+  },
+  {
+    "key": "content.optimierecopy.020",
+    "de": "Halbeinkünfteverfahren",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:84"
+  },
+  {
+    "key": "content.optimierecopy.021",
+    "de": "§40b-Bedingungen unerfüllt",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:88"
+  },
+  {
+    "key": "content.optimierecopy.022",
+    "de": "Fünftelregelung",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:89"
+  },
+  {
+    "key": "content.optimierecopy.023",
+    "de": "Kinderzulage prüfen",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:91"
+  },
+  {
+    "key": "content.optimierecopy.024",
+    "de": "Vertrag läuft unverändert weiter — diese Option dient als Referenz für den Vergleich.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:102"
+  },
+  {
+    "key": "content.optimierecopy.025",
+    "de": "Du zahlst ab sofort einen höheren monatlichen Beitrag in diesen Vertrag ein.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:104"
+  },
+  {
+    "key": "content.optimierecopy.026",
+    "de": "Du zahlst ab sofort einen geringeren monatlichen Beitrag in diesen Vertrag ein.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:106"
+  },
+  {
+    "key": "content.optimierecopy.027",
+    "de": "Du stellst den Vertrag beitragsfrei: keine weiteren Einzahlungen, das angesparte Kapital bleibt investiert.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:108"
+  },
+  {
+    "key": "content.optimierecopy.028",
+    "de": "Vertrag wird aufgelöst und der Rückkaufswert (nach Stornoabzug und Steuern) ausgezahlt.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:110"
+  },
+  {
+    "key": "content.optimierecopy.029",
+    "de": "Das Guthaben wird auf einen anderen Vertrag übertragen, um Kosten zu senken oder eine bessere Förderung zu nutzen.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:112"
+  },
+  {
+    "key": "content.optimierecopy.030",
+    "de": "beitrag-erhoehen",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:135"
+  },
+  {
+    "key": "content.optimierecopy.031",
+    "de": "beitrag-senken",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:136"
+  },
+  {
+    "key": "content.optimierecopy.032",
+    "de": "– Beitrag €/Monat",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/optimiereCopy.ts:140"
+  },
+  {
+    "key": "content.optimierecopy.033",
+    "de": "beitragsfrei",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/optimiereCopy.ts:142"
+  },
+  {
+    "key": "content.optimierecopy.034",
+    "de": "– beitragsfrei ab Alter",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/optimiereCopy.ts:146"
+  },
+  {
+    "key": "content.optimierecopy.035",
+    "de": "– kündigen",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/optimiereCopy.ts:152"
+  },
+  {
+    "key": "content.optimierecopy.036",
+    "de": "– weiterführen",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/optimiereCopy.ts:161"
+  },
+  {
+    "key": "content.procontracopy.001",
+    "de": "Niedrigste Kosten. Volle Verfügung über das Kapital. Vererbbar.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/proContraCopy.ts:24"
+  },
+  {
+    "key": "content.procontracopy.002",
+    "de": "Keine garantierte Rente. Disziplin und Eigenverantwortung nötig.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/proContraCopy.ts:25"
+  },
+  {
+    "key": "content.procontracopy.003",
+    "de": "Arbeitgeber-Zuschuss (oft 15–30 %). Sozialabgaben-Ersparnis heute.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/proContraCopy.ts:28"
+  },
+  {
+    "key": "content.procontracopy.004",
+    "de": "Volle KV/PV-Pflicht im Alter (~18 % der Rente). Bindung an Arbeitgeber.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/proContraCopy.ts:29"
+  },
+  {
+    "key": "content.procontracopy.005",
+    "de": "Lebenslange Rentengarantie. Steuervorteil ab 62 (Halbeinkünfte).",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/proContraCopy.ts:32"
+  },
+  {
+    "key": "content.procontracopy.006",
+    "de": "Höchste Kosten (~1,2 %/Jahr). Geringe Flexibilität.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/proContraCopy.ts:33"
+  },
+  {
+    "key": "content.procontracopy.007",
+    "de": "Hohe Steuer-Absetzbarkeit in der Ansparphase (§ 10 Abs. 3 EStG Höchstbetrag).",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/proContraCopy.ts:36"
+  },
+  {
+    "key": "content.procontracopy.008",
+    "de": "Voll steuerpflichtig im Alter. Nicht kündbar, nicht vererbbar an Nicht-Ehegatten.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/proContraCopy.ts:37"
+  },
+  {
+    "key": "content.procontracopy.009",
+    "de": "Geringe Kosten in ETF-Verpackung. Förderung über Steuerstundung in der Ansparphase.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/proContraCopy.ts:40"
+  },
+  {
+    "key": "content.procontracopy.010",
+    "de": "Auszahlung erst ab 65. Voll steuerpflichtige Rente; Sonderbedingungen je Anbieter.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/proContraCopy.ts:41"
+  },
+  {
+    "key": "content.procontracopy.011",
+    "de": "Staatliche Zulagen (Grund- und Kinderzulage) plus Steuerersparnis durch Sonderausgaben.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/proContraCopy.ts:44"
+  },
+  {
+    "key": "content.procontracopy.012",
+    "de": "Höhere Verwaltungskosten. Voll steuerpflichtig im Alter; eingeschränkte Vererbbarkeit.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/proContraCopy.ts:45"
+  },
+  {
+    "key": "content.productavailabilitycopy.001",
+    "de": "Frei verfügbar. Auszahlplan ab Renteneintritt; Zugriff jederzeit möglich.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productAvailabilityCopy.ts:74"
+  },
+  {
+    "key": "content.productavailabilitycopy.002",
+    "de": "Auszahlung an den Renteneintritt gekoppelt. Vorzeitige Verfügung in der Regel ausgeschlossen.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productAvailabilityCopy.ts:78"
+  },
+  {
+    "key": "content.productavailabilitycopy.003",
+    "de": "J. (Halbeinkünfte)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/productAvailabilityCopy.ts:88"
+  },
+  {
+    "key": "content.productavailabilitycopy.004",
+    "de": "Auszahlung an Vertragsende oder Renteneintritt; Kündigung möglich, aber meist mit Verlust.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productAvailabilityCopy.ts:89"
+  },
+  {
+    "key": "content.productavailabilitycopy.005",
+    "de": "Auszahlung nur als monatliche Rente — kein Kapitalauszahlungsrecht (§ 10 Abs. 1 Nr. 2 EStG).",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productAvailabilityCopy.ts:94"
+  },
+  {
+    "key": "content.productavailabilitycopy.006",
+    "de": "Auszahlplan an Renteneintritt gekoppelt. Zertifizierter Vertrag — Kündigung schädlich.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productAvailabilityCopy.ts:98"
+  },
+  {
+    "key": "content.productavailabilitycopy.007",
+    "de": "Auszahlung an Renteneintritt gekoppelt. Bei Kündigung Rückforderung der Zulagen + Steuervorteile.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productAvailabilityCopy.ts:102"
+  },
+  {
+    "key": "content.productfocus.001",
+    "de": "Wertpapierdepot, das du selbst verwaltest — Standard-Vergleichsmaßstab.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productFocus.ts:26"
+  },
+  {
+    "key": "content.productfocus.002",
+    "de": "Jederzeit verfügbar — du kannst Geld auch vor der Rente entnehmen.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productFocus.ts:27"
+  },
+  {
+    "key": "content.productfocus.003",
+    "de": "Auf Kursgewinne fällt Abgeltungsteuer an, je nach Fondsart mit Rabatt.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productFocus.ts:28"
+  },
+  {
+    "key": "content.productfocus.004",
+    "de": "Vom Brutto sparen — Arbeitgeber und Steuer geben fast immer etwas dazu.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productFocus.ts:31"
+  },
+  {
+    "key": "content.productfocus.005",
+    "de": "Gebunden bis zum Renteneintritt; Auszahlung als Rente oder Einmalbetrag möglich.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productFocus.ts:32"
+  },
+  {
+    "key": "content.productfocus.006",
+    "de": "Beiträge sind während der Ansparphase steuer- und sozialabgabenfrei. In der Rente fallen Steuer und Krankenkasse an.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productFocus.ts:33"
+  },
+  {
+    "key": "content.productfocus.007",
+    "de": "Vertrag mit garantierter monatlicher Rente, vom Versicherer verwaltet.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productFocus.ts:36"
+  },
+  {
+    "key": "content.productfocus.008",
+    "de": "Während der Laufzeit nur mit Verlust kündbar (Stornoabzug).",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productFocus.ts:37"
+  },
+  {
+    "key": "content.productfocus.009",
+    "de": "In der Rente niedrigere Steuer als beim ETF — dafür meist deutlich höhere laufende Kosten.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productFocus.ts:38"
+  },
+  {
+    "key": "content.productfocus.010",
+    "de": "Geförderte Privatrente, die wie die gesetzliche Rente strukturiert ist.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productFocus.ts:41"
+  },
+  {
+    "key": "content.productfocus.011",
+    "de": "Nur als lebenslange Rente — keine Kapitalauszahlung, nicht vererbbar, nicht beleihbar.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productFocus.ts:42"
+  },
+  {
+    "key": "content.productfocus.012",
+    "de": "Beiträge sind in der Ansparphase voll absetzbar; in der Rente wird voll versteuert.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productFocus.ts:43"
+  },
+  {
+    "key": "content.productfocus.013",
+    "de": "Wertpapierdepot mit staatlicher Förderung — neu ab 2027.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productFocus.ts:46"
+  },
+  {
+    "key": "content.productfocus.014",
+    "de": "Gebunden bis Rentenbeginn (frühestens 65); Auszahlung als Entnahmeplan oder Rente.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productFocus.ts:47"
+  },
+  {
+    "key": "content.productfocus.015",
+    "de": "Förderung über Zulagen und Steuerersparnis; in der Rente wird voll versteuert.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productFocus.ts:48, src/content/productFocus.ts:53"
+  },
+  {
+    "key": "content.productfocus.016",
+    "de": "Geförderte Privatrente mit Zulagen — vor allem für Familien mit Kindern attraktiv.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productFocus.ts:51"
+  },
+  {
+    "key": "content.productfocus.017",
+    "de": "Gebunden bis Alter 62; bis 30 % als Einmalbetrag zu Rentenbeginn möglich.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/productFocus.ts:52"
+  },
+  {
+    "key": "content.recommendationcopy.001",
+    "de": "Kapital- und Renten-Sieger sind verschieden",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:67"
+  },
+  {
+    "key": "content.recommendationcopy.002",
+    "de": "„ \" vorn beim Kapital, „ \" bei der monatlichen Rente. Frage dich, was dir wichtiger ist.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:68"
+  },
+  {
+    "key": "content.recommendationcopy.003",
+    "de": "Knapper Vorsprung beim Kapital",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:75"
+  },
+  {
+    "key": "content.recommendationcopy.004",
+    "de": "Unter 5 % zu „ \". Ranking kippt schon bei kleinen Änderungen an Rendite oder Gebühren.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:76"
+  },
+  {
+    "key": "content.recommendationcopy.005",
+    "de": "% p. a. Eine Renditeannahme 1 pp niedriger oder ein günstigerer Tarif kann das Bild drehen.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:84"
+  },
+  {
+    "key": "content.recommendationcopy.006",
+    "de": "Hebel mit grösstem Einfluss: Rendite, Effektivkosten und (bei bAV) Arbeitgeberanteil. Verändere sie testweise im Bereich „Erweitert\".",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:89"
+  },
+  {
+    "key": "content.recommendationcopy.007",
+    "de": "Hoher Arbeitgeberanteil senkt deinen Nettoaufwand.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:98"
+  },
+  {
+    "key": "content.recommendationcopy.008",
+    "de": "Niedrige Gebühren",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:102"
+  },
+  {
+    "key": "content.recommendationcopy.009",
+    "de": "Niedrige Gebühren, jederzeit frei verfügbar.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:103"
+  },
+  {
+    "key": "content.recommendationcopy.010",
+    "de": "Hohe Kosten und kein Kapitalwahlrecht",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:110"
+  },
+  {
+    "key": "content.recommendationcopy.011",
+    "de": "Hohe Vertragskosten und kein Kapitalwahlrecht.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:111"
+  },
+  {
+    "key": "content.recommendationcopy.012",
+    "de": "Hohe Vertragskosten — Effektivkosten über 1,2 % p. a.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:117"
+  },
+  {
+    "key": "content.recommendationcopy.013",
+    "de": "Steuervorteil heute",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:130"
+  },
+  {
+    "key": "content.recommendationcopy.014",
+    "de": "Sonderausgabenabzug heute, Besteuerung in der Rente.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:131"
+  },
+  {
+    "key": "content.recommendationcopy.015",
+    "de": "Steuer- und SV-Ersparnis",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:135"
+  },
+  {
+    "key": "content.recommendationcopy.016",
+    "de": "Steuer- und SV-Ersparnis in der Ansparphase.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:136"
+  },
+  {
+    "key": "content.recommendationcopy.017",
+    "de": "Flexibel verfügbar",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:141"
+  },
+  {
+    "key": "content.recommendationcopy.018",
+    "de": "Frei verfügbar, kein Auszahlplan vorgegeben.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:142"
+  },
+  {
+    "key": "content.recommendationcopy.019",
+    "de": "Zulagen und Steuervorteil",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:149"
+  },
+  {
+    "key": "content.recommendationcopy.020",
+    "de": "Zulagen und Steuervorteil, gebunden bis Rentenbeginn.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:150"
+  },
+  {
+    "key": "content.recommendationcopy.021",
+    "de": "Zulagen und ggf. zusätzlicher Steuervorteil.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:156"
+  },
+  {
+    "key": "content.recommendationcopy.022",
+    "de": "Grund- und Kinderzulagen, volle Versteuerung in der Rente.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:161"
+  },
+  {
+    "key": "content.recommendationcopy.023",
+    "de": "Lebenslange Rentengarantie über den Rentenfaktor.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:167"
+  },
+  {
+    "key": "content.recommendationcopy.024",
+    "de": "Du nutzt % des steuerfreien bAV-Rahmens (§ 3 Nr. 63 EStG).",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:179"
+  },
+  {
+    "key": "content.recommendationcopy.025",
+    "de": "Noch €/Monat verfügbar.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:181"
+  },
+  {
+    "key": "content.recommendationcopy.026",
+    "de": "Der steuerfreie Rahmen ist ausgeschöpft.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:183"
+  },
+  {
+    "key": "content.recommendationcopy.027",
+    "de": "Nächster Hebel: Rürup-Rente — ebenfalls Sonderausgabenabzug, ohne bAV-Bindung.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:186"
+  },
+  {
+    "key": "content.recommendationcopy.028",
+    "de": "Betriebliche Altersvorsorge: Beitragslimit",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:189"
+  },
+  {
+    "key": "content.recommendationcopy.029",
+    "de": "Du nutzt % des Schicht-1-Höchstbetrags (§ 10 Abs. 3 EStG).",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:198"
+  },
+  {
+    "key": "content.recommendationcopy.030",
+    "de": "Noch €/Jahr für Rürup-Beiträge abzugsfähig.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:200"
+  },
+  {
+    "key": "content.recommendationcopy.031",
+    "de": "Der Höchstbetrag ist durch GRV- und Rürup-Beiträge ausgeschöpft.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:202"
+  },
+  {
+    "key": "content.recommendationcopy.032",
+    "de": "Rürup-Rente: Sonderausgabenrahmen",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:205"
+  },
+  {
+    "key": "content.recommendationcopy.033",
+    "de": "Du nutzt % des Riester-Höchstbetrags (§ 10a EStG, 2.100 €/Jahr inkl. Zulagen).",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:215"
+  },
+  {
+    "key": "content.recommendationcopy.034",
+    "de": "Zulagen decken €/Jahr.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:217"
+  },
+  {
+    "key": "content.recommendationcopy.035",
+    "de": "Mit € mehr Eigenbeitrag erreichst du den Höchstbetrag.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:220"
+  },
+  {
+    "key": "content.recommendationcopy.036",
+    "de": "Du nutzt % des AVD-Vertragsrahmens (6.840 €/Jahr).",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:232"
+  },
+  {
+    "key": "content.recommendationcopy.037",
+    "de": "Noch €/Monat Spielraum bis zur Vertragsobergrenze.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:234"
+  },
+  {
+    "key": "content.recommendationcopy.038",
+    "de": "Die jährliche Vertragsobergrenze ist ausgeschöpft.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:236"
+  },
+  {
+    "key": "content.recommendationcopy.039",
+    "de": "€ genutzt, noch € frei.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:251"
+  },
+  {
+    "key": "content.recommendationcopy.040",
+    "de": "€ noch nicht genutzt — ETF- und AVD-Vorabpauschale werden hier angerechnet.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:253"
+  },
+  {
+    "key": "content.recommendationcopy.041",
+    "de": "Pre-2005-Kapitalauszahlung steuerfrei (§52 Abs. 28 EStG a.F.)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:266"
+  },
+  {
+    "key": "content.recommendationcopy.042",
+    "de": "Dein Vertrag erfüllt die Bedingungen für die steuerfreie Kapitalauszahlung nach §52 Abs. 28 EStG a.F.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:268"
+  },
+  {
+    "key": "content.recommendationcopy.043",
+    "de": "(Vertragsbeginn vor 2005, Laufzeit ≥ 12 Jahre). Der Rechner wendet diese Befreiung automatisch an.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:269"
+  },
+  {
+    "key": "content.recommendationcopy.044",
+    "de": "Achtung — bei Leibrente-Auszahlung gilt §22 Nr. 1 Satz 3 a EStG Ertragsanteil auch für pre-2005-Verträge.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:270"
+  },
+  {
+    "key": "content.recommendationcopy.045",
+    "de": "Auszahlung ab Alter 60 (Verträge bis 2011) bzw. 62 (ab 2012)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:276"
+  },
+  {
+    "key": "content.recommendationcopy.046",
+    "de": "Auszahlung ab Alter",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:277"
+  },
+  {
+    "key": "content.recommendationcopy.047",
+    "de": "Halbeinkünfte (halbe Steuer auf Gewinn) — §20 Abs. 1 Nr. 6 EStG",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:280"
+  },
+  {
+    "key": "content.recommendationcopy.048",
+    "de": "Dein Vertrag erfüllt die Bedingungen für das Halbeinkünfteverfahren bei Kapitalauszahlung",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:282"
+  },
+  {
+    "key": "content.recommendationcopy.049",
+    "de": "(Vertragsbeginn ab 2005, Laufzeit ≥ 12 Jahre, ).",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:283"
+  },
+  {
+    "key": "content.recommendationcopy.050",
+    "de": "Nur die Hälfte des Gewinns wird mit dem persönlichen Steuersatz besteuert — §20 Abs. 1 Nr. 6 EStG.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:284"
+  },
+  {
+    "key": "content.recommendationcopy.051",
+    "de": "Hoher Garantiezins (4 % bis 2024 auf Beiträge)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:289"
+  },
+  {
+    "key": "content.recommendationcopy.052",
+    "de": "Verträge aus 2003 oder früher haben einen Höchstrechnungszins von 4 % p. a. auf die Sparanteile.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:291"
+  },
+  {
+    "key": "content.recommendationcopy.053",
+    "de": "Dieser Zins ist heute kaum noch am Markt erhältlich. In Kombination mit der steuerfreien",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:292"
+  },
+  {
+    "key": "content.recommendationcopy.054",
+    "de": "Kapitalauszahlung (pre-2005) ist das ein starkes Argument, diesen Vertrag zu behalten.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:293"
+  },
+  {
+    "key": "content.recommendationcopy.055",
+    "de": "Pre-2005 §40b-Direktversicherung — Kapitalauszahlung steuerfrei (KV/PV bleibt)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:297"
+  },
+  {
+    "key": "content.recommendationcopy.056",
+    "de": "Dieser bAV-Vertrag wurde vom Arbeitgeber pauschal nach §40b EStG a.F. besteuert.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:299"
+  },
+  {
+    "key": "content.recommendationcopy.057",
+    "de": "Da alle Voraussetzungen (Vertragsabschluss vor 2005, Laufzeit ≥ 12 Jahre, mind. 5 Jahresprämien)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:300"
+  },
+  {
+    "key": "content.recommendationcopy.058",
+    "de": "erfüllt sind, ist die Kapitalauszahlung einkommensteuerfrei (§52 Abs. 28 EStG a.F.).",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:301"
+  },
+  {
+    "key": "content.recommendationcopy.059",
+    "de": "KV/PV nach §229 Abs. 1 SGB V fällt weiterhin an — der Rechner berücksichtigt dies.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:302"
+  },
+  {
+    "key": "content.recommendationcopy.060",
+    "de": "§40b-Vertrag, aber Bedingungen nicht erfüllt — Lump-sum als Versorgungsbezug",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:306"
+  },
+  {
+    "key": "content.recommendationcopy.061",
+    "de": "Obwohl der Durchführungsweg §40b EStG a.F. ist, sind die Voraussetzungen für die",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:308"
+  },
+  {
+    "key": "content.recommendationcopy.062",
+    "de": "Steuerfreiheit nicht vollständig erfüllt. Die Kapitalauszahlung wird daher als",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:309"
+  },
+  {
+    "key": "content.recommendationcopy.063",
+    "de": "Versorgungsbezug voll besteuert (§22 Nr. 5 EStG). Prüfe, ob alle Bedingungen tatsächlich",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:310"
+  },
+  {
+    "key": "content.recommendationcopy.064",
+    "de": "nicht greifen, oder korrigiere den \"Steuerfreiheit bestätigt\"-Schalter im Vertrag.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:311"
+  },
+  {
+    "key": "content.recommendationcopy.065",
+    "de": "Lump-sum-Steuerung: Fünftelregelung (§34 EStG)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:315"
+  },
+  {
+    "key": "content.recommendationcopy.066",
+    "de": "Bei Direktzusage und Unterstützungskasse gilt die Kapitalauszahlung als Vergütung für",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:317"
+  },
+  {
+    "key": "content.recommendationcopy.067",
+    "de": "mehrjährige Tätigkeit. Die Fünftelregelung (§34 Abs. 2 Nr. 4 EStG) glättet die",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:318"
+  },
+  {
+    "key": "content.recommendationcopy.068",
+    "de": "Steuerprogression — der Rechner wendet dies automatisch an.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:319"
+  },
+  {
+    "key": "content.recommendationcopy.069",
+    "de": "Kinderzulage für nach 2008 geborene Kinder ggf. nicht voll auf altem Riester — Vertragsanpassung prüfen",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:323"
+  },
+  {
+    "key": "content.recommendationcopy.070",
+    "de": "Für Kinder, die ab 2008 geboren wurden, beträgt die Kinderzulage 300 EUR/Jahr (statt 185 EUR).",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:325"
+  },
+  {
+    "key": "content.recommendationcopy.071",
+    "de": "Bei einem Riester-Vertrag aus 2007 oder früher muss der Vertrag beim Anbieter auf den",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:326"
+  },
+  {
+    "key": "content.recommendationcopy.072",
+    "de": "neuen Kindzulagesatz angepasst werden. Prüfe mit deinem Anbieter, ob der höhere Satz bereits",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:327"
+  },
+  {
+    "key": "content.recommendationcopy.073",
+    "de": "Verlust von Altvertrag-Privilegien",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:336"
+  },
+  {
+    "key": "content.recommendationcopy.074",
+    "de": "Diese Option beendet deinen Vertrag. Du verlierst dabei dauerhaft die steuerlichen Vorteile",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:338"
+  },
+  {
+    "key": "content.recommendationcopy.075",
+    "de": "des Altvertrags (steuerfreie Kapitalauszahlung / Halbeinkünfteverfahren).",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:339"
+  },
+  {
+    "key": "content.recommendationcopy.076",
+    "de": "Diese Privilegien können bei einem Neuabschluss nicht wiederhergestellt werden.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:340"
+  },
+  {
+    "key": "content.recommendationcopy.077",
+    "de": "Hohe Kosten im Beitragsfreistand",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:346"
+  },
+  {
+    "key": "content.recommendationcopy.078",
+    "de": "Effektivkosten von % p. a. bei beitragsfreiem Vertrag:",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:348"
+  },
+  {
+    "key": "content.recommendationcopy.079",
+    "de": "Laufende Verwaltungskosten belasten das angesparte Kapital besonders stark,",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:349"
+  },
+  {
+    "key": "content.recommendationcopy.080",
+    "de": "wenn keine neuen Beiträge mehr eingezahlt werden.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:350"
+  },
+  {
+    "key": "content.recommendationcopy.081",
+    "de": "Steuerneutrale Übertragung möglich (AltZertG)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:355"
+  },
+  {
+    "key": "content.recommendationcopy.082",
+    "de": "Die Übertragung von Riester auf ein Altersvorsorgedepot ist nach AltZertG steuerneutral möglich.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:357"
+  },
+  {
+    "key": "content.recommendationcopy.083",
+    "de": "Zulagen und Sonderausgabenabzüge bleiben erhalten; der Anbieter organisiert die Übertragung.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:358"
+  },
+  {
+    "key": "content.recommendationcopy.084",
+    "de": "Prüfe, ob dein aktueller Anbieter die Übertragung gebührenfrei abwickelt.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:359"
+  },
+  {
+    "key": "content.recommendationcopy.085",
+    "de": "Über dem gesetzlichen Förderdeckel",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:366"
+  },
+  {
+    "key": "content.recommendationcopy.086",
+    "de": "Der vorgeschlagene Beitrag ( €/Jahr)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:368"
+  },
+  {
+    "key": "content.recommendationcopy.087",
+    "de": "übersteigt den gesetzlichen Förderrahmen ( €/Jahr).",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:369"
+  },
+  {
+    "key": "content.recommendationcopy.088",
+    "de": "Beiträge oberhalb des Deckels sind zwar möglich, verlieren aber die steuerlichen Vorteile",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:370"
+  },
+  {
+    "key": "content.recommendationcopy.089",
+    "de": "(z. B. §-3-Nr.-63-Befreiung bei bAV, Sonderausgabenabzug bei Rürup/Riester/AVD).",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:371"
+  },
+  {
+    "key": "content.recommendationcopy.090",
+    "de": "Die Modellrechnung zeigt die Auswirkung — du entscheidest, ob der höhere Beitrag trotzdem sinnvoll ist.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:372"
+  },
+  {
+    "key": "content.recommendationcopy.091",
+    "de": "Effektivkosten p.a.: % — über dem Richtwert von 1,20 %.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:385"
+  },
+  {
+    "key": "content.recommendationcopy.092",
+    "de": "Laufende Verwaltungs- und Fondskosten zehren am Kapital.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:386"
+  },
+  {
+    "key": "content.recommendationcopy.093",
+    "de": "Prüfe, ob ein günstigerer Tarif oder Fondsauswahl möglich ist.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:387"
+  },
+  {
+    "key": "content.recommendationcopy.094",
+    "de": "Die vertragliche Garantieleistung liegt bei % der eingezahlten Beiträge",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:398"
+  },
+  {
+    "key": "content.recommendationcopy.095",
+    "de": "Unterhalb von 80 % deckt die Garantie nicht einmal den Nominalwert der Einzahlungen.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:400"
+  },
+  {
+    "key": "content.recommendationcopy.096",
+    "de": "Eingeschränkt flexibel",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:405"
+  },
+  {
+    "key": "content.recommendationcopy.097",
+    "de": "Dieser Vertrag ist auf lebenslanges Leibrente-Format festgelegt und hat einen nennenswerten",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:407"
+  },
+  {
+    "key": "content.recommendationcopy.098",
+    "de": "Stornoabzug (≥ 10 %, geschätzt).",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:408"
+  },
+  {
+    "key": "content.recommendationcopy.099",
+    "de": "Kapital und Auszahlungsform lassen sich später nicht mehr frei anpassen.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:409"
+  },
+  {
+    "key": "content.recommendationcopy.100",
+    "de": "Stornoabzug ist eine pessimistische Schätzung; den genauen Wert findest du im Vertrag oder beim Versicherer.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:410"
+  },
+  {
+    "key": "content.recommendationcopy.101",
+    "de": "Einige Felder basieren noch auf Schätzwerten: .",
+    "surface": "content",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/content/recommendationCopy.ts:419"
+  },
+  {
+    "key": "content.recommendationcopy.102",
+    "de": "Trage die tatsächlichen Werte aus deinem Vertrag ein, um genauere Ergebnisse zu erhalten.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/recommendationCopy.ts:420"
+  },
+  {
+    "key": "content.terms.001",
+    "de": "Gesetzliche Rente / Versorgung",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:35"
+  },
+  {
+    "key": "content.terms.002",
+    "de": "Betriebliche Altersvorsorge (bAV)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:36"
+  },
+  {
+    "key": "content.terms.003",
+    "de": "Private Rentenversicherung (pAV)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:37"
+  },
+  {
+    "key": "content.terms.004",
+    "de": "Basisrente / Rürup",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:38"
+  },
+  {
+    "key": "content.terms.005",
+    "de": "Auszahlung & Renten­formen",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:40"
+  },
+  {
+    "key": "content.terms.006",
+    "de": "Kosten & Gebühren",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:41"
+  },
+  {
+    "key": "content.terms.007",
+    "de": "Steuern & Sozial­abgaben",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:42"
+  },
+  {
+    "key": "content.terms.008",
+    "de": "Dein gesamtes Bruttogehalt im Jahr (vor Lohnsteuer und Sozialabgaben). Basis für GRV-Beiträge, bAV-Grenzen und Vorsorgepauschalen.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:52"
+  },
+  {
+    "key": "content.terms.009",
+    "de": "Jede gesetzliche Krankenkasse erhebt zusätzlich zum allgemeinen Beitragssatz (14,6 %) einen eigenen Zusatzbeitrag — meist zwischen 1,5 % und 3,5 %.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:60"
+  },
+  {
+    "key": "content.terms.010",
+    "de": "Gesetzliche / Private Krankenversicherung",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:66"
+  },
+  {
+    "key": "content.terms.011",
+    "de": "GKV ist beitragspflichtig nach Einkommen. PKV ist eine private Vollversicherung mit festen Prämien. Beeinflusst Lohnabzüge und Beiträge im Ruhestand.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:68"
+  },
+  {
+    "key": "content.terms.012",
+    "de": "Entgeltpunkte / Renten­konten­punkte",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:76"
+  },
+  {
+    "key": "content.terms.013",
+    "de": "Punkte aus deinem Renten­konto bei der DRV. Pro Jahr mit Durchschnitts­einkommen gibt es ~1 EP. Stand siehst du in deiner Renten­information.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:78"
+  },
+  {
+    "key": "content.terms.014",
+    "de": "Wert eines Entgeltpunkts in EUR/Monat. Wird jährlich angepasst. 2026 ≈ 40,79 EUR/EP. Bruttorente = EP × Rentenwert.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:87"
+  },
+  {
+    "key": "content.terms.015",
+    "de": "Jährliches Schreiben der Deutschen Renten­versicherung mit deinem aktuellen EP-Stand und einer Renten­prognose. Zugang über deinen DRV-Online-Account.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:96"
+  },
+  {
+    "key": "content.terms.016",
+    "de": "Berufsständisches Versorgungs­werk",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:101"
+  },
+  {
+    "key": "content.terms.017",
+    "de": "Pflicht­alters­versorgung für Kammer­berufe (Ärzte, Anwälte, Architekten, …) — ersetzt die GRV. Beiträge zählen wie GRV-Beiträge zur Schicht-1-Grenze.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:104"
+  },
+  {
+    "key": "content.terms.018",
+    "de": "Versorgung für Beamte: Prozentsatz vom letzten Grundgehalt (Ruhe­gehalts­satz, max. 71,75 %). Steuerlich behandelt als Versorgungs­bezug.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:112"
+  },
+  {
+    "key": "content.terms.019",
+    "de": "Brutto-Entgelt­umwandlung in die bAV",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:121"
+  },
+  {
+    "key": "content.terms.020",
+    "de": "Du tauschst Brutto-Gehalt gegen einen bAV-Beitrag. In der Anspar­phase fällt darauf bis zu bestimmten Grenzen keine Lohnsteuer und keine Sozial­abgaben an. In der Renten­phase wird voll besteuert.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:123"
+  },
+  {
+    "key": "content.terms.021",
+    "de": "Dein Arbeitgeber muss dir 15 % deines bAV-Beitrags dazu­geben — soweit er selbst Sozial­abgaben spart. Gilt für Verträge ab 2019; ältere Verträge ab 2022.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:132"
+  },
+  {
+    "key": "content.terms.022",
+    "de": "Durchführungs­weg",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:139"
+  },
+  {
+    "key": "content.terms.023",
+    "de": "Form der bAV: Direkt­versicherung, Pensions­kasse, Pensions­fonds, Direkt­zusage oder Unter­stützungs­kasse. Beeinflusst Steuer und Sozial­abgaben besonders bei Kapital­abfindung.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:141"
+  },
+  {
+    "key": "content.terms.024",
+    "de": "Häufigste bAV-Form: Lebens­versicherer ist Vertrags­partner, Arbeit­geber zahlt Beiträge ein. Beiträge bis 8 % BBG steuerfrei, bis 4 % BBG sozial­abgabenfrei.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:149"
+  },
+  {
+    "key": "content.terms.025",
+    "de": "Pflicht­versicherter Rentner (KVdR)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:154"
+  },
+  {
+    "key": "content.terms.026",
+    "de": "Krankenversicherung der Rentner (KVdR)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:155"
+  },
+  {
+    "key": "content.terms.027",
+    "de": "Wer die 9/10-Regelung erfüllt (90 % der zweiten Erwerbs­hälfte gesetzlich versichert), bleibt im Ruhestand pflicht­versichert. Vorteil: Frei­betrag auf bAV-Renten und nur halbe KV-Sätze auf die GRV.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:157"
+  },
+  {
+    "key": "content.terms.028",
+    "de": "GRV-Minderung durch bAV",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:163"
+  },
+  {
+    "key": "content.terms.029",
+    "de": "Reduktion gesetzlicher Renten­ansprüche",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:164"
+  },
+  {
+    "key": "content.terms.030",
+    "de": "Wenn du Brutto in bAV umwandelst, zahlst du auf diesen Betrag keine RV-Beiträge — also bekommst du später entsprechend weniger gesetzliche Rente.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:166"
+  },
+  {
+    "key": "content.terms.031",
+    "de": "Private Renten­versicherung (Schicht 3)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:173"
+  },
+  {
+    "key": "content.terms.032",
+    "de": "Private Renten­versicherung Schicht 3",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:174"
+  },
+  {
+    "key": "content.terms.033",
+    "de": "Privat finanziert, kein Steuer­vorteil bei Einzahlung. Auszahlung mit Halbeinkünfte­verfahren oder Abgeltung­steuer; bei lebens­langer Rente nur Ertrags­anteil steuer­pflichtig.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:176"
+  },
+  {
+    "key": "content.terms.034",
+    "de": "Halbeinkünfte­verfahren",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:182, src/content/terms.ts:183"
+  },
+  {
+    "key": "content.terms.035",
+    "de": "Bei Kapital­auszahlung aus Verträgen ab 2005 mit Mindest­laufzeit 12 Jahren und Auszahlung ab Alter 60 (Verträge bis 2011) bzw. 62 (ab 2012): nur die Hälfte der Erträge wird mit deinem persönlichen Steuersatz versteuert.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:185"
+  },
+  {
+    "key": "content.terms.036",
+    "de": "Bei lebens­langer Rente aus pAV ist nur ein vom Renten­beginn­alter abhängiger Anteil der Rente steuer­pflichtig (z. B. 17 % bei Renten­beginn 67).",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:194"
+  },
+  {
+    "key": "content.terms.037",
+    "de": "Beiträge ruhen lassen",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:200"
+  },
+  {
+    "key": "content.terms.038",
+    "de": "Du stoppst die Beiträge, der Vertrag läuft aber bis zum Renten­beginn weiter. Sinnvoll, wenn du die Beiträge nicht mehr leisten willst, aber den Vertrag nicht kündigen möchtest.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:203"
+  },
+  {
+    "key": "content.terms.039",
+    "de": "Storno­abzug bei Kündigung",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:208"
+  },
+  {
+    "key": "content.terms.040",
+    "de": "Storno­abschlag / Rückkaufs­wert-Reduktion",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:209"
+  },
+  {
+    "key": "content.terms.041",
+    "de": "Wer früh kündigt, bekommt nicht das volle Vertrags­kapital zurück: Versicherer ziehen einen Storno­abschlag ab — je nach Vertrag 5–25 %.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:211"
+  },
+  {
+    "key": "content.terms.042",
+    "de": "Basisrente / Rürup (Schicht 1)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:218"
+  },
+  {
+    "key": "content.terms.043",
+    "de": "Basisrente nach §10 Abs. 1 Nr. 2 EStG",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:219"
+  },
+  {
+    "key": "content.terms.044",
+    "de": "Privat finanzierte Renten­versicherung mit Steuer­vorteil bei Einzahlung. Kein Kapital­wahl­recht, lebens­lange Rente; nicht beleihbar oder vererb­bar (außer Hinterbliebenen).",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:221"
+  },
+  {
+    "key": "content.terms.045",
+    "de": "Schicht-1-Höchstbetrag",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:227, src/content/terms.ts:228"
+  },
+  {
+    "key": "content.terms.046",
+    "de": "2026 max. 30.826 EUR/Jahr (Single) bzw. 61.652 EUR (zusammen­veranlagt). GRV-/VW-Beiträge zählen darauf an. Nur Beiträge unterhalb der Grenze sind als Sonder­ausgaben absetzbar.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:230"
+  },
+  {
+    "key": "content.terms.047",
+    "de": "Bei GRV / Versorgungs­werk / Basisrente: der steuer­pflichtige Teil deiner Brutto­rente — abhängig vom Renten­beginn­jahr. Steigt jährlich auf 100 % bis 2058.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:239"
+  },
+  {
+    "key": "content.terms.048",
+    "de": "Steuer-vs.-Zulage-Vergleich",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:247"
+  },
+  {
+    "key": "content.terms.049",
+    "de": "Günstigerprüfung",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:248"
+  },
+  {
+    "key": "content.terms.050",
+    "de": "Das Finanzamt prüft automatisch, ob für dich die staatlichen Zulagen oder der Sonder­ausgaben­abzug der Beiträge günstiger ist — du bekommst die jeweils höhere Förderung.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:250"
+  },
+  {
+    "key": "content.terms.051",
+    "de": "Mindest­beitrag für volle Zulage",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:256"
+  },
+  {
+    "key": "content.terms.052",
+    "de": "Mindest­eigen­beitrag",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:257"
+  },
+  {
+    "key": "content.terms.053",
+    "de": "Riester / AVD: 4 % deines rentenversicherungs­pflichtigen Vorjahres­einkommens minus Zulagen. Wer weniger zahlt, bekommt Zulagen nur anteilig.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:259"
+  },
+  {
+    "key": "content.terms.054",
+    "de": "175 EUR/Jahr für jeden direkt förder­berechtigten Sparer (Riester / AVD). Mittel­bar Berechtigte (Ehegatte) bekommen sie über den eigenen Vertrag.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:268"
+  },
+  {
+    "key": "content.terms.055",
+    "de": "300 EUR/Jahr für Kinder, die ab 2008 geboren sind; 185 EUR für ältere Kinder. Wird einem Eltern­teil zugeordnet (Standardmäßig der Mutter).",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:277"
+  },
+  {
+    "key": "content.terms.056",
+    "de": "Einmalig 200 EUR zusätzliche Zulage für Sparer unter 25 Jahren bei Vertrags­abschluss. Bekommst du nur einmal im Leben.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:286"
+  },
+  {
+    "key": "content.terms.057",
+    "de": "Standard­depot (Altersvorsorge­reformgesetz 2027)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:293"
+  },
+  {
+    "key": "content.terms.058",
+    "de": "Zertifizierte AVD-Variante mit auto­matischem Gleitpfad (höherer Aktien­anteil in jungen Jahren, sicherer in der Nähe des Renten­beginns) und Effektiv­kosten-Cap von 1,0 % p.a.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:295"
+  },
+  {
+    "key": "content.terms.059",
+    "de": "Lebens­lange Rente (Leibrente)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:302"
+  },
+  {
+    "key": "content.terms.060",
+    "de": "Lebens­lange Auszahlung nach Renten­beginn — endet erst beim Tod (oder nach Garantie­zeit für Hinterbliebene). Höhe = Vertrags-Renten­faktor × Kapital.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:305"
+  },
+  {
+    "key": "content.terms.061",
+    "de": "auszahlung",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:306, src/content/terms.ts:314, src/content/terms.ts:322, src/content/terms.ts:330"
+  },
+  {
+    "key": "content.terms.062",
+    "de": "Befristete Auszahlung über eine fest gewählte Anzahl Jahre (z. B. 20). Nach Ablauf endet die Rente — auch wenn du noch lebst.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:313"
+  },
+  {
+    "key": "content.terms.063",
+    "de": "Kapital­verzehr",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:319"
+  },
+  {
+    "key": "content.terms.064",
+    "de": "Du erhältst das Kapital aus­bezahlt und entnimmst selbst. Im Modell: gleich­mäßige Entnahme bis zum globalen Endalter. Risiko: Lange-Lebens-Risiko liegt bei dir.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:321"
+  },
+  {
+    "key": "content.terms.065",
+    "de": "Renten­faktor",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:326"
+  },
+  {
+    "key": "content.terms.066",
+    "de": "Renten­faktor (EUR/10.000 EUR Kapital)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:327"
+  },
+  {
+    "key": "content.terms.067",
+    "de": "Vertrag­licher Umrechnungs­faktor: pro 10.000 EUR Kapital bei Renten­beginn zahlt der Versicherer monatlich z. B. 28 EUR. Steht in deinem Versicherungs­schein.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:329"
+  },
+  {
+    "key": "content.terms.068",
+    "de": "Effektiv­kosten (RIY)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:336"
+  },
+  {
+    "key": "content.terms.069",
+    "de": "Effektiv­kosten / Reduction-In-Yield",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:337"
+  },
+  {
+    "key": "content.terms.070",
+    "de": "Gesamt­kosten­quote eines Versicherungs­vertrags: um wie viel pp die Brutto­rendite jährlich durch alle Kosten gemindert wird. Nettotarife liegen bei 0,6–1,0 %, klassische Tarife bei 1,5–2,5 %.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:339"
+  },
+  {
+    "key": "content.terms.071",
+    "de": "kosten",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:340, src/content/terms.ts:348, src/content/terms.ts:356, src/content/terms.ts:364"
+  },
+  {
+    "key": "content.terms.072",
+    "de": "Mantel­gebühr",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:344"
+  },
+  {
+    "key": "content.terms.073",
+    "de": "Versicherungs­mantel-Gebühr",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:345"
+  },
+  {
+    "key": "content.terms.074",
+    "de": "Verwaltungs­gebühr des Versicherers oben drauf auf die Fonds­kosten. Fließt jährlich auf das Kapital ab. Typisch 0,3–1,2 % p.a.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:347"
+  },
+  {
+    "key": "content.terms.075",
+    "de": "Fonds­kosten (TER)",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:352"
+  },
+  {
+    "key": "content.terms.076",
+    "de": "Laufende Kosten des Investmentfonds / ETFs. ETFs liegen typisch bei 0,1–0,3 % p.a., aktive Fonds bei 1–2 %.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:355"
+  },
+  {
+    "key": "content.terms.077",
+    "de": "Vertriebs­kosten / Abschluss­kosten",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:360"
+  },
+  {
+    "key": "content.terms.078",
+    "de": "Abschluss- und Vertriebs­kosten",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:361"
+  },
+  {
+    "key": "content.terms.079",
+    "de": "Provision für Vermittler / Versicherer beim Vertrags­abschluss. Wird oft auf die ersten 5 Jahre verteilt — drückt die Kapital­bildung in der Anfangs­phase stark.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:363"
+  },
+  {
+    "key": "content.terms.080",
+    "de": "Vorsorge­pauschale",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:370"
+  },
+  {
+    "key": "content.terms.081",
+    "de": "Vorsorge­pauschale §39b EStG",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:371"
+  },
+  {
+    "key": "content.terms.082",
+    "de": "Pauschaler Abzug bei der Lohnsteuer­berechnung für Renten-, Kranken- und Pflege­versicherungs­beiträge. Senkt die monatliche Lohnsteuer.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:373"
+  },
+  {
+    "key": "content.terms.083",
+    "de": "steuer-sv",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:375, src/content/terms.ts:384, src/content/terms.ts:392, src/content/terms.ts:401, src/content/terms.ts:410"
+  },
+  {
+    "key": "content.terms.084",
+    "de": "Steuer­freier Anteil von Versorgungs­bezügen (bAV-Renten, Beamten­pensionen) — kohorten­abhängig. Sinkt jährlich; ab 2058 = 0.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:382"
+  },
+  {
+    "key": "content.terms.085",
+    "de": "Gehalts­obergrenze für Sozial­versicherungs­beiträge. 2026 RV-West 96.600 EUR/Jahr, KV/PV 69.750 EUR/Jahr. Verdienst darüber ist beitragsfrei.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:391"
+  },
+  {
+    "key": "content.terms.086",
+    "de": "Jährliche Mindest­besteuerung von Investment­fonds. Kleiner Betrag (Basiszins × 70 % × Fonds­wert) wird wie eine Auszahlung versteuert; der bezahlte Betrag wird beim Verkauf gegen­gerechnet, damit nichts doppelt versteuert wird. Bei aus­schüttenden Fonds mindern Aus­schüttungen die Vorabpauschale; das Modell nimmt einen thesaurierenden ETF an.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:399"
+  },
+  {
+    "key": "content.terms.087",
+    "de": "Fünftel­regelung",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:405"
+  },
+  {
+    "key": "content.terms.088",
+    "de": "Fünftel­regelung §34 EStG",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:406"
+  },
+  {
+    "key": "content.terms.089",
+    "de": "Steuer­ermäßigung für einmalige Kapital­aus­zahlungen (z. B. Direkt­zusage-Kapital): die Steuer­last wird so berechnet, als verteile sich die Aus­zahlung auf 5 Jahre. Gilt nicht für §3 Nr. 63-bAV.",
+    "surface": "content",
+    "risk": "normal",
+    "description": "auto-import · string · src/content/terms.ts:408"
+  }
+]

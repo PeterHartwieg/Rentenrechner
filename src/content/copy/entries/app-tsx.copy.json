@@ -1,0 +1,79 @@
+[
+  {
+    "key": "apptsx.app.001",
+    "de": "rentenluecke-rechner",
+    "surface": "app-tsx",
+    "risk": "normal",
+    "description": "auto-import · string · src/App.tsx:218"
+  },
+  {
+    "key": "apptsx.app.002",
+    "de": "bav-rechner",
+    "surface": "app-tsx",
+    "risk": "normal",
+    "description": "auto-import · string · src/App.tsx:221"
+  },
+  {
+    "key": "apptsx.app.003",
+    "de": "riester-rechner",
+    "surface": "app-tsx",
+    "risk": "normal",
+    "description": "auto-import · string · src/App.tsx:227"
+  },
+  {
+    "key": "apptsx.app.004",
+    "de": "altersvorsorgedepot-rechner",
+    "surface": "app-tsx",
+    "risk": "normal",
+    "description": "auto-import · string · src/App.tsx:230"
+  },
+  {
+    "key": "apptsx.app.005",
+    "de": "basisrente-rechner",
+    "surface": "app-tsx",
+    "risk": "normal",
+    "description": "auto-import · string · src/App.tsx:236"
+  },
+  {
+    "key": "apptsx.app.006",
+    "de": "private-rentenversicherung-rechner",
+    "surface": "app-tsx",
+    "risk": "normal",
+    "description": "auto-import · string · src/App.tsx:239"
+  },
+  {
+    "key": "apptsx.app.007",
+    "de": "rente-netto-berechnen",
+    "surface": "app-tsx",
+    "risk": "normal",
+    "description": "auto-import · string · src/App.tsx:242"
+  },
+  {
+    "key": "apptsx.app.008",
+    "de": "altersvorsorgeprodukte-vergleichen",
+    "surface": "app-tsx",
+    "risk": "normal",
+    "description": "auto-import · string · src/App.tsx:245"
+  },
+  {
+    "key": "apptsx.app.009",
+    "de": "vertrag",
+    "surface": "app-tsx",
+    "risk": "normal",
+    "description": "auto-import · string · src/App.tsx:251"
+  },
+  {
+    "key": "apptsx.app.010",
+    "de": "kapital",
+    "surface": "app-tsx",
+    "risk": "normal",
+    "description": "auto-import · string · src/App.tsx:257"
+  },
+  {
+    "key": "apptsx.app.011",
+    "de": "vergleich-detail",
+    "surface": "app-tsx",
+    "risk": "normal",
+    "description": "auto-import · string · src/App.tsx:263"
+  }
+]

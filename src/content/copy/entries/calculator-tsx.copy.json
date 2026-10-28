@@ -1,0 +1,23 @@
+[
+  {
+    "key": "calculatortsx.calculator.001",
+    "de": "vergleich",
+    "surface": "calculator-tsx",
+    "risk": "normal",
+    "description": "auto-import · string · src/Calculator.tsx:69"
+  },
+  {
+    "key": "calculatortsx.calculator.002",
+    "de": "Vergleich",
+    "surface": "calculator-tsx",
+    "risk": "normal",
+    "description": "auto-import · string · src/Calculator.tsx:157"
+  },
+  {
+    "key": "calculatortsx.calculator.003",
+    "de": "Beiträge anpassen",
+    "surface": "calculator-tsx",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/Calculator.tsx:407"
+  }
+]

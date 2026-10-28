@@ -1,0 +1,93 @@
+[
+  {
+    "key": "cashflows.cashflowtable.001",
+    "de": "Beitrag p.a.",
+    "surface": "cashflows",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/cashflows/CashflowTable.tsx:52"
+  },
+  {
+    "key": "cashflows.cashflowtable.002",
+    "de": "Steuer-/SV-Ersparnis",
+    "surface": "cashflows",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/cashflows/CashflowTable.tsx:54"
+  },
+  {
+    "key": "cashflows.cashflowtable.003",
+    "de": "Gebühren p.a.",
+    "surface": "cashflows",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/cashflows/CashflowTable.tsx:55"
+  },
+  {
+    "key": "cashflows.cashflowtable.004",
+    "de": "Kum. Gebühren",
+    "surface": "cashflows",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/cashflows/CashflowTable.tsx:56"
+  },
+  {
+    "key": "cashflows.cashflowtable.005",
+    "de": "Kapital",
+    "surface": "cashflows",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/cashflows/CashflowTable.tsx:57, src/features/cashflows/CashflowTable.tsx:133"
+  },
+  {
+    "key": "cashflows.cashflowtable.006",
+    "de": "Kapital n. St.",
+    "surface": "cashflows",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/cashflows/CashflowTable.tsx:58"
+  },
+  {
+    "key": "cashflows.cashflowtable.007",
+    "de": "Reales Kapital",
+    "surface": "cashflows",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/cashflows/CashflowTable.tsx:59"
+  },
+  {
+    "key": "cashflows.cashflowtable.008",
+    "de": "Gesamt",
+    "surface": "cashflows",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/cashflows/CashflowTable.tsx:93"
+  },
+  {
+    "key": "cashflows.cashflowtable.009",
+    "de": "Brutto mtl.",
+    "surface": "cashflows",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/cashflows/CashflowTable.tsx:134"
+  },
+  {
+    "key": "cashflows.cashflowtable.010",
+    "de": "Steuerpfl. Gewinn",
+    "surface": "cashflows",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/cashflows/CashflowTable.tsx:135"
+  },
+  {
+    "key": "cashflows.cashflowtable.011",
+    "de": "Steuer",
+    "surface": "cashflows",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/cashflows/CashflowTable.tsx:137"
+  },
+  {
+    "key": "cashflows.cashflowtable.012",
+    "de": "Netto mtl.",
+    "surface": "cashflows",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/cashflows/CashflowTable.tsx:138"
+  },
+  {
+    "key": "cashflows.cashflowtable.013",
+    "de": "Kapital Ende",
+    "surface": "cashflows",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/cashflows/CashflowTable.tsx:139"
+  }
+]

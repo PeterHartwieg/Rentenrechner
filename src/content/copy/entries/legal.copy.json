@@ -1,0 +1,597 @@
+[
+  {
+    "key": "legal.datenschutzpage.001",
+    "de": "Datenschutzerklärung Kopfzeile",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/legal/DatenschutzPage.tsx:24"
+  },
+  {
+    "key": "legal.datenschutzpage.002",
+    "de": "Datenschutzerklärung Verantwortlicher",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/legal/DatenschutzPage.tsx:29"
+  },
+  {
+    "key": "legal.datenschutzpage.003",
+    "de": "Datenschutzerklärung Grundsatz",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/legal/DatenschutzPage.tsx:34"
+  },
+  {
+    "key": "legal.datenschutzpage.004",
+    "de": "Datenschutzerklärung lokale Speicherung",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/legal/DatenschutzPage.tsx:39"
+  },
+  {
+    "key": "legal.datenschutzpage.005",
+    "de": "Datenschutzerklärung",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · attr:title · src/features/legal/DatenschutzPage.tsx:44, src/features/legal/LegalFooter.tsx:85, src/features/legal/LegalLayout.tsx:77"
+  },
+  {
+    "key": "legal.datenschutzpage.006",
+    "de": ". Diese Erklärung beschreibt den aktuellen technischen Zustand der Anwendung und wird aktualisiert, sobald sich die Verarbeitung personenbezogener Daten ändert (z.&nbsp;B. durch die Einführung eines Backends, einer Upload-/OCR-Funktion oder einer Reichweitenmessung).",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:46"
+  },
+  {
+    "key": "legal.datenschutzpage.007",
+    "de": "Tölzer Str. 5a",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:57, src/features/legal/ImpressumPage.tsx:41"
+  },
+  {
+    "key": "legal.datenschutzpage.008",
+    "de": "81379 München",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:58, src/features/legal/ImpressumPage.tsx:42"
+  },
+  {
+    "key": "legal.datenschutzpage.009",
+    "de": "2. Grundsatz: keine Erhebung personenbezogener Daten",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:66"
+  },
+  {
+    "key": "legal.datenschutzpage.010",
+    "de": "rein clientseitig laufender Rechner",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:68"
+  },
+  {
+    "key": "legal.datenschutzpage.011",
+    "de": ". Sämtliche Berechnungen finden ausschließlich im Browser des Nutzers statt. Es werden",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:69"
+  },
+  {
+    "key": "legal.datenschutzpage.012",
+    "de": "keine personenbezogenen Daten",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:71"
+  },
+  {
+    "key": "legal.datenschutzpage.013",
+    "de": "an den Anbieter übertragen, gespeichert oder ausgewertet. Es gibt:",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:71"
+  },
+  {
+    "key": "legal.datenschutzpage.014",
+    "de": "kein Nutzerkonto, keine Registrierung, keine Anmeldung;",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:75"
+  },
+  {
+    "key": "legal.datenschutzpage.015",
+    "de": "keine serverseitige Datenbank für Eingabe- oder Ergebnisdaten;",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:76"
+  },
+  {
+    "key": "legal.datenschutzpage.016",
+    "de": "kein Tracking, keine Reichweitenmessung, keine Cookies zu Analyse- oder Werbezwecken;",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:77"
+  },
+  {
+    "key": "legal.datenschutzpage.017",
+    "de": "keine Einbindung von Drittanbieter-Skripten (Google Fonts, Analytics, Werbenetzwerke, Social Plugins).",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:79"
+  },
+  {
+    "key": "legal.datenschutzpage.018",
+    "de": "Beim Aufruf der Webseite werden technische Verbindungsdaten an den Hosting-Provider übertragen, die für die Auslieferung der Anwendung notwendig sind. Welche Daten der Hosting-Provider in Server-Logs speichert, hängt vom konkret eingesetzten Anbieter ab; übliche Felder sind IP-Adresse, Datum/Uhrzeit, übertragene Datenmenge, aufgerufene URL, Referrer und User-Agent. Diese Daten werden ausschließlich zur Bereitstellung und Sicherheit des Dienstes verarbeitet.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:87"
+  },
+  {
+    "key": "legal.datenschutzpage.019",
+    "de": ", 101 Townsend St., San Francisco, CA 94107, USA (Auftragsverarbeiter). Die Anwendung wird über Cloudflare Workers ausgeliefert. Cloudflare erfasst dabei serverseitige Zugriffsprotokolle (u.&nbsp;a. IP-Adresse, Zeitstempel, aufgerufener Pfad, User-Agent, Referrer) im Rahmen der standardmäßigen Protokollaufbewahrung von Cloudflare. Deutsche Nutzerinnen und Nutzer werden typischerweise von EU-Standorten (Points of Presence) bedient. Weitere Informationen zur Datenverarbeitung durch Cloudflare finden Sie in der",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:101"
+  },
+  {
+    "key": "legal.datenschutzpage.020",
+    "de": "Datenschutzerklärung von Cloudflare",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:115, src/features/legal/DatenschutzPage.tsx:277, src/features/legal/DatenschutzPage.tsx:339"
+  },
+  {
+    "key": "legal.datenschutzpage.021",
+    "de": "Die Anwendung speichert Eingaben (Profil, Annahmen, gespeicherte Szenarien, Disclaimer-Status) ausschließlich im",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:124"
+  },
+  {
+    "key": "legal.datenschutzpage.022",
+    "de": "Ihres Browsers. Diese Daten verlassen Ihr Gerät nicht und werden nicht an den Anbieter oder Dritte übertragen. Sie können jederzeit über die Datenschutz- bzw. Verlaufsfunktion Ihres Browsers gelöscht werden; die Anwendung startet anschließend wieder mit den Standardannahmen.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:127"
+  },
+  {
+    "key": "legal.datenschutzpage.023",
+    "de": "Konkret werden folgende Schlüssel verwendet:",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:134"
+  },
+  {
+    "key": "legal.datenschutzpage.024",
+    "de": "— aktuelles Profil und Annahmen, Schema v1 (localStorage);",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:138"
+  },
+  {
+    "key": "legal.datenschutzpage.025",
+    "de": "— vom Nutzer gespeicherte Szenarien (localStorage);",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:146"
+  },
+  {
+    "key": "legal.datenschutzpage.026",
+    "de": "— Altdatenfeld aus einer früheren Version (Status des geführten Einstiegs); wird nicht mehr geschrieben, kann aber bei wiederkehrenden Nutzer&shy;innen noch im Browser stehen.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:150"
+  },
+  {
+    "key": "legal.datenschutzpage.027",
+    "de": "— sitzungsweises Ausblenden des Hinweisbanners (sessionStorage; wird beim Schließen des Browsers gelöscht);",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:160"
+  },
+  {
+    "key": "legal.datenschutzpage.028",
+    "de": "Diese Speicherung ist technisch erforderlich, um die vom Nutzer eingegebenen Werte über einen Seitenwechsel hinweg zu erhalten, und beruht auf § 25 Abs. 2 Nr. 2 TDDDG / TTDSG (unbedingt erforderliche lokale Speicherung). Eine Einwilligung ist daher nicht erforderlich.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:166"
+  },
+  {
+    "key": "legal.datenschutzpage.029",
+    "de": "Die Anwendung bietet eine \"Link kopieren\"-Funktion an. Beim Anklicken werden die aktuellen Eingaben in die URL kodiert und in die Zwischenablage des Geräts kopiert. Es findet keine Übertragung dieser Daten an den Anbieter oder Dritte statt. Wenn Sie diesen Link aktiv weitergeben, sind Sie selbst verantwortlich für die in der URL enthaltenen Werte. Empfehlung: keine sensiblen Echtdaten weitergeben.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:177"
+  },
+  {
+    "key": "legal.datenschutzpage.030",
+    "de": "Die \"CSV exportieren\"- und \"PDF drucken\"-Funktionen erzeugen Dateien ausschließlich auf Ihrem Gerät. Es werden keine Daten an den Anbieter, an einen Server oder an Dritte übertragen.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:190"
+  },
+  {
+    "key": "legal.datenschutzpage.031",
+    "de": "Soweit überhaupt personenbezogene Daten verarbeitet werden (siehe Abschnitt 3), haben Sie nach DSGVO insbesondere das Recht auf:",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:199"
+  },
+  {
+    "key": "legal.datenschutzpage.032",
+    "de": "Löschung (Art. 17 DSGVO);",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:205"
+  },
+  {
+    "key": "legal.datenschutzpage.033",
+    "de": "Einschränkung der Verarbeitung (Art. 18 DSGVO);",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:206"
+  },
+  {
+    "key": "legal.datenschutzpage.034",
+    "de": "Datenübertragbarkeit (Art. 20 DSGVO);",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:207"
+  },
+  {
+    "key": "legal.datenschutzpage.035",
+    "de": "Widerspruch gegen die Verarbeitung (Art. 21 DSGVO);",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:208"
+  },
+  {
+    "key": "legal.datenschutzpage.036",
+    "de": "Beschwerde bei einer Aufsichtsbehörde (Art. 77 DSGVO). Zuständige Aufsichtsbehörde ist das Bayerische Landesamt für Datenschutzaufsicht, Promenade 18, 91522 Ansbach.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:210"
+  },
+  {
+    "key": "legal.datenschutzpage.037",
+    "de": "Anfragen können formlos an",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:216"
+  },
+  {
+    "key": "legal.datenschutzpage.038",
+    "de": "gerichtet werden.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:217"
+  },
+  {
+    "key": "legal.datenschutzpage.039",
+    "de": "8. Änderungen dieser Erklärung",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:223"
+  },
+  {
+    "key": "legal.datenschutzpage.040",
+    "de": "Diese Datenschutzerklärung wird angepasst, sobald sich die Verarbeitung personenbezogener Daten ändert. Geplant sind insbesondere folgende Erweiterungen, die jeweils im Vorfeld in dieser Erklärung dokumentiert werden:",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:225"
+  },
+  {
+    "key": "legal.datenschutzpage.041",
+    "de": "Falls eingeführt, ausschließlich cookiefrei und mit EU-Hosting (z.&nbsp;B. Plausible / Umami);",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:232"
+  },
+  {
+    "key": "legal.datenschutzpage.042",
+    "de": "Falls eingeführt, mit kurzlebiger, automatisch gelöschter Verarbeitung; keine dauerhafte Speicherung der hochgeladenen Dokumente;",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:236"
+  },
+  {
+    "key": "legal.datenschutzpage.043",
+    "de": "Kontaktformular für Lizenzanfragen:",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:241"
+  },
+  {
+    "key": "legal.datenschutzpage.044",
+    "de": "Falls eingeführt, mit klarer Zweckbindung (Bearbeitung der Anfrage) und Angabe der Speicherdauer.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:241"
+  },
+  {
+    "key": "legal.datenschutzpage.045",
+    "de": "Die Anwendung enthält einen optionalen QA-Feedback-Modus (erreichbar über",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:251"
+  },
+  {
+    "key": "legal.datenschutzpage.046",
+    "de": "in der URL), der ausgewählten Testerinnen und Testern erlaubt, Rückmeldungen und Screenshots direkt an die Entwickler zu senden, ohne ein GitHub-Konto zu benötigen. Dieser Modus ist für die breite Öffentlichkeit nicht vorgesehen und nur über einen expliziten URL-Parameter aktivierbar. Beim Aufruf des Feedback-Formulars werden folgende Datenflüsse ausgelöst:",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:252"
+  },
+  {
+    "key": "legal.datenschutzpage.047",
+    "de": "Zur Spam-Abwehr wird das Widget",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:262"
+  },
+  {
+    "key": "legal.datenschutzpage.048",
+    "de": "eingebunden. Es wird ein Skript von",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:263"
+  },
+  {
+    "key": "legal.datenschutzpage.049",
+    "de": "geladen, sobald die Vorschauansicht des Feedback-Formulars geöffnet wird. Dabei werden technische Signale (IP-Adresse, User-Agent, Browserverhalten) an Cloudflare Inc. (USA) übertragen.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:264"
+  },
+  {
+    "key": "legal.datenschutzpage.050",
+    "de": ". Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an der Abwehr von Spam und Missbrauch).",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:279"
+  },
+  {
+    "key": "legal.datenschutzpage.051",
+    "de": "Nach Bestätigung des Turnstile-Widgets wird das Feedback (Kommentartext, technische Umgebungsdaten wie Route, Viewport und Browser-Familie sowie optional ein Screenshot) an den Endpunkt",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:285"
+  },
+  {
+    "key": "legal.datenschutzpage.052",
+    "de": "übertragen. Dieser Cloudflare Worker erstellt auf Basis der übermittelten Daten ein",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:288"
+  },
+  {
+    "key": "legal.datenschutzpage.053",
+    "de": "öffentliches GitHub-Issue",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:290"
+  },
+  {
+    "key": "legal.datenschutzpage.054",
+    "de": "Das Issue ist öffentlich einsehbar und enthält den Kommentartext sowie die technischen Umgebungsdaten. Falls ein Screenshot hochgeladen wurde, enthält das Issue einen Link zur gespeicherten Bilddatei (siehe Abschnitt c). Eine Zuordnung zum Gerät oder zur Person ist nur möglich, wenn der Kommentartext personenbezogene Angaben enthält; solche Angaben sollten daher vermieden werden.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:294"
+  },
+  {
+    "key": "legal.datenschutzpage.055",
+    "de": "Datenschutzerklärung von GitHub",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:309"
+  },
+  {
+    "key": "legal.datenschutzpage.056",
+    "de": ". Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an der Qualitätssicherung des Dienstes).",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:311"
+  },
+  {
+    "key": "legal.datenschutzpage.057",
+    "de": "Wenn beim Absenden des Feedbacks ein Screenshot beigefügt wird, speichert der QA-Worker diesen in einem",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:317"
+  },
+  {
+    "key": "legal.datenschutzpage.058",
+    "de": "-Objektspeicher unter dem Namen",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:319"
+  },
+  {
+    "key": "legal.datenschutzpage.059",
+    "de": ". Die Region des Buckets ist derzeit nicht explizit festgelegt (siehe ADR-0001); Cloudflare R2 wählt in diesem Fall automatisch eine Region.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:320"
+  },
+  {
+    "key": "legal.datenschutzpage.060",
+    "de": "Screenshots werden an die Lebensdauer des zugehörigen GitHub-Issues gekoppelt. Sobald das Issue geschlossen wird, löscht ein GitHub-Webhook-Handler die Bilddatei automatisch aus dem R2-Bucket. Eine darüber hinausgehende Speicherung findet nicht statt.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/DatenschutzPage.tsx:325"
+  },
+  {
+    "key": "legal.impressumpage.001",
+    "de": "Angaben gemäß § 5 TMG (Telemediengesetz).",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/ImpressumPage.tsx:34"
+  },
+  {
+    "key": "legal.impressumpage.002",
+    "de": "Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/ImpressumPage.tsx:56"
+  },
+  {
+    "key": "legal.impressumpage.003",
+    "de": "Peter Hartwieg, Anschrift wie oben.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/ImpressumPage.tsx:58"
+  },
+  {
+    "key": "legal.impressumpage.004",
+    "de": "Hinweis zur beruflichen Stellung",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/ImpressumPage.tsx:63"
+  },
+  {
+    "key": "legal.impressumpage.005",
+    "de": "weder Steuerberater, noch Versicherungsvermittler oder -berater im Sinne der §§&nbsp;34d, 34e GewO noch Anlageberater oder Vermögensverwalter im Sinne des KWG / WpIG / WpHG",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/ImpressumPage.tsx:65"
+  },
+  {
+    "key": "legal.impressumpage.006",
+    "de": ". Es besteht keine berufsrechtliche Aufsichtsbehörde, da keine erlaubnispflichtige Tätigkeit ausgeübt wird. Dieser Dienst ist eine Modellrechnung zur persönlichen Information und ersetzt keine individuelle Beratung.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/ImpressumPage.tsx:68"
+  },
+  {
+    "key": "legal.impressumpage.007",
+    "de": "Haftung für Inhalte",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/ImpressumPage.tsx:77"
+  },
+  {
+    "key": "legal.impressumpage.008",
+    "de": "Die Inhalte dieser Anwendung wurden mit größter Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität der Berechnungen und Annahmen kann jedoch keine Gewähr übernommen werden. Der Dienst stellt eine Modellrechnung dar und ersetzt keine individuelle Steuer-, Rechts- oder Anlageberatung. Eine Haftung für entgangene Leistungen, Steuerersparnisse oder Renditen sowie für Entscheidungen, die auf den Ergebnissen der Anwendung beruhen, ist ausgeschlossen, soweit gesetzlich zulässig.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/ImpressumPage.tsx:79"
+  },
+  {
+    "key": "legal.impressumpage.009",
+    "de": "Haftung für Links",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/ImpressumPage.tsx:88"
+  },
+  {
+    "key": "legal.impressumpage.010",
+    "de": "Diese Anwendung enthält ggf. Links zu externen Webseiten Dritter, auf deren Inhalte der Anbieter keinen Einfluss hat. Für die Inhalte der verlinkten Seiten ist stets der jeweilige Anbieter verantwortlich. Bei Bekanntwerden von Rechtsverletzungen werden derartige Links umgehend entfernt.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/ImpressumPage.tsx:90"
+  },
+  {
+    "key": "legal.impressumpage.011",
+    "de": "Urheberrecht und Lizenz",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/ImpressumPage.tsx:99"
+  },
+  {
+    "key": "legal.impressumpage.012",
+    "de": "Der Quellcode dieser Anwendung wird unter der",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/ImpressumPage.tsx:101"
+  },
+  {
+    "key": "legal.impressumpage.013",
+    "de": "Lizenz veröffentlicht. Persönliche, nicht-kommerzielle Nutzung ist kostenlos. Eine kommerzielle Nutzung — insbesondere durch Versicherungsvermittler, Anlageberater, Banken oder Arbeitgeber — bedarf einer separaten kostenpflichtigen Lizenz. Anfragen bitte an",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/ImpressumPage.tsx:102"
+  },
+  {
+    "key": "legal.impressumpage.014",
+    "de": "Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/ImpressumPage.tsx:114"
+  },
+  {
+    "key": "legal.impressumpage.015",
+    "de": ". Der Anbieter ist nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/ImpressumPage.tsx:122"
+  },
+  {
+    "key": "legal.legalfooter.001",
+    "de": "Footer-Link Datenschutzerklärung",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/legal/LegalFooter.tsx:37"
+  },
+  {
+    "key": "legal.legalfooter.002",
+    "de": "QA-Modus starten",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/legal/LegalFooter.tsx:46"
+  },
+  {
+    "key": "legal.legalfooter.003",
+    "de": "[1] Annahme: 5 % Rendite p.a., 2 % Inflation",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/LegalFooter.tsx:64"
+  },
+  {
+    "key": "legal.legalfooter.004",
+    "de": "[2] Steuern nach Stand 2026 (§22 EStG)",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/LegalFooter.tsx:65"
+  },
+  {
+    "key": "legal.legalfooter.005",
+    "de": "Modellrechnung. Keine Anlage-, Steuer- oder Rechtsberatung.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/LegalFooter.tsx:77"
+  },
+  {
+    "key": "legal.legalfooter.006",
+    "de": "Sie testen für uns?",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/LegalFooter.tsx:102"
+  },
+  {
+    "key": "legal.legalfooter.007",
+    "de": "Aktiviert den Feedback-Modus. Klicken Sie anschließend ein UI-Element an, um Feedback zu geben.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/legal/LegalFooter.tsx:106, src/features/legal/LegalFooter.tsx:107"
+  },
+  {
+    "key": "legal.legalfooter.008",
+    "de": "Feedback Modus starten",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/LegalFooter.tsx:111"
+  },
+  {
+    "key": "legal.legalfooter.009",
+    "de": "— dann auf das fragliche Element klicken.",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/LegalFooter.tsx:113"
+  },
+  {
+    "key": "legal.legallayout.001",
+    "de": "← Zurück zum Rechner",
+    "surface": "legal",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/legal/LegalLayout.tsx:54"
+  }
+]

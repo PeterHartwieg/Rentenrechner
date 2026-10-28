@@ -1,0 +1,121 @@
+[
+  {
+    "key": "kapital.kapitalfilterchips.001",
+    "de": "kapital-chip",
+    "surface": "kapital",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/kapital/KapitalFilterChips.tsx:44"
+  },
+  {
+    "key": "kapital.kapitalfilterchips.002",
+    "de": "kapital-chip--active",
+    "surface": "kapital",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/kapital/KapitalFilterChips.tsx:44"
+  },
+  {
+    "key": "kapital.kapitalfilters.001",
+    "de": "Alle Verträge",
+    "surface": "kapital",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/kapital/kapitalFilters.ts:73"
+  },
+  {
+    "key": "kapital.kapitalfilters.002",
+    "de": "Alle",
+    "surface": "kapital",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/kapital/kapitalFilters.ts:74, src/features/kapital/kapitalFilters.ts:130"
+  },
+  {
+    "key": "kapital.kapitalfilters.003",
+    "de": "Alle Produkte",
+    "surface": "kapital",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/kapital/kapitalFilters.ts:121, src/features/kapital/kapitalFilters.ts:129"
+  },
+  {
+    "key": "kapital.kapitalpage.001",
+    "de": "kapital-wendepunkte",
+    "surface": "kapital",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/kapital/KapitalPage.tsx:33"
+  },
+  {
+    "key": "kapital.kapitalpage.002",
+    "de": "Kapital & Auszahlungen | RentenWiki.de",
+    "surface": "kapital",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/kapital/KapitalPage.tsx:81"
+  },
+  {
+    "key": "kapital.kapitalpage.003",
+    "de": "Mein Plan › Verlauf",
+    "surface": "kapital",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/kapital/KapitalPage.tsx:224"
+  },
+  {
+    "key": "kapital.kapitalpage.004",
+    "de": "Kapital und Auszahlungen über das Leben",
+    "surface": "kapital",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/kapital/KapitalPage.tsx:226"
+  },
+  {
+    "key": "kapital.kapitalpage.005",
+    "de": "← Zurück zum Plan",
+    "surface": "kapital",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/kapital/KapitalPage.tsx:237"
+  },
+  {
+    "key": "kapital.kapitalpage.006",
+    "de": "Noch keine Verträge oder Produkte ausgewählt. Lege deinen Plan auf",
+    "surface": "kapital",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/kapital/KapitalPage.tsx:248"
+  },
+  {
+    "key": "kapital.kapitalpage.007",
+    "de": "Deine Angaben",
+    "surface": "kapital",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/kapital/KapitalPage.tsx:257"
+  },
+  {
+    "key": "kapital.kapitalpage.008",
+    "de": "an, um die Kapital-Auszahlung zu sehen.",
+    "surface": "kapital",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/kapital/KapitalPage.tsx:259"
+  },
+  {
+    "key": "kapital.kapitalwendepunktetable.001",
+    "de": "Keine Wendepunkte verfügbar — wähle einen Vertrag oder eine Produktgruppe aus.",
+    "surface": "kapital",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/kapital/KapitalWendepunkteTable.tsx:26"
+  },
+  {
+    "key": "kapital.kapitalwendepunktetable.002",
+    "de": "Kapital",
+    "surface": "kapital",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/kapital/KapitalWendepunkteTable.tsx:42, src/features/kapital/KapitalWendepunkteTable.tsx:66"
+  },
+  {
+    "key": "kapital.wendepunkte.001",
+    "de": "Renteneintritt — Auszahlung beginnt",
+    "surface": "kapital",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/kapital/wendepunkte.ts:61"
+  },
+  {
+    "key": "kapital.wendepunkte.002",
+    "de": "Break-even — Auszahlungen ≥ Einzahlungen",
+    "surface": "kapital",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/kapital/wendepunkte.ts:62"
+  }
+]

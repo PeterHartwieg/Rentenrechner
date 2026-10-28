@@ -1,0 +1,366 @@
+[
+  {
+    "key": "vertragdetail.vertragdetailpage.001",
+    "de": "– Vertrag im Detail | RentenWiki.de",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/vertrag-detail/VertragDetailPage.tsx:137"
+  },
+  {
+    "key": "vertragdetail.vertragdetailpage.002",
+    "de": "Vertrag im Detail | RentenWiki.de",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragDetailPage.tsx:138"
+  },
+  {
+    "key": "vertragdetail.vertragdetailpage.003",
+    "de": "Vertrag-Detail nur im Plan-Modus",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · attr:title · src/features/vertrag-detail/VertragDetailPage.tsx:150"
+  },
+  {
+    "key": "vertragdetail.vertragdetailpage.004",
+    "de": "Dieser Vertrag wurde nicht gefunden",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · attr:title · src/features/vertrag-detail/VertragDetailPage.tsx:162"
+  },
+  {
+    "key": "vertragdetail.vertragdetailpage.005",
+    "de": "Wir konnten keinen Vertrag mit der Kennung „ “ in deinem Plan finden. Vielleicht wurde er entfernt, oder der Link ist veraltet.",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/vertrag-detail/VertragDetailPage.tsx:163"
+  },
+  {
+    "key": "vertragdetail.vertragdetailpage.006",
+    "de": "Mein Plan › Vertrag",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vertrag-detail/VertragDetailPage.tsx:190"
+  },
+  {
+    "key": "vertragdetail.vertragdetailpage.007",
+    "de": "← Zurück zum Plan",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vertrag-detail/VertragDetailPage.tsx:204"
+  },
+  {
+    "key": "vertragdetail.vertragkpistrip.001",
+    "de": "Beitrag pro Monat",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragKpiStrip.tsx:56"
+  },
+  {
+    "key": "vertragdetail.vertragkpistrip.002",
+    "de": "beitragsfrei",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragKpiStrip.tsx:57, src/features/vertrag-detail/VertragMetadataAside.tsx:221, src/features/vertrag-detail/VertragScenarioTable.tsx:281"
+  },
+  {
+    "key": "vertragdetail.vertragkpistrip.003",
+    "de": "derzeit keine Einzahlungen",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragKpiStrip.tsx:58"
+  },
+  {
+    "key": "vertragdetail.vertragkpistrip.004",
+    "de": "heute",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragKpiStrip.tsx:58"
+  },
+  {
+    "key": "vertragdetail.vertragkpistrip.005",
+    "de": "Einzahlungen",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragKpiStrip.tsx:62"
+  },
+  {
+    "key": "vertragdetail.vertragkpistrip.006",
+    "de": "über",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/vertrag-detail/VertragKpiStrip.tsx:64"
+  },
+  {
+    "key": "vertragdetail.vertragkpistrip.007",
+    "de": "Jahr",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragKpiStrip.tsx:64"
+  },
+  {
+    "key": "vertragdetail.vertragkpistrip.008",
+    "de": "Jahre",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragKpiStrip.tsx:64"
+  },
+  {
+    "key": "vertragdetail.vertragkpistrip.009",
+    "de": "Voraussichtl. Kapital",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragKpiStrip.tsx:68"
+  },
+  {
+    "key": "vertragdetail.vertragkpistrip.010",
+    "de": "Netto-Rente",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragKpiStrip.tsx:74, src/features/vertrag-detail/VertragScenarioTable.tsx:112"
+  },
+  {
+    "key": "vertragdetail.vertragkpistrip.011",
+    "de": "pro Monat",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragKpiStrip.tsx:76"
+  },
+  {
+    "key": "vertragdetail.vertragkpistrip.012",
+    "de": "rente",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragKpiStrip.tsx:77"
+  },
+  {
+    "key": "vertragdetail.vertragkpistrip.013",
+    "de": "vertrag-kpi-tile vertrag-kpi-tile--",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/vertrag-detail/VertragKpiStrip.tsx:84"
+  },
+  {
+    "key": "vertragdetail.vertragkpistrip.014",
+    "de": "vertrag-kpi-value vertrag-kpi-value--",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/vertrag-detail/VertragKpiStrip.tsx:86"
+  },
+  {
+    "key": "vertragdetail.vertragmetadataaside.001",
+    "de": "Angaben bearbeiten",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vertrag-detail/VertragMetadataAside.tsx:73"
+  },
+  {
+    "key": "vertragdetail.vertragmetadataaside.002",
+    "de": "Durchführungsweg",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragMetadataAside.tsx:126, src/features/vertrag-detail/VertragProvenanceList.tsx:105"
+  },
+  {
+    "key": "vertragdetail.vertragmetadataaside.003",
+    "de": "beitrag",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragMetadataAside.tsx:134, src/features/vertrag-detail/VertragMetadataAside.tsx:146"
+  },
+  {
+    "key": "vertragdetail.vertragmetadataaside.004",
+    "de": "Beitrag",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragMetadataAside.tsx:134, src/features/vertrag-detail/VertragMetadataAside.tsx:146"
+  },
+  {
+    "key": "vertragdetail.vertragmetadataaside.005",
+    "de": "Eff. Kosten",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragMetadataAside.tsx:210"
+  },
+  {
+    "key": "vertragdetail.vertragmetadataaside.006",
+    "de": "gekündigt",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vertrag-detail/VertragMetadataAside.tsx:223"
+  },
+  {
+    "key": "vertragdetail.vertragprovenancelist.001",
+    "de": "Wie wir das berechnen",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vertrag-detail/VertragProvenanceList.tsx:33"
+  },
+  {
+    "key": "vertragdetail.vertragprovenancelist.002",
+    "de": "Die folgenden Eingaben fließen in die Hochrechnung dieses Vertrags. Werte mit Label",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vertrag-detail/VertragProvenanceList.tsx:38"
+  },
+  {
+    "key": "vertragdetail.vertragprovenancelist.003",
+    "de": "sind Standard&shy;annahmen, die du noch prüfen kannst;",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vertrag-detail/VertragProvenanceList.tsx:39"
+  },
+  {
+    "key": "vertragdetail.vertragprovenancelist.004",
+    "de": "geprüft",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vertrag-detail/VertragProvenanceList.tsx:39"
+  },
+  {
+    "key": "vertragdetail.vertragprovenancelist.005",
+    "de": "bedeutet, dass du den Wert bestätigt hast.",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vertrag-detail/VertragProvenanceList.tsx:40"
+  },
+  {
+    "key": "vertragdetail.vertragprovenancelist.006",
+    "de": "Laufende Kosten (TER)",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragProvenanceList.tsx:91"
+  },
+  {
+    "key": "vertragdetail.vertragprovenancelist.007",
+    "de": "Bruttoumwandlung pro Monat",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragProvenanceList.tsx:100"
+  },
+  {
+    "key": "vertragdetail.vertragprovenancelist.008",
+    "de": "Monatlicher Beitrag",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragProvenanceList.tsx:109, src/features/vertrag-detail/VertragProvenanceList.tsx:120"
+  },
+  {
+    "key": "vertragdetail.vertragprovenancelist.009",
+    "de": "Aktueller Rückkaufswert",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragProvenanceList.tsx:112"
+  },
+  {
+    "key": "vertragdetail.vertragprovenancelist.010",
+    "de": "Eigenbeitrag pro Monat",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragProvenanceList.tsx:127, src/features/vertrag-detail/VertragProvenanceList.tsx:135"
+  },
+  {
+    "key": "vertragdetail.vertragscenariotable.001",
+    "de": "Was wäre, wenn du diesen Vertrag anders führst?",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vertrag-detail/VertragScenarioTable.tsx:102"
+  },
+  {
+    "key": "vertragdetail.vertragscenariotable.002",
+    "de": "Was sich ändert",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vertrag-detail/VertragScenarioTable.tsx:111"
+  },
+  {
+    "key": "vertragdetail.vertragscenariotable.003",
+    "de": "Δ ggü. heute",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vertrag-detail/VertragScenarioTable.tsx:113"
+  },
+  {
+    "key": "vertragdetail.vertragscenariotable.004",
+    "de": "Für diesen Vertrag stehen derzeit keine Szenarien zur Verfügung — vermutlich ist er bereits gekündigt oder das Angebot ist noch nicht aktiviert.",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vertrag-detail/VertragScenarioTable.tsx:124"
+  },
+  {
+    "key": "vertragdetail.vertragscenariotable.005",
+    "de": "keine Änderung — diese Zeile dient als Referenz",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragScenarioTable.tsx:268"
+  },
+  {
+    "key": "vertragdetail.vertragscenariotable.006",
+    "de": "beitrag-erhoehen",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragScenarioTable.tsx:269"
+  },
+  {
+    "key": "vertragdetail.vertragscenariotable.007",
+    "de": "Beitrag auf / Mon. erhöhen",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/vertrag-detail/VertragScenarioTable.tsx:273"
+  },
+  {
+    "key": "vertragdetail.vertragscenariotable.008",
+    "de": "beitrag-senken",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragScenarioTable.tsx:275"
+  },
+  {
+    "key": "vertragdetail.vertragscenariotable.009",
+    "de": "Beitrag auf / Mon. senken",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/vertrag-detail/VertragScenarioTable.tsx:279"
+  },
+  {
+    "key": "vertragdetail.vertragscenariotable.010",
+    "de": "keine weiteren Einzahlungen, Bestand bleibt investiert",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragScenarioTable.tsx:282"
+  },
+  {
+    "key": "vertragdetail.vertragscenariotable.011",
+    "de": "Vertrag wird aufgelöst (Stornoabzug & Steuer beachten)",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragScenarioTable.tsx:284"
+  },
+  {
+    "key": "vertragdetail.vertragscenariotable.012",
+    "de": "Guthaben wird auf einen anderen Vertrag übertragen",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragScenarioTable.tsx:286"
+  },
+  {
+    "key": "vertragdetail.vertragscenariotable.013",
+    "de": "vertrag-scenario-row vertrag-scenario-row--current",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragScenarioTable.tsx:303"
+  },
+  {
+    "key": "vertragdetail.vertragscenariotable.014",
+    "de": "vertrag-scenario-row",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vertrag-detail/VertragScenarioTable.tsx:303"
+  },
+  {
+    "key": "vertragdetail.vertragscenariotable.015",
+    "de": "vertrag-num vertrag-scenario-delta vertrag-scenario-delta--",
+    "surface": "vertrag-detail",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/vertrag-detail/VertragScenarioTable.tsx:314"
+  }
+]

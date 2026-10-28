@@ -1,0 +1,562 @@
+[
+  {
+    "key": "app.contractdecisions.001",
+    "de": "Weiterführen",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/contractDecisions.ts:290"
+  },
+  {
+    "key": "app.contractdecisions.002",
+    "de": "läuft wie bisher weiter. Alle Beiträge und Konditionen bleiben unverändert.",
+    "surface": "app",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/app/contractDecisions.ts:292"
+  },
+  {
+    "key": "app.contractdecisions.003",
+    "de": "beitragsfrei-",
+    "surface": "app",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/app/contractDecisions.ts:349"
+  },
+  {
+    "key": "app.contractdecisions.004",
+    "de": "beitragsfrei",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/contractDecisions.ts:350"
+  },
+  {
+    "key": "app.contractdecisions.005",
+    "de": "Beitragsfrei stellen",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/contractDecisions.ts:351"
+  },
+  {
+    "key": "app.contractdecisions.006",
+    "de": "wird ab Alter beitragsfrei gestellt. Beiträge entfallen;",
+    "surface": "app",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/app/contractDecisions.ts:354"
+  },
+  {
+    "key": "app.contractdecisions.007",
+    "de": "der angesparte Betrag wächst weiter auf Basis der bisherigen Anlage.",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/contractDecisions.ts:355"
+  },
+  {
+    "key": "app.contractdecisions.008",
+    "de": "beitrag-erhoehen- -",
+    "surface": "app",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/app/contractDecisions.ts:449"
+  },
+  {
+    "key": "app.contractdecisions.009",
+    "de": "beitrag-erhoehen",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/contractDecisions.ts:450"
+  },
+  {
+    "key": "app.contractdecisions.010",
+    "de": "Beitrag erhöhen",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/contractDecisions.ts:451"
+  },
+  {
+    "key": "app.contractdecisions.011",
+    "de": ": Beitrag von € auf € pro Monat erhöhen.",
+    "surface": "app",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/app/contractDecisions.ts:453"
+  },
+  {
+    "key": "app.contractdecisions.012",
+    "de": "beitrag-senken- -",
+    "surface": "app",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/app/contractDecisions.ts:525"
+  },
+  {
+    "key": "app.contractdecisions.013",
+    "de": "beitrag-senken",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/contractDecisions.ts:526"
+  },
+  {
+    "key": "app.contractdecisions.014",
+    "de": "Beitrag senken",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/contractDecisions.ts:527"
+  },
+  {
+    "key": "app.contractdecisions.015",
+    "de": ": Beitrag von € auf € pro Monat senken.",
+    "surface": "app",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/app/contractDecisions.ts:529"
+  },
+  {
+    "key": "app.contractdecisions.016",
+    "de": "Der Erlös (nach Abzügen) wird in einen anderen Vertrag übertragen.",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/contractDecisions.ts:578"
+  },
+  {
+    "key": "app.contractdecisions.017",
+    "de": "Kündigen",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/contractDecisions.ts:586"
+  },
+  {
+    "key": "app.contractdecisions.018",
+    "de": "wird gekündigt. Geschätzter Stornoabzug: % (🤔 Schätzung).",
+    "surface": "app",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/app/contractDecisions.ts:590"
+  },
+  {
+    "key": "app.contractdecisions.019",
+    "de": "mit Steuer/Abzügen",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/contractDecisions.ts:761"
+  },
+  {
+    "key": "app.contractdecisions.020",
+    "de": "vollständig",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/contractDecisions.ts:762, src/app/contractDecisions.ts:819"
+  },
+  {
+    "key": "app.contractdecisions.021",
+    "de": "wird auf übertragen ( ).",
+    "surface": "app",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/app/contractDecisions.ts:764"
+  },
+  {
+    "key": "app.contractdecisions.022",
+    "de": "Übertragen auf",
+    "surface": "app",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/app/contractDecisions.ts:770"
+  },
+  {
+    "key": "app.contractdecisions.023",
+    "de": "wird steuerneutral auf ein neues übertragen.",
+    "surface": "app",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/app/contractDecisions.ts:821"
+  },
+  {
+    "key": "app.contractdecisions.024",
+    "de": "Ein neues wird dabei angelegt.",
+    "surface": "app",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/app/contractDecisions.ts:822"
+  },
+  {
+    "key": "app.contractdecisions.025",
+    "de": "Übertragen auf neues",
+    "surface": "app",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/app/contractDecisions.ts:827"
+  },
+  {
+    "key": "app.productpresentation.001",
+    "de": "EStG §32a Tarif, SV-Beiträge 2026, bAV §3 Nr. 63 EStG. KV-Freibetrag §226(2) SGB V und PV-Freigrenze §57(1) SGB XI für Versorgungsbezüge. (#32)",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/productPresentation.ts:53"
+  },
+  {
+    "key": "app.productpresentation.002",
+    "de": "bAV-Förderung",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/productPresentation.ts:56"
+  },
+  {
+    "key": "app.productpresentation.003",
+    "de": "Entgeltumwandlung, Steuer- und SV-Ersparnis, AG-Pflicht- und Extra-Zuschuss.",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/productPresentation.ts:58"
+  },
+  {
+    "key": "app.productpresentation.004",
+    "de": "BMF-PAP 2026 Vorsorgepauschale (RV + GKV + PV, ohne AV) für Steuerklasse I. PKV: Prämien als KV/PV-Teilbetrag der Vorsorgepauschale (§39b EStG), AG-Zuschuss §257 SGB V steuerfrei (§3 Nr. 62 EStG). Kirchensteuer nicht berechnet (immer 0 %).",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/productPresentation.ts:63"
+  },
+  {
+    "key": "app.productpresentation.005",
+    "de": "Jährliche Vorabpauschale nach InvStG §18; Jahresanfangswert (Vollperiode) + Monatsbeiträge × (verbleibende Monate / 12) als Basisertrag-Bemessungsgrundlage; begrenzt auf tatsächliches Jahreswachstum; Sparerpauschbetrag 1.000 EUR p.a. angesetzt; vorausgezahlte VP mindert den Veräußerungsgewinn bei Entnahme (§19 InvStG). Basiszins 2026: 3,20 % (BMF-Schreiben 2026-01-13), für alle Projektionsjahre konstant angesetzt. (#7, #31, #36)",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/productPresentation.ts:68"
+  },
+  {
+    "key": "app.productpresentation.006",
+    "de": "1.000 EUR/Jahr in der Ansparphase auf die Vorabpauschale; 1.000 EUR im Liquidationsjahr auf das Einmalkapital; 1.000 EUR/Jahr in der Entnahmephase auf laufende Gewinne. Teilfreistellung (InvStG §20) konfigurierbar. Verheiratete Mitveranlagte: 2.000 EUR-Doppel-Pauschbetrag (§20 Abs. 9 EStG) noch nicht modelliert. (#7, #20)",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/productPresentation.ts:73"
+  },
+  {
+    "key": "app.productpresentation.007",
+    "de": "Nur thesaurierende Fonds modelliert (keine Ausschüttungs-ETF; Ausschüttungen würden die Vorabpauschale mindern und im Ausschüttungsjahr besteuert). Veräußerungsgewinn-Besteuerung bei Entnahmen: proportionale Gain-Ratio statt FIFO-Losprinzip (§20 Abs. 4 EStG; FIFO kann in steigenden Märkten Steuern in frühe Rentenjahre vorziehen). Kirchensteuer auf Kapitalertragsteuer nicht berechnet (Tarif gilt als ohne KiSt). Vorabpauschale-Steuerzahlung wird aus dem Portfoliokapital abgezogen; in der Praxis wird häufig das Verrechnungskonto belastet.",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/productPresentation.ts:78"
+  },
+  {
+    "key": "app.productpresentation.008",
+    "de": "Steuerbehandlung automatisch aus Vertragsjahr abgeleitet: vor 2005 steuerfrei (§52 Abs. 28 EStG a.F.), ab 2005 mit ≥12 Jahren Laufzeit und Auszahlung ab 60 (Verträge bis 2011) bzw. 62 (ab 2012) Halbeinkünfteverfahren (§20 Abs. 1 Nr. 6 EStG – halber Ertrag mit persönlichem Steuersatz), sonst Abgeltungsteuer 25 % + Soli (§20 Abs. 2 EStG). (#38)",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/productPresentation.ts:83"
+  },
+  {
+    "key": "app.productpresentation.009",
+    "de": "Grenzsteuer konfigurierbar; KVdR-/freiwillig-GKV-Toggle: KVdR mit Freibetrag §226(2) SGB V, freiwillig ohne. KV/PV-Aufschlüsselung sichtbar. (#6)",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/productPresentation.ts:88"
+  },
+  {
+    "key": "app.productpresentation.010",
+    "de": "KV/PV nach §229 SGB V 1/120-Verteilung (120 Monate); Auszahlungsbesteuerung wird aus dem Durchführungsweg abgeleitet: §3 Nr. 63 EStG (Direktversicherung, Pensionskasse, Pensionsfonds) → voller Steuersatz §22 Nr. 5 EStG ohne Fünftelregelung; §40b EStG a.F. + Voraussetzungen erfüllt → steuerfrei §52 Abs. 28 EStG a.F.; Direktzusage/U-Kasse → Fünftelregelung §34 Abs. 2 Nr. 4 EStG. PKV-Mitglieder ohne KV/PV-Abzug. (#6/#19/#48)",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/productPresentation.ts:93"
+  },
+  {
+    "key": "app.productpresentation.011",
+    "de": "Gesetzliche Rente",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/productPresentation.ts:96"
+  },
+  {
+    "key": "app.productpresentation.012",
+    "de": "GRV-Schätzung: Entgeltpunkte × Rentenwert oder manueller Renteninformation-Wert; optionales Gehaltswachstum und Rentenwert-Indexierung konfigurierbar. Steuerpipeline (§22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil) und KV/PV (§249a SGB V KVdR-Halbierung) vollständig modelliert. Vereinfachung: nur KVdR-Modus; BBG/Durchschnittsentgelt zum aktuellen Jahr fixiert. (#72, Group E)",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/productPresentation.ts:98"
+  },
+  {
+    "key": "app.productpresentation.013",
+    "de": "Basisrente (Rürup)",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/productPresentation.ts:101"
+  },
+  {
+    "key": "app.productpresentation.014",
+    "de": "Schicht-1 Deductibility: §10 Abs. 3 EStG Höchstbetrag 30.826 EUR; GRV-Beiträge (AN+AG) reduzieren den Restbetrag; 100% Abzugsfähigkeit (§10 Abs. 3 Satz 1 EStG 2026). Steuerpipeline: §22 Nr. 1 Satz 3 a aa EStG Besteuerungsanteil (identisch GRV). KV/PV: §240 SGB V (voller GKV-Beitragssatz ohne §226(2)-Freibetrag). Vereinfachungen: freiwillig-Pfad für KV unabhängig vom tatsächlichen GKV-Status im Rentenalter; kein Kapitalwahlrecht modelliert. (#61)",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/productPresentation.ts:103"
+  },
+  {
+    "key": "app.productpresentation.015",
+    "de": "Altersvorsorgereformgesetz (Bundestag 2026-03-27; Bundesrat-Zustimmung erwartet 2026-05-08). Modelliert: Grundzulage (Zweistufenformel, max. 540 EUR), Kinderzulage (100 %, max. 300 EUR/Kind), Berufseinsteiger-Bonus (200 EUR einmalig), indirekter Ehegatte (max. 175 EUR), §10a Günstigerprüfung. Standarddepot-Gleitpfad: 5 Jahre vor Rentenbeginn max. 50 % Risikoanlage, 2 Jahre vor Rentenbeginn max. 30 %. Effektivkosten-Warnung bei > 1,0 pp. Auszahlung: §22 Nr. 5 EStG (volle Progression, kein Besteuerungsanteil), KV/PV freiwillig-Pfad §240 SGB V. Nicht modelliert: Altvertrag-Riester-Fortführung (#62); Wohn-Riester; Kleinbetragsrenten-Kommutierung. Konstanten aus Bundesrat-Drucksache 206/26 — prüfen nach BGBl.-Veröffentlichung. (#66–#71)",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/productPresentation.ts:108"
+  },
+  {
+    "key": "app.productpresentation.016",
+    "de": "Rendite-Szenarien",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/productPresentation.ts:111"
+  },
+  {
+    "key": "app.productpresentation.017",
+    "de": "Feste Rendite, keine stochastische Simulation. Planrechnungen, keine Prognosen.",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/productPresentation.ts:113"
+  },
+  {
+    "key": "app.productpresentation.018",
+    "de": "✗ nicht modelliert",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/productPresentation.ts:120"
+  },
+  {
+    "key": "app.recommendations.001",
+    "de": "Wähle weitere Produkte aus, um Vergleichshinweise zu sehen.",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/recommendations.ts:170"
+  },
+  {
+    "key": "app.recommendations.002",
+    "de": "Hebel mit grösstem Einfluss: Rendite, Effektivkosten und (bei bAV) Arbeitgeberanteil. Verändere sie testweise im Bereich „Erweitert\".",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/recommendations.ts:230"
+  },
+  {
+    "key": "app.recommender.001",
+    "de": "höchste mittlere Netto-Rente",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/recommender.ts:120"
+  },
+  {
+    "key": "app.recommender.002",
+    "de": "höchstes Kapital bei Renteneinstieg",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/recommender.ts:121"
+  },
+  {
+    "key": "app.recommender.003",
+    "de": "Flexibilität",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/recommender.ts:123"
+  },
+  {
+    "key": "app.recommender.004",
+    "de": "Bestehenden Vertrag erhöhen",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/app/recommender.ts:506"
+  },
+  {
+    "key": "app.recommender.005",
+    "de": "Neuen Vertrag eröffnen",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/app/recommender.ts:509"
+  },
+  {
+    "key": "app.recommender.006",
+    "de": "Arbeitgeberangebot liegt vor",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/app/recommender.ts:521"
+  },
+  {
+    "key": "app.recommender.007",
+    "de": "Förderberechtigung muss geprüft werden",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/app/recommender.ts:532"
+  },
+  {
+    "key": "app.recommender.008",
+    "de": "Förder- und Depotangebot prüfen",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/app/recommender.ts:536"
+  },
+  {
+    "key": "app.recommender.009",
+    "de": "Neues steuerlich gebundenes Vertragsangebot nötig",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/app/recommender.ts:539"
+  },
+  {
+    "key": "app.recommender.010",
+    "de": "Versicherungsangebot nötig",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/app/recommender.ts:542"
+  },
+  {
+    "key": "app.basisrente.001",
+    "de": "Neue Rürup-Rente",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/recommenderCandidates/basisrente.ts:84, src/app/recommenderCandidates/basisrente.ts:89, src/app/recommenderCandidates/basisrente.ts:103"
+  },
+  {
+    "key": "app.insurance.001",
+    "de": "Private Rentenversicherung",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/recommenderCandidates/insurance.ts:100, src/app/recommenderCandidates/insurance.ts:108, src/app/recommenderCandidates/insurance.ts:109"
+  },
+  {
+    "key": "app.simulationselectors.001",
+    "de": "Gesetzl. Rente",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/simulationSelectors.ts:102"
+  },
+  {
+    "key": "app.useroute.001",
+    "de": "rentenluecke-rechner",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:65, src/app/useRoute.ts:95"
+  },
+  {
+    "key": "app.useroute.002",
+    "de": "bav-rechner",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:66, src/app/useRoute.ts:96"
+  },
+  {
+    "key": "app.useroute.003",
+    "de": "riester-rechner",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:68, src/app/useRoute.ts:98"
+  },
+  {
+    "key": "app.useroute.004",
+    "de": "altersvorsorgedepot-rechner",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:69, src/app/useRoute.ts:99"
+  },
+  {
+    "key": "app.useroute.005",
+    "de": "basisrente-rechner",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:71, src/app/useRoute.ts:101"
+  },
+  {
+    "key": "app.useroute.006",
+    "de": "private-rentenversicherung-rechner",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:72, src/app/useRoute.ts:102"
+  },
+  {
+    "key": "app.useroute.007",
+    "de": "rente-netto-berechnen",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:73, src/app/useRoute.ts:103"
+  },
+  {
+    "key": "app.useroute.008",
+    "de": "altersvorsorgeprodukte-vergleichen",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:74, src/app/useRoute.ts:104"
+  },
+  {
+    "key": "app.useroute.009",
+    "de": "vertrag",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:75, src/app/useRoute.ts:105, src/app/useRoute.ts:141"
+  },
+  {
+    "key": "app.useroute.010",
+    "de": "kapital",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:76, src/app/useRoute.ts:106"
+  },
+  {
+    "key": "app.useroute.011",
+    "de": "vergleich-detail",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:77, src/app/useRoute.ts:107"
+  },
+  {
+    "key": "app.useroute.012",
+    "de": "/rentenluecke-rechner",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:95, src/app/useRoute.ts:155"
+  },
+  {
+    "key": "app.useroute.013",
+    "de": "/bav-rechner",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:96, src/app/useRoute.ts:156"
+  },
+  {
+    "key": "app.useroute.014",
+    "de": "/riester-rechner",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:98, src/app/useRoute.ts:158"
+  },
+  {
+    "key": "app.useroute.015",
+    "de": "/altersvorsorgedepot-rechner",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:99, src/app/useRoute.ts:159"
+  },
+  {
+    "key": "app.useroute.016",
+    "de": "/basisrente-rechner",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:101, src/app/useRoute.ts:161"
+  },
+  {
+    "key": "app.useroute.017",
+    "de": "/private-rentenversicherung-rechner",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:102, src/app/useRoute.ts:162"
+  },
+  {
+    "key": "app.useroute.018",
+    "de": "/rente-netto-berechnen",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:103, src/app/useRoute.ts:163"
+  },
+  {
+    "key": "app.useroute.019",
+    "de": "/altersvorsorgeprodukte-vergleichen",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:104, src/app/useRoute.ts:164"
+  },
+  {
+    "key": "app.useroute.020",
+    "de": "/vertrag/",
+    "surface": "app",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/app/useRoute.ts:105"
+  },
+  {
+    "key": "app.useroute.021",
+    "de": "/kapital",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:106, src/app/useRoute.ts:165"
+  },
+  {
+    "key": "app.useroute.022",
+    "de": "/vergleich/details",
+    "surface": "app",
+    "risk": "normal",
+    "description": "auto-import · string · src/app/useRoute.ts:107, src/app/useRoute.ts:166"
+  }
+]

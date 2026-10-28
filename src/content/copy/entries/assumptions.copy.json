@@ -1,0 +1,100 @@
+[
+  {
+    "key": "assumptions.assumptionspanel.001",
+    "de": "Beitragsbemessungsgrenze Rente/AV (BBG)",
+    "surface": "assumptions",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/assumptions/AssumptionsPanel.tsx:53"
+  },
+  {
+    "key": "assumptions.assumptionspanel.002",
+    "de": "EUR/Jahr ·",
+    "surface": "assumptions",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/assumptions/AssumptionsPanel.tsx:53, src/features/assumptions/AssumptionsPanel.tsx:71, src/features/assumptions/AssumptionsPanel.tsx:74, src/features/assumptions/AssumptionsPanel.tsx:83"
+  },
+  {
+    "key": "assumptions.assumptionspanel.003",
+    "de": "EUR/Jahr",
+    "surface": "assumptions",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/assumptions/AssumptionsPanel.tsx:54"
+  },
+  {
+    "key": "assumptions.assumptionspanel.004",
+    "de": "Krankenversicherung ermäßigter Satz",
+    "surface": "assumptions",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/assumptions/AssumptionsPanel.tsx:58"
+  },
+  {
+    "key": "assumptions.assumptionspanel.005",
+    "de": "KV-Freibetrag Versorgungsbezüge",
+    "surface": "assumptions",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/assumptions/AssumptionsPanel.tsx:63"
+  },
+  {
+    "key": "assumptions.assumptionspanel.006",
+    "de": "EUR/Monat ·",
+    "surface": "assumptions",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/assumptions/AssumptionsPanel.tsx:63, src/features/assumptions/AssumptionsPanel.tsx:64"
+  },
+  {
+    "key": "assumptions.assumptionspanel.007",
+    "de": "Bezugsgröße West",
+    "surface": "assumptions",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/assumptions/AssumptionsPanel.tsx:64"
+  },
+  {
+    "key": "assumptions.assumptionspanel.008",
+    "de": "EUR/Jahr · SvEV §1",
+    "surface": "assumptions",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/assumptions/AssumptionsPanel.tsx:72"
+  },
+  {
+    "key": "assumptions.assumptionspanel.009",
+    "de": "EUR/Monat",
+    "surface": "assumptions",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/assumptions/AssumptionsPanel.tsx:74"
+  },
+  {
+    "key": "assumptions.assumptionspanel.010",
+    "de": "Solidaritätszuschlag",
+    "surface": "assumptions",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/assumptions/AssumptionsPanel.tsx:82"
+  },
+  {
+    "key": "assumptions.assumptionspanel.011",
+    "de": "Gesetzliche Rente (Schätzwerte für #5)",
+    "surface": "assumptions",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/assumptions/AssumptionsPanel.tsx:89"
+  },
+  {
+    "key": "assumptions.assumptionspanel.012",
+    "de": "Vorläufiges Durchschnittsentgelt 2026",
+    "surface": "assumptions",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/assumptions/AssumptionsPanel.tsx:91"
+  },
+  {
+    "key": "assumptions.assumptionspanel.013",
+    "de": "1,0 / 1,0 (vereinfacht: Regelaltersrente ohne Abschläge)",
+    "surface": "assumptions",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/assumptions/AssumptionsPanel.tsx:93"
+  },
+  {
+    "key": "assumptions.assumptionspanel.014",
+    "de": "Diese Schätzwerte dienen nur zur Abschätzung der gesetzlichen Rentenminderung durch bAV-Umwandlung. Die tatsächliche Rente hängt von der vollständigen Erwerbsbiografie ab.",
+    "surface": "assumptions",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/assumptions/AssumptionsPanel.tsx:96"
+  }
+]

@@ -1,0 +1,296 @@
+[
+  {
+    "key": "utils.csvexport.001",
+    "de": "Modellrechnung. Keine Anlage-, Steuer- oder Rechtsberatung.",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · string · src/utils/csvExport.ts:66"
+  },
+  {
+    "key": "utils.csvexport.002",
+    "de": "Diese Berechnung ist eine Modellrechnung mit Stand 2026 und ersetzt keine individuelle Beratung.",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · string · src/utils/csvExport.ts:67"
+  },
+  {
+    "key": "utils.csvexport.003",
+    "de": "Steuersätze, Sozialversicherungsbeiträge und Rentenwert sind auf den Stand 2026 fixiert; tatsächliche Werte zum Renteneintritt können erheblich abweichen.",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · string · src/utils/csvExport.ts:68"
+  },
+  {
+    "key": "utils.csvexport.004",
+    "de": "Annahmen (Rendite, Inflation, Gehaltsentwicklung, Lebenserwartung, Rentenfaktor, Vertragskosten) sind Schätzungen — kleine Abweichungen können das Ergebnis und die Reihenfolge der Produkte ändern.",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · string · src/utils/csvExport.ts:69"
+  },
+  {
+    "key": "utils.csvexport.005",
+    "de": "Beitrag mtl. (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:105, src/utils/csvExport.ts:241"
+  },
+  {
+    "key": "utils.csvexport.006",
+    "de": "Kapital (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:105, src/utils/csvExport.ts:124, src/utils/csvExport.ts:241, src/utils/csvExport.ts:262"
+  },
+  {
+    "key": "utils.csvexport.007",
+    "de": "Kapital nach Steuer (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:105"
+  },
+  {
+    "key": "utils.csvexport.008",
+    "de": "Netto-Rente mtl. (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:105, src/utils/csvExport.ts:241"
+  },
+  {
+    "key": "utils.csvexport.009",
+    "de": "Kosten gesamt (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:105, src/utils/csvExport.ts:241"
+  },
+  {
+    "key": "utils.csvexport.010",
+    "de": "Datenqualität",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:105, src/utils/csvExport.ts:241"
+  },
+  {
+    "key": "utils.csvexport.011",
+    "de": "Beitrag p.a. (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:124, src/utils/csvExport.ts:262"
+  },
+  {
+    "key": "utils.csvexport.012",
+    "de": "Steuer-/SV-Ersparnis p.a. (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:124"
+  },
+  {
+    "key": "utils.csvexport.013",
+    "de": "Gebühren p.a. (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:124, src/utils/csvExport.ts:262"
+  },
+  {
+    "key": "utils.csvexport.014",
+    "de": "Kum. Gebühren (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:124, src/utils/csvExport.ts:262"
+  },
+  {
+    "key": "utils.csvexport.015",
+    "de": "Kapital n. St. (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:124, src/utils/csvExport.ts:262"
+  },
+  {
+    "key": "utils.csvexport.016",
+    "de": "Reales Kapital (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:124, src/utils/csvExport.ts:262"
+  },
+  {
+    "key": "utils.csvexport.017",
+    "de": "Kapital Anfang (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:147, src/utils/csvExport.ts:286"
+  },
+  {
+    "key": "utils.csvexport.018",
+    "de": "Brutto p.a. (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:147, src/utils/csvExport.ts:286"
+  },
+  {
+    "key": "utils.csvexport.019",
+    "de": "Steuerpfl. Gewinn (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:147, src/utils/csvExport.ts:286"
+  },
+  {
+    "key": "utils.csvexport.020",
+    "de": "Steuer (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:147, src/utils/csvExport.ts:286"
+  },
+  {
+    "key": "utils.csvexport.021",
+    "de": "Netto mtl. (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:147, src/utils/csvExport.ts:286"
+  },
+  {
+    "key": "utils.csvexport.022",
+    "de": "Kapital Ende (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:147, src/utils/csvExport.ts:286"
+  },
+  {
+    "key": "utils.csvexport.023",
+    "de": "Netto-Einkommen mtl. (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:220"
+  },
+  {
+    "key": "utils.csvexport.024",
+    "de": "Gesetzl. Rente netto mtl. (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:220"
+  },
+  {
+    "key": "utils.csvexport.025",
+    "de": "Mein Plan — Detail je Instanz",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:240"
+  },
+  {
+    "key": "utils.csvexport.026",
+    "de": "Brutto-Rente mtl. (EUR)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/utils/csvExport.ts:241"
+  },
+  {
+    "key": "utils.evidence.001",
+    "de": "Monatlicher Beitrag",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · string · src/utils/evidence.ts:129, src/utils/evidence.ts:144"
+  },
+  {
+    "key": "utils.evidence.002",
+    "de": "Jährliche Verwaltungsgebühr",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · string · src/utils/evidence.ts:130"
+  },
+  {
+    "key": "utils.evidence.003",
+    "de": "Monatlicher Brutto-Umwandlungsbetrag",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · string · src/utils/evidence.ts:131"
+  },
+  {
+    "key": "utils.evidence.004",
+    "de": "Rentenphase-Verwaltungsgebühr",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · string · src/utils/evidence.ts:135"
+  },
+  {
+    "key": "utils.evidence.005",
+    "de": "AG-Fixzuschuss (EUR/Monat)",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · string · src/utils/evidence.ts:137"
+  },
+  {
+    "key": "utils.evidence.006",
+    "de": "Durchführungsweg",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · string · src/utils/evidence.ts:139"
+  },
+  {
+    "key": "utils.evidence.007",
+    "de": "Steuerfrei gem. §40b a.F.",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · string · src/utils/evidence.ts:140"
+  },
+  {
+    "key": "utils.evidence.008",
+    "de": "Eigener monatlicher Beitrag",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · string · src/utils/evidence.ts:145"
+  },
+  {
+    "key": "utils.evidence.009",
+    "de": "Auf deinen Schätzungen ergibt sich",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · string · src/utils/evidence.ts:163"
+  },
+  {
+    "key": "utils.format.001",
+    "de": "vor Sek.",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/utils/format.ts:43"
+  },
+  {
+    "key": "utils.format.002",
+    "de": "vor Min.",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/utils/format.ts:47"
+  },
+  {
+    "key": "utils.format.003",
+    "de": "vor Std.",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/utils/format.ts:51"
+  },
+  {
+    "key": "utils.format.004",
+    "de": "vor 1 Tag",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · string · src/utils/format.ts:55"
+  },
+  {
+    "key": "utils.format.005",
+    "de": "vor Tagen",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/utils/format.ts:55"
+  },
+  {
+    "key": "utils.format.006",
+    "de": "vor 1 Woche",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "auto-import · string · src/utils/format.ts:58"
+  },
+  {
+    "key": "utils.format.007",
+    "de": "vor Wochen",
+    "surface": "utils",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/utils/format.ts:58"
+  }
+]

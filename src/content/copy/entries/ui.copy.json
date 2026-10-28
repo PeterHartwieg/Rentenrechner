@@ -1,0 +1,198 @@
+[
+  {
+    "key": "ui.bavwaterfall.001",
+    "de": "bAV-Förderung im Überblick",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/ui/BavWaterfall.tsx:13"
+  },
+  {
+    "key": "ui.bavwaterfall.002",
+    "de": "= Monatl. Beitrag",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/ui/BavWaterfall.tsx:36"
+  },
+  {
+    "key": "ui.appheader.001",
+    "de": "angaben",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · string · src/ui/chrome/AppHeader.tsx:37, src/ui/chrome/AppHeader.tsx:53, src/ui/chrome/AppHeader.tsx:75, src/ui/chrome/chromeRoutes.ts:48, src/ui/chrome/MobileNav.tsx:35, src/ui/chrome/MobileNav.tsx:48"
+  },
+  {
+    "key": "ui.appheader.002",
+    "de": "Angaben",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · string · src/ui/chrome/AppHeader.tsx:53, src/ui/chrome/MobileNav.tsx:48"
+  },
+  {
+    "key": "ui.appheader.003",
+    "de": "Mein Plan",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · string · src/ui/chrome/AppHeader.tsx:54, src/ui/chrome/MobileNav.tsx:49"
+  },
+  {
+    "key": "ui.appheader.004",
+    "de": "Vergleich",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · string · src/ui/chrome/AppHeader.tsx:54, src/ui/chrome/MobileNav.tsx:49"
+  },
+  {
+    "key": "ui.appheader.005",
+    "de": "Menü öffnen",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/ui/chrome/AppHeader.tsx:118"
+  },
+  {
+    "key": "ui.chromeroutes.001",
+    "de": "vertrag",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · string · src/ui/chrome/chromeRoutes.ts:33"
+  },
+  {
+    "key": "ui.chromeroutes.002",
+    "de": "kapital",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · string · src/ui/chrome/chromeRoutes.ts:34"
+  },
+  {
+    "key": "ui.chromeroutes.003",
+    "de": "vergleich-detail",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · string · src/ui/chrome/chromeRoutes.ts:35"
+  },
+  {
+    "key": "ui.chromeroutes.004",
+    "de": "rentenluecke-rechner",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · string · src/ui/chrome/chromeRoutes.ts:54"
+  },
+  {
+    "key": "ui.chromeroutes.005",
+    "de": "bav-rechner",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · string · src/ui/chrome/chromeRoutes.ts:55"
+  },
+  {
+    "key": "ui.chromeroutes.006",
+    "de": "riester-rechner",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · string · src/ui/chrome/chromeRoutes.ts:57"
+  },
+  {
+    "key": "ui.chromeroutes.007",
+    "de": "altersvorsorgedepot-rechner",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · string · src/ui/chrome/chromeRoutes.ts:58"
+  },
+  {
+    "key": "ui.chromeroutes.008",
+    "de": "basisrente-rechner",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · string · src/ui/chrome/chromeRoutes.ts:60"
+  },
+  {
+    "key": "ui.chromeroutes.009",
+    "de": "private-rentenversicherung-rechner",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · string · src/ui/chrome/chromeRoutes.ts:61"
+  },
+  {
+    "key": "ui.chromeroutes.010",
+    "de": "rente-netto-berechnen",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · string · src/ui/chrome/chromeRoutes.ts:62"
+  },
+  {
+    "key": "ui.chromeroutes.011",
+    "de": "altersvorsorgeprodukte-vergleichen",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · string · src/ui/chrome/chromeRoutes.ts:63"
+  },
+  {
+    "key": "ui.errorstatepanel.001",
+    "de": "Hinweis schließen",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · string · src/ui/chrome/ErrorStatePanel.tsx:109"
+  },
+  {
+    "key": "ui.mobilesheet.001",
+    "de": "Weitere Menüpunkte",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/ui/chrome/MobileSheet.tsx:69"
+  },
+  {
+    "key": "ui.mobilesheet.002",
+    "de": "Menü schließen",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/ui/chrome/MobileSheet.tsx:73"
+  },
+  {
+    "key": "ui.modalslot.001",
+    "de": "Dialog schließen",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · string · src/ui/chrome/ModalSlot.tsx:95"
+  },
+  {
+    "key": "ui.rightrailaccordion.001",
+    "de": "schließen",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/ui/chrome/RightRailAccordion.tsx:85"
+  },
+  {
+    "key": "ui.statusbar.001",
+    "de": "Gemeinnütziges Projekt",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/ui/chrome/StatusBar.tsx:47"
+  },
+  {
+    "key": "ui.infotip.001",
+    "de": "Erklärung anzeigen",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "auto-import · string · src/ui/InfoTip.tsx:35"
+  },
+  {
+    "key": "ui.infotip.002",
+    "de": "(Erklärungstext)",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/ui/InfoTip.tsx:55"
+  },
+  {
+    "key": "ui.numberfield.001",
+    "de": "Wert wird auf angehoben (Minimum).",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/ui/NumberField.tsx:133"
+  },
+  {
+    "key": "ui.numberfield.002",
+    "de": "Wert wird auf begrenzt (Maximum).",
+    "surface": "ui",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/ui/NumberField.tsx:135"
+  }
+]

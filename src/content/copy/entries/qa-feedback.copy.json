@@ -1,0 +1,219 @@
+[
+  {
+    "key": "qafeedback.workersubmit.001",
+    "de": "Screenshot zu groß. Bitte Screenshot abwählen und erneut versuchen.",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/qa-feedback/export/workerSubmit.ts:78"
+  },
+  {
+    "key": "qafeedback.workersubmit.002",
+    "de": "Verbindungsproblem. Bitte später erneut versuchen.",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/qa-feedback/export/workerSubmit.ts:96"
+  },
+  {
+    "key": "qafeedback.workersubmit.003",
+    "de": "Antwort konnte nicht gelesen werden. Bitte später erneut versuchen.",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/qa-feedback/export/workerSubmit.ts:107"
+  },
+  {
+    "key": "qafeedback.workersubmit.004",
+    "de": "Unerwarteter Fehler ( ). Bitte später erneut versuchen.",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/qa-feedback/export/workerSubmit.ts:118"
+  },
+  {
+    "key": "qafeedback.workersubmit.005",
+    "de": "Unerwartete Antwort vom Server.",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/qa-feedback/export/workerSubmit.ts:131"
+  },
+  {
+    "key": "qafeedback.qacomposer.001",
+    "de": "Funktioniert gar nicht",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/qa-feedback/QaComposer.tsx:28"
+  },
+  {
+    "key": "qafeedback.qacomposer.002",
+    "de": "Großes Problem",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/qa-feedback/QaComposer.tsx:29"
+  },
+  {
+    "key": "qafeedback.qacomposer.003",
+    "de": "Hilf uns, RentenWiki zu verbessern",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/qa-feedback/QaComposer.tsx:145"
+  },
+  {
+    "key": "qafeedback.qacomposer.004",
+    "de": "Abbrechen",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/qa-feedback/QaComposer.tsx:150, src/features/qa-feedback/QaComposer.tsx:196, src/features/qa-feedback/QaPreview.tsx:149, src/features/qa-feedback/QaPreview.tsx:231"
+  },
+  {
+    "key": "qafeedback.qacomposer.005",
+    "de": "Was möchtest du uns mitteilen?",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/qa-feedback/QaComposer.tsx:156"
+  },
+  {
+    "key": "qafeedback.qacomposer.006",
+    "de": "Beschreibe in deinen eigenen Worten, was nicht stimmt oder verwirrend ist.",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · attr:placeholder · src/features/qa-feedback/QaComposer.tsx:161"
+  },
+  {
+    "key": "qafeedback.qacomposer.007",
+    "de": "Wie schlimm ist es?",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/qa-feedback/QaComposer.tsx:168"
+  },
+  {
+    "key": "qafeedback.qacomposer.008",
+    "de": "Weiter",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/qa-feedback/QaComposer.tsx:204"
+  },
+  {
+    "key": "qafeedback.qaintercept.001",
+    "de": "Wolltest du nur navigieren?",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/qa-feedback/QaIntercept.tsx:68"
+  },
+  {
+    "key": "qafeedback.qaintercept.002",
+    "de": "Schließen",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/qa-feedback/QaIntercept.tsx:73"
+  },
+  {
+    "key": "qafeedback.qaintercept.003",
+    "de": "Du hast diesen Punkt gerade schon einmal angeklickt. Im Feedback Modus werden alle Klicks abgefangen, damit du Feedback dazu geben kannst. Wenn du normal interagieren willst, beende den Feedback Modus.",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/qa-feedback/QaIntercept.tsx:82"
+  },
+  {
+    "key": "qafeedback.qamodeindicator.001",
+    "de": "Feedback Modus aktiv. Klicken zum Deaktivieren oder Beenden. Tastenkürzel:",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/qa-feedback/QaModeIndicator.tsx:53"
+  },
+  {
+    "key": "qafeedback.qamodeindicator.002",
+    "de": "Feedback Modus aktiv – zum Umschalten",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/qa-feedback/QaModeIndicator.tsx:54"
+  },
+  {
+    "key": "qafeedback.qapreview.001",
+    "de": "Feedback senden",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/qa-feedback/QaPreview.tsx:143, src/features/qa-feedback/QaPreview.tsx:148"
+  },
+  {
+    "key": "qafeedback.qapreview.002",
+    "de": "Vielen Dank! Dein Feedback wird als öffentliches GitHub-Issue an die Entwickler gesendet. Ein GitHub-Konto brauchst du dafür nicht.",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/qa-feedback/QaPreview.tsx:155"
+  },
+  {
+    "key": "qafeedback.qapreview.003",
+    "de": "Dein Kommentar",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/qa-feedback/QaPreview.tsx:160"
+  },
+  {
+    "key": "qafeedback.qapreview.004",
+    "de": "Ich verstehe, dass mein Feedback als öffentliches",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/qa-feedback/QaPreview.tsx:181"
+  },
+  {
+    "key": "qafeedback.qapreview.005",
+    "de": "veröffentlicht wird, Cloudflare Turnstile zur Spam-Prüfung genutzt wird, und ein optionaler Screenshot in Cloudflare R2 (EU) bis zur Issue-Schließung gespeichert werden kann. Weitere Informationen in der",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/qa-feedback/QaPreview.tsx:190"
+  },
+  {
+    "key": "qafeedback.qapreview.006",
+    "de": "Datenschutzerklärung, Abschnitt&nbsp;9",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/qa-feedback/QaPreview.tsx:200"
+  },
+  {
+    "key": "qafeedback.qapreview.007",
+    "de": "Bitte bestätige kurz, dass du kein Roboter bist.",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/qa-feedback/QaPreview.tsx:208"
+  },
+  {
+    "key": "qafeedback.qapreview.008",
+    "de": "Zurück",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/qa-feedback/QaPreview.tsx:228"
+  },
+  {
+    "key": "qafeedback.qapreview.009",
+    "de": "Wird gesendet…",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/qa-feedback/QaPreview.tsx:246"
+  },
+  {
+    "key": "qafeedback.qapreview.010",
+    "de": "Senden",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/qa-feedback/QaPreview.tsx:249"
+  },
+  {
+    "key": "qafeedback.qapreview.011",
+    "de": "Wird an GitHub gesendet…",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/qa-feedback/QaPreview.tsx:307"
+  },
+  {
+    "key": "qafeedback.qapreview.012",
+    "de": "Vielen Dank! Dein Feedback wurde gesendet.",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/qa-feedback/QaPreview.tsx:314"
+  },
+  {
+    "key": "qafeedback.qapreview.013",
+    "de": "Senden fehlgeschlagen.",
+    "surface": "qa-feedback",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/qa-feedback/QaPreview.tsx:324"
+  }
+]

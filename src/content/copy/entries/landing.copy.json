@@ -104,5 +104,250 @@
     "surface": "landing",
     "risk": "normal",
     "description": "Heading for the topic-page hub navigation."
+  },
+  {
+    "key": "landing.hubclusters.001",
+    "de": "Renten-Lücke",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:36"
+  },
+  {
+    "key": "landing.hubclusters.002",
+    "de": "/rentenluecke-rechner/",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:38, src/features/landing/hubClusters.ts:90"
+  },
+  {
+    "key": "landing.hubclusters.003",
+    "de": "Rentenlücke berechnen",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:38"
+  },
+  {
+    "key": "landing.hubclusters.004",
+    "de": "/rente-netto-berechnen/",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:39"
+  },
+  {
+    "key": "landing.hubclusters.005",
+    "de": "Rente netto berechnen",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:39"
+  },
+  {
+    "key": "landing.hubclusters.006",
+    "de": "bAV und ETF",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:43"
+  },
+  {
+    "key": "landing.hubclusters.007",
+    "de": "/bav-rechner/",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:45"
+  },
+  {
+    "key": "landing.hubclusters.008",
+    "de": "bAV-Rechner",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:45"
+  },
+  {
+    "key": "landing.hubclusters.009",
+    "de": "bAV oder ETF vergleichen",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:46"
+  },
+  {
+    "key": "landing.hubclusters.010",
+    "de": "Geförderte Vorsorge",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:50"
+  },
+  {
+    "key": "landing.hubclusters.011",
+    "de": "/riester-rechner/",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:52"
+  },
+  {
+    "key": "landing.hubclusters.012",
+    "de": "Riester-Rechner",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:52"
+  },
+  {
+    "key": "landing.hubclusters.013",
+    "de": "/altersvorsorgedepot-rechner/",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:53"
+  },
+  {
+    "key": "landing.hubclusters.014",
+    "de": "Altersvorsorgedepot-Rechner",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:53"
+  },
+  {
+    "key": "landing.hubclusters.015",
+    "de": "Riester oder Altersvorsorgedepot",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:54"
+  },
+  {
+    "key": "landing.hubclusters.016",
+    "de": "Private Vorsorge",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:58"
+  },
+  {
+    "key": "landing.hubclusters.017",
+    "de": "/basisrente-rechner/",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:60, src/features/landing/hubClusters.ts:92"
+  },
+  {
+    "key": "landing.hubclusters.018",
+    "de": "Basisrente-Rechner (Rürup)",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:60"
+  },
+  {
+    "key": "landing.hubclusters.019",
+    "de": "/private-rentenversicherung-rechner/",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:61"
+  },
+  {
+    "key": "landing.hubclusters.020",
+    "de": "Private Rentenversicherung-Rechner",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:61"
+  },
+  {
+    "key": "landing.hubclusters.021",
+    "de": "/altersvorsorgeprodukte-vergleichen/",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:67, src/features/landing/hubClusters.ts:93"
+  },
+  {
+    "key": "landing.hubclusters.022",
+    "de": "Altersvorsorgeprodukte vergleichen",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/hubClusters.ts:67"
+  },
+  {
+    "key": "landing.landingpage.001",
+    "de": "landing.step.beschreiben.heading",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/LandingPage.tsx:56"
+  },
+  {
+    "key": "landing.landingpage.002",
+    "de": "landing.step.beschreiben.body",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/LandingPage.tsx:56"
+  },
+  {
+    "key": "landing.landingpage.003",
+    "de": "landing.step.entscheiden.heading",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/LandingPage.tsx:58"
+  },
+  {
+    "key": "landing.landingpage.004",
+    "de": "landing.step.entscheiden.body",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/landing/LandingPage.tsx:58"
+  },
+  {
+    "key": "landing.landingpage.005",
+    "de": "Was bekommst du",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/landing/LandingPage.tsx:164"
+  },
+  {
+    "key": "landing.landingpage.006",
+    "de": "an Rente?",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/landing/LandingPage.tsx:164"
+  },
+  {
+    "key": "landing.landingpage.007",
+    "de": "Trage deine Verträge ein. Wir rechnen aus, wieviel pro Monat im Alter auf deinem Konto landet, in heutiger Kaufkraft und in Euro",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/landing/LandingPage.tsx:167"
+  },
+  {
+    "key": "landing.landingpage.008",
+    "de": ". Ohne Werbung, ohne Provisionen. Der Quellcode ist offen, jede Annahme ist erklärt.",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/landing/LandingPage.tsx:168"
+  },
+  {
+    "key": "landing.landingpage.009",
+    "de": "Alle",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/landing/LandingPage.tsx:225"
+  },
+  {
+    "key": "landing.landingpage.010",
+    "de": "RentenWiki.de ist ein Einzelprojekt von Peter Hartwieg. Keine Werbung, keine Provisionen. Spenden über GitHub Sponsors decken die Hosting-Kosten.",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/landing/LandingPage.tsx:232"
+  },
+  {
+    "key": "landing.landingpage.011",
+    "de": "Der Quellcode steht unter",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/landing/LandingPage.tsx:236"
+  },
+  {
+    "key": "landing.landingpage.012",
+    "de": "offen. Versicherungs­makler, Anlageberater und Arbeitgeber brauchen eine separate kommerzielle Lizenz.",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/landing/LandingPage.tsx:238"
+  },
+  {
+    "key": "landing.landingpage.013",
+    "de": "· Werte für Deutschland",
+    "surface": "landing",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/landing/LandingPage.tsx:294"
   }
 ]

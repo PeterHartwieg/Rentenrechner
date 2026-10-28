@@ -1,0 +1,1990 @@
+[
+  {
+    "key": "results.assumptionreviewpanel.001",
+    "de": "Betriebliche Altersvorsorge (bAV)",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/AssumptionReviewPanel.tsx:9"
+  },
+  {
+    "key": "results.assumptionreviewpanel.002",
+    "de": "Private Rentenversicherung",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/AssumptionReviewPanel.tsx:10"
+  },
+  {
+    "key": "results.assumptionreviewpanel.003",
+    "de": "Basisrente (Rürup)",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/AssumptionReviewPanel.tsx:11"
+  },
+  {
+    "key": "results.assumptionreviewpanel.004",
+    "de": "von dir",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/AssumptionReviewPanel.tsx:32, src/features/results/AssumptionReviewPanel.tsx:230, src/features/results/AssumptionReviewPanel.tsx:250, src/features/results/AssumptionReviewPanel.tsx:255, src/features/results/AssumptionReviewPanel.tsx:260, src/features/results/AssumptionReviewPanel.tsx:265, src/features/results/provenance.tsx:49"
+  },
+  {
+    "key": "results.assumptionreviewpanel.005",
+    "de": "geprüft",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/AssumptionReviewPanel.tsx:34, src/features/results/provenance.tsx:51"
+  },
+  {
+    "key": "results.assumptionreviewpanel.006",
+    "de": "Brutto-Umwandlung",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/AssumptionReviewPanel.tsx:84, src/features/results/productDefaultsHelpers.ts:108"
+  },
+  {
+    "key": "results.assumptionreviewpanel.007",
+    "de": "/Monat",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/AssumptionReviewPanel.tsx:85, src/features/results/AssumptionReviewPanel.tsx:149, src/features/results/AssumptionReviewPanel.tsx:172, src/features/results/AssumptionReviewPanel.tsx:184, src/features/results/KvPvLastPanel.tsx:53, src/features/results/KvPvLastPanel.tsx:54, src/features/results/PrintReport.tsx:389, src/features/results/PrintReport.tsx:391 +10 more"
+  },
+  {
+    "key": "results.assumptionreviewpanel.008",
+    "de": "AG-Zuschuss laut Vertrag",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/AssumptionReviewPanel.tsx:89, src/features/results/productDefaultsHelpers.ts:113"
+  },
+  {
+    "key": "results.assumptionreviewpanel.009",
+    "de": "Marktdurchschnitt – aus Angebot übernehmen",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/AssumptionReviewPanel.tsx:105, src/features/results/AssumptionReviewPanel.tsx:134, src/features/results/AssumptionReviewPanel.tsx:156, src/features/results/AssumptionReviewPanel.tsx:194"
+  },
+  {
+    "key": "results.assumptionreviewpanel.010",
+    "de": "Gesetzlich (GKV)",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/AssumptionReviewPanel.tsx:217"
+  },
+  {
+    "key": "results.assumptionreviewpanel.011",
+    "de": "Privat (PKV)",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/AssumptionReviewPanel.tsx:217"
+  },
+  {
+    "key": "results.assumptionreviewpanel.012",
+    "de": "Schätzwert",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/AssumptionReviewPanel.tsx:234, src/features/results/AssumptionReviewPanel.tsx:300, src/features/results/provenanceHelpers.ts:82"
+  },
+  {
+    "key": "results.assumptionreviewpanel.013",
+    "de": "Jahre",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/AssumptionReviewPanel.tsx:249, src/features/results/AssumptionReviewPanel.tsx:254, src/features/results/PrintReport.tsx:371, src/features/results/PrintReport.tsx:372, src/features/results/PrintReport.tsx:422, src/features/results/PrintReport.tsx:661, src/features/results/PrintReport.tsx:662, src/features/results/PrintReport.tsx:708 +2 more"
+  },
+  {
+    "key": "results.assumptionreviewpanel.014",
+    "de": "/Jahr",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/AssumptionReviewPanel.tsx:259"
+  },
+  {
+    "key": "results.assumptionreviewpanel.015",
+    "de": ": Diese Werte basieren auf Marktdurchschnitten und beeinflussen die Rentenhöhe stark. Trage die Werte aus deinem Angebot ein, um ein genaues Ergebnis zu erhalten.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/AssumptionReviewPanel.tsx:300"
+  },
+  {
+    "key": "results.breakevenchart.001",
+    "de": "GRV Netto-Auszahlung kumuliert",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/BreakEvenChart.tsx:43, src/features/results/BreakEvenChart.tsx:44"
+  },
+  {
+    "key": "results.breakevenchart.002",
+    "de": "Gesetzliche Rente",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/BreakEvenChart.tsx:45, src/features/results/PrintReport.tsx:386, src/features/results/PrintReport.tsx:676, src/features/results/printReportRows.ts:771, src/features/results/printReportRows.ts:774"
+  },
+  {
+    "key": "results.breakevenchart.003",
+    "de": "Versorgungswerk Netto-Auszahlung kumuliert",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/BreakEvenChart.tsx:48, src/features/results/BreakEvenChart.tsx:49"
+  },
+  {
+    "key": "results.breakevenchart.004",
+    "de": "Beamtenpension Netto-Auszahlung kumuliert",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/BreakEvenChart.tsx:53, src/features/results/BreakEvenChart.tsx:54"
+  },
+  {
+    "key": "results.breakevenchart.005",
+    "de": "Kapital und Auszahlungen im Alter",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/BreakEvenChart.tsx:110"
+  },
+  {
+    "key": "results.breakevenchart.006",
+    "de": "Vergleicht Netto-Einzahlungen, Restkapital und kumulierte Netto-Auszahlungen über Anspar- und Rentenphase.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/BreakEvenChart.tsx:111"
+  },
+  {
+    "key": "results.breakevenchart.007",
+    "de": "Alter (Jahre)",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/BreakEvenChart.tsx:302"
+  },
+  {
+    "key": "results.breakevenchart.008",
+    "de": "- Netto ausgezahlt",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/BreakEvenChart.tsx:372"
+  },
+  {
+    "key": "results.breakevenchart.009",
+    "de": "Netto eingezahlt",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/BreakEvenChart.tsx:471, src/features/results/BreakEvenChart.tsx:474, src/features/results/BreakEvenChart.tsx:590"
+  },
+  {
+    "key": "results.breakevenchart.010",
+    "de": "Netto ausgezahlt",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/BreakEvenChart.tsx:485, src/features/results/BreakEvenChart.tsx:488, src/features/results/BreakEvenChart.tsx:623"
+  },
+  {
+    "key": "results.breakevenchart.011",
+    "de": "GRV Netto-Einzahlung kumuliert",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/BreakEvenChart.tsx:505, src/features/results/BreakEvenChart.tsx:596"
+  },
+  {
+    "key": "results.breakevenchart.012",
+    "de": "Leibrente überholt Kapitalverzehr",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/BreakEvenChart.tsx:517, src/features/results/BreakEvenChart.tsx:520, src/features/results/BreakEvenChart.tsx:525"
+  },
+  {
+    "key": "results.breakevenchart.013",
+    "de": "(außerhalb der Grafik)",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/BreakEvenChart.tsx:537"
+  },
+  {
+    "key": "results.breakevenchart.014",
+    "de": "Kumulierte Netto-Einzahlungen und Netto-Auszahlungen bis Alter",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/BreakEvenChart.tsx:706"
+  },
+  {
+    "key": "results.breakevenchart.015",
+    "de": "Netto eingezahlt (kumuliert)",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/BreakEvenChart.tsx:711"
+  },
+  {
+    "key": "results.breakevenchart.016",
+    "de": "Netto ausgezahlt (kumuliert, Alter",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/BreakEvenChart.tsx:712"
+  },
+  {
+    "key": "results.breakevenchart.017",
+    "de": "Benchmark (alle Produkte)",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/BreakEvenChart.tsx:718"
+  },
+  {
+    "key": "results.breakevenchart.018",
+    "de": "nicht erreicht",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/BreakEvenChart.tsx:734"
+  },
+  {
+    "key": "results.calculationwarnings.001",
+    "de": "nicht-modelliert",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/CalculationWarnings.tsx:19"
+  },
+  {
+    "key": "results.calculationwarnings.002",
+    "de": "Vollständig modelliert",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/CalculationWarnings.tsx:22"
+  },
+  {
+    "key": "results.calculationwarnings.003",
+    "de": "Nicht modelliert",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/CalculationWarnings.tsx:24"
+  },
+  {
+    "key": "results.calculationwarnings.004",
+    "de": "Keine Einträge.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/CalculationWarnings.tsx:54"
+  },
+  {
+    "key": "results.combinedetailview.001",
+    "de": "Detailansicht (Mein Plan)",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/CombineDetailView.tsx:96"
+  },
+  {
+    "key": "results.combinedetailview.002",
+    "de": "Noch keine Verträge erfasst. In „Mein Plan“ Bestandsverträge hinzufügen oder eine Vorlage öffnen.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/CombineDetailView.tsx:115"
+  },
+  {
+    "key": "results.combinedetailview.003",
+    "de": "Vertrag",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/CombineDetailView.tsx:123, src/features/results/PrintReport.tsx:760, src/features/results/PrintReport.tsx:1328"
+  },
+  {
+    "key": "results.combinedetailview.004",
+    "de": "Kapital z. Renten&shy;eintritt",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/CombineDetailView.tsx:126"
+  },
+  {
+    "key": "results.combinedetailview.005",
+    "de": "Netto-Rente mtl.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/CombineDetailView.tsx:128, src/features/results/PrintReport.tsx:766"
+  },
+  {
+    "key": "results.combinedetailview.006",
+    "de": "Kapital nach Steuer",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/CombineDetailView.tsx:129, src/features/results/DetailComparisonTable.tsx:84"
+  },
+  {
+    "key": "results.combinedetailview.007",
+    "de": "Datenqualität",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/CombineDetailView.tsx:130"
+  },
+  {
+    "key": "results.combinedetailview.008",
+    "de": "Steuer €/mo ( €/Jahr) · KV/PV €/mo",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/CombineDetailView.tsx:182"
+  },
+  {
+    "key": "results.combinedetailview.009",
+    "de": "Kapitalauszahlung gesetzlich ausgeschlossen",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · attr:title · src/features/results/CombineDetailView.tsx:220"
+  },
+  {
+    "key": "results.combinedetailview.010",
+    "de": "beitragsfrei",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/CombineDetailView.tsx:253, src/features/results/PrintReport.tsx:1231, src/features/results/printReportRows.ts:583, src/features/results/printReportRows.ts:605"
+  },
+  {
+    "key": "results.combinedetailview.011",
+    "de": "gekündigt",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/CombineDetailView.tsx:254"
+  },
+  {
+    "key": "results.decisionlogic.001",
+    "de": "Kapital- und Renten-Sieger sind verschieden: „ \" vorn beim Kapital, „ \" bei der monatlichen Rente. Frage dich, was dir wichtiger ist.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/decisionLogic.ts:130"
+  },
+  {
+    "key": "results.decisionlogic.002",
+    "de": "Knapper Vorsprung beim Kapital (unter 5 % zu „ \"). Ranking kippt schon bei kleinen Änderungen an Rendite oder Gebühren.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/decisionLogic.ts:133"
+  },
+  {
+    "key": "results.decisionlogic.003",
+    "de": "Sieger hat hohe Effektivkosten ( % p. a.). Eine Renditeannahme 1 pp niedriger oder ein günstigerer Tarif kann das Bild drehen.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/decisionLogic.ts:136"
+  },
+  {
+    "key": "results.decisionlogic.004",
+    "de": "Wenn die Rendite 1 pp niedriger ausfällt",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/decisionLogic.ts:156"
+  },
+  {
+    "key": "results.decisionlogic.005",
+    "de": "Wenn die Rendite 1 pp höher ausfällt",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/decisionLogic.ts:157"
+  },
+  {
+    "key": "results.decisionlogic.006",
+    "de": "Wenn die Gebühren 0,5 pp niedriger sind",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/decisionLogic.ts:158"
+  },
+  {
+    "key": "results.decisionlogic.007",
+    "de": "Wenn die Gebühren 0,5 pp höher sind",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/decisionLogic.ts:159"
+  },
+  {
+    "key": "results.decisionlogic.008",
+    "de": "Wenn der AG-Match wegfällt",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/decisionLogic.ts:160"
+  },
+  {
+    "key": "results.decisionlogic.009",
+    "de": "Wenn der AG-Match auf 50 % steigt",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/decisionLogic.ts:161"
+  },
+  {
+    "key": "results.decisionlogic.010",
+    "de": "Wenn du 2 Jahre früher in Rente gehst",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/decisionLogic.ts:162"
+  },
+  {
+    "key": "results.decisionlogic.011",
+    "de": "Wenn du 2 Jahre später in Rente gehst",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/decisionLogic.ts:163"
+  },
+  {
+    "key": "results.decisionlogic.012",
+    "de": "Wenn du in der Rente freiwillig versichert bist",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/decisionLogic.ts:164"
+  },
+  {
+    "key": "results.decisionlogic.013",
+    "de": "Wenn",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/decisionLogic.ts:184"
+  },
+  {
+    "key": "results.decisionlogic.014",
+    "de": "Wähle weitere Produkte aus, um Vergleichshinweise zu sehen.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/decisionLogic.ts:205"
+  },
+  {
+    "key": "results.decisionlogic.015",
+    "de": "Stabil: keiner der getesteten Hebel ändert den Sieger beim Endkapital.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/decisionLogic.ts:226"
+  },
+  {
+    "key": "results.decisionlogic.016",
+    "de": "Annahmenabhängig: Hebel kippen den Sieger. Schau in „Was müsste sich ändern?\" für Details.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/decisionLogic.ts:234"
+  },
+  {
+    "key": "results.decisionsummary.001",
+    "de": "Entscheidungs-Übersicht",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/results/DecisionSummary.tsx:28"
+  },
+  {
+    "key": "results.decisionsummary.002",
+    "de": "Bestes Kapital nach Steuern",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/DecisionSummary.tsx:34"
+  },
+  {
+    "key": "results.decisionsummary.003",
+    "de": "Keine Kapitalauszahlung in Auswahl",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/DecisionSummary.tsx:39"
+  },
+  {
+    "key": "results.decisionsummary.004",
+    "de": "Beste monatliche Rente",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/DecisionSummary.tsx:46"
+  },
+  {
+    "key": "results.detailcomparisontable.001",
+    "de": "Beitrag mtl.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · jsx-text · src/features/results/DetailComparisonTable.tsx:82, src/features/results/PrintReport.tsx:763, src/features/results/printReportRows.ts:581, src/features/results/SummaryMetrics.tsx:36"
+  },
+  {
+    "key": "results.detailcomparisontable.002",
+    "de": "Kapital",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/DetailComparisonTable.tsx:83, src/features/results/PrintReport.tsx:764, src/features/results/PrintReport.tsx:1331, src/features/results/ProductEditCards.tsx:168"
+  },
+  {
+    "key": "results.detailcomparisontable.003",
+    "de": "Netto-Rente",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/DetailComparisonTable.tsx:85, src/features/results/printReportRows.ts:597, src/features/results/ProductEditCards.tsx:174"
+  },
+  {
+    "key": "results.detailcomparisontable.004",
+    "de": "Kosten",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/DetailComparisonTable.tsx:86"
+  },
+  {
+    "key": "results.fairnesspanel.001",
+    "de": "Annahmen zur Fairness",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/FairnessPanel.tsx:14"
+  },
+  {
+    "key": "results.fairnesspanel.002",
+    "de": "Alle Produkte werden mit demselben monatlichen Nettoaufwand verglichen wie die bAV. Dadurch wird die bAV gegen die echte Belastung aus deinem Nettogehalt verglichen.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/FairnessPanel.tsx:16"
+  },
+  {
+    "key": "results.fairnesspanel.003",
+    "de": "keine Kinder",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/FairnessPanel.tsx:25"
+  },
+  {
+    "key": "results.fairnesspanel.004",
+    "de": ", Kirchensteuer nicht berechnet",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/FairnessPanel.tsx:29"
+  },
+  {
+    "key": "results.fairnesspanel.005",
+    "de": "PKV, KV + pPV/Monat, AG-Zuschuss zur PKV: /Monat",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/FairnessPanel.tsx:37"
+  },
+  {
+    "key": "results.fairnesspanel.006",
+    "de": "ETF-Einmalkapital ohne Sparerpauschbetrag; ETF-Entnahme mit jährlichem Sparerpauschbetrag. bAV-Einmalkapital: persönlicher Steuersatz (Fünftelregelung für Direktzusage/UK); KV/PV nach 1/120-Methode (§229 SGB V).",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/FairnessPanel.tsx:43"
+  },
+  {
+    "key": "results.fairnesspanel.007",
+    "de": "je Beitrag,",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/FairnessPanel.tsx:55, src/features/results/FairnessPanel.tsx:63"
+  },
+  {
+    "key": "results.fairnesspanel.008",
+    "de": "p.a. Kapitalgebühr (Mantel",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/FairnessPanel.tsx:56, src/features/results/FairnessPanel.tsx:65"
+  },
+  {
+    "key": "results.fairnesspanel.009",
+    "de": "Gesamt",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/FairnessPanel.tsx:79, src/features/results/FairnessPanel.tsx:86"
+  },
+  {
+    "key": "results.fairnesspanel.010",
+    "de": "mtl. — vollständig steuer- und SV-frei (Limit:",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/FairnessPanel.tsx:79"
+  },
+  {
+    "key": "results.feedragchart.001",
+    "de": "Nettoaufwand gesamt",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/FeeDragChart.tsx:38, src/features/results/FeeDragChart.tsx:194, src/features/results/FeeDragChart.tsx:203, src/features/results/feeDragChartData.ts:6"
+  },
+  {
+    "key": "results.feedragchart.002",
+    "de": "Netto-Rendite",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/FeeDragChart.tsx:39, src/features/results/FeeDragChart.tsx:195, src/features/results/FeeDragChart.tsx:204, src/features/results/feeDragChartData.ts:8"
+  },
+  {
+    "key": "results.feedragchart.003",
+    "de": "Gebühren gesamt",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/FeeDragChart.tsx:40, src/features/results/FeeDragChart.tsx:196, src/features/results/FeeDragChart.tsx:205, src/features/results/feeDragChartData.ts:10"
+  },
+  {
+    "key": "results.feedragchart.004",
+    "de": "Gebühren-Vergleich-Chart",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/FeeDragChart.tsx:82"
+  },
+  {
+    "key": "results.feedragchart.005",
+    "de": "Gebühren-Vergleich-Chart Legende",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/FeeDragChart.tsx:87"
+  },
+  {
+    "key": "results.feedragchart.006",
+    "de": "Gebühren-Vergleich",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/FeeDragChart.tsx:97"
+  },
+  {
+    "key": "results.feedragchart.007",
+    "de": "Kumulierte Netto-Auszahlungen bis Alter",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/FeeDragChart.tsx:99"
+  },
+  {
+    "key": "results.feedragchart.008",
+    "de": "(blau + grün) vs. Gesamtgebühren (rot, separate Säule) – im gewählten Szenario.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/FeeDragChart.tsx:99"
+  },
+  {
+    "key": "results.feedragchart.009",
+    "de": "Gebühren-Vergleich (Zusammenfassung)",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/results/FeeDragChart.tsx:187"
+  },
+  {
+    "key": "results.feedragchart.010",
+    "de": "Nettoaufwand, Netto-Rendite und Gebühren pro Produkt bis Alter",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/FeeDragChart.tsx:189"
+  },
+  {
+    "key": "results.inflationstresspanel.001",
+    "de": "Nominale vs. reale Netto-Monatsrente ab Alter",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/InflationStressPanel.tsx:59"
+  },
+  {
+    "key": "results.kvpvlastpanel.001",
+    "de": "Privat versichert (PKV)",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/KvPvLastPanel.tsx:31"
+  },
+  {
+    "key": "results.kvpvlastpanel.002",
+    "de": "Als KVdR-Mitglied zahlen Sie KV/PV nur auf Versorgungsbezuege (bAV, pAV); Basisrente, AVD und Riester sind fuer KVdR-Mitglieder beitragsfrei.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/KvPvLastPanel.tsx:35"
+  },
+  {
+    "key": "results.kvpvlastpanel.003",
+    "de": "Als freiwillig GKV-Versicherte/r wird das gesamte Renteneinkommen bis zur BBG mit dem allgemeinen Beitragssatz verbeitragt.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/KvPvLastPanel.tsx:37"
+  },
+  {
+    "key": "results.kvpvlastpanel.004",
+    "de": "PKV-Versicherte zahlen keine gesetzlichen KV/PV-Beitraege auf Renteneinkunefte.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/KvPvLastPanel.tsx:38"
+  },
+  {
+    "key": "results.kvpvlastpanel.005",
+    "de": "Monatliche Kranken- und Pflegeversicherungsbeitraege auf Renteneinkunefte.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/KvPvLastPanel.tsx:47"
+  },
+  {
+    "key": "results.kvpvlastpanel.006",
+    "de": "Gesamteinkommen uebersteigt BBG. KV/PV wird anteilig auf alle Einkommensquellen verteilt (proportionale Aufteilung nach §240 SGB V).",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/KvPvLastPanel.tsx:81"
+  },
+  {
+    "key": "results.kvpvlastpanel.007",
+    "de": "Brutto-Rente",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/KvPvLastPanel.tsx:90, src/features/results/PrintReport.tsx:916, src/features/results/ResultWaterfall.tsx:142"
+  },
+  {
+    "key": "results.kvpvlastpanel.008",
+    "de": "KV/PV/Monat",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/KvPvLastPanel.tsx:91"
+  },
+  {
+    "key": "results.kvpvlastpanel.009",
+    "de": "KV/PV berechnet via calculateRetirementKvPv. ETF (Kapitalverzehr) unterliegt keiner KV/PV. Die GRV ist im Gesamteinkommen enthalten, aber nicht einzeln aufgefuehrt.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/KvPvLastPanel.tsx:113"
+  },
+  {
+    "key": "results.lifetimeincomechart.001",
+    "de": "Kumulierte laufende Netto-Auszahlungen von Rentenbeginn bis Alter",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/LifetimeIncomeChart.tsx:87"
+  },
+  {
+    "key": "results.lifetimeincomechart.002",
+    "de": ". Einmalzahlungen nicht enthalten.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/LifetimeIncomeChart.tsx:88"
+  },
+  {
+    "key": "results.montecarlohighlights.001",
+    "de": "Garantierte Rente: mind. / Monat",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/MonteCarloHighlights.tsx:31"
+  },
+  {
+    "key": "results.montecarlohighlights.002",
+    "de": "Garantie: mind. Kapital zum Rentenbeginn",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/MonteCarloHighlights.tsx:34"
+  },
+  {
+    "key": "results.montecarlohighlights.003",
+    "de": "Der Rechner testet viele mögliche Börsenverläufe. Die Karten zeigen nicht eine sichere Vorhersage, sondern wie oft ein Produkt in diesen Tests vorne liegt. Die Balken darunter zeigen schwache, mittlere und starke Ergebnisse für die monatliche Netto-Rente.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/MonteCarloHighlights.tsx:63"
+  },
+  {
+    "key": "results.montecarlohighlights.004",
+    "de": "Höchste mittlere Netto-Rente",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/MonteCarloHighlights.tsx:78"
+  },
+  {
+    "key": "results.montecarlohighlights.005",
+    "de": "Am häufigsten vorne",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/MonteCarloHighlights.tsx:86"
+  },
+  {
+    "key": "results.montecarlohighlights.006",
+    "de": "Höchste Netto-Rente im direkten Vergleich",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/MonteCarloHighlights.tsx:91"
+  },
+  {
+    "key": "results.montecarlohighlights.007",
+    "de": "Stärkste Sicherheitslinie",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/MonteCarloHighlights.tsx:94"
+  },
+  {
+    "key": "results.montecarlohighlights.008",
+    "de": "90 % der Simulationen lagen über / Mon.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/MonteCarloHighlights.tsx:98"
+  },
+  {
+    "key": "results.montecarlohighlights.009",
+    "de": "Netto-Renten-Spannen",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/results/MonteCarloHighlights.tsx:104"
+  },
+  {
+    "key": "results.montecarlohighlights.010",
+    "de": "90 % der Simulationen lagen über",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/MonteCarloHighlights.tsx:148"
+  },
+  {
+    "key": "results.montecarlopanel.001",
+    "de": "Diese Grafik ist keine Vorhersage für ein einzelnes Jahr. Der Rechner testet viele mögliche Börsenverläufe. P50 ist der mittlere Verlauf, P10 ein schwaches Ergebnis und P90 ein starkes Ergebnis. Der Bereich dazwischen zeigt, wie stark das Ergebnis schwanken kann.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/MonteCarloPanel.tsx:105"
+  },
+  {
+    "key": "results.montecarlopanel.002",
+    "de": "Rendite |",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/MonteCarloPanel.tsx:113"
+  },
+  {
+    "key": "results.montecarlopanel.003",
+    "de": "Bestes Kapital",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/MonteCarloPanel.tsx:120, src/features/results/SensitivityPanel.tsx:67"
+  },
+  {
+    "key": "results.montecarlopanel.004",
+    "de": "Beste Rente",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/MonteCarloPanel.tsx:127, src/features/results/SensitivityPanel.tsx:68"
+  },
+  {
+    "key": "results.montecarlopanel.005",
+    "de": "Kapital-Spannen pro Produkt",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/results/MonteCarloPanel.tsx:142"
+  },
+  {
+    "key": "results.montecarlopanel.006",
+    "de": "Produkt für Monte-Carlo-Verlauf",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/results/MonteCarloPanel.tsx:196"
+  },
+  {
+    "key": "results.montecarlopanel.007",
+    "de": "anzeigen",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/MonteCarloPanel.tsx:205"
+  },
+  {
+    "key": "results.montecarlopanel.008",
+    "de": "Nur 10 % der Simulationen lagen über diesem Wert.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/MonteCarloPanel.tsx:242"
+  },
+  {
+    "key": "results.montecarlopanel.009",
+    "de": "Die Hälfte der Simulationen lag über, die Hälfte darunter.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/MonteCarloPanel.tsx:248"
+  },
+  {
+    "key": "results.montecarlopanel.010",
+    "de": "90 % der Simulationen lagen über diesem Wert.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/MonteCarloPanel.tsx:254"
+  },
+  {
+    "key": "results.montecarlopanel.011",
+    "de": "P10/P50/P90: Bei P10 lagen 90 % der Simulationen über diesem Wert, P50 ist der mittlere Wert, P90 ein starkes Ergebnis.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/MonteCarloPanel.tsx:292"
+  },
+  {
+    "key": "results.montecarlopanel.012",
+    "de": "Kapital P10 / P50 / P90",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/MonteCarloPanel.tsx:301"
+  },
+  {
+    "key": "results.montecarlopanel.013",
+    "de": "Chance bestes Kapital",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/MonteCarloPanel.tsx:302"
+  },
+  {
+    "key": "results.montecarlopanel.014",
+    "de": "Netto-Rente P10 / P50 / P90",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/MonteCarloPanel.tsx:303"
+  },
+  {
+    "key": "results.montecarlopanel.015",
+    "de": "Chance beste Rente",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/MonteCarloPanel.tsx:304"
+  },
+  {
+    "key": "results.montecarlopanel.016",
+    "de": "Unter Einzahlungen",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/MonteCarloPanel.tsx:305"
+  },
+  {
+    "key": "results.portfoliolifecycle.001",
+    "de": "( Verträge)",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/portfolioLifecycle.ts:52"
+  },
+  {
+    "key": "results.printreport.001",
+    "de": "Modellrechnung. Keine Anlage-, Steuer- oder Rechtsberatung",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:338, src/features/results/PrintReport.tsx:630"
+  },
+  {
+    "key": "results.printreport.002",
+    "de": "Diese Berechnung ist eine Modellrechnung mit Stand 2026 und ersetzt keine individuelle Anlage-, Steuer- oder Rechtsberatung. Vor Vertragsabschluss sollten Sie einen unabhängigen Berater hinzuziehen. Tatsächliche Werte zum Renteneintritt können erheblich abweichen; Annahmen wie Rendite, Inflation, Gehaltsentwicklung, Lebenserwartung und Vertragskosten sind Schätzungen.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:340, src/features/results/PrintReport.tsx:632"
+  },
+  {
+    "key": "results.printreport.003",
+    "de": "Persönliches Vorsorgemodell · erstellt am",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:354, src/features/results/PrintReport.tsx:645"
+  },
+  {
+    "key": "results.printreport.004",
+    "de": "Modellrechnung ohne Gewähr · kein Ersatz für individuelle Beratung",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:357, src/features/results/PrintReport.tsx:648"
+  },
+  {
+    "key": "results.printreport.005",
+    "de": "Persönliches Profil",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:368, src/features/results/PrintReport.tsx:658"
+  },
+  {
+    "key": "results.printreport.006",
+    "de": "keine",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/PrintReport.tsx:379, src/features/results/PrintReport.tsx:669"
+  },
+  {
+    "key": "results.printreport.007",
+    "de": "Hinweise und Grenzen der Rechnung",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:462, src/features/results/PrintReport.tsx:825"
+  },
+  {
+    "key": "results.printreport.008",
+    "de": "Keine Beratung:",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:465, src/features/results/PrintReport.tsx:828"
+  },
+  {
+    "key": "results.printreport.009",
+    "de": "Diese Rechnung ist eine Modellrechnung und ersetzt keine individuelle Anlage-, Steuer- oder Rechtsberatung. Vor Vertragsabschluss sollten Sie einen unabhängigen Berater hinzuziehen.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:465, src/features/results/PrintReport.tsx:828"
+  },
+  {
+    "key": "results.printreport.010",
+    "de": "Steuersätze, Sozialversicherungsbeiträge und Rentenwert sind auf den Stand 2026 fixiert (Quellen: BMF, Deutsche Rentenversicherung, GKV-Spitzenverband). Tatsächliche Werte zum Renteneintritt können erheblich abweichen.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:470"
+  },
+  {
+    "key": "results.printreport.011",
+    "de": "Annahmen sind Schätzungen:",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:476, src/features/results/PrintReport.tsx:837"
+  },
+  {
+    "key": "results.printreport.012",
+    "de": "Jahresrendite, Inflation, Gehaltsentwicklung, Lebenserwartung sowie Rentenfaktor und Vertragskosten sind Annahmen. Bereits kleine Abweichungen können das Ergebnis und die Reihenfolge der Produkte ändern.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:476"
+  },
+  {
+    "key": "results.printreport.013",
+    "de": "Keine Garantieprodukte modelliert:",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:481"
+  },
+  {
+    "key": "results.printreport.014",
+    "de": "Garantierente, Hinterbliebenen- und Berufsunfähigkeitsschutz sowie Überschussbeteiligung werden im Modell nicht separat ausgewiesen. Vergleichen Sie diese Bestandteile zusätzlich mit dem Produktinformationsblatt.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:481"
+  },
+  {
+    "key": "results.printreport.015",
+    "de": "Versorgungslücken:",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:487, src/features/results/PrintReport.tsx:841"
+  },
+  {
+    "key": "results.printreport.016",
+    "de": "Pflege, Erwerbsminderung, Scheidungsausgleich und Erbschaften sind nicht Teil des Modells.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:487, src/features/results/PrintReport.tsx:841"
+  },
+  {
+    "key": "results.printreport.017",
+    "de": "· Persönliches Modell · Keine Anlageberatung",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:494, src/features/results/PrintReport.tsx:848"
+  },
+  {
+    "key": "results.printreport.018",
+    "de": "RentenWiki.de Deutschland 2026 — Mein Plan",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:644"
+  },
+  {
+    "key": "results.printreport.019",
+    "de": "Netto-Einkommen mtl.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:721"
+  },
+  {
+    "key": "results.printreport.020",
+    "de": "Gesetzl. Rente netto mtl.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:722"
+  },
+  {
+    "key": "results.printreport.021",
+    "de": "Aggregierte Steuer- und Sozialversicherungsabgaben über alle Verträge nach §32a EStG und §240 SGB V (KV/PV). Fettgedruckte Zeile = Basisszenario.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:740"
+  },
+  {
+    "key": "results.printreport.022",
+    "de": "Mein Plan — Detail je Vertrag",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:746"
+  },
+  {
+    "key": "results.printreport.023",
+    "de": "Brutto-Rente mtl.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:765"
+  },
+  {
+    "key": "results.printreport.024",
+    "de": "Werte je Vertrag sind isoliert simuliert. Die Steuer- und KV/PV-Last in der Rentenphase wird im kombinierten Einkommen oben aggregiert (progressiver Einkommensteuertarif).",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:800"
+  },
+  {
+    "key": "results.printreport.025",
+    "de": "Steuersätze, Sozialversicherungsbeiträge und Rentenwert sind auf den Stand 2026 fixiert.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:833"
+  },
+  {
+    "key": "results.printreport.026",
+    "de": "Jahresrendite, Inflation, Gehaltsentwicklung, Lebenserwartung sowie Rentenfaktor und Vertragskosten sind Annahmen.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:837"
+  },
+  {
+    "key": "results.printreport.027",
+    "de": "Sechs Wege, fürs Alter zu sparen",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:891"
+  },
+  {
+    "key": "results.printreport.028",
+    "de": "Sechs Sparformen, sechs Steuersystematiken: Vergleich bei gleichem Netto-Aufwand von",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:893"
+  },
+  {
+    "key": "results.printreport.029",
+    "de": "pro Monat, Laufzeit",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:894"
+  },
+  {
+    "key": "results.printreport.030",
+    "de": ". Welcher der beste ist, hängt davon ab, was du gewichtest: Rendite, Sicherheit, Flexibilität. Diese Modellrechnung nennt keine Empfehlung.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:896"
+  },
+  {
+    "key": "results.printreport.031",
+    "de": "Wie es funktioniert",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:913"
+  },
+  {
+    "key": "results.printreport.032",
+    "de": "Kapital mit",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/PrintReport.tsx:914"
+  },
+  {
+    "key": "results.printreport.033",
+    "de": "Kosten p. a.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:915"
+  },
+  {
+    "key": "results.printreport.034",
+    "de": "Abzüge",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:917"
+  },
+  {
+    "key": "results.printreport.035",
+    "de": "Netto pro Monat",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:918"
+  },
+  {
+    "key": "results.printreport.036",
+    "de": "Sortierung nach Netto-Rente absteigend. Werte im",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:945"
+  },
+  {
+    "key": "results.printreport.037",
+    "de": ". Keine Wertung — die beste Wahl hängt vom persönlichen Trade-off zwischen Rendite, Sicherheit und Flexibilität ab.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:945"
+  },
+  {
+    "key": "results.printreport.038",
+    "de": "§ 1 — Wofür welche Sparform spricht — und wogegen",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:966"
+  },
+  {
+    "key": "results.printreport.039",
+    "de": "Wohin geht das Geld — Aufschlüsselung pro Produkt (Mit",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:1026"
+  },
+  {
+    "key": "results.printreport.040",
+    "de": "Aufschlüsselung im",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:1034"
+  },
+  {
+    "key": "results.printreport.041",
+    "de": ". „Effektivkosten p. a.\" nach RIY-Methode über die gesamte Ansparphase. Verfügbarkeit je Karte unten.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:1034"
+  },
+  {
+    "key": "results.printreport.042",
+    "de": "Verfügbar ab",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:1066"
+  },
+  {
+    "key": "results.printreport.043",
+    "de": "Kapital brutto",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/PrintReport.tsx:1109, src/features/results/ResultWaterfall.tsx:55"
+  },
+  {
+    "key": "results.printreport.044",
+    "de": "pr-wohin-money-row",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/PrintReport.tsx:1114"
+  },
+  {
+    "key": "results.printreport.045",
+    "de": "pr-wohin-money-row--",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/PrintReport.tsx:1115"
+  },
+  {
+    "key": "results.printreport.046",
+    "de": "pr-wohin-money-row--muted",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/PrintReport.tsx:1116"
+  },
+  {
+    "key": "results.printreport.047",
+    "de": "pr-wohin-money-row--bold",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/PrintReport.tsx:1117"
+  },
+  {
+    "key": "results.printreport.048",
+    "de": "pr-wohin-money-row--border",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/PrintReport.tsx:1118"
+  },
+  {
+    "key": "results.printreport.049",
+    "de": "pr-wohin-money-row--accent",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/PrintReport.tsx:1119"
+  },
+  {
+    "key": "results.printreport.050",
+    "de": "Vollständige statutorische Werte und § §-Verweise:",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:1171"
+  },
+  {
+    "key": "results.printreport.051",
+    "de": "— BMF / BMAS-Quellen, jährliche Aktualisierung.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:1173"
+  },
+  {
+    "key": "results.printreport.052",
+    "de": "Zusammensetzung &amp; Sensitivität — Rente mit",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:1201"
+  },
+  {
+    "key": "results.printreport.053",
+    "de": "Beitrag heute",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:1213"
+  },
+  {
+    "key": "results.printreport.054",
+    "de": "Rente mit",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:1214"
+  },
+  {
+    "key": "results.printreport.055",
+    "de": "Werte im Basisszenario. Anteil basiert auf der aggregierten Netto-Rente nach Steuer und KV/PV.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:1241"
+  },
+  {
+    "key": "results.printreport.056",
+    "de": "Was sich ändern würde, wenn …",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:1267"
+  },
+  {
+    "key": "results.printreport.057",
+    "de": "Δ Netto-Rente",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:1276"
+  },
+  {
+    "key": "results.printreport.058",
+    "de": "Einzelne Was-wäre-wenn-Perturbationen im Basisszenario, gerundet auf ganze Euro. Werte unter 1 €/Monat werden als ±0 angezeigt.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:1296"
+  },
+  {
+    "key": "results.printreport.059",
+    "de": "Kapital &amp; Auszahlungen — Wendepunkte je Vertrag",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:1316"
+  },
+  {
+    "key": "results.printreport.060",
+    "de": "Aggregierte Wendepunkte je Vertrag — Halbzeit der Ansparphase, Renteneintritt, Break-even (Auszahlungen ≥ Einzahlungen) und voraussichtliches Modell-Endalter.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:1356"
+  },
+  {
+    "key": "results.printreport.061",
+    "de": "Vertrag im Detail",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/PrintReport.tsx:1387"
+  },
+  {
+    "key": "results.printreportrows.001",
+    "de": "Hergeleitet aus rollierenden 30-Jahres-Fenstern (MSCI World) und dem realen Median MSCI World 1900–2025.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:340"
+  },
+  {
+    "key": "results.printreportrows.002",
+    "de": "Grundtarif § 32a EStG mit Soli; Kapitalerträge nach § 20 / § 32d EStG mit Abgeltungsteuer plus Sparer-Pauschbetrag;",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:345"
+  },
+  {
+    "key": "results.printreportrows.003",
+    "de": "nachgelagerte Besteuerung der Renten nach § 22 EStG (Kohortenwerte).",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:346"
+  },
+  {
+    "key": "results.printreportrows.004",
+    "de": "KVdR mit Freibetrag § 226 SGB V (Versorgungsbezüge) bzw. freiwillige GKV § 240 SGB V.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:351"
+  },
+  {
+    "key": "results.printreportrows.005",
+    "de": "KV/PV-Apportionierung über die Beitragsbemessungsgrenze (modellierte Konvention).",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:352"
+  },
+  {
+    "key": "results.printreportrows.006",
+    "de": "BBG RV/KV, Aktueller Rentenwert, Bezugsgröße, Riester-Zulagen, Basisrenten-Höchstbetrag",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:357"
+  },
+  {
+    "key": "results.printreportrows.007",
+    "de": "aus dem aktiven Regel-Modul (src/rules/) — jährlich nach BMF / BMAS aktualisiert.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:358"
+  },
+  {
+    "key": "results.printreportrows.008",
+    "de": "Bewusst nicht modelliert",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:361"
+  },
+  {
+    "key": "results.printreportrows.009",
+    "de": "Garantien einzelner Versicherungsverträge vor 2005, Auslandsbezug / Erbschaften, politische Risiken,",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:363"
+  },
+  {
+    "key": "results.printreportrows.010",
+    "de": "individuelle Sterbetafeln. Annahmen sind Schätzungen — siehe Hinweise und Grenzen unten.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:364"
+  },
+  {
+    "key": "results.printreportrows.011",
+    "de": "· beitragsfrei",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/printReportRows.ts:469"
+  },
+  {
+    "key": "results.printreportrows.012",
+    "de": "derzeit keine Einzahlungen",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:584"
+  },
+  {
+    "key": "results.printreportrows.013",
+    "de": "heute",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:584"
+  },
+  {
+    "key": "results.printreportrows.014",
+    "de": "Einzahlungen ges.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:587"
+  },
+  {
+    "key": "results.printreportrows.015",
+    "de": "über",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/printReportRows.ts:589"
+  },
+  {
+    "key": "results.printreportrows.016",
+    "de": "Jahr",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:589, src/features/results/SteuerWasserfallPanel.tsx:251"
+  },
+  {
+    "key": "results.printreportrows.017",
+    "de": "Voraussichtl. Kapital",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:592"
+  },
+  {
+    "key": "results.printreportrows.018",
+    "de": "pro Monat",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:599"
+  },
+  {
+    "key": "results.printreportrows.019",
+    "de": "Keine Pflichtrente",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:780"
+  },
+  {
+    "key": "results.printreportrows.020",
+    "de": "Gesetzlich · § 22 Nr. 1 EStG",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:791, src/features/results/printReportRows.ts:794"
+  },
+  {
+    "key": "results.printreportrows.021",
+    "de": "Laufende Kosten (TER)",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:849"
+  },
+  {
+    "key": "results.printreportrows.022",
+    "de": "Bruttoumwandlung pro Monat",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:855"
+  },
+  {
+    "key": "results.printreportrows.023",
+    "de": "Durchführungsweg",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:860"
+  },
+  {
+    "key": "results.printreportrows.024",
+    "de": "Monatlicher Beitrag",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:864, src/features/results/printReportRows.ts:873, src/features/results/ResultWaterfall.tsx:105"
+  },
+  {
+    "key": "results.printreportrows.025",
+    "de": "Aktueller Rückkaufswert",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:867"
+  },
+  {
+    "key": "results.printreportrows.026",
+    "de": "Eigenbeitrag pro Monat",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:880, src/features/results/printReportRows.ts:888"
+  },
+  {
+    "key": "results.printreportrows.027",
+    "de": "rendite-konservativ",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:992"
+  },
+  {
+    "key": "results.printreportrows.028",
+    "de": "… die Märkte über die gesamte Laufzeit nur",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:994"
+  },
+  {
+    "key": "results.printreportrows.029",
+    "de": "(Szenario „ \")",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/printReportRows.ts:996"
+  },
+  {
+    "key": "results.printreportrows.030",
+    "de": "… du mit Jahren in Rente gehst",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/printReportRows.ts:1014"
+  },
+  {
+    "key": "results.printreportrows.031",
+    "de": "beträgt (statt aktuell )",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/printReportRows.ts:1033"
+  },
+  {
+    "key": "results.printreportrows.032",
+    "de": "… du den ersten ETF-Sparplan um",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:1049"
+  },
+  {
+    "key": "results.printreportrows.033",
+    "de": "/Monat erhöhst",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/printReportRows.ts:1050"
+  },
+  {
+    "key": "results.printreportrows.034",
+    "de": "Noch kein ETF-Sparplan im Plan — kein Vergleich möglich.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:1091"
+  },
+  {
+    "key": "results.printreportrows.035",
+    "de": "ETF-Vertrag vorhanden, aber beitragsfrei — Aufstockung würde einen neuen aktiven Vertrag erfordern.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/printReportRows.ts:1093"
+  },
+  {
+    "key": "results.producteditcards.001",
+    "de": "Was monatlich auf deinem Konto landet — nach Steuer und (bei bAV/Rürup) Krankenkasse.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/ProductEditCards.tsx:22"
+  },
+  {
+    "key": "results.producteditcards.002",
+    "de": "Wie viel die Vertrags- und Fondskosten deine Rendite jährlich schmälern. Unter 1 % gilt als günstig, über 1,5 % als hoch.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/ProductEditCards.tsx:24"
+  },
+  {
+    "key": "results.producteditcards.003",
+    "de": "Wie viel Euro Rente du pro 10.000 EUR Kapital monatlich bekommst — steht in deinem Versicherungsangebot.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/ProductEditCards.tsx:26"
+  },
+  {
+    "key": "results.producteditcards.004",
+    "de": "Je nach Fondstyp ist ein Teil der Gewinne von der Abgeltungsteuer befreit (z. B. 30 % bei Aktienfonds).",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/ProductEditCards.tsx:28"
+  },
+  {
+    "key": "results.producteditcards.005",
+    "de": "Der Beitrag wird über den Netto-Beitrag in den Eingaben gesetzt.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/ProductEditCards.tsx:33"
+  },
+  {
+    "key": "results.producteditcards.006",
+    "de": "Aktienfonds (30 % steuerfrei)",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/ProductEditCards.tsx:54"
+  },
+  {
+    "key": "results.producteditcards.007",
+    "de": "Mischfonds (15 % steuerfrei)",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/ProductEditCards.tsx:55"
+  },
+  {
+    "key": "results.producteditcards.008",
+    "de": "Inl. Immobilienfonds (60 % steuerfrei)",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/ProductEditCards.tsx:56"
+  },
+  {
+    "key": "results.producteditcards.009",
+    "de": "Ausl. Immobilienfonds (80 % steuerfrei)",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/ProductEditCards.tsx:57"
+  },
+  {
+    "key": "results.producteditcards.010",
+    "de": "AltZertG-Vertragsobergrenze /Jahr (Eigenbeitrag + Zulagen) erreicht. Andere Produkte können den Mehrbetrag investieren.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/ProductEditCards.tsx:157"
+  },
+  {
+    "key": "results.producteditcards.011",
+    "de": "Rentenfaktor ist noch Schätzwert – bitte aus Angebot übernehmen.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/ProductEditCards.tsx:193"
+  },
+  {
+    "key": "results.producteditcards.012",
+    "de": "Detailaufschlüsselung: Eingaben → Erweitert",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/ProductEditCards.tsx:380, src/features/results/ProductEditCards.tsx:462, src/features/results/ProductEditCards.tsx:527, src/features/results/ProductEditCards.tsx:561, src/features/results/ProductEditCards.tsx:628"
+  },
+  {
+    "key": "results.provenance.001",
+    "de": "Wieder als Schätzwert markieren",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/provenance.tsx:95"
+  },
+  {
+    "key": "results.provenance.002",
+    "de": "Wert stimmt mit deinem Angebot — als geprüft markieren",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/provenance.tsx:96"
+  },
+  {
+    "key": "results.provenance.003",
+    "de": "↺ als Schätzwert",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/provenance.tsx:99"
+  },
+  {
+    "key": "results.provenancehelpers.001",
+    "de": "Bestätigt",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/provenanceHelpers.ts:80"
+  },
+  {
+    "key": "results.resultwaterfall.001",
+    "de": "nach Steuer-Lump",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/ResultWaterfall.tsx:60"
+  },
+  {
+    "key": "results.resultwaterfall.002",
+    "de": "Brutto-Kapital",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/ResultWaterfall.tsx:66"
+  },
+  {
+    "key": "results.resultwaterfall.003",
+    "de": "= Netto-Kapital",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/ResultWaterfall.tsx:87"
+  },
+  {
+    "key": "results.resultwaterfall.004",
+    "de": "Du selbst",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/ResultWaterfall.tsx:108"
+  },
+  {
+    "key": "results.resultwaterfall.005",
+    "de": "+ Steuer-/SV-Vorteil",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/ResultWaterfall.tsx:113"
+  },
+  {
+    "key": "results.resultwaterfall.006",
+    "de": "Arbeitgeberzuschuss (bAV: mind. % Pflicht-AG-Zuschuss nach §1a Abs. 1a BetrAVG) oder staatliche Zulagen (Riester: Grundzulage € , Kinderzulagen bis € pro Kind).",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/ResultWaterfall.tsx:126"
+  },
+  {
+    "key": "results.resultwaterfall.007",
+    "de": "Auszahlung mtl.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/ResultWaterfall.tsx:139"
+  },
+  {
+    "key": "results.resultwaterfall.008",
+    "de": "− Steuer & KV/PV",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/ResultWaterfall.tsx:147"
+  },
+  {
+    "key": "results.resultwaterfall.009",
+    "de": "Abgeltungsteuer ( % + Soli) auf Kursgewinne und Ausschüttungen – keine KV/PV-Pflicht auf private Kapitalerträge.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/ResultWaterfall.tsx:151"
+  },
+  {
+    "key": "results.resultwaterfall.010",
+    "de": "Einkommensteuer und Beiträge zur Kranken-/Pflegeversicherung (KV/PV) auf die monatliche Rente. Die Höhe hängt von Einkommen, Besteuerungsanteil und Kassenart (KVdR/freiwillig) ab.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/ResultWaterfall.tsx:152"
+  },
+  {
+    "key": "results.resultwaterfall.011",
+    "de": "= Netto-Rente",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/ResultWaterfall.tsx:158"
+  },
+  {
+    "key": "results.resultwaterfall.012",
+    "de": "+ GRV-Netto",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/ResultWaterfall.tsx:164"
+  },
+  {
+    "key": "results.resultwaterfall.013",
+    "de": "= Gesamt mtl.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/ResultWaterfall.tsx:168"
+  },
+  {
+    "key": "results.resultwaterfall.014",
+    "de": "Wohin geht das Geld?",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/results/ResultWaterfall.tsx:189, src/features/results/ResultWaterfall.tsx:190"
+  },
+  {
+    "key": "results.sensitivity.001",
+    "de": "Rendite −1 pp",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/sensitivity.ts:64"
+  },
+  {
+    "key": "results.sensitivity.002",
+    "de": "Rendite +1 pp",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/sensitivity.ts:75"
+  },
+  {
+    "key": "results.sensitivity.003",
+    "de": "Basis-Szenario eine Prozentpunkt höher.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/sensitivity.ts:76"
+  },
+  {
+    "key": "results.sensitivity.004",
+    "de": "Gebühren −0,5 pp",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/sensitivity.ts:86"
+  },
+  {
+    "key": "results.sensitivity.005",
+    "de": "Wrapper- und Fondsgebühren bei bAV/pAV/AVD je 0,25 pp niedriger.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/sensitivity.ts:87"
+  },
+  {
+    "key": "results.sensitivity.006",
+    "de": "Gebühren +0,5 pp",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/sensitivity.ts:101"
+  },
+  {
+    "key": "results.sensitivity.007",
+    "de": "Wrapper- und Fondsgebühren bei bAV/pAV/AVD je 0,25 pp höher.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/sensitivity.ts:102"
+  },
+  {
+    "key": "results.sensitivity.008",
+    "de": "Kein vertraglicher und kein gesetzlicher AG-Pflichtzuschuss bei bAV.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/sensitivity.ts:117"
+  },
+  {
+    "key": "results.sensitivity.009",
+    "de": "Vertraglicher AG-Match auf 50 % der Bruttoumwandlung erhöht.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/sensitivity.ts:129"
+  },
+  {
+    "key": "results.sensitivity.010",
+    "de": "Zwei Jahre früher in Rente gehen.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/sensitivity.ts:140"
+  },
+  {
+    "key": "results.sensitivity.011",
+    "de": "Zwei Jahre später in Rente gehen.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/sensitivity.ts:149"
+  },
+  {
+    "key": "results.sensitivity.012",
+    "de": "In der Rente freiwillig statt pflichtversichert (kein KV-Freibetrag).",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/sensitivity.ts:161"
+  },
+  {
+    "key": "results.sensitivitypanel.001",
+    "de": "annahmenabhängig",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/SensitivityPanel.tsx:19"
+  },
+  {
+    "key": "results.sensitivitypanel.002",
+    "de": "Was müsste sich ändern?",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/results/SensitivityPanel.tsx:56, src/features/results/SensitivityPanel.tsx:58"
+  },
+  {
+    "key": "results.sequenceofreturnspanel.001",
+    "de": "Keine Produkte ausgewählt.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/SequenceOfReturnsPanel.tsx:112"
+  },
+  {
+    "key": "results.sequenceofreturnspanel.002",
+    "de": "p.a.), andere Reihenfolge — schlechte Renditen früh in der Rente erschöpfen das Kapital deutlich schneller als gute Frührenditen.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/SequenceOfReturnsPanel.tsx:124"
+  },
+  {
+    "key": "results.sequenceofreturnspanel.003",
+    "de": "Vereinfachte Projektion (konstante Nettorente, ohne Anpassung von Steuern und Sozialversicherung) zur Illustration des Reihenfolgeeffekts im Ruhestand.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/SequenceOfReturnsPanel.tsx:233"
+  },
+  {
+    "key": "results.steuerwasserfallpanel.001",
+    "de": "brutto",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/SteuerWasserfallPanel.tsx:40, src/features/results/SteuerWasserfallPanel.tsx:128, src/features/results/SteuerWasserfallPanel.tsx:208"
+  },
+  {
+    "key": "results.steuerwasserfallpanel.002",
+    "de": "Brutto-Auszahlung",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/SteuerWasserfallPanel.tsx:40, src/features/results/SteuerWasserfallPanel.tsx:128"
+  },
+  {
+    "key": "results.steuerwasserfallpanel.003",
+    "de": "− Solidaritätszuschlag",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/SteuerWasserfallPanel.tsx:54, src/features/results/SteuerWasserfallPanel.tsx:169"
+  },
+  {
+    "key": "results.steuerwasserfallpanel.004",
+    "de": "netto",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/SteuerWasserfallPanel.tsx:56, src/features/results/SteuerWasserfallPanel.tsx:181"
+  },
+  {
+    "key": "results.steuerwasserfallpanel.005",
+    "de": "= Netto-Auszahlung",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/results/SteuerWasserfallPanel.tsx:56, src/features/results/SteuerWasserfallPanel.tsx:181"
+  },
+  {
+    "key": "results.steuerwasserfallpanel.006",
+    "de": "Steuer-Wasserfall",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/SteuerWasserfallPanel.tsx:215"
+  },
+  {
+    "key": "results.steuerwasserfallpanel.007",
+    "de": "Vom Bruttobetrag zur Netto-Auszahlung — Schritt für Schritt",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/SteuerWasserfallPanel.tsx:216"
+  },
+  {
+    "key": "results.steuerwasserfallpanel.008",
+    "de": "Berechnung für das Produkt in Isolation (ohne GRV-Stapelung). Alle Angaben mtl. auf Basis des",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/SteuerWasserfallPanel.tsx:282"
+  },
+  {
+    "key": "results.steuerwasserfallpanel.009",
+    "de": ". Keine Steuer-, Rechts- oder Anlageberatung.",
+    "surface": "results",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/results/SteuerWasserfallPanel.tsx:284"
+  },
+  {
+    "key": "results.summarymetrics.001",
+    "de": "EP · brutto",
+    "surface": "results",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/results/SummaryMetrics.tsx:29"
+  }
+]

@@ -1,0 +1,198 @@
+[
+  {
+    "key": "vergleichdetail.vergleichdetailcard.001",
+    "de": "Verfügbar ab",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich-detail/VergleichDetailCard.tsx:53"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailcardsection.001",
+    "de": "Kapital brutto",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vergleich-detail/VergleichDetailCardSection.tsx:50, src/features/vergleich-detail/vergleichDetailRows.ts:279"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailpage.001",
+    "de": "Wohin geht das Geld? Vergleich im Detail | RentenWiki.de",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vergleich-detail/VergleichDetailPage.tsx:145"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailpage.002",
+    "de": "Wohin geht das Geld — nur im Vergleichs-Modus",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · attr:title · src/features/vergleich-detail/VergleichDetailPage.tsx:220"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailpage.003",
+    "de": "Vergleich › Wohin geht das Geld",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vergleich-detail/VergleichDetailPage.tsx:258"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailpage.004",
+    "de": "Wohin geht jeder Euro?",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich-detail/VergleichDetailPage.tsx:260"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailpage.005",
+    "de": "Diese Seite zeigt für jede Sparform, wohin jeder eingezahlte Euro fließt — Eigenanteil, Förderung oder Arbeitgeberzuschuss, Kosten und Steuer — und was im Alter monatlich übrig bleibt. Solange noch kein eigener Vergleich angelegt ist, rechnen wir mit Standardannahmen für 2026: monatlicher Netto-Aufwand",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich-detail/VergleichDetailPage.tsx:263"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailpage.006",
+    "de": "Jahre",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich-detail/VergleichDetailPage.tsx:269, src/features/vergleich-detail/VergleichDetailPage.tsx:278"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailpage.007",
+    "de": ". Eigene Werte ändern die Aufschlüsselung sofort.",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich-detail/VergleichDetailPage.tsx:270"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailpage.008",
+    "de": "Jede Sparform verteilt deinen monatlichen Aufwand anders auf Eigenanteil, Förderung, Kosten und Steuer. Bei einem Netto-Aufwand von",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich-detail/VergleichDetailPage.tsx:275"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailpage.009",
+    "de": "pro Monat, Laufzeit",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich-detail/VergleichDetailPage.tsx:277"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailpage.010",
+    "de": "und Renteneintritt mit",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich-detail/VergleichDetailPage.tsx:278"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailpage.011",
+    "de": "zeigt jede Karte: was eingezahlt wird, was am Renteneintritt steht und was im Alter monatlich übrig bleibt.",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich-detail/VergleichDetailPage.tsx:279"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailpage.012",
+    "de": "← Zurück zum Vergleich",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich-detail/VergleichDetailPage.tsx:295"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailpage.013",
+    "de": "Produkt-Aufschlüsselungen",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/vergleich-detail/VergleichDetailPage.tsx:306"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailpage.014",
+    "de": "Noch keine Produkte ausgewählt",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich-detail/VergleichDetailPage.tsx:371"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailpage.015",
+    "de": "Wähle im Vergleich mindestens ein Produkt aus, um die Aufschlüsselung pro Euro zu sehen — wer wieviel zahlt, was Kosten und Steuer wegnehmen und was monatlich im Alter übrig bleibt.",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich-detail/VergleichDetailPage.tsx:373"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailpage.016",
+    "de": "Zurück zum Vergleich",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich-detail/VergleichDetailPage.tsx:386"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailrows.001",
+    "de": "Du selbst",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vergleich-detail/vergleichDetailRows.ts:152"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailrows.002",
+    "de": "+ Steuer- & SV-Vorteil",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vergleich-detail/vergleichDetailRows.ts:201"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailrows.003",
+    "de": "+ Steuerrückerstattung",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vergleich-detail/vergleichDetailRows.ts:210"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailrows.004",
+    "de": "+ Steuerrückerstattung & Zulagen",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vergleich-detail/vergleichDetailRows.ts:226"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailrows.005",
+    "de": "Ansparphase, pro Monat",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vergleich-detail/vergleichDetailRows.ts:248"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailrows.006",
+    "de": "Mit , Kapital",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/vergleich-detail/vergleichDetailRows.ts:277"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailrows.007",
+    "de": "− Kosten",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vergleich-detail/vergleichDetailRows.ts:281"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailrows.008",
+    "de": "Brutto-Rente",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vergleich-detail/vergleichDetailRows.ts:348"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailrows.009",
+    "de": "= Netto-Rente",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vergleich-detail/vergleichDetailRows.ts:356"
+  },
+  {
+    "key": "vergleichdetail.vergleichdetailrows.010",
+    "de": "Im Alter, pro Monat",
+    "surface": "vergleich-detail",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vergleich-detail/vergleichDetailRows.ts:363"
+  }
+]

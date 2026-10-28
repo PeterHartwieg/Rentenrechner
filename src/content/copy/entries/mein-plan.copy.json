@@ -1,0 +1,338 @@
+[
+  {
+    "key": "meinplan.meinplanpage.001",
+    "de": "mein-plan-zusammensetzung",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/mein-plan/MeinPlanPage.tsx:40"
+  },
+  {
+    "key": "meinplan.meinplanpage.002",
+    "de": "mein-plan-sensitivitaet",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/mein-plan/MeinPlanPage.tsx:46"
+  },
+  {
+    "key": "meinplan.meinplanpage.003",
+    "de": "Was sich ändern würde, wenn …",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/mein-plan/MeinPlanPage.tsx:48"
+  },
+  {
+    "key": "meinplan.meinplanpage.004",
+    "de": "Persönliche Auskunft · ohne Gewähr",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:188"
+  },
+  {
+    "key": "meinplan.meinplanpage.005",
+    "de": "Mein Plan",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:189"
+  },
+  {
+    "key": "meinplan.meinplanpage.006",
+    "de": "Auf Basis deiner Angaben sind mit einem Renteneintritt mit",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:192"
+  },
+  {
+    "key": "meinplan.meinplanpage.007",
+    "de": "Jahren",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:193, src/features/mein-plan/MeinPlanPage.tsx:879"
+  },
+  {
+    "key": "meinplan.meinplanpage.008",
+    "de": "aus allen aktiven Quellen voraussichtlich folgende Beträge zu erwarten. Alle Zahlen sind",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:193"
+  },
+  {
+    "key": "meinplan.meinplanpage.009",
+    "de": "nach Steuer und Krankenversicherung",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:195"
+  },
+  {
+    "key": "meinplan.meinplanpage.010",
+    "de": "und basieren auf dem Szenario",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:195"
+  },
+  {
+    "key": "meinplan.meinplanpage.011",
+    "de": "Voraussichtlich, pro Monat",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:202"
+  },
+  {
+    "key": "meinplan.meinplanpage.012",
+    "de": "entspricht das ungefähr",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:208"
+  },
+  {
+    "key": "meinplan.meinplanpage.013",
+    "de": "Inflation über",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:210"
+  },
+  {
+    "key": "meinplan.meinplanpage.014",
+    "de": "Jahren).",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:211"
+  },
+  {
+    "key": "meinplan.meinplanpage.015",
+    "de": "Nominale Auszahlung in heutiger Kaufkraft — keine Inflations&shy;anpassung in den Annahmen.",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:215"
+  },
+  {
+    "key": "meinplan.meinplanpage.016",
+    "de": "Kapital im Verlauf →",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:234"
+  },
+  {
+    "key": "meinplan.meinplanpage.017",
+    "de": "Beitrag heute",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:254"
+  },
+  {
+    "key": "meinplan.meinplanpage.018",
+    "de": "Rente mit",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:255"
+  },
+  {
+    "key": "meinplan.meinplanpage.019",
+    "de": "Noch keine aktiven Verträge im Plan — füge im Tab",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:301"
+  },
+  {
+    "key": "meinplan.meinplanpage.020",
+    "de": "„Meine Verträge“",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:302"
+  },
+  {
+    "key": "meinplan.meinplanpage.021",
+    "de": "einen Vertrag hinzu oder übernimm einen Empfehlungs-Plan.",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:302"
+  },
+  {
+    "key": "meinplan.meinplanpage.022",
+    "de": "Wie reagiert deine voraussichtliche Netto-Rente, wenn sich eine einzelne Annahme verschiebt? Jede Zeile zeigt die Differenz zum aktuellen Szenario — gerundet auf volle Euro.",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:318"
+  },
+  {
+    "key": "meinplan.meinplanpage.023",
+    "de": "Sensitivitäts­zeilen werden nach dem ersten Vertrag im Plan berechnet.",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:331"
+  },
+  {
+    "key": "meinplan.meinplanpage.024",
+    "de": "Jahre",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/mein-plan/MeinPlanPage.tsx:405, src/features/mein-plan/MeinPlanPage.tsx:406, src/features/mein-plan/MeinPlanPage.tsx:437"
+  },
+  {
+    "key": "meinplan.meinplanpage.025",
+    "de": "brutto",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/mein-plan/MeinPlanPage.tsx:408"
+  },
+  {
+    "key": "meinplan.meinplanpage.026",
+    "de": "Brutto pro Jahr",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/mein-plan/MeinPlanPage.tsx:409"
+  },
+  {
+    "key": "meinplan.meinplanpage.027",
+    "de": "rendite-basis",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/mein-plan/MeinPlanPage.tsx:429"
+  },
+  {
+    "key": "meinplan.meinplanpage.028",
+    "de": "Rendite (Basis)",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/mein-plan/MeinPlanPage.tsx:430"
+  },
+  {
+    "key": "meinplan.meinplanpage.029",
+    "de": "Wunsch-Netto",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/mein-plan/MeinPlanPage.tsx:442"
+  },
+  {
+    "key": "meinplan.meinplanpage.030",
+    "de": "Angaben bearbeiten",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:460"
+  },
+  {
+    "key": "meinplan.meinplanpage.031",
+    "de": "· beitragsfrei",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/mein-plan/MeinPlanPage.tsx:650"
+  },
+  {
+    "key": "meinplan.meinplanpage.032",
+    "de": "Gesetzliche Rente",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/mein-plan/MeinPlanPage.tsx:675, src/features/mein-plan/MeinPlanPage.tsx:678"
+  },
+  {
+    "key": "meinplan.meinplanpage.033",
+    "de": "Keine Pflichtrente",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/mein-plan/MeinPlanPage.tsx:684"
+  },
+  {
+    "key": "meinplan.meinplanpage.034",
+    "de": "Gesetzlich · § 22 Nr. 1 EStG",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/mein-plan/MeinPlanPage.tsx:703, src/features/mein-plan/MeinPlanPage.tsx:706"
+  },
+  {
+    "key": "meinplan.meinplanpage.035",
+    "de": "beitragsfrei",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/mein-plan/MeinPlanPage.tsx:798"
+  },
+  {
+    "key": "meinplan.meinplanpage.036",
+    "de": "rendite-konservativ",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/mein-plan/MeinPlanPage.tsx:854"
+  },
+  {
+    "key": "meinplan.meinplanpage.037",
+    "de": "… die Märkte über die gesamte Laufzeit nur",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:857"
+  },
+  {
+    "key": "meinplan.meinplanpage.038",
+    "de": "p. a. erwirtschaften (Szenario „",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:859"
+  },
+  {
+    "key": "meinplan.meinplanpage.039",
+    "de": "… du mit",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:879"
+  },
+  {
+    "key": "meinplan.meinplanpage.040",
+    "de": "in Rente gehst (statt aktuell",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:880"
+  },
+  {
+    "key": "meinplan.meinplanpage.041",
+    "de": "beträgt (statt aktuell",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:901"
+  },
+  {
+    "key": "meinplan.meinplanpage.042",
+    "de": "… du den ersten ETF-Sparplan um",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:919"
+  },
+  {
+    "key": "meinplan.meinplanpage.043",
+    "de": "/Monat",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:920"
+  },
+  {
+    "key": "meinplan.meinplanpage.044",
+    "de": "erhöhst",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/mein-plan/MeinPlanPage.tsx:921"
+  },
+  {
+    "key": "meinplan.meinplanpage.045",
+    "de": "mein-plan-sens-delta mein-plan-sens-delta--",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/mein-plan/MeinPlanPage.tsx:962"
+  },
+  {
+    "key": "meinplan.meinplanpage.046",
+    "de": "pro Monat",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/mein-plan/MeinPlanPage.tsx:963"
+  },
+  {
+    "key": "meinplan.meinplanpage.047",
+    "de": "Noch kein ETF-Sparplan im Plan — kein Vergleich möglich.",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/mein-plan/MeinPlanPage.tsx:994"
+  },
+  {
+    "key": "meinplan.meinplanpage.048",
+    "de": "ETF-Vertrag vorhanden, aber beitragsfrei — Aufstockung würde einen neuen aktiven Vertrag erfordern.",
+    "surface": "mein-plan",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/mein-plan/MeinPlanPage.tsx:996"
+  }
+]

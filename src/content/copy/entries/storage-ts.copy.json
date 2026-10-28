@@ -1,0 +1,23 @@
+[
+  {
+    "key": "storagets.storage.001",
+    "de": "Mein Plan",
+    "surface": "storage-ts",
+    "risk": "normal",
+    "description": "auto-import · string · src/storage.ts:171, src/storage.ts:390"
+  },
+  {
+    "key": "storagets.storage.002",
+    "de": "Private Rentenversicherung",
+    "surface": "storage-ts",
+    "risk": "normal",
+    "description": "auto-import · string · src/storage.ts:321"
+  },
+  {
+    "key": "storagets.storage.003",
+    "de": "Riester-Rente",
+    "surface": "storage-ts",
+    "risk": "normal",
+    "description": "auto-import · string · src/storage.ts:360"
+  }
+]

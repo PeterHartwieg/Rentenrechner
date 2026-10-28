@@ -1,0 +1,1010 @@
+[
+  {
+    "key": "seo.llmstxt.001",
+    "de": "Kostenloser Modellrechner für die Altersvorsorge in Deutschland.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/llmsTxt.ts:42"
+  },
+  {
+    "key": "seo.llmstxt.002",
+    "de": "Keine Steuer-, Rechts- oder Anlageberatung.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/llmsTxt.ts:43"
+  },
+  {
+    "key": "seo.llmstxt.003",
+    "de": "Quelloffen, nicht-kommerziell (PolyForm Noncommercial 1.0.0). Stand 2026.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/llmsTxt.ts:44"
+  },
+  {
+    "key": "seo.llmstxt.004",
+    "de": "## Rechner und Themen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/llmsTxt.ts:49"
+  },
+  {
+    "key": "seo.publicrouteregistry.001",
+    "de": "Altersvorsorge-Rechner 2026 | RentenWiki.de",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:161"
+  },
+  {
+    "key": "seo.publicrouteregistry.002",
+    "de": "Kostenloser Rechner für deine Altersvorsorge: ETF, bAV, Riester, Basisrente,",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:163"
+  },
+  {
+    "key": "seo.publicrouteregistry.003",
+    "de": "AVD und private Rente vergleichen. Lokal im Browser, kein Account, Werte 2026.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:164"
+  },
+  {
+    "key": "seo.publicrouteregistry.004",
+    "de": "Was bekommst du wirklich an Rente?",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:165"
+  },
+  {
+    "key": "seo.publicrouteregistry.005",
+    "de": "Modellrechner für die deutsche Altersvorsorge mit Werten 2026. Vergleicht alle",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:167"
+  },
+  {
+    "key": "seo.publicrouteregistry.006",
+    "de": "Schicht-1- bis Schicht-3-Wege unter denselben Annahmen, ermittelt Rentenlücke und",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:168"
+  },
+  {
+    "key": "seo.publicrouteregistry.007",
+    "de": "/rentenluecke-rechner",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:180, src/seo/publicRouteRegistry.ts:219, src/seo/publicRouteRegistry.ts:236, src/seo/publicRouteRegistry.ts:284, src/seo/publicRouteRegistry.ts:309, src/seo/publicRouteRegistry.ts:339, src/seo/publicRouteRegistry.ts:370, src/seo/publicRouteRegistry.ts:400 +5 more"
+  },
+  {
+    "key": "seo.publicrouteregistry.008",
+    "de": "/rente-netto-berechnen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:181, src/seo/publicRouteRegistry.ts:220, src/seo/publicRouteRegistry.ts:250, src/seo/publicRouteRegistry.ts:490, src/seo/publicRouteRegistry.ts:539"
+  },
+  {
+    "key": "seo.publicrouteregistry.009",
+    "de": "/bav-rechner",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:182, src/seo/publicRouteRegistry.ts:221, src/seo/publicRouteRegistry.ts:250, src/seo/publicRouteRegistry.ts:269, src/seo/publicRouteRegistry.ts:309, src/seo/publicRouteRegistry.ts:444, src/seo/publicRouteRegistry.ts:475"
+  },
+  {
+    "key": "seo.publicrouteregistry.010",
+    "de": "/riester-rechner",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:184, src/seo/publicRouteRegistry.ts:223, src/seo/publicRouteRegistry.ts:250, src/seo/publicRouteRegistry.ts:323, src/seo/publicRouteRegistry.ts:371, src/seo/publicRouteRegistry.ts:401"
+  },
+  {
+    "key": "seo.publicrouteregistry.011",
+    "de": "/altersvorsorgedepot-rechner",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:185, src/seo/publicRouteRegistry.ts:224, src/seo/publicRouteRegistry.ts:250, src/seo/publicRouteRegistry.ts:340, src/seo/publicRouteRegistry.ts:353, src/seo/publicRouteRegistry.ts:402"
+  },
+  {
+    "key": "seo.publicrouteregistry.012",
+    "de": "/basisrente-rechner",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:187, src/seo/publicRouteRegistry.ts:226, src/seo/publicRouteRegistry.ts:250, src/seo/publicRouteRegistry.ts:424, src/seo/publicRouteRegistry.ts:474"
+  },
+  {
+    "key": "seo.publicrouteregistry.013",
+    "de": "/private-rentenversicherung-rechner",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:188, src/seo/publicRouteRegistry.ts:227, src/seo/publicRouteRegistry.ts:250, src/seo/publicRouteRegistry.ts:443, src/seo/publicRouteRegistry.ts:456"
+  },
+  {
+    "key": "seo.publicrouteregistry.014",
+    "de": "/altersvorsorgeprodukte-vergleichen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:189, src/seo/publicRouteRegistry.ts:228, src/seo/publicRouteRegistry.ts:507, src/seo/publicRouteRegistry.ts:522, src/seo/publicRouteRegistry.ts:609"
+  },
+  {
+    "key": "seo.publicrouteregistry.015",
+    "de": "Rechner öffnen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:192, src/seo/publicRouteRegistry.ts:231, src/seo/publicRouteRegistry.ts:576, src/seo/publicRouteRegistry.ts:641, src/seo/publicRouteRegistry.ts:672"
+  },
+  {
+    "key": "seo.publicrouteregistry.016",
+    "de": "Artikel zur Altersvorsorge | RentenWiki.de",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:203"
+  },
+  {
+    "key": "seo.publicrouteregistry.017",
+    "de": "Übersicht aller Artikel von RentenWiki.de: Rentenlücke, bAV, ETF,",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:205"
+  },
+  {
+    "key": "seo.publicrouteregistry.018",
+    "de": "Riester, Altersvorsorgedepot, Basisrente, private Rentenversicherung und",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:206"
+  },
+  {
+    "key": "seo.publicrouteregistry.019",
+    "de": "Portfolio-Planung. Quelloffen, ohne Werbung, Werte 2026.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:207"
+  },
+  {
+    "key": "seo.publicrouteregistry.020",
+    "de": "Übersicht aller Themen rund um die deutsche Altersvorsorge. Jede Seite",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:210"
+  },
+  {
+    "key": "seo.publicrouteregistry.021",
+    "de": "ist quelloffen und kann auf GitHub kommentiert oder verbessert werden.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:211"
+  },
+  {
+    "key": "seo.publicrouteregistry.022",
+    "de": "Rentenlücke berechnen 2026 | RentenWiki.de",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:237"
+  },
+  {
+    "key": "seo.publicrouteregistry.023",
+    "de": "Rentenlücke berechnen: gewünschte Nettorente minus erwartete GRV-Rente plus",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:239"
+  },
+  {
+    "key": "seo.publicrouteregistry.024",
+    "de": "weitere Vorsorge. Kostenlos, lokal im Browser, Werte 2026.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:240"
+  },
+  {
+    "key": "seo.publicrouteregistry.025",
+    "de": "Rentenlücke berechnen: Versorgungslücke in Deutschland 2026",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:241"
+  },
+  {
+    "key": "seo.publicrouteregistry.026",
+    "de": "Berechnet die Rentenlücke aus Wunschrente, gesetzlicher Rente und privater Vorsorge.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:243"
+  },
+  {
+    "key": "seo.publicrouteregistry.027",
+    "de": "Zeigt, welche Werte aus deiner Renteninformation der Rechner braucht.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:244"
+  },
+  {
+    "key": "seo.publicrouteregistry.028",
+    "de": "Rentenlücke jetzt berechnen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:252"
+  },
+  {
+    "key": "seo.publicrouteregistry.029",
+    "de": "/?topic=rentenluecke-rechner",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:253"
+  },
+  {
+    "key": "seo.publicrouteregistry.030",
+    "de": "bAV Rechner: Entgeltumwandlung 2026 | RentenWiki.de",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:270"
+  },
+  {
+    "key": "seo.publicrouteregistry.031",
+    "de": "Betriebliche Altersvorsorge berechnen: Entgeltumwandlung, Arbeitgeberzuschuss,",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:272"
+  },
+  {
+    "key": "seo.publicrouteregistry.032",
+    "de": "GRV-Reduktion, KV/PV in der Rente. Lokal im Browser, kostenlos, Werte 2026.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:273"
+  },
+  {
+    "key": "seo.publicrouteregistry.033",
+    "de": "bAV Rechner: Betriebliche Altersvorsorge und Entgeltumwandlung 2026",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:274"
+  },
+  {
+    "key": "seo.publicrouteregistry.034",
+    "de": "Zeigt, wie sich Entgeltumwandlung mit Steuer- und SV-Vorteil, Arbeitgeberzuschuss und",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:276"
+  },
+  {
+    "key": "seo.publicrouteregistry.035",
+    "de": "nachgelagerter Besteuerung rechnet und wo bAV gegenüber einem ETF-Sparplan profitiert",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:277"
+  },
+  {
+    "key": "seo.publicrouteregistry.036",
+    "de": "oder zurückfällt.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:278"
+  },
+  {
+    "key": "seo.publicrouteregistry.037",
+    "de": "bAV jetzt berechnen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:286"
+  },
+  {
+    "key": "seo.publicrouteregistry.038",
+    "de": "/?topic=bav-rechner",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:287"
+  },
+  {
+    "key": "seo.publicrouteregistry.039",
+    "de": "ETF vs. bAV vergleichen 2026 | RentenWiki.de",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:296"
+  },
+  {
+    "key": "seo.publicrouteregistry.040",
+    "de": "ETF-Sparplan und bAV bei gleicher Nettokostenbasis vergleichen: Steuern,",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:298"
+  },
+  {
+    "key": "seo.publicrouteregistry.041",
+    "de": "Arbeitgeberzuschuss, Kosten und KV/PV-Unterschiede. Kostenlos, Werte 2026.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:299"
+  },
+  {
+    "key": "seo.publicrouteregistry.042",
+    "de": "ETF vs. bAV: Vergleich der Altersvorsorge bei gleicher Nettokostenbasis 2026",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:300"
+  },
+  {
+    "key": "seo.publicrouteregistry.043",
+    "de": "Vergleicht ETF-Sparplan und bAV bei identischer Nettokostenbasis: Steuervorteil,",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:302"
+  },
+  {
+    "key": "seo.publicrouteregistry.044",
+    "de": "Arbeitgeberzuschuss, GRV-Reduktion, Kosten sowie Steuer und KV/PV in der Auszahlphase.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:303"
+  },
+  {
+    "key": "seo.publicrouteregistry.045",
+    "de": "ETF und bAV jetzt vergleichen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:311"
+  },
+  {
+    "key": "seo.publicrouteregistry.046",
+    "de": "Riester-Rechner 2026 | RentenWiki.de",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:324"
+  },
+  {
+    "key": "seo.publicrouteregistry.047",
+    "de": "Riester-Rente berechnen: Grund- und Kinderzulage, Sonderausgabenabzug § 10a EStG,",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:326"
+  },
+  {
+    "key": "seo.publicrouteregistry.048",
+    "de": "Günstigerprüfung, nachgelagerte Auszahlung. Kostenlos, Werte 2026.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:327"
+  },
+  {
+    "key": "seo.publicrouteregistry.049",
+    "de": "Riester-Rechner 2026: Zulagen, Steuerförderung und Auszahlung berechnen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:328"
+  },
+  {
+    "key": "seo.publicrouteregistry.050",
+    "de": "Modelliert Riester-Förderung (Zulagen plus Sonderausgabenabzug § 10a EStG mit",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:330"
+  },
+  {
+    "key": "seo.publicrouteregistry.051",
+    "de": "Günstigerprüfung) und die Auszahlung nach § 22 Nr. 5 EStG. Werte 2026.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:331"
+  },
+  {
+    "key": "seo.publicrouteregistry.052",
+    "de": "Riester-Rente jetzt berechnen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:344"
+  },
+  {
+    "key": "seo.publicrouteregistry.053",
+    "de": "/?topic=riester-rechner",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:345"
+  },
+  {
+    "key": "seo.publicrouteregistry.054",
+    "de": "Altersvorsorgedepot (AVD) Rechner 2026 | RentenWiki.de",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:354"
+  },
+  {
+    "key": "seo.publicrouteregistry.055",
+    "de": "Altersvorsorgedepot (AVD) berechnen: neues Schicht-2-Depot ab 2027 ohne",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:356"
+  },
+  {
+    "key": "seo.publicrouteregistry.056",
+    "de": "Versicherungsmantel, Grundzulage 50/25 %, Auszahlung. Kostenlos, Werte 2026.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:357"
+  },
+  {
+    "key": "seo.publicrouteregistry.057",
+    "de": "Altersvorsorgedepot-Rechner 2026: Neues Schicht-2-Produkt vergleichen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:358"
+  },
+  {
+    "key": "seo.publicrouteregistry.058",
+    "de": "Modelliert das Altersvorsorgedepot (AVD), das neue Schicht-2-Depotprodukt ohne",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:360"
+  },
+  {
+    "key": "seo.publicrouteregistry.059",
+    "de": "Versicherungsmantel: Anlage, eigener Förderpfad nach Altersvorsorgereformgesetz,",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:361"
+  },
+  {
+    "key": "seo.publicrouteregistry.060",
+    "de": "nachgelagerte Auszahlung.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:362"
+  },
+  {
+    "key": "seo.publicrouteregistry.061",
+    "de": "Altersvorsorgedepot jetzt berechnen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:375"
+  },
+  {
+    "key": "seo.publicrouteregistry.062",
+    "de": "/?topic=altersvorsorgedepot-rechner",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:376"
+  },
+  {
+    "key": "seo.publicrouteregistry.063",
+    "de": "Riester oder AVD? Vergleich 2026 | RentenWiki.de",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:385"
+  },
+  {
+    "key": "seo.publicrouteregistry.064",
+    "de": "Riester-Rente vs. Altersvorsorgedepot (AVD): Förderstruktur, Zulagen, Übertragung und",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:387"
+  },
+  {
+    "key": "seo.publicrouteregistry.065",
+    "de": "Auszahlung im Modell vergleichen. Kostenlos, Werte 2026.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:388"
+  },
+  {
+    "key": "seo.publicrouteregistry.066",
+    "de": "Riester oder Altersvorsorgedepot? Vergleich der geförderten Schicht-2-Wege 2026",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:389"
+  },
+  {
+    "key": "seo.publicrouteregistry.067",
+    "de": "Stellt Riester und Altersvorsorgedepot (AVD) gegenüber: Förderstruktur, Produktform",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:391"
+  },
+  {
+    "key": "seo.publicrouteregistry.068",
+    "de": "(Versicherung oder Depot), Übertragungsmöglichkeiten und nachgelagerte Auszahlung.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:392"
+  },
+  {
+    "key": "seo.publicrouteregistry.069",
+    "de": "Riester vs. AVD selbst berechnen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:405"
+  },
+  {
+    "key": "seo.publicrouteregistry.070",
+    "de": "Basisrente (Rürup) Rechner 2026 | RentenWiki.de",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:425"
+  },
+  {
+    "key": "seo.publicrouteregistry.071",
+    "de": "Basisrente (Rürup) berechnen: Sonderausgabenabzug § 10 Abs. 3 EStG,",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:427"
+  },
+  {
+    "key": "seo.publicrouteregistry.072",
+    "de": "kohortenbezogener Besteuerungsanteil und gesetzliche Auszahlung als",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:428"
+  },
+  {
+    "key": "seo.publicrouteregistry.073",
+    "de": "Basisrente (Rürup) Rechner 2026: Steuervorteil und Auszahlungsbeschränkungen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:430"
+  },
+  {
+    "key": "seo.publicrouteregistry.074",
+    "de": "Erklärt die Basisrente (Rürup): Sonderausgabenabzug nach § 10 Abs. 3 EStG,",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:432"
+  },
+  {
+    "key": "seo.publicrouteregistry.075",
+    "de": "kohortenbezogener Besteuerungsanteil und gesetzliche Auszahlungsbeschränkung",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:433"
+  },
+  {
+    "key": "seo.publicrouteregistry.076",
+    "de": "(keine Kapitalauszahlung).",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:434"
+  },
+  {
+    "key": "seo.publicrouteregistry.077",
+    "de": "Basisrente jetzt berechnen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:447"
+  },
+  {
+    "key": "seo.publicrouteregistry.078",
+    "de": "/?topic=basisrente-rechner",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:448"
+  },
+  {
+    "key": "seo.publicrouteregistry.079",
+    "de": "Private Rentenversicherung Rechner 2026 | RentenWiki.de",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:457"
+  },
+  {
+    "key": "seo.publicrouteregistry.080",
+    "de": "Private Rentenversicherung berechnen: Versicherungsmantel-Kosten, Steuerregime",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:459"
+  },
+  {
+    "key": "seo.publicrouteregistry.081",
+    "de": "nach Vertragsbeginn, Leibrente vs. Kapitalverzehr. Kostenlos, Werte 2026.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:460"
+  },
+  {
+    "key": "seo.publicrouteregistry.082",
+    "de": "Private Rentenversicherung Rechner 2026: Kosten, Steuerregime und Auszahlung",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:461"
+  },
+  {
+    "key": "seo.publicrouteregistry.083",
+    "de": "Modelliert die private Rentenversicherung: Mantel- und Fondskosten, Steuerregime",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:463"
+  },
+  {
+    "key": "seo.publicrouteregistry.084",
+    "de": "je nach Vertragsbeginn (vor 2005, Halbeinkünfte, Abgeltungsteuer) und Leibrente",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:464"
+  },
+  {
+    "key": "seo.publicrouteregistry.085",
+    "de": "Private Rentenversicherung jetzt berechnen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:478"
+  },
+  {
+    "key": "seo.publicrouteregistry.086",
+    "de": "/?topic=private-rentenversicherung-rechner",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:479"
+  },
+  {
+    "key": "seo.publicrouteregistry.087",
+    "de": "Rente netto berechnen 2026 | RentenWiki.de",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:491"
+  },
+  {
+    "key": "seo.publicrouteregistry.088",
+    "de": "Gesetzliche Rente netto berechnen: nachgelagerte Besteuerung, KVdR oder freiwillige",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:493"
+  },
+  {
+    "key": "seo.publicrouteregistry.089",
+    "de": "Rente netto berechnen: gesetzliche Rente nach Steuer und KV/PV 2026",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:495"
+  },
+  {
+    "key": "seo.publicrouteregistry.090",
+    "de": "Rechnet die gesetzliche Rente netto: nachgelagerte Besteuerung nach § 22 EStG, KVdR",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:497"
+  },
+  {
+    "key": "seo.publicrouteregistry.091",
+    "de": "(§ 226 SGB V) oder freiwillige GKV (§ 240 SGB V) und Pflegeversicherung.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:498"
+  },
+  {
+    "key": "seo.publicrouteregistry.092",
+    "de": "Rente netto jetzt berechnen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:510"
+  },
+  {
+    "key": "seo.publicrouteregistry.093",
+    "de": "/?topic=rente-netto-berechnen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:511"
+  },
+  {
+    "key": "seo.publicrouteregistry.094",
+    "de": "Altersvorsorge vergleichen 2026 | RentenWiki.de",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:523"
+  },
+  {
+    "key": "seo.publicrouteregistry.095",
+    "de": "Mehrere Vorsorgeverträge gemeinsam planen: ETF, bAV, Riester, Basisrente, AVD,",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:525"
+  },
+  {
+    "key": "seo.publicrouteregistry.096",
+    "de": "private Rente. Portfolio-Modus, kein Broker, keine Provision. Werte 2026.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:526"
+  },
+  {
+    "key": "seo.publicrouteregistry.097",
+    "de": "Altersvorsorgeprodukte vergleichen: ETF, bAV, Riester und mehr gemeinsam planen 2026",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:527"
+  },
+  {
+    "key": "seo.publicrouteregistry.098",
+    "de": "Portfolio-Modus für mehrere Vorsorgeverträge gleichzeitig (ETF, bAV, Riester,",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:529"
+  },
+  {
+    "key": "seo.publicrouteregistry.099",
+    "de": "Basisrente, AVD, private Rente) mit Transfer-Ereignissen und Haushaltsperspektive.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:530"
+  },
+  {
+    "key": "seo.publicrouteregistry.100",
+    "de": "Portfolio-Modus öffnen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:542"
+  },
+  {
+    "key": "seo.publicrouteregistry.101",
+    "de": "/?topic=altersvorsorgeprodukte-vergleichen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:543"
+  },
+  {
+    "key": "seo.publicrouteregistry.102",
+    "de": "Wie RentenWiki.de rechnet: Renditeannahmen, Steuer- und Sozialversicherungs-Modell,",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:563"
+  },
+  {
+    "key": "seo.publicrouteregistry.103",
+    "de": "statutorische Werte 2026 und Quellen. Quelloffen, ohne Werbung, ohne Provisionen.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:564"
+  },
+  {
+    "key": "seo.publicrouteregistry.104",
+    "de": "Diese Seite dokumentiert alle Berechnungsmodelle, Annahmen und Datenquellen, die",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:567"
+  },
+  {
+    "key": "seo.publicrouteregistry.105",
+    "de": "RentenWiki.de verwendet. Sämtliche Algorithmen sind quelloffen auf GitHub einsehbar.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:568"
+  },
+  {
+    "key": "seo.publicrouteregistry.106",
+    "de": "/vergleich/details",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:590"
+  },
+  {
+    "key": "seo.publicrouteregistry.107",
+    "de": "Wohin geht das Geld? Vergleich im Detail | RentenWiki.de",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:591"
+  },
+  {
+    "key": "seo.publicrouteregistry.108",
+    "de": "Aufschlüsselung pro Sparform: was du selbst zahlst, was Förderung oder Arbeitgeber",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:593"
+  },
+  {
+    "key": "seo.publicrouteregistry.109",
+    "de": "beisteuert, was Kosten und Steuer wegnehmen und was im Alter monatlich übrig bleibt.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:594"
+  },
+  {
+    "key": "seo.publicrouteregistry.110",
+    "de": "Wohin geht jeder Euro?",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:596"
+  },
+  {
+    "key": "seo.publicrouteregistry.111",
+    "de": "Pro-Produkt-Aufschlüsselung der sechs Sparformen entlang dreier Phasen — Ansparphase,",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:598"
+  },
+  {
+    "key": "seo.publicrouteregistry.112",
+    "de": "Rentenbeginn und laufender Bezug. Modell-Werte 2026 mit Beispielannahmen, wenn noch",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:599"
+  },
+  {
+    "key": "seo.publicrouteregistry.113",
+    "de": "kein eigener Vergleich angelegt ist.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:600"
+  },
+  {
+    "key": "seo.publicrouteregistry.114",
+    "de": "Zum Vergleich",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:613"
+  },
+  {
+    "key": "seo.publicrouteregistry.115",
+    "de": "Deine Angaben | RentenWiki.de",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:626"
+  },
+  {
+    "key": "seo.publicrouteregistry.116",
+    "de": "Eingabeflächen für den RentenWiki-Modellrechner: Person, Einkommen, geplanter",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:628"
+  },
+  {
+    "key": "seo.publicrouteregistry.117",
+    "de": "Renteneintritt und wirtschaftliche Annahmen. Lokal im Browser, kein Account, Werte 2026.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:629"
+  },
+  {
+    "key": "seo.publicrouteregistry.118",
+    "de": "Deine Angaben",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:630"
+  },
+  {
+    "key": "seo.publicrouteregistry.119",
+    "de": "Person, Einkommen, geplanter Renteneintritt und wirtschaftliche Annahmen.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:632"
+  },
+  {
+    "key": "seo.publicrouteregistry.120",
+    "de": "Die Rechnerwerte bleiben lokal in deinem Browser; nichts wird an Server übertragen.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:633"
+  },
+  {
+    "key": "seo.publicrouteregistry.121",
+    "de": "Deine Verträge und Sparformen | RentenWiki.de",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:657"
+  },
+  {
+    "key": "seo.publicrouteregistry.122",
+    "de": "Erfasse deine bestehenden Altersvorsorge-Verträge — gesetzliche Rente,",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:659"
+  },
+  {
+    "key": "seo.publicrouteregistry.123",
+    "de": "ETF-Sparpläne, bAV, private Renten, Riester und Basisrente. Lokal im Browser, kein Account.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:660"
+  },
+  {
+    "key": "seo.publicrouteregistry.124",
+    "de": "Deine Verträge und Sparformen",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:661"
+  },
+  {
+    "key": "seo.publicrouteregistry.125",
+    "de": "Schritt 2 des RentenWiki-Eingabe-Flows: trage deine bestehenden Verträge ein.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:663"
+  },
+  {
+    "key": "seo.publicrouteregistry.126",
+    "de": "Du kannst Einträge jederzeit ergänzen oder entfernen.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:664"
+  },
+  {
+    "key": "seo.publicrouteregistry.127",
+    "de": "Impressum von RentenWiki.de mit Anbieterangaben gemäß § 5 TMG, Kontakt,",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:684"
+  },
+  {
+    "key": "seo.publicrouteregistry.128",
+    "de": "Hinweis zur beruflichen Stellung sowie Haftungs- und Lizenzhinweisen.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:685"
+  },
+  {
+    "key": "seo.publicrouteregistry.129",
+    "de": "Anbieterangaben gemäß § 5 TMG, Kontakt, Hinweis zur beruflichen Stellung",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:688"
+  },
+  {
+    "key": "seo.publicrouteregistry.130",
+    "de": "sowie Haftungs- und Lizenzhinweise für RentenWiki.de.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:689"
+  },
+  {
+    "key": "seo.publicrouteregistry.131",
+    "de": "Zurück zum Rechner",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:697, src/seo/publicRouteRegistry.ts:718, src/seo/publicRouteRegistry.ts:736"
+  },
+  {
+    "key": "seo.publicrouteregistry.132",
+    "de": "Datenschutzerklärung | RentenWiki.de",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:703"
+  },
+  {
+    "key": "seo.publicrouteregistry.133",
+    "de": "Datenschutzerklärung von RentenWiki.de: lokale Speicherung im Browser,",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:705"
+  },
+  {
+    "key": "seo.publicrouteregistry.134",
+    "de": "keine Server-seitige Datenverarbeitung, kein Tracking, keine Cookies.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:706"
+  },
+  {
+    "key": "seo.publicrouteregistry.135",
+    "de": "Datenschutzerklärung",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:707"
+  },
+  {
+    "key": "seo.publicrouteregistry.136",
+    "de": "im Browser, keine Server-Verarbeitung, kein Tracking, keine Cookies.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:710"
+  },
+  {
+    "key": "seo.publicrouteregistry.137",
+    "de": "Seite nicht gefunden | RentenWiki.de",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:724"
+  },
+  {
+    "key": "seo.publicrouteregistry.138",
+    "de": "Die angeforderte Seite ist auf RentenWiki.de nicht verfügbar. Zurück zum Altersvorsorge-Rechner.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:726"
+  },
+  {
+    "key": "seo.publicrouteregistry.139",
+    "de": "Seite nicht gefunden",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:727"
+  },
+  {
+    "key": "seo.publicrouteregistry.140",
+    "de": "Die angeforderte URL existiert nicht. Über den Link unten gelangst du zurück zum Rechner.",
+    "surface": "seo",
+    "risk": "normal",
+    "description": "auto-import · string · src/seo/publicRouteRegistry.ts:729"
+  }
+]

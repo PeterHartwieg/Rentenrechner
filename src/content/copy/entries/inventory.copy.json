@@ -1,0 +1,618 @@
+[
+  {
+    "key": "inventory.combineincomepanel.001",
+    "de": "Income-Panel Überschrift",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/CombineIncomePanel.tsx:49"
+  },
+  {
+    "key": "inventory.combineincomepanel.002",
+    "de": "Teilweise-geschätzt-Badge",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/CombineIncomePanel.tsx:61"
+  },
+  {
+    "key": "inventory.combineincomepanel.003",
+    "de": "Liste der geschätzten Eingaben",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/CombineIncomePanel.tsx:65"
+  },
+  {
+    "key": "inventory.combineincomepanel.004",
+    "de": "/Monat",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/CombineIncomePanel.tsx:111"
+  },
+  {
+    "key": "inventory.combineincomepanel.005",
+    "de": "Teilweise geschätzt",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/CombineIncomePanel.tsx:124"
+  },
+  {
+    "key": "inventory.combineincomepanel.006",
+    "de": "Geschätzte Eingaben:",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/CombineIncomePanel.tsx:128"
+  },
+  {
+    "key": "inventory.combineincomepanel.007",
+    "de": "Schätzwert",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/CombineIncomePanel.tsx:147"
+  },
+  {
+    "key": "inventory.combineincomepanel.008",
+    "de": "— Eingaben geschätzt",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/CombineIncomePanel.tsx:161"
+  },
+  {
+    "key": "inventory.evidencebadge.001",
+    "de": "Evidence-Badge Übernehmen-Button",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/EvidenceBadge.tsx:36"
+  },
+  {
+    "key": "inventory.evidencebadge.002",
+    "de": "Schätzung",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/EvidenceBadge.tsx:41"
+  },
+  {
+    "key": "inventory.evidencebadge.003",
+    "de": "Schätzwert übernehmen",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · attr:title · src/features/inventory/EvidenceBadge.tsx:47"
+  },
+  {
+    "key": "inventory.evidencebadge.004",
+    "de": "Übernehmen",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/EvidenceBadge.tsx:50"
+  },
+  {
+    "key": "inventory.evidencebadge.005",
+    "de": "✓ bestätigt",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/EvidenceBadge.tsx:67"
+  },
+  {
+    "key": "inventory.fieldhelpers.001",
+    "de": "Lebenslange Rente (Leibrente)",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/fieldHelpers.ts:81, src/features/inventory/fieldHelpers.ts:87"
+  },
+  {
+    "key": "inventory.fieldhelpers.002",
+    "de": "Direktversicherung Altvertrag (vor 2005)",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/fieldHelpers.ts:95"
+  },
+  {
+    "key": "inventory.fieldhelpers.003",
+    "de": "Unterstützungskasse",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/fieldHelpers.ts:97"
+  },
+  {
+    "key": "inventory.instancecard.001",
+    "de": "Aktiv (laufende Beiträge)",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InstanceCard.tsx:72"
+  },
+  {
+    "key": "inventory.instancecard.002",
+    "de": "Beitragsfrei gestellt",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InstanceCard.tsx:73"
+  },
+  {
+    "key": "inventory.instancecard.003",
+    "de": "Gekündigt / übertragen",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InstanceCard.tsx:74"
+  },
+  {
+    "key": "inventory.instancecard.004",
+    "de": "Monatlicher Beitrag (EUR)",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InstanceCard.tsx:148"
+  },
+  {
+    "key": "inventory.instancecard.005",
+    "de": "Kosten",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InstanceCard.tsx:273"
+  },
+  {
+    "key": "inventory.instancecard.006",
+    "de": "Förderung (geschätzt)",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InstanceCard.tsx:297"
+  },
+  {
+    "key": "inventory.instancecard.007",
+    "de": "Mindestens 15 % Arbeitgeber-Zuschuss bei Entgeltumwandlung (§1a Abs. 1a BetrAVG). Eigenbeitrag:",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InstanceCard.tsx:299"
+  },
+  {
+    "key": "inventory.instancecard.008",
+    "de": "EUR/Monat brutto. Zuschuss ca.",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InstanceCard.tsx:300"
+  },
+  {
+    "key": "inventory.instancecard.009",
+    "de": "EUR/Monat (Schätzung).",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InstanceCard.tsx:301"
+  },
+  {
+    "key": "inventory.instancecard.010",
+    "de": "Der KVdR-Status (pflichtversichert in der gesetzlichen Krankenversicherung der Rentner) wird aus deinem Profil abgeleitet. Bei bAV gilt der §226 Abs. 2 SGB V Freibetrag (ca. 176 EUR/Monat 2026) — der Rechner berücksichtigt dies automatisch.",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InstanceCard.tsx:310"
+  },
+  {
+    "key": "inventory.instancecard.011",
+    "de": "Sparrate wächst jährlich um diesen Prozentsatz.",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InstanceCard.tsx:361"
+  },
+  {
+    "key": "inventory.instancecard.012",
+    "de": "Die gesetzliche Rentenversicherung wird automatisch berechnet. Gib an, wie lange du schon arbeitest — oder trage deine Entgeltpunkte aus der letzten Renteninformation ein.",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InstanceCard.tsx:407"
+  },
+  {
+    "key": "inventory.instancecard.013",
+    "de": "Wie möchtest du deine gesetzliche Rente erfassen?",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InstanceCard.tsx:413"
+  },
+  {
+    "key": "inventory.instancecard.014",
+    "de": "Schätzen aus Arbeitsjahren und Gehalt",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InstanceCard.tsx:422"
+  },
+  {
+    "key": "inventory.instancecard.015",
+    "de": "Entgeltpunkte aus Renteninformation eingeben",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InstanceCard.tsx:431"
+  },
+  {
+    "key": "inventory.instancecard.016",
+    "de": "≈ Entgeltpunkte (geschätzt)",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/inventory/InstanceCard.tsx:440"
+  },
+  {
+    "key": "inventory.instancecard.017",
+    "de": "Geschätzter Wert aus Arbeitsjahren",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InstanceCard.tsx:452"
+  },
+  {
+    "key": "inventory.instancecard.018",
+    "de": "Nur Grundzulage (175 EUR/Jahr)",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InstanceCard.tsx:722"
+  },
+  {
+    "key": "inventory.instancecard.019",
+    "de": "Ohne Garantie (volle Flexibilität)",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InstanceCard.tsx:819"
+  },
+  {
+    "key": "inventory.instancecard.020",
+    "de": "Aktiviert — reduziert Aktienanteil ab 15 Jahren vor Rente",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InstanceCard.tsx:851"
+  },
+  {
+    "key": "inventory.inventoryhelpers.001",
+    "de": "Mein Plan",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/inventoryHelpers.ts:280"
+  },
+  {
+    "key": "inventory.inventoryproductregistry.001",
+    "de": "Betriebliche Altersversorgung",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/inventoryProductRegistry.ts:137"
+  },
+  {
+    "key": "inventory.inventoryproductregistry.002",
+    "de": "Private Rentenversicherung",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/inventoryProductRegistry.ts:202, src/features/inventory/inventoryProductRegistry.ts:231"
+  },
+  {
+    "key": "inventory.inventoryproductregistry.003",
+    "de": "Riester-Rente",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/inventoryProductRegistry.ts:259, src/features/inventory/inventoryProductRegistry.ts:288, src/features/inventory/InventoryWizard.tsx:576"
+  },
+  {
+    "key": "inventory.inventorywizard.001",
+    "de": "Weiter zu deinen Verträgen",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:144, src/features/inventory/InventoryWizard.tsx:421"
+  },
+  {
+    "key": "inventory.inventorywizard.002",
+    "de": "Bitte gib ein gültiges Geburtsjahr an (mind. 10 Jahre zurück).",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/features/inventory/InventoryWizard.tsx:159"
+  },
+  {
+    "key": "inventory.inventorywizard.003",
+    "de": "Bitte gib ein gültiges Bruttogehalt an.",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/features/inventory/InventoryWizard.tsx:162"
+  },
+  {
+    "key": "inventory.inventorywizard.004",
+    "de": "Wunschrente-Alter muss nach dem aktuellen Alter und vor 85 liegen.",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/features/inventory/InventoryWizard.tsx:165"
+  },
+  {
+    "key": "inventory.inventorywizard.005",
+    "de": "Geburtsjahre der Kinder müssen zwischen 1950 und liegen.",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/inventory/InventoryWizard.tsx:169"
+  },
+  {
+    "key": "inventory.inventorywizard.006",
+    "de": "Diese Angaben fließen in alle Berechnungen ein.",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InventoryWizard.tsx:211"
+  },
+  {
+    "key": "inventory.inventorywizard.007",
+    "de": "Persönliche Angaben",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InventoryWizard.tsx:216"
+  },
+  {
+    "key": "inventory.inventorywizard.008",
+    "de": "Jahre",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InventoryWizard.tsx:230"
+  },
+  {
+    "key": "inventory.inventorywizard.009",
+    "de": "Gesetzlich (GKV)",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InventoryWizard.tsx:270"
+  },
+  {
+    "key": "inventory.inventorywizard.010",
+    "de": "Privat (PKV)",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InventoryWizard.tsx:271"
+  },
+  {
+    "key": "inventory.inventorywizard.011",
+    "de": "Keine Kinder angegeben. Kinder beeinflussen Riester-Zulagen und den Pflegeversicherungs-Beitrag.",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InventoryWizard.tsx:299"
+  },
+  {
+    "key": "inventory.inventorywizard.012",
+    "de": "Kind hinzufügen",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InventoryWizard.tsx:331"
+  },
+  {
+    "key": "inventory.inventorywizard.013",
+    "de": "Gesetzliche Altersvorsorge",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InventoryWizard.tsx:338"
+  },
+  {
+    "key": "inventory.inventorywizard.014",
+    "de": "Welches System gilt für dich?",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InventoryWizard.tsx:341"
+  },
+  {
+    "key": "inventory.inventorywizard.015",
+    "de": "Gesetzliche Rente (DRV)",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InventoryWizard.tsx:353"
+  },
+  {
+    "key": "inventory.inventorywizard.016",
+    "de": "Berufsständisches Versorgungswerk",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InventoryWizard.tsx:355"
+  },
+  {
+    "key": "inventory.inventorywizard.017",
+    "de": "Du bist sozialversicherungspflichtig beschäftigt. Wir schätzen deine GRV-Rente im nächsten Schritt.",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:360"
+  },
+  {
+    "key": "inventory.inventorywizard.018",
+    "de": "Beamtenversorgung nach BeamtVG. Schicht-1-bAV/Riester entfallen, Basisrente bleibt möglich.",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:362"
+  },
+  {
+    "key": "inventory.inventorywizard.019",
+    "de": "Versorgungswerk (Ärzte, Anwälte, Architekten, …). GRV-Pflicht entfällt; Sonderausgabenabzug Schicht 1 wie GRV.",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:363"
+  },
+  {
+    "key": "inventory.inventorywizard.020",
+    "de": "Aus deiner letzten Versorgungsauskunft — 0 lassen, wenn unbekannt.",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InventoryWizard.tsx:382"
+  },
+  {
+    "key": "inventory.inventorywizard.021",
+    "de": "Keine Steuer-, Rechts- oder Anlageberatung. Diese Angaben dienen der Illustration.",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InventoryWizard.tsx:404, src/features/inventory/InventoryWizard.tsx:1285"
+  },
+  {
+    "key": "inventory.inventorywizard.022",
+    "de": "Abbrechen",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InventoryWizard.tsx:413, src/features/inventory/InventoryWizard.tsx:609, src/features/inventory/InventoryWizard.tsx:1294"
+  },
+  {
+    "key": "inventory.inventorywizard.023",
+    "de": "Gesetzliche Rente (GRV)",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:540"
+  },
+  {
+    "key": "inventory.inventorywizard.024",
+    "de": "Deine Deutsche Rentenversicherung — immer dabei.",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:541"
+  },
+  {
+    "key": "inventory.inventorywizard.025",
+    "de": "Freies Depot oder Sparplan (ohne Versicherungsmantel).",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:547"
+  },
+  {
+    "key": "inventory.inventorywizard.026",
+    "de": "weiteres ETF-Depot hinzufügen",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:548"
+  },
+  {
+    "key": "inventory.inventorywizard.027",
+    "de": "Betriebliche Altersvorsorge (bAV)",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:552"
+  },
+  {
+    "key": "inventory.inventorywizard.028",
+    "de": "Über den Arbeitgeber abgeschlossene Entgeltumwandlung.",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:553"
+  },
+  {
+    "key": "inventory.inventorywizard.029",
+    "de": "weitere bAV hinzufügen",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:554"
+  },
+  {
+    "key": "inventory.inventorywizard.030",
+    "de": "Private Rentenversicherung (pAV)",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:558"
+  },
+  {
+    "key": "inventory.inventorywizard.031",
+    "de": "Klassische oder fondsgebundene Lebens-/Rentenversicherung.",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:559"
+  },
+  {
+    "key": "inventory.inventorywizard.032",
+    "de": "weitere pAV hinzufügen",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:560"
+  },
+  {
+    "key": "inventory.inventorywizard.033",
+    "de": "Basisrente (Rürup-Rente)",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:564"
+  },
+  {
+    "key": "inventory.inventorywizard.034",
+    "de": "weitere Basisrente hinzufügen",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:566"
+  },
+  {
+    "key": "inventory.inventorywizard.035",
+    "de": "Gefördertes Depot (Altersvorsorgereformgesetz 2026).",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:571"
+  },
+  {
+    "key": "inventory.inventorywizard.036",
+    "de": "weiteres AVD hinzufügen",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:572"
+  },
+  {
+    "key": "inventory.inventorywizard.037",
+    "de": "Zulagengeförderte Altersvorsorge (§10a EStG).",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:577"
+  },
+  {
+    "key": "inventory.inventorywizard.038",
+    "de": "weitere Riester hinzufügen",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:578"
+  },
+  {
+    "key": "inventory.inventorywizard.039",
+    "de": "Schritt 1: Persönliche Angaben",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:712"
+  },
+  {
+    "key": "inventory.inventorywizard.040",
+    "de": "Fertig & Vergleich starten",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:718, src/features/inventory/InventoryWizard.tsx:877"
+  },
+  {
+    "key": "inventory.inventorywizard.041",
+    "de": "Weiter ohne Verträge",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:877"
+  },
+  {
+    "key": "inventory.inventorywizard.042",
+    "de": "Deine Angaben",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:1158"
+  },
+  {
+    "key": "inventory.inventorywizard.043",
+    "de": "Was hast du schon?",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:1158"
+  },
+  {
+    "key": "inventory.inventorywizard.044",
+    "de": "Welche Verträge hast du bereits? Nur die wichtigsten Werte — den Rest schätzen wir.",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inventory/InventoryWizard.tsx:1194"
+  },
+  {
+    "key": "inventory.inventorywizard.045",
+    "de": "Immer dabei — wir schätzen deine GRV-Rente.",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:1240"
+  },
+  {
+    "key": "inventory.inventorywizard.046",
+    "de": "Vertrag:",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:1358"
+  },
+  {
+    "key": "inventory.inventorywizard.047",
+    "de": "Diesen Vertrag entfernen",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:1360"
+  },
+  {
+    "key": "inventory.inventorywizard.048",
+    "de": "Vertrag entfernen",
+    "surface": "inventory",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inventory/InventoryWizard.tsx:1361"
+  }
+]

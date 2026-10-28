@@ -1,0 +1,198 @@
+[
+  {
+    "key": "vergleich.producttaglines.001",
+    "de": "Lebenslange Rente aus dem Versicherungsmantel — Halbeinkünfte oder Ertragsanteil.",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vergleich/productTaglines.ts:16"
+  },
+  {
+    "key": "vergleich.producttaglines.002",
+    "de": "Steuerersparnis heute (§ 10 EStG) — nachgelagerte Volle Besteuerung im Alter.",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vergleich/productTaglines.ts:17"
+  },
+  {
+    "key": "vergleich.producttaglines.003",
+    "de": "Geförderter ETF-Mantel — Auszahlplan ab 65, nachgelagerte Besteuerung.",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vergleich/productTaglines.ts:18"
+  },
+  {
+    "key": "vergleich.producttaglines.004",
+    "de": "Zulagen plus Steuerersparnis — staatlich gefördert, voll steuerpflichtig im Alter.",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vergleich/productTaglines.ts:19"
+  },
+  {
+    "key": "vergleich.vergleichcomparisontable.001",
+    "de": "Wie es funktioniert",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich/VergleichComparisonTable.tsx:58"
+  },
+  {
+    "key": "vergleich.vergleichcomparisontable.002",
+    "de": "Kapital mit",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/vergleich/VergleichComparisonTable.tsx:59, src/features/vergleich/VergleichComparisonTable.tsx:136"
+  },
+  {
+    "key": "vergleich.vergleichcomparisontable.003",
+    "de": "Kosten p. a.",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich/VergleichComparisonTable.tsx:60"
+  },
+  {
+    "key": "vergleich.vergleichcomparisontable.004",
+    "de": "Brutto-Rente",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich/VergleichComparisonTable.tsx:61, src/features/vergleich/VergleichComparisonTable.tsx:140"
+  },
+  {
+    "key": "vergleich.vergleichcomparisontable.005",
+    "de": "Abzüge",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich/VergleichComparisonTable.tsx:62, src/features/vergleich/VergleichComparisonTable.tsx:144"
+  },
+  {
+    "key": "vergleich.vergleichcomparisontable.006",
+    "de": "Netto pro Monat",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich/VergleichComparisonTable.tsx:63"
+  },
+  {
+    "key": "vergleich.vergleichcomparisontable.007",
+    "de": "Kosten",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich/VergleichComparisonTable.tsx:123"
+  },
+  {
+    "key": "vergleich.vergleichpage.001",
+    "de": "vergleich-pro-contra",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vergleich/VergleichPage.tsx:99"
+  },
+  {
+    "key": "vergleich.vergleichpage.002",
+    "de": "Wofür welche Sparform spricht — und wogegen",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vergleich/VergleichPage.tsx:101"
+  },
+  {
+    "key": "vergleich.vergleichpage.003",
+    "de": "Vergleich",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/vergleich/VergleichPage.tsx:207"
+  },
+  {
+    "key": "vergleich.vergleichpage.004",
+    "de": "Persönliche Auskunft · ohne Empfehlung",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich/VergleichPage.tsx:210"
+  },
+  {
+    "key": "vergleich.vergleichpage.005",
+    "de": "Sechs Wege, fürs Alter zu sparen",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich/VergleichPage.tsx:211"
+  },
+  {
+    "key": "vergleich.vergleichpage.006",
+    "de": "Sechs Sparformen, sechs Steuersystematiken: Vergleich bei gleichem Netto-Aufwand von",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich/VergleichPage.tsx:213"
+  },
+  {
+    "key": "vergleich.vergleichpage.007",
+    "de": "pro Monat, Laufzeit",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich/VergleichPage.tsx:214"
+  },
+  {
+    "key": "vergleich.vergleichpage.008",
+    "de": "Jahre",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich/VergleichPage.tsx:215"
+  },
+  {
+    "key": "vergleich.vergleichpage.009",
+    "de": ". Welcher der beste ist, hängt davon ab, was du gewichtest:",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich/VergleichPage.tsx:216"
+  },
+  {
+    "key": "vergleich.vergleichpage.010",
+    "de": "Rendite, Sicherheit, Flexibilität",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich/VergleichPage.tsx:217"
+  },
+  {
+    "key": "vergleich.vergleichpage.011",
+    "de": ". Wir nennen keine Empfehlung.",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich/VergleichPage.tsx:217"
+  },
+  {
+    "key": "vergleich.vergleichpage.012",
+    "de": "Wohin geht das Geld? Aufschlüsselung pro Produkt →",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich/VergleichPage.tsx:250"
+  },
+  {
+    "key": "vergleich.vergleichpage.013",
+    "de": "Kapital im Verlauf →",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/vergleich/VergleichPage.tsx:262"
+  },
+  {
+    "key": "vergleich.vergleichrenditestrip.001",
+    "de": "Rendite-Annahme wählen",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/vergleich/VergleichRenditeStrip.tsx:34"
+  },
+  {
+    "key": "vergleich.vergleichrenditestrip.002",
+    "de": "Rendite-Annahme: ( )",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/vergleich/VergleichRenditeStrip.tsx:43"
+  },
+  {
+    "key": "vergleich.vergleichrenditestrip.003",
+    "de": "vergleich-rendite-chip",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/vergleich/VergleichRenditeStrip.tsx:44"
+  },
+  {
+    "key": "vergleich.vergleichrenditestrip.004",
+    "de": "vergleich-rendite-chip--active",
+    "surface": "vergleich",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/vergleich/VergleichRenditeStrip.tsx:44"
+  }
+]

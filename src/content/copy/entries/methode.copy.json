@@ -1,0 +1,331 @@
+[
+  {
+    "key": "methode.methodemontecarlosection.001",
+    "de": "Monte-Carlo ist im Szenario-Toolbar deaktiviert. Aktiviere die Simulation in deinem Plan, um Risiko-Bandbreiten (P10 / P50 / P90) je Produkt zu sehen.",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodeMonteCarloSection.tsx:53"
+  },
+  {
+    "key": "methode.methodemontecarlosection.002",
+    "de": "Keine Produkte im Vergleich ausgewählt.",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodeMonteCarloSection.tsx:62"
+  },
+  {
+    "key": "methode.methodepage.001",
+    "de": "steuer-modell",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/methode/MethodePage.tsx:45"
+  },
+  {
+    "key": "methode.methodepage.002",
+    "de": "Steuer-Modell (Stand )",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/methode/MethodePage.tsx:45"
+  },
+  {
+    "key": "methode.methodepage.003",
+    "de": "nicht-modelliert",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/methode/MethodePage.tsx:48"
+  },
+  {
+    "key": "methode.methodepage.004",
+    "de": "Was wir bewusst nicht modellieren",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/methode/MethodePage.tsx:48"
+  },
+  {
+    "key": "methode.methodepage.005",
+    "de": "§ 22 EStG — Besteuerung sonstiger Einkünfte (gesetze-im-internet.de)",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/methode/MethodePage.tsx:58"
+  },
+  {
+    "key": "methode.methodepage.006",
+    "de": "§ 20 Abs. 1 InvStG — Teilfreistellung für Aktienfonds (gesetze-im-internet.de)",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/methode/MethodePage.tsx:62"
+  },
+  {
+    "key": "methode.methodepage.007",
+    "de": "§ 3 Nr. 63 EStG / § 1 SvEV — Förderhöchstbeträge bAV",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/methode/MethodePage.tsx:63"
+  },
+  {
+    "key": "methode.methodepage.008",
+    "de": "BMF-Schreiben (jährlich) — Basiszins § 18 InvStG (Vorabpauschale)",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/methode/MethodePage.tsx:64"
+  },
+  {
+    "key": "methode.methodepage.009",
+    "de": "SVBezGrV — Beitragsbemessungsgrenzen, Bezugsgröße, Durchschnittsentgelt",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/methode/MethodePage.tsx:65"
+  },
+  {
+    "key": "methode.methodepage.010",
+    "de": "Deutsche Rentenversicherung Bund — Renteninformation und Aktueller Rentenwert (§ 69 SGB VI)",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/methode/MethodePage.tsx:66"
+  },
+  {
+    "key": "methode.methodepage.011",
+    "de": "Werte für Deutschland",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:242"
+  },
+  {
+    "key": "methode.methodepage.012",
+    "de": "Drei Marktszenarien für die kapitalmarktgebundenen Produkte (ETF, fondsgebundene Versicherung, bAV-Fonds, Altersvorsorgedepot). Werte sind reale, langfristige Renditen p. a.; Inflation wird in der Auszahlphase getrennt ausgewiesen.",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:257"
+  },
+  {
+    "key": "methode.methodepage.013",
+    "de": "Rendite p. a.",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:270"
+  },
+  {
+    "key": "methode.methodepage.014",
+    "de": "Grundtarif § 32a EStG, mit Solidaritätszuschlag oberhalb der Freigrenze von",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:323"
+  },
+  {
+    "key": "methode.methodepage.015",
+    "de": "Kapitalerträge",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:329"
+  },
+  {
+    "key": "methode.methodepage.016",
+    "de": "§ 22 EStG für GRV, bAV, Basisrente und Altersvorsorgedepot. Kohortenwert",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:341"
+  },
+  {
+    "key": "methode.methodepage.017",
+    "de": "Besteuerungsanteil der gesetzlichen Rente; Versorgungsfreibetrag",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:343"
+  },
+  {
+    "key": "methode.methodepage.018",
+    "de": "Private Leibrenten nach § 22 Nr. 1 Satz 3 a aa EStG; Anlage 1 (z. B.",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:354"
+  },
+  {
+    "key": "methode.methodepage.019",
+    "de": "mit 67). Der restliche Anteil bleibt als Kapitalrückgewähr steuerfrei.",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:356"
+  },
+  {
+    "key": "methode.methodepage.020",
+    "de": "Pauschbeträge",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:361"
+  },
+  {
+    "key": "methode.methodepage.021",
+    "de": "(Renten) bzw.",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:363"
+  },
+  {
+    "key": "methode.methodepage.022",
+    "de": "(Versorgungsbezüge); Sonderausgaben-Pauschbetrag",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:364"
+  },
+  {
+    "key": "methode.methodepage.023",
+    "de": "Lump-Sum-Auszahlung",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:370"
+  },
+  {
+    "key": "methode.methodepage.024",
+    "de": "Fünftelregelung § 34 EStG für Direktzusage / Unterstützungskasse; §-3-Nr.-63-bAV wird voll versteuert. KV/PV greift via § 229 SGB V mit Spreading auf",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:372"
+  },
+  {
+    "key": "methode.methodepage.025",
+    "de": "Monate.",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:375"
+  },
+  {
+    "key": "methode.methodepage.026",
+    "de": "KV in der Rente",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:394"
+  },
+  {
+    "key": "methode.methodepage.027",
+    "de": "/Monat auf Versorgungsbezüge; freiwillige GKV (§ 240 SGB V) ohne Freibetrag, dafür mit Bemessungsgrenze.",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:397"
+  },
+  {
+    "key": "methode.methodepage.028",
+    "de": "Jahren in der Rente",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:406"
+  },
+  {
+    "key": "methode.methodepage.029",
+    "de": "Bei Aggregateinkommen oberhalb der Beitragsbemessungsgrenze werden die Beiträge proportional über alle Quellen verteilt (modellierte Konvention — kein Statut schreibt eine Priorität vor).",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:414"
+  },
+  {
+    "key": "methode.methodepage.030",
+    "de": "§ 39b EStG (BMF-PAP): nur RV, GKV und PV werden in der Lohnsteuer-Vorsorgepauschale abgezogen, nicht AV. PKV-Branche nutzt § 257 SGB V als Teilbetrag.",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:423"
+  },
+  {
+    "key": "methode.methodepage.031",
+    "de": "Alle untenstehenden Werte stammen aus dem aktiven Regel-Modul unter",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:443"
+  },
+  {
+    "key": "methode.methodepage.032",
+    "de": "und werden jährlich nach BMF- / BMAS-Bekanntmachung aktualisiert.",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:444"
+  },
+  {
+    "key": "methode.methodepage.033",
+    "de": "/ Jahr",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:464, src/features/methode/MethodePage.tsx:474, src/features/methode/MethodePage.tsx:512, src/features/methode/MethodePage.tsx:522, src/features/methode/MethodePage.tsx:532, src/features/methode/MethodePage.tsx:542, src/features/methode/MethodePage.tsx:560"
+  },
+  {
+    "key": "methode.methodepage.034",
+    "de": "Bezugsgröße West (monatlich)",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:482"
+  },
+  {
+    "key": "methode.methodepage.035",
+    "de": "bAV § 3 Nr. 63 EStG (steuerfrei)",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:510"
+  },
+  {
+    "key": "methode.methodepage.036",
+    "de": "Basisrente § 10 Abs. 3 EStG (Höchstbetrag)",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:530"
+  },
+  {
+    "key": "methode.methodepage.037",
+    "de": "§ 18 InvStG; BMF-Schreiben (jährlich)",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:582"
+  },
+  {
+    "key": "methode.methodepage.038",
+    "de": "Individuelle Versicherungsverträge mit garantierten Rechnungszinsen oder Bestandstarifen vor 2005 — der Rechner unterstellt die statutorischen Voreinstellungen.",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:621"
+  },
+  {
+    "key": "methode.methodepage.039",
+    "de": "Steuerliche Auswirkungen von Auslandsbezug, doppelter Staatsbürgerschaft oder Erbschaften.",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:626"
+  },
+  {
+    "key": "methode.methodepage.040",
+    "de": "Politische Risiken (z. B. Anpassungen der Rentenformel oder des Beitragssatzes nach 2030).",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:630"
+  },
+  {
+    "key": "methode.methodepage.041",
+    "de": "Sterbetafel-Modellierung für individuelle Lebenserwartung — Leibrenten werden mit den vom Anbieter genannten Verrentungsfaktoren gerechnet, nicht aus eigener Sterbetafel.",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:634"
+  },
+  {
+    "key": "methode.methodepage.042",
+    "de": ". Beiträge und Korrekturen sind als Pull-Request oder Issue im",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:659"
+  },
+  {
+    "key": "methode.methodepage.043",
+    "de": "Quellcode: PolyForm Noncommercial 1.0.0. Persönliche, akademische und interne Bewertungsnutzung kostenlos.",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:676"
+  },
+  {
+    "key": "methode.methodepage.044",
+    "de": "— z. B. durch Versicherungsmakler oder Anlageberater — ist lizenzpflichtig. Kontakt:",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:680"
+  },
+  {
+    "key": "methode.methodepage.045",
+    "de": "· Werte für Deutschland",
+    "surface": "methode",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/methode/MethodePage.tsx:715"
+  }
+]

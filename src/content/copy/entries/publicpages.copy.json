@@ -1,0 +1,23 @@
+[
+  {
+    "key": "publicpages.altersvorsorgeproduktepage.001",
+    "de": "Artikel: Altersvorsorgeprodukte vergleichen",
+    "surface": "publicpages",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/publicPages/AltersvorsorgeproduktePage.tsx:31"
+  },
+  {
+    "key": "publicpages.pagenotfound.001",
+    "de": "Stattdessen verfügbar",
+    "surface": "publicpages",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/publicPages/PageNotFound.tsx:36"
+  },
+  {
+    "key": "publicpages.pagenotfound.002",
+    "de": "Datenschutzerklärung",
+    "surface": "publicpages",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/publicPages/PageNotFound.tsx:55"
+  }
+]

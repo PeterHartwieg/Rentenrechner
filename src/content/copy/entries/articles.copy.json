@@ -1,0 +1,72 @@
+[
+  {
+    "key": "articles.articlehubpage.001",
+    "de": "Beiträge · zuletzt aktualisiert",
+    "surface": "articles",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/articles/ArticleHubPage.tsx:50"
+  },
+  {
+    "key": "articles.articlelayout.001",
+    "de": "Teilen nicht möglich — URL aus Adresszeile kopieren",
+    "surface": "articles",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/features/articles/ArticleLayout.tsx:152"
+  },
+  {
+    "key": "articles.articlelayout.002",
+    "de": "Alle Artikel",
+    "surface": "articles",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/articles/ArticleLayout.tsx:290"
+  },
+  {
+    "key": "articles.articlelayout.003",
+    "de": "Inhalt wird geladen …",
+    "surface": "articles",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/articles/ArticleLayout.tsx:329"
+  },
+  {
+    "key": "articles.articlelayout.004",
+    "de": "Werte für Deutschland",
+    "surface": "articles",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/articles/ArticleLayout.tsx:347"
+  },
+  {
+    "key": "articles.articlelayout.005",
+    "de": "Zum gleichen Thema",
+    "surface": "articles",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/articles/ArticleLayout.tsx:362"
+  },
+  {
+    "key": "articles.articlelayout.006",
+    "de": "↓ Als PDF speichern",
+    "surface": "articles",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/articles/ArticleLayout.tsx:390"
+  },
+  {
+    "key": "articles.articlelayout.007",
+    "de": "↗ Auf GitHub bearbeiten",
+    "surface": "articles",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/articles/ArticleLayout.tsx:401"
+  },
+  {
+    "key": "articles.articlelayout.008",
+    "de": "Quelloffen unter PolyForm Noncommercial 1.0.0 — kommerzielle Nutzung lizenzpflichtig.",
+    "surface": "articles",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/articles/ArticleLayout.tsx:406"
+  },
+  {
+    "key": "articles.articlelayout.009",
+    "de": "· Werte für Deutschland",
+    "surface": "articles",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/articles/ArticleLayout.tsx:415"
+  }
+]

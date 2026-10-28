@@ -21,6 +21,7 @@
     "copy:inventory": "vite-node scripts/copy-inventory.ts",
     "copy:missing": "vite-node scripts/copy-missing.ts",
     "copy:scan": "vite-node scripts/copy-scan.ts",
+    "copy:import": "vite-node scripts/copy-import.ts",
     "copy:editor": "vite --open /__copy-editor/"
   },
   "dependencies": {

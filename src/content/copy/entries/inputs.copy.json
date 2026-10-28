@@ -1,0 +1,1556 @@
+[
+  {
+    "key": "inputs.altersvorsorgedepotinputs.001",
+    "de": "Kosten:",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/inputs/AltersvorsorgedepotInputs.tsx:50, src/features/inputs/BasisrenteInputs.tsx:31"
+  },
+  {
+    "key": "inputs.altersvorsorgedepotinputs.002",
+    "de": "Standard-Kosten",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/features/inputs/AltersvorsorgedepotInputs.tsx:53"
+  },
+  {
+    "key": "inputs.altersvorsorgedepotinputs.003",
+    "de": "Neues gefördertes Altersvorsorgeprodukt nach dem Altersvorsorgereformgesetz (Bundestag 2026-03-27). Staatliche Zulage und Steuer-vs.-Zulage-Vergleich möglich. Kapital gesperrt bis Rentenbeginn (Alter 65–70).",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AltersvorsorgedepotInputs.tsx:61"
+  },
+  {
+    "key": "inputs.altersvorsorgedepotinputs.004",
+    "de": "Freies Depot ohne Garantie",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AltersvorsorgedepotInputs.tsx:87"
+  },
+  {
+    "key": "inputs.altersvorsorgedepotinputs.005",
+    "de": "der Vertragszuflüsse an. Die eingetragenen Depot- und Fondskosten bleiben unverändert.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AltersvorsorgedepotInputs.tsx:94"
+  },
+  {
+    "key": "inputs.altersvorsorgedepotinputs.006",
+    "de": "Direkt förderberechtigt (Pflichtversichert)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AltersvorsorgedepotInputs.tsx:187, src/features/inputs/RiesterInputs.tsx:102"
+  },
+  {
+    "key": "inputs.altersvorsorgedepotinputs.007",
+    "de": "Mittelbar berechtigt (über Ehegatte)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AltersvorsorgedepotInputs.tsx:206, src/features/inputs/RiesterInputs.tsx:121"
+  },
+  {
+    "key": "inputs.altersvorsorgedepotinputs.008",
+    "de": "/Jahr (Eigenbeitrag + Zulagen). Höhere Eigenbeiträge fließen nicht mehr ins Depot (§1 AltZertG / Altersvorsorgereformgesetz). Andere Produkte können den Mehrbetrag investieren.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AltersvorsorgedepotInputs.tsx:213"
+  },
+  {
+    "key": "inputs.altersvorsorgedepotinputs.009",
+    "de": "/Monat",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AltersvorsorgedepotInputs.tsx:221, src/features/inputs/AltersvorsorgedepotInputs.tsx:233, src/features/inputs/BasisrenteInputs.tsx:86, src/features/inputs/BasisrenteInputs.tsx:87, src/features/inputs/BasisrenteInputs.tsx:93, src/features/inputs/BavInputs.tsx:147, src/features/inputs/GRVInputs.tsx:189, src/features/inputs/GRVInputs.tsx:200 +2 more"
+  },
+  {
+    "key": "inputs.altersvorsorgedepotinputs.010",
+    "de": "/Jahr",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AltersvorsorgedepotInputs.tsx:222, src/features/inputs/AltersvorsorgedepotInputs.tsx:224, src/features/inputs/AltersvorsorgedepotInputs.tsx:230, src/features/inputs/RiesterInputs.tsx:128, src/features/inputs/RiesterInputs.tsx:130, src/features/inputs/RiesterInputs.tsx:136"
+  },
+  {
+    "key": "inputs.altersvorsorgedepotinputs.011",
+    "de": "· Günstigerprüfung:",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AltersvorsorgedepotInputs.tsx:230, src/features/inputs/RiesterInputs.tsx:136"
+  },
+  {
+    "key": "inputs.altersvorsorgedepotinputs.012",
+    "de": "Altersvorsorgedepot-Kosten",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AltersvorsorgedepotInputs.tsx:362"
+  },
+  {
+    "key": "inputs.altersvorsorgedepotinputs.013",
+    "de": "Gesamt Kapitalgebühr:",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AltersvorsorgedepotInputs.tsx:411, src/features/inputs/BasisrenteInputs.tsx:228, src/features/inputs/sections/FeeSection.tsx:218"
+  },
+  {
+    "key": "inputs.altersvorsorgedepotinputs.014",
+    "de": "überschreiten die Standarddepot-Obergrenze von 1,0 % — das Produkt wäre nicht zertifizierungsfähig.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AltersvorsorgedepotInputs.tsx:419"
+  },
+  {
+    "key": "inputs.angabenpage.001",
+    "de": "Angaben",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenPage.tsx:377"
+  },
+  {
+    "key": "inputs.angabenpage.002",
+    "de": "angaben-toc-item angaben-toc-item--active",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/AngabenPage.tsx:394"
+  },
+  {
+    "key": "inputs.angabenpage.003",
+    "de": "angaben-toc-item",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/AngabenPage.tsx:395"
+  },
+  {
+    "key": "inputs.angabenpage.004",
+    "de": "Mein Plan · Schritt 1 von 2",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenPage.tsx:414"
+  },
+  {
+    "key": "inputs.angabenpage.005",
+    "de": "Speichern und weiter zu Verträgen",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenPage.tsx:510"
+  },
+  {
+    "key": "inputs.angabenpage.006",
+    "de": "Geburtsjahr und Renteneintritt steuern Kohortenwerte (§ 22 Nr. 1, § 19 Abs. 2 EStG). Familienstand schaltet das Ehegattensplitting (§ 32a Abs. 5 EStG).",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenPage.tsx:552"
+  },
+  {
+    "key": "inputs.angabenpage.007",
+    "de": "Bruttogehalt entscheidet über Vorsorgepauschale (§ 39b EStG) und die § 3 Nr. 63 EStG / § 1 SvEV-Förderhöchstbeträge bei der bAV.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenPage.tsx:560"
+  },
+  {
+    "key": "inputs.angabenpage.008",
+    "de": "Renteneintrittsalter und -jahr fixieren Besteuerungsanteil und Versorgungsfreibetrag — beides kohortengebunden. Der KV-Status in der Rente entscheidet zwischen § 226 SGB V und § 240 SGB V.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenPage.tsx:568"
+  },
+  {
+    "key": "inputs.angabenpage.009",
+    "de": "Renditeannahmen folgen historischen MSCI-World-Renditen über 30 Jahre rollierend (konservativ = 10er-Quantil, Basis = realer Median, optimistisch = 90er-Quantil). Inflation: EZB-Mittelfrist-Ziel 2 %.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenPage.tsx:576"
+  },
+  {
+    "key": "inputs.angabenpage.010",
+    "de": "Alter, Einkommen, Renteneintrittsalter und die Renditeannahmen werden im localStorage gespeichert; Familienstand und Bundesland gelten nur für die laufende Sitzung und werden nicht persistiert. Keine Server-Übertragung, kein Account, keine Cookies, keine Identifier. Du kannst den Browser-Speicher jederzeit über die Einstellungen deines Browsers leeren — damit ist auch der gespeicherte RentenWiki-Stand entfernt.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenPage.tsx:590"
+  },
+  {
+    "key": "inputs.angabenpage.011",
+    "de": "Methodische Details und die zugehörigen Paragrafen findest du auf",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenPage.tsx:600"
+  },
+  {
+    "key": "inputs.angabenpage.012",
+    "de": "· Werte für Deutschland",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenPage.tsx:622"
+  },
+  {
+    "key": "inputs.angabenproduktepage.001",
+    "de": "Verträge",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenProduktePage.tsx:104, src/features/inputs/AngabenProduktePage.tsx:444"
+  },
+  {
+    "key": "inputs.angabenproduktepage.002",
+    "de": "Mein Plan · Schritt 2 von 2",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenProduktePage.tsx:109"
+  },
+  {
+    "key": "inputs.angabenproduktepage.003",
+    "de": "Deine Verträge und Sparformen",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenProduktePage.tsx:111"
+  },
+  {
+    "key": "inputs.angabenproduktepage.004",
+    "de": "Erfasse hier alle Verträge, die du heute schon hast — gesetzliche Rente, ETF-Sparpläne, Betriebs- oder Privatrenten. Fehlt eine Sparform, lässt du sie einfach weg. Du kannst Einträge jederzeit ergänzen oder entfernen. Auch nur die gesetzliche Rente ist ein gültiger Stand — wir zeigen dir dann, was üblicherweise fehlt.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenProduktePage.tsx:113"
+  },
+  {
+    "key": "inputs.angabenproduktepage.005",
+    "de": "Speichern und Plan ansehen",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenProduktePage.tsx:140"
+  },
+  {
+    "key": "inputs.angabenproduktepage.006",
+    "de": "← Zurück zu Schritt 1",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenProduktePage.tsx:147"
+  },
+  {
+    "key": "inputs.angabenproduktepage.007",
+    "de": "Welche Unterlagen du brauchst",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenProduktePage.tsx:189"
+  },
+  {
+    "key": "inputs.angabenproduktepage.008",
+    "de": "jährlich per Post, oder online bei eservice-drv.de.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenProduktePage.tsx:195"
+  },
+  {
+    "key": "inputs.angabenproduktepage.009",
+    "de": "Sparrate, Kosten, Beginn — meist Seite 1 der Police.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenProduktePage.tsx:201"
+  },
+  {
+    "key": "inputs.angabenproduktepage.010",
+    "de": "für ISIN und aktuelle Sparrate.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenProduktePage.tsx:207"
+  },
+  {
+    "key": "inputs.angabenproduktepage.011",
+    "de": "vom Arbeitgeber oder Versorgungsträger.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenProduktePage.tsx:213"
+  },
+  {
+    "key": "inputs.angabenproduktepage.012",
+    "de": "Was wir hier nicht abfragen",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenProduktePage.tsx:221"
+  },
+  {
+    "key": "inputs.angabenproduktepage.013",
+    "de": "Bestandstarife mit Garantiezins vor 2005",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenProduktePage.tsx:226"
+  },
+  {
+    "key": "inputs.angabenproduktepage.014",
+    "de": "Im Ausland bestehende Verträge",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenProduktePage.tsx:230"
+  },
+  {
+    "key": "inputs.angabenproduktepage.015",
+    "de": "Erbschaften oder erwartete Schenkungen",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/AngabenProduktePage.tsx:234"
+  },
+  {
+    "key": "inputs.angabenproduktepage.016",
+    "de": "erfasst · zuletzt geändert · gespeichert im Browser",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/inputs/AngabenProduktePage.tsx:444"
+  },
+  {
+    "key": "inputs.angabenproduktepage.017",
+    "de": "Vertrag",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/AngabenProduktePage.tsx:444"
+  },
+  {
+    "key": "inputs.basisrenteinputs.001",
+    "de": "Basisrente / Rürup",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BasisrenteInputs.tsx:38"
+  },
+  {
+    "key": "inputs.basisrenteinputs.002",
+    "de": "Steuergeförderte Altersvorsorge — strukturiert wie die gesetzliche Rente. Beiträge bis zum Höchstbetrag steuerlich absetzbar. Kein Kapitalwahlrecht — nur lebenslange Rente.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BasisrenteInputs.tsx:40"
+  },
+  {
+    "key": "inputs.basisrenteinputs.003",
+    "de": "⚠ Kapital nicht abrufbar vor Rentenbeginn, nicht beleihbar, nicht vererbbar (außer Hinterbliebene). Auszahlung frühestens ab Alter 62 möglich.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BasisrenteInputs.tsx:45"
+  },
+  {
+    "key": "inputs.basisrenteinputs.004",
+    "de": "Brutto-Beitrag:",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BasisrenteInputs.tsx:86"
+  },
+  {
+    "key": "inputs.basisrenteinputs.005",
+    "de": "EUR/Jahr",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BasisrenteInputs.tsx:88"
+  },
+  {
+    "key": "inputs.basisrenteinputs.006",
+    "de": "EUR/Jahr)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BasisrenteInputs.tsx:89"
+  },
+  {
+    "key": "inputs.basisrenteinputs.007",
+    "de": "EUR/Jahr absetzbar — Cap ausgeschöpft",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BasisrenteInputs.tsx:91"
+  },
+  {
+    "key": "inputs.basisrenteinputs.008",
+    "de": "KV/PV-Status in der Rente wird zentral unter „Gesetzliche Rente\" eingestellt (gilt auch für AVD und Riester). Pflichtversichert (KVdR): kein KV/PV auf Basisrente. Freiwillig versichert: Beitrag auf alle Einkünfte bis zur Beitragsbemessungsgrenze.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BasisrenteInputs.tsx:122"
+  },
+  {
+    "key": "inputs.basisrenteinputs.009",
+    "de": "Basisrente-Kosten",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BasisrenteInputs.tsx:128"
+  },
+  {
+    "key": "inputs.basisrenteinputs.010",
+    "de": "Laufende Kapitalgebühr",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BasisrenteInputs.tsx:235, src/features/inputs/sections/FeeSection.tsx:240"
+  },
+  {
+    "key": "inputs.basisrenteinputs.011",
+    "de": "p.a. liegt über 1,0 %.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BasisrenteInputs.tsx:235"
+  },
+  {
+    "key": "inputs.basisrenteinputs.012",
+    "de": "überschreiten 2,0 % — prüfen Sie ETF-Nettotarife.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BasisrenteInputs.tsx:238"
+  },
+  {
+    "key": "inputs.bavinputs.001",
+    "de": "Unterstützungskasse",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/BavInputs.tsx:51, src/features/inputs/BavInputs.tsx:370"
+  },
+  {
+    "key": "inputs.bavinputs.002",
+    "de": "PKV in Rente",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/BavInputs.tsx:76"
+  },
+  {
+    "key": "inputs.bavinputs.003",
+    "de": "freiwillig GKV in Rente",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/BavInputs.tsx:79"
+  },
+  {
+    "key": "inputs.bavinputs.004",
+    "de": "· Kosten:",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/inputs/BavInputs.tsx:80, src/features/inputs/InsuranceInputs.tsx:54"
+  },
+  {
+    "key": "inputs.bavinputs.005",
+    "de": "bAV-Vertragsart (Durchführungsweg)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/BavInputs.tsx:83, src/features/inputs/BavInputs.tsx:350"
+  },
+  {
+    "key": "inputs.bavinputs.006",
+    "de": "Effektiver AG-Beitrag:",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:146"
+  },
+  {
+    "key": "inputs.bavinputs.007",
+    "de": "(gesetzlich",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:148"
+  },
+  {
+    "key": "inputs.bavinputs.008",
+    "de": "Unterschreitet das gesetzliche Minimum von",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:155"
+  },
+  {
+    "key": "inputs.bavinputs.009",
+    "de": "/Jahr für den gesetzlichen Umwandlungsanspruch (§1a BetrAVG).",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:155"
+  },
+  {
+    "key": "inputs.bavinputs.010",
+    "de": "Überschreitet den gesetzlichen Entgeltumwandlungsanspruch (",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:161"
+  },
+  {
+    "key": "inputs.bavinputs.011",
+    "de": "/Monat). Höhere Beträge erfordern Arbeitgebereinverständnis (§1a BetrAVG: 4 % der Beitragsbemessungsgrenze).",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:162"
+  },
+  {
+    "key": "inputs.bavinputs.012",
+    "de": "Tarifvertrag im Arbeitsverhältnis",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:222"
+  },
+  {
+    "key": "inputs.bavinputs.013",
+    "de": "Bei Tarifvertrag kann die Entgeltumwandlung eingeschränkt oder ausgeschlossen sein — im Zweifel beim Arbeitgeber oder Betriebsrat nachfragen (BetrAVG §17 Abs. 3 / §20).",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:226"
+  },
+  {
+    "key": "inputs.bavinputs.014",
+    "de": "Entgeltumwandlung steigt jedes Jahr um diesen Prozentsatz. §3 Nr. 63 EStG / §1 SvEV-Cap und gesetzlicher AG-Zuschuss werden im Modell auf Jahr 1 fixiert (Näherung).",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:242"
+  },
+  {
+    "key": "inputs.bavinputs.015",
+    "de": "Grenzsteuer- und GRV-Optionen für die Auszahlungsphase.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:252"
+  },
+  {
+    "key": "inputs.bavinputs.016",
+    "de": "bAV-Renten profitieren in der Einkommensteuer vom Versorgungsfreibetrag",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:255"
+  },
+  {
+    "key": "inputs.bavinputs.017",
+    "de": "— der Wert ist im Modell automatisch berücksichtigt.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:257"
+  },
+  {
+    "key": "inputs.bavinputs.018",
+    "de": "Grenzsteuer auf bAV = Steuer(bAV +",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:278"
+  },
+  {
+    "key": "inputs.bavinputs.019",
+    "de": "/Monat) − Steuer(",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:278, src/features/inputs/InsuranceInputs.tsx:253"
+  },
+  {
+    "key": "inputs.bavinputs.020",
+    "de": "/Monat).",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:279, src/features/inputs/InsuranceInputs.tsx:254"
+  },
+  {
+    "key": "inputs.bavinputs.021",
+    "de": "Geschätzte Minderung:",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:298"
+  },
+  {
+    "key": "inputs.bavinputs.022",
+    "de": "/Monat (",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:299"
+  },
+  {
+    "key": "inputs.bavinputs.023",
+    "de": "Jahre ×",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:300"
+  },
+  {
+    "key": "inputs.bavinputs.024",
+    "de": "/Monat, Rentenwert",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:301"
+  },
+  {
+    "key": "inputs.bavinputs.025",
+    "de": "Pflichtversicherter Rentner (KVdR)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:320"
+  },
+  {
+    "key": "inputs.bavinputs.026",
+    "de": "Brutto-bAV-Rente: ~",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:336"
+  },
+  {
+    "key": "inputs.bavinputs.027",
+    "de": "/Monat · KV-Basis:",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:336"
+  },
+  {
+    "key": "inputs.bavinputs.028",
+    "de": "(Pflichtversichert in Rente: Freibetrag 197,75 EUR auf bAV-Rente)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/BavInputs.tsx:340"
+  },
+  {
+    "key": "inputs.bavinputs.029",
+    "de": "(Freiwillig versichert: volle bAV-Rente als Beitragsgrundlage)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/BavInputs.tsx:341"
+  },
+  {
+    "key": "inputs.bavinputs.030",
+    "de": "Direktversicherung Altvertrag (vor 2005)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:368"
+  },
+  {
+    "key": "inputs.bavinputs.031",
+    "de": "Kapitalabfindung: voller persönlicher Steuersatz (keine Fünftelregelung). Rechtsgrundlage: §22 Nr. 5 EStG.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:374"
+  },
+  {
+    "key": "inputs.bavinputs.032",
+    "de": "Kapitalabfindung: Fünftelregelung anwendbar — steuerliche Glättung der Einmalzahlung. Rechtsgrundlage: §34 Abs. 2 Nr. 4 EStG.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:377"
+  },
+  {
+    "key": "inputs.bavinputs.033",
+    "de": "Kapitalabfindung: steuerfrei (Altvertrag vor 2005, Mindestlaufzeit erfüllt). KV/PV gilt weiterhin (§229 SGB V).",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:380"
+  },
+  {
+    "key": "inputs.bavinputs.034",
+    "de": "Altvertrag steuerfrei (mind. 12 Jahre Laufzeit, mind. 5 Beitragsjahre, Kapitalleistung)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:397"
+  },
+  {
+    "key": "inputs.bavinputs.035",
+    "de": "Steuerfreiheit abgewählt — voller Steuersatz auf Kapitalabfindung.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:401"
+  },
+  {
+    "key": "inputs.bavinputs.036",
+    "de": "bAV-Kosten",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:410"
+  },
+  {
+    "key": "inputs.bavinputs.037",
+    "de": "Kosteneingabe direkt aus dem Produktinformationsblatt (Effektivkosten all-in) oder als Einzelposten.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/BavInputs.tsx:411, src/features/inputs/InsuranceInputs.tsx:377"
+  },
+  {
+    "key": "inputs.dstepindicator.001",
+    "de": "Über dich",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/DStepIndicator.tsx:35"
+  },
+  {
+    "key": "inputs.dstepindicator.002",
+    "de": "Deine Verträge",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/DStepIndicator.tsx:36"
+  },
+  {
+    "key": "inputs.dstepindicator.003",
+    "de": "GRV · Sparpläne · Versicherungen",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/DStepIndicator.tsx:36"
+  },
+  {
+    "key": "inputs.etfinputs.001",
+    "de": "Fondstyp (für Teilfreistellung)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/EtfInputs.tsx:20, src/features/inputs/EtfInputs.tsx:41"
+  },
+  {
+    "key": "inputs.etfinputs.002",
+    "de": "Aktienfonds (30% steuerfrei)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/EtfInputs.tsx:54"
+  },
+  {
+    "key": "inputs.etfinputs.003",
+    "de": "Mischfonds (15% steuerfrei)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/EtfInputs.tsx:55"
+  },
+  {
+    "key": "inputs.etfinputs.004",
+    "de": "Inl. Immobilienfonds (60% steuerfrei)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/EtfInputs.tsx:56"
+  },
+  {
+    "key": "inputs.etfinputs.005",
+    "de": "Ausl. Immobilienfonds (80% steuerfrei)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/EtfInputs.tsx:57"
+  },
+  {
+    "key": "inputs.etfinputs.006",
+    "de": "Anleihe-ETF / Sonstige (0% steuerfrei)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/EtfInputs.tsx:58"
+  },
+  {
+    "key": "inputs.glossarypanel.001",
+    "de": "auszahlung",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GlossaryPanel.tsx:13"
+  },
+  {
+    "key": "inputs.glossarypanel.002",
+    "de": "kosten",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GlossaryPanel.tsx:14"
+  },
+  {
+    "key": "inputs.glossarypanel.003",
+    "de": "steuer-sv",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GlossaryPanel.tsx:15"
+  },
+  {
+    "key": "inputs.glossarypanel.004",
+    "de": "Erklärungen aller Fach­begriffe in einfacher Sprache. Nutze die Suche, um einen Begriff schnell zu finden.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/GlossaryPanel.tsx:50"
+  },
+  {
+    "key": "inputs.glossarypanel.005",
+    "de": "Begriff oder Stichwort suchen…",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · attr:placeholder · src/features/inputs/GlossaryPanel.tsx:55"
+  },
+  {
+    "key": "inputs.glossarypanel.006",
+    "de": "Keine Treffer",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GlossaryPanel.tsx:63"
+  },
+  {
+    "key": "inputs.grvinputs.001",
+    "de": "Gesetzliche Rentenversicherung",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GRVInputs.tsx:22"
+  },
+  {
+    "key": "inputs.grvinputs.002",
+    "de": "Berufsständisches Versorgungswerk",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GRVInputs.tsx:23, src/features/inputs/GRVInputs.tsx:30"
+  },
+  {
+    "key": "inputs.grvinputs.003",
+    "de": "Keine",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GRVInputs.tsx:25"
+  },
+  {
+    "key": "inputs.grvinputs.004",
+    "de": "Gesetzliche Rentenversicherung (GRV)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GRVInputs.tsx:29"
+  },
+  {
+    "key": "inputs.grvinputs.005",
+    "de": "Kein Pflichtrentenversicherungssystem",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GRVInputs.tsx:32"
+  },
+  {
+    "key": "inputs.grvinputs.006",
+    "de": "Grundlage (Schätzen / manuell)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GRVInputs.tsx:54"
+  },
+  {
+    "key": "inputs.grvinputs.007",
+    "de": "Krankenversicherung in Rente",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GRVInputs.tsx:59, src/features/inputs/GRVInputs.tsx:316"
+  },
+  {
+    "key": "inputs.grvinputs.008",
+    "de": "Gehalt + %/Jahr",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/inputs/GRVInputs.tsx:67"
+  },
+  {
+    "key": "inputs.grvinputs.009",
+    "de": "kein Gehaltswachstum",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/features/inputs/GRVInputs.tsx:68"
+  },
+  {
+    "key": "inputs.grvinputs.010",
+    "de": "Rentenwert + %/Jahr",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/inputs/GRVInputs.tsx:69"
+  },
+  {
+    "key": "inputs.grvinputs.011",
+    "de": "kein Rentenwert-Wachstum",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · call-arg · src/features/inputs/GRVInputs.tsx:70"
+  },
+  {
+    "key": "inputs.grvinputs.012",
+    "de": "Basisschutz aus der gesetzlichen Rente — geschätzt oder aus der Renteninformation.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GRVInputs.tsx:86"
+  },
+  {
+    "key": "inputs.grvinputs.013",
+    "de": "Berufsständische Altersversorgung (z. B. Ärzte-, Anwalts-, Architektenversorgung) — ersetzt die GRV für kammerpflichtige Berufe.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GRVInputs.tsx:87"
+  },
+  {
+    "key": "inputs.grvinputs.014",
+    "de": "Versorgung nach Beamtenversorgungsgesetz — prozentual vom letzten Grundgehalt (Ruhegehaltssatz). Geben Sie den Betrag aus Ihrer Versorgungsauskunft ein.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GRVInputs.tsx:88"
+  },
+  {
+    "key": "inputs.grvinputs.015",
+    "de": "Kein gesetzliches Pflichtversicherungssystem modelliert (z. B. dauerhaft befreite Selbstständige).",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GRVInputs.tsx:89"
+  },
+  {
+    "key": "inputs.grvinputs.016",
+    "de": "Keine Basisrente eingerechnet — alle Altersvorsorge über die Produkte unten.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/GRVInputs.tsx:117"
+  },
+  {
+    "key": "inputs.grvinputs.017",
+    "de": "Schätzen (Entgeltpunkte)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/GRVInputs.tsx:135"
+  },
+  {
+    "key": "inputs.grvinputs.018",
+    "de": "Entgeltpunkte-Äquivalent bisher",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GRVInputs.tsx:172"
+  },
+  {
+    "key": "inputs.grvinputs.019",
+    "de": "Rente",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GRVInputs.tsx:195"
+  },
+  {
+    "key": "inputs.grvinputs.020",
+    "de": "netto",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/GRVInputs.tsx:195"
+  },
+  {
+    "key": "inputs.grvinputs.021",
+    "de": "(nach Steuer und KV/PV)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GRVInputs.tsx:197"
+  },
+  {
+    "key": "inputs.grvinputs.022",
+    "de": "(Steuer",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/GRVInputs.tsx:201"
+  },
+  {
+    "key": "inputs.grvinputs.023",
+    "de": "/Monat abgezogen",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/GRVInputs.tsx:204"
+  },
+  {
+    "key": "inputs.grvinputs.024",
+    "de": "Jährliche Steigerung der Pension bis Rentenbeginn (Besoldungserhöhungen). Historisch ca. 2 % p.a.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GRVInputs.tsx:251"
+  },
+  {
+    "key": "inputs.grvinputs.025",
+    "de": "Jährliches Wachstum des Rentenwerts bis Rentenbeginn. Historisch ca. 2–3 % p.a. (nominell).",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/GRVInputs.tsx:252"
+  },
+  {
+    "key": "inputs.grvinputs.026",
+    "de": "Wird auf den Auskunftswert angewendet.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/GRVInputs.tsx:254"
+  },
+  {
+    "key": "inputs.grvinputs.027",
+    "de": "GRV-Minderung durch bAV-Umwandlung abziehen",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/GRVInputs.tsx:269"
+  },
+  {
+    "key": "inputs.grvinputs.028",
+    "de": "Beiträge (für Rürup-Schicht-1-Cap)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/GRVInputs.tsx:276"
+  },
+  {
+    "key": "inputs.grvinputs.029",
+    "de": "Versorgungswerk-Beiträge zählen wie Rentenversicherungsbeiträge zum Schicht-1-Höchstbetrag für die Basisrente (§10 Abs. 3 Nr. 2 EStG). Tragen Sie Ihre tatsächlichen Monatsbeiträge ein.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/GRVInputs.tsx:279"
+  },
+  {
+    "key": "inputs.grvinputs.030",
+    "de": "Pflichtversichert (KVdR) — kein KV/PV auf AVD/Riester/Rürup",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/GRVInputs.tsx:330"
+  },
+  {
+    "key": "inputs.grvinputs.031",
+    "de": "Freiwillig GKV — voller Beitrag auf alle Renteneinkünfte",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/GRVInputs.tsx:331"
+  },
+  {
+    "key": "inputs.grvinputs.032",
+    "de": "Privat versichert (PKV) — kein gesetzlicher KV/PV-Abzug",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/GRVInputs.tsx:332"
+  },
+  {
+    "key": "inputs.grvinputs.033",
+    "de": "Gilt für AVD, Riester und Basisrente. Pflichtversicherte Rentner zahlen auf diese sonstigen Einkünfte keinen GKV/PV-Beitrag (kein Versorgungsbezug nach §229 SGB V); freiwillig Versicherte zahlen den vollen Beitrag bis zur Beitragsbemessungsgrenze (§240 SGB V). bAV und GRV werden separat behandelt.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/GRVInputs.tsx:336"
+  },
+  {
+    "key": "inputs.insuranceinputs.001",
+    "de": "steuerfrei (vor 2005)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/InsuranceInputs.tsx:35"
+  },
+  {
+    "key": "inputs.insuranceinputs.002",
+    "de": "Halbeinkünfteverfahren",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/InsuranceInputs.tsx:36"
+  },
+  {
+    "key": "inputs.insuranceinputs.003",
+    "de": "Altvertrag (vor 2005): Kapitalwahl steuerfrei. Rechtsgrundlage: §52 Abs. 28 EStG a.F.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:79"
+  },
+  {
+    "key": "inputs.insuranceinputs.004",
+    "de": "Nur die Hälfte des Ertrags wird mit Ihrem persönlichen Steuersatz versteuert (≥ 12 Jahre Laufzeit, Auszahlung ab",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:82"
+  },
+  {
+    "key": "inputs.insuranceinputs.005",
+    "de": "Voller Ertrag mit 25 % Abgeltungsteuer + Soli (Bedingungen für Halbeinkünfteverfahren nicht erfüllt). Rechtsgrundlage: §20 Abs. 2 EStG.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:85"
+  },
+  {
+    "key": "inputs.insuranceinputs.006",
+    "de": "Altvertrag steuerfrei (mind. 12 Jahre Laufzeit, mind. 5 Beitragsjahre)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:153"
+  },
+  {
+    "key": "inputs.insuranceinputs.007",
+    "de": "Steuerfreiheit abgewählt — es gelten die Post-2004-Regeln (Halbeinkünfteverfahren oder Abgeltungsteuer).",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:157"
+  },
+  {
+    "key": "inputs.insuranceinputs.008",
+    "de": "Beitrag steigt jedes Jahr um diesen Prozentsatz. Wirkt sich auch auf Abschlusskosten aus (Beitragssumme wächst).",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:178"
+  },
+  {
+    "key": "inputs.insuranceinputs.009",
+    "de": "Modelliert eine vertragliche Mindestleistung bei Rentenbeginn. Kosten bleiben unverändert im Kostenblock.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:187"
+  },
+  {
+    "key": "inputs.insuranceinputs.010",
+    "de": "Beitragsgarantie berücksichtigen",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:208"
+  },
+  {
+    "key": "inputs.insuranceinputs.011",
+    "de": "Steuer(½ Ertrag +",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:253"
+  },
+  {
+    "key": "inputs.insuranceinputs.012",
+    "de": "Beiträge ruhen lassen / Kündigung (pAV)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:261"
+  },
+  {
+    "key": "inputs.insuranceinputs.013",
+    "de": "Modelliert das vorzeitige Ende der Beitragszahlung. Das Kapital wächst danach unter laufenden Kosten weiter bis zum Rentenbeginn. Die Kündigung ermittelt den geschätzten Rückkaufswert zum gewählten Alter.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:262"
+  },
+  {
+    "key": "inputs.insuranceinputs.014",
+    "de": "Beiträge ruhen lassen / Kündigung modellieren",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:281"
+  },
+  {
+    "key": "inputs.insuranceinputs.015",
+    "de": "Rückkaufswert = Kapital bei Beitragsfreistellung × (1 − Stornoabschlag). Nach Beitragsfreistellung wachsen noch Mantel- und Fondsgebühren; keine Beitrags-, Fixkosten oder Abschlussgebühren mehr.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:323"
+  },
+  {
+    "key": "inputs.insuranceinputs.016",
+    "de": "Kapital bei Beitragsfreistellung",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:337"
+  },
+  {
+    "key": "inputs.insuranceinputs.017",
+    "de": "Rückkaufswert (Kündigung jetzt)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:341"
+  },
+  {
+    "key": "inputs.insuranceinputs.018",
+    "de": "Kosten bis Alter",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:345"
+  },
+  {
+    "key": "inputs.insuranceinputs.019",
+    "de": "Weiterlaufendes Kapital bis Rentenbeginn (beitragsfrei)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:349"
+  },
+  {
+    "key": "inputs.insuranceinputs.020",
+    "de": "Kapital bei Rentenbeginn (beitragsfrei)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:352"
+  },
+  {
+    "key": "inputs.insuranceinputs.021",
+    "de": "Brutto-Rente (beitragsfrei)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:356"
+  },
+  {
+    "key": "inputs.insuranceinputs.022",
+    "de": "/ Monat",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:357, src/features/inputs/InsuranceInputs.tsx:361"
+  },
+  {
+    "key": "inputs.insuranceinputs.023",
+    "de": "Netto-Rente (beitragsfrei)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:360"
+  },
+  {
+    "key": "inputs.insuranceinputs.024",
+    "de": "Kapitalwahl nach Steuer (beitragsfrei)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:365"
+  },
+  {
+    "key": "inputs.insuranceinputs.025",
+    "de": "Kosten der Rentenversicherung",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/InsuranceInputs.tsx:376"
+  },
+  {
+    "key": "inputs.profileinputs.001",
+    "de": "Gesetzlich (GKV)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/ProfileInputs.tsx:83, src/features/inputs/ProfileInputs.tsx:93, src/features/inputs/sections/AngabenPersonSection.tsx:29"
+  },
+  {
+    "key": "inputs.profileinputs.002",
+    "de": "Privat (PKV)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/ProfileInputs.tsx:97, src/features/inputs/ProfileInputs.tsx:107, src/features/inputs/sections/AngabenPersonSection.tsx:30"
+  },
+  {
+    "key": "inputs.profileinputs.003",
+    "de": "+ Kind hinzufügen",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/ProfileInputs.tsx:166"
+  },
+  {
+    "key": "inputs.profileinputs.004",
+    "de": "Geplante Kinder können mit zukünftigem Geburtsjahr eingetragen werden. Pflegebeiträge (Kinderlosenzuschlag, Beitragsabschlag) gelten erst ab dem Geburtsjahr; Riester-/AVD-Zulagen berücksichtigen das jeweilige Beitragsjahr.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/ProfileInputs.tsx:170"
+  },
+  {
+    "key": "inputs.profileinputs.005",
+    "de": "AG-Zuschuss zur PKV (steuerfrei, §257 SGB V):",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/ProfileInputs.tsx:209"
+  },
+  {
+    "key": "inputs.profileinputs.006",
+    "de": "/Monat. Netto-PKV-Kosten:",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/ProfileInputs.tsx:210"
+  },
+  {
+    "key": "inputs.profileinputs.007",
+    "de": "/Monat.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/ProfileInputs.tsx:212"
+  },
+  {
+    "key": "inputs.riesterinputs.001",
+    "de": "AVD-Übertrag:",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/inputs/RiesterInputs.tsx:40"
+  },
+  {
+    "key": "inputs.riesterinputs.002",
+    "de": "Bestehender Riester-Altersvorsorgevertrag nach altem Recht. Keine Neuverträge ab 2027. Auszahlung vollständig steuerpflichtig. Bis zu 30 % des Kapitals als Einmalbetrag zu Rentenbeginn möglich.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/RiesterInputs.tsx:49"
+  },
+  {
+    "key": "inputs.riesterinputs.003",
+    "de": "Eigenbeitrag unter Mindesteigenbeitrag (",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/RiesterInputs.tsx:140"
+  },
+  {
+    "key": "inputs.riesterinputs.004",
+    "de": "/Jahr) — Zulagen werden anteilig (",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/RiesterInputs.tsx:140"
+  },
+  {
+    "key": "inputs.riesterinputs.005",
+    "de": ") gewährt.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/RiesterInputs.tsx:140"
+  },
+  {
+    "key": "inputs.riesterinputs.006",
+    "de": "Modelliert die Mindestleistung des bestehenden Vertrags. Kosten bleiben unverändert in den Riester-Kosten.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/RiesterInputs.tsx:237"
+  },
+  {
+    "key": "inputs.riesterinputs.007",
+    "de": "Garantie im Risiko-Check berücksichtigen",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/RiesterInputs.tsx:258"
+  },
+  {
+    "key": "inputs.riesterinputs.008",
+    "de": "Riester → Altersvorsorgedepot Übertrag",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/RiesterInputs.tsx:323"
+  },
+  {
+    "key": "inputs.riesterinputs.009",
+    "de": "Vorhandenes Riester-Kapital in ein neues Altersvorsorgedepot übertragen (kein steuerpflichtiger Verkauf). Das AVD-Produkt startet mit diesem Kapital minus Übertragungskosten als Startguthaben. Übertragungskosten beim AVD separat eintragen.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/RiesterInputs.tsx:325"
+  },
+  {
+    "key": "inputs.scenariospanel.001",
+    "de": "Lädt eine Beispielkonfiguration und überschreibt alle Annahmen (Persönliches Profil bleibt erhalten).",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/ScenariosPanel.tsx:82"
+  },
+  {
+    "key": "inputs.scenariospanel.002",
+    "de": "Name für aktuelles Szenario…",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · attr:placeholder · src/features/inputs/ScenariosPanel.tsx:110"
+  },
+  {
+    "key": "inputs.scenariospanel.003",
+    "de": "Speichern",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/ScenariosPanel.tsx:122"
+  },
+  {
+    "key": "inputs.scenariospanel.004",
+    "de": "Noch keine Szenarien gespeichert.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/ScenariosPanel.tsx:127"
+  },
+  {
+    "key": "inputs.scenariospanel.005",
+    "de": "Klicken zum Umbenennen",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · attr:title · src/features/inputs/ScenariosPanel.tsx:150"
+  },
+  {
+    "key": "inputs.scenariospanel.006",
+    "de": "Laden",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/ScenariosPanel.tsx:170"
+  },
+  {
+    "key": "inputs.scenariospanel.007",
+    "de": "Löschen",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · attr:title · src/features/inputs/ScenariosPanel.tsx:182"
+  },
+  {
+    "key": "inputs.angabenannahmensection.001",
+    "de": "Renditeannahmen für die kapitalmarktgebundenen Produkte und Inflationsmodellierung. Voreinstellungen folgen MSCI-World-Werten über 30-jährige Rolling-Fenster.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/AngabenAnnahmenSection.tsx:90"
+  },
+  {
+    "key": "inputs.angabenannahmensection.002",
+    "de": "Annualisierte Volatilität für die stochastische Bandbreite",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/AngabenAnnahmenSection.tsx:164"
+  },
+  {
+    "key": "inputs.angabenannahmensection.003",
+    "de": "Szenarien laden / speichern",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/AngabenAnnahmenSection.tsx:246"
+  },
+  {
+    "key": "inputs.angabeneinkommensection.001",
+    "de": "Bruttogehalt steuert Lohnsteuer, Vorsorgepauschale und die Förderhöchstbeträge der betrieblichen Altersvorsorge.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/AngabenEinkommenSection.tsx:51"
+  },
+  {
+    "key": "inputs.angabeneinkommensection.002",
+    "de": "Voll steuer- und SV-frei bis ca.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/AngabenEinkommenSection.tsx:96"
+  },
+  {
+    "key": "inputs.angabeneinkommensection.003",
+    "de": "/Monat (§ 3 Nr. 63 EStG)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/AngabenEinkommenSection.tsx:96"
+  },
+  {
+    "key": "inputs.angabeneinkommensection.004",
+    "de": "Beitragszuschuss § 257 SGB V; Teilbeträge gehen in die Vorsorgepauschale",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/AngabenEinkommenSection.tsx:149"
+  },
+  {
+    "key": "inputs.angabenpersonsection.001",
+    "de": "Baden-Württemberg",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/sections/AngabenPersonSection.tsx:38"
+  },
+  {
+    "key": "inputs.angabenpersonsection.002",
+    "de": "Thüringen",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/sections/AngabenPersonSection.tsx:53"
+  },
+  {
+    "key": "inputs.angabenpersonsection.003",
+    "de": "Geburtsjahr, Familienstand und Krankenversicherung. Treiben die Kohortenwerte für Versorgungsfreibetrag und Besteuerungsanteil sowie den Splittingtarif.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/AngabenPersonSection.tsx:90"
+  },
+  {
+    "key": "inputs.angabenpersonsection.004",
+    "de": "Ehegattensplitting nach § 32a Abs. 5 EStG",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/AngabenPersonSection.tsx:138"
+  },
+  {
+    "key": "inputs.angabenpersonsection.005",
+    "de": "Kirchensteuersatz Bayern/BW vs. übrige Länder",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/AngabenPersonSection.tsx:164"
+  },
+  {
+    "key": "inputs.angabenpersonsection.006",
+    "de": "Pflegebeiträge-Zuschlag (§ 55 SGB XI) und Riester-Kinderzulagen",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/AngabenPersonSection.tsx:220"
+  },
+  {
+    "key": "inputs.angabenpersonsection.007",
+    "de": "Auf Einkommen- und Kapitalertragsteuer; Satz je Bundesland",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/AngabenPersonSection.tsx:239"
+  },
+  {
+    "key": "inputs.angabenrenteneintrittsection.001",
+    "de": "PKV in der Rente",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/sections/AngabenRenteneintrittSection.tsx:28"
+  },
+  {
+    "key": "inputs.angabenrenteneintrittsection.002",
+    "de": "Renteneintrittsalter und Status in der Krankenversicherung der Rentner fixieren Besteuerungsanteil und Versorgungsfreibetrag — beide sind kohortengebunden.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/AngabenRenteneintrittSection.tsx:65"
+  },
+  {
+    "key": "inputs.angabenrenteneintrittsection.003",
+    "de": "Renteneintrittsjahr fixiert Kohortenwerte zum Renteneintritt",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/AngabenRenteneintrittSection.tsx:91"
+  },
+  {
+    "key": "inputs.angabenrenteneintrittsection.004",
+    "de": "Nur für Kapitalverzehr (ETF, bAV/pAV in „selbstgesteuert\"-Modus)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/AngabenRenteneintrittSection.tsx:122"
+  },
+  {
+    "key": "inputs.angabenrenteneintrittsection.005",
+    "de": "Status KV in der Rente",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/AngabenRenteneintrittSection.tsx:128"
+  },
+  {
+    "key": "inputs.angabenrenteneintrittsection.006",
+    "de": "Optional — leeren oder 0 setzen, falls keine Zielmarke gesetzt",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/AngabenRenteneintrittSection.tsx:163"
+  },
+  {
+    "key": "inputs.feesection.001",
+    "de": "Näherung: Die Effektivkosten aus dem PIB/KID werden als gleichmäßige jährliche Renditeminderung eingestellt. Abschluss- und beitragsbezogene Kosten sind darin bereits enthalten.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/FeeSection.tsx:201"
+  },
+  {
+    "key": "inputs.feesection.002",
+    "de": "liegt über 5 % — typische Nettotarife erheben keine Kosten je Beitrag.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/FeeSection.tsx:228"
+  },
+  {
+    "key": "inputs.feesection.003",
+    "de": "übersteigen 2,5 % der Beitragssumme.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/FeeSection.tsx:234"
+  },
+  {
+    "key": "inputs.feesection.004",
+    "de": "p.a. liegt über 1,0 % — prüfen Sie ETF-basierte Nettotarife (typisch 0,5–0,8 % all-in).",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/FeeSection.tsx:240"
+  },
+  {
+    "key": "inputs.feesection.005",
+    "de": "überschreiten 2,0 % — ETF-basierte Verträge über dieser Schwelle gelten i. d. R. als unwirtschaftlich.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/FeeSection.tsx:246"
+  },
+  {
+    "key": "inputs.nettobelastungcontrol.001",
+    "de": "Netto-Beitrag",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/sections/NettoBelastungControl.tsx:29"
+  },
+  {
+    "key": "inputs.nettobelastungcontrol.002",
+    "de": "netto-belastung-preset active",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/sections/NettoBelastungControl.tsx:56"
+  },
+  {
+    "key": "inputs.nettobelastungcontrol.003",
+    "de": "netto-belastung-preset",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/sections/NettoBelastungControl.tsx:57"
+  },
+  {
+    "key": "inputs.payoutmodesection.001",
+    "de": "Lebenslange Rente nach Vertrags-Rentenfaktor; Kapitalverzehr-Endalter wird ignoriert.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/sections/PayoutModeSection.tsx:16"
+  },
+  {
+    "key": "inputs.payoutmodesection.002",
+    "de": "Vertraglich befristete Rente über die unten gewählte Anzahl Jahre.",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/sections/PayoutModeSection.tsx:18"
+  },
+  {
+    "key": "inputs.payoutmodesection.003",
+    "de": "Eigenverwaltete Entnahme bis zum globalen Endalter (Annuitätenformel).",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/inputs/sections/PayoutModeSection.tsx:20"
+  },
+  {
+    "key": "inputs.payoutmodesection.004",
+    "de": "Lebenslange Rente (Leibrente)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/PayoutModeSection.tsx:76"
+  },
+  {
+    "key": "inputs.payoutmodesection.005",
+    "de": "Zeitrente (befristete Auszahlung)",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/PayoutModeSection.tsx:77"
+  },
+  {
+    "key": "inputs.payoutmodesection.006",
+    "de": "Standardwert — für eine genaue Rentenberechnung den garantierten Rentenfaktor aus dem Angebot übernehmen (steht im PIB oder in der Beispielsrechnung).",
+    "surface": "inputs",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/inputs/sections/PayoutModeSection.tsx:97"
+  }
+]

@@ -1,0 +1,541 @@
+[
+  {
+    "key": "dashboard.contractdecisioncards.001",
+    "de": "Weiterführen",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/ContractDecisionCards.tsx:49"
+  },
+  {
+    "key": "dashboard.contractdecisioncards.002",
+    "de": "Beitragsfrei stellen",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/ContractDecisionCards.tsx:50"
+  },
+  {
+    "key": "dashboard.contractdecisioncards.003",
+    "de": "Kündigen",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/ContractDecisionCards.tsx:51, src/features/dashboard/RecommenderCard.tsx:293"
+  },
+  {
+    "key": "dashboard.contractdecisioncards.004",
+    "de": "Übertragen",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/ContractDecisionCards.tsx:52"
+  },
+  {
+    "key": "dashboard.contractdecisioncards.005",
+    "de": "Beitrag erhöhen",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/ContractDecisionCards.tsx:53"
+  },
+  {
+    "key": "dashboard.contractdecisioncards.006",
+    "de": "Beitrag senken",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/ContractDecisionCards.tsx:54"
+  },
+  {
+    "key": "dashboard.contractdecisioncards.007",
+    "de": "/Monat",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/dashboard/ContractDecisionCards.tsx:85"
+  },
+  {
+    "key": "dashboard.contractdecisioncards.008",
+    "de": "beitrag-erhoehen",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/ContractDecisionCards.tsx:92"
+  },
+  {
+    "key": "dashboard.contractdecisioncards.009",
+    "de": "Geringere Netto-Rente trotz höherem Beitrag möglich (z.B. wegen anderer Vertrags-Interaktionen)",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/ContractDecisionCards.tsx:93"
+  },
+  {
+    "key": "dashboard.contractdecisioncards.010",
+    "de": "auswählen",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/dashboard/ContractDecisionCards.tsx:160"
+  },
+  {
+    "key": "dashboard.contractdecisioncards.011",
+    "de": "Förderzulagen-Rückforderung nicht berücksichtigt — Auszahlung kann in der Praxis niedriger ausfallen (§93 EStG).",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/ContractDecisionCards.tsx:184"
+  },
+  {
+    "key": "dashboard.contractdecisionmenu.001",
+    "de": "Optionen für diesen Vertrag",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/ContractDecisionMenu.tsx:64, src/features/dashboard/ContractDecisionMenu.tsx:133, src/features/dashboard/ContractDecisionMenu.tsx:139"
+  },
+  {
+    "key": "dashboard.contractdecisionmenu.002",
+    "de": "Schließen",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/dashboard/ContractDecisionMenu.tsx:144, src/features/dashboard/LueckeSchliessenModal.tsx:364"
+  },
+  {
+    "key": "dashboard.contractdecisionmenu.003",
+    "de": "1 Plan erstellen",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/ContractDecisionMenu.tsx:167"
+  },
+  {
+    "key": "dashboard.contractdecisionmenu.004",
+    "de": "Pläne erstellen",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/dashboard/ContractDecisionMenu.tsx:168"
+  },
+  {
+    "key": "dashboard.contractdecisionmenu.005",
+    "de": "Abbrechen",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/ContractDecisionMenu.tsx:171, src/features/dashboard/LueckeSchliessenModal.tsx:147"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.001",
+    "de": "Lücke schließen",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/LueckeSchliessenModal.tsx:41, src/features/dashboard/LueckeSchliessenModal.tsx:113, src/features/dashboard/RentenluckeDashboard.tsx:253"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.002",
+    "de": "Lücke-schließen Schritt:",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/dashboard/LueckeSchliessenModal.tsx:46"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.003",
+    "de": "Weiter",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/LueckeSchliessenModal.tsx:50, src/features/dashboard/LueckeSchliessenModal.tsx:156"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.004",
+    "de": "Wie viel möchtest du zusätzlich sparen?",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/LueckeSchliessenModal.tsx:121"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.005",
+    "de": "Monatliche Sparrate auswählen",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/dashboard/LueckeSchliessenModal.tsx:122"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.006",
+    "de": "Hast du ein bAV-Angebot vom Arbeitgeber?",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/LueckeSchliessenModal.tsx:164"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.007",
+    "de": "Prozent und fixer Beitrag werden addiert; ein Maximum begrenzt den Arbeitgeberanteil.",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/LueckeSchliessenModal.tsx:228"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.008",
+    "de": "Auszahlung",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/LueckeSchliessenModal.tsx:234"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.009",
+    "de": "Durchführungsweg: Direktversicherung §3 Nr. 63.",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/LueckeSchliessenModal.tsx:256"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.010",
+    "de": "bAV bleibt im Vergleich mit",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/LueckeSchliessenModal.tsx:264"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.011",
+    "de": "und niedrigerer Eingabesicherheit.",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/LueckeSchliessenModal.tsx:265"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.012",
+    "de": "Zurück",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/LueckeSchliessenModal.tsx:271, src/features/dashboard/LueckeSchliessenModal.tsx:361"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.013",
+    "de": "Optionen anzeigen",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/LueckeSchliessenModal.tsx:280"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.014",
+    "de": "wurde als Was-wäre-wenn-Szenario gespeichert. Zu finden unter Meine Verträge → Szenarien.",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/LueckeSchliessenModal.tsx:294"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.015",
+    "de": "Zusätzlich monatlich",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/LueckeSchliessenModal.tsx:299"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.016",
+    "de": "netto",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/LueckeSchliessenModal.tsx:300, src/features/dashboard/RecommenderCard.tsx:232"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.017",
+    "de": "Erwartete Netto-Rente",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/LueckeSchliessenModal.tsx:303"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.018",
+    "de": "Kapital bei Renteneinstieg (netto)",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/LueckeSchliessenModal.tsx:307"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.019",
+    "de": "Die Basisplanung bleibt unverändert. Erst wenn du das Szenario aktiv übernimmst, wird es Teil des Hauptplans.",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/LueckeSchliessenModal.tsx:315"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.020",
+    "de": "Weiteres Szenario speichern",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/LueckeSchliessenModal.tsx:328"
+  },
+  {
+    "key": "dashboard.lueckeschliessenmodal.021",
+    "de": "Fertig",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/LueckeSchliessenModal.tsx:331"
+  },
+  {
+    "key": "dashboard.recommendercard.001",
+    "de": "eingeschränkt",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/RecommenderCard.tsx:47"
+  },
+  {
+    "key": "dashboard.recommendercard.002",
+    "de": "schwer / nicht vorgesehen",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/RecommenderCard.tsx:48"
+  },
+  {
+    "key": "dashboard.recommendercard.003",
+    "de": "Beiträge je Vertrag vergleichen",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/dashboard/RecommenderCard.tsx:165"
+  },
+  {
+    "key": "dashboard.recommendercard.004",
+    "de": "Welcher Vertrag profitiert am stärksten von",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/RecommenderCard.tsx:171"
+  },
+  {
+    "key": "dashboard.recommendercard.005",
+    "de": "zusätzlich im Monat?",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/RecommenderCard.tsx:172"
+  },
+  {
+    "key": "dashboard.recommendercard.006",
+    "de": "Für dieses Budget gibt es derzeit keine passenden Vorschläge.",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/RecommenderCard.tsx:177"
+  },
+  {
+    "key": "dashboard.recommendercard.007",
+    "de": "diese Rangliste für deine zusätzliche Sparrate:",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/RecommenderCard.tsx:184"
+  },
+  {
+    "key": "dashboard.recommendercard.008",
+    "de": "Sortieren nach",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/RecommenderCard.tsx:192"
+  },
+  {
+    "key": "dashboard.recommendercard.009",
+    "de": "brutto / Mon.",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/RecommenderCard.tsx:230"
+  },
+  {
+    "key": "dashboard.recommendercard.010",
+    "de": "Relative Bewertung nach für",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/dashboard/RecommenderCard.tsx:244"
+  },
+  {
+    "key": "dashboard.recommendercard.011",
+    "de": "Netto-Rente",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/RecommenderCard.tsx:259"
+  },
+  {
+    "key": "dashboard.recommendercard.012",
+    "de": "Flexibilität",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/RecommenderCard.tsx:261"
+  },
+  {
+    "key": "dashboard.recommendercard.013",
+    "de": "90 % der simulierten Verläufe lagen über diesem monatlichen Netto-Wert ( Pfade).",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/dashboard/RecommenderCard.tsx:264"
+  },
+  {
+    "key": "dashboard.recommendercard.014",
+    "de": "Kapital bei Renteneinstieg",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/RecommenderCard.tsx:274"
+  },
+  {
+    "key": "dashboard.recommendercard.015",
+    "de": "(annuitisiert, keine Kapitalauszahlung)",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/RecommenderCard.tsx:280"
+  },
+  {
+    "key": "dashboard.recommendercard.016",
+    "de": "Flexibilität und Aufwand",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/RecommenderCard.tsx:290"
+  },
+  {
+    "key": "dashboard.recommendercard.017",
+    "de": "Beitrag ändern",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/RecommenderCard.tsx:305"
+  },
+  {
+    "key": "dashboard.recommendercard.018",
+    "de": "Nächster Schritt",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/RecommenderCard.tsx:309"
+  },
+  {
+    "key": "dashboard.recommendercard.019",
+    "de": "Hinweise anzeigen",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/RecommenderCard.tsx:323"
+  },
+  {
+    "key": "dashboard.recommendercard.020",
+    "de": "Wunschnetto nicht erreicht",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/RecommenderCard.tsx:343"
+  },
+  {
+    "key": "dashboard.recommendercard.021",
+    "de": "Beitrag wurde auf den verbleibenden Rahmen gekürzt",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/RecommenderCard.tsx:348"
+  },
+  {
+    "key": "dashboard.recommendercard.022",
+    "de": "Als Plan speichern",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/RecommenderCard.tsx:361"
+  },
+  {
+    "key": "dashboard.rentenluckedashboard.001",
+    "de": "Rentenlücke-Dashboard",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/RentenluckeDashboard.tsx:66"
+  },
+  {
+    "key": "dashboard.rentenluckedashboard.002",
+    "de": "Voraussichtliche Netto-Rente (mtl.)",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/RentenluckeDashboard.tsx:71"
+  },
+  {
+    "key": "dashboard.rentenluckedashboard.003",
+    "de": "Ziel-Netto-Rente (mtl.)",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/RentenluckeDashboard.tsx:75"
+  },
+  {
+    "key": "dashboard.rentenluckedashboard.004",
+    "de": "Rentenlücke (mtl.)",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/RentenluckeDashboard.tsx:79"
+  },
+  {
+    "key": "dashboard.rentenluckedashboard.005",
+    "de": "CTA Lücke schließen / Mehr sparen",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/RentenluckeDashboard.tsx:87"
+  },
+  {
+    "key": "dashboard.rentenluckedashboard.006",
+    "de": "CTA Optimiere deine Vorsorge",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/RentenluckeDashboard.tsx:91"
+  },
+  {
+    "key": "dashboard.rentenluckedashboard.007",
+    "de": "Gesetzl. Rente",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/RentenluckeDashboard.tsx:98"
+  },
+  {
+    "key": "dashboard.rentenluckedashboard.008",
+    "de": "Rentenlücke-Übersicht",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · attr:aria-label · src/features/dashboard/RentenluckeDashboard.tsx:108"
+  },
+  {
+    "key": "dashboard.rentenluckedashboard.009",
+    "de": "Rentenlücke",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/RentenluckeDashboard.tsx:110"
+  },
+  {
+    "key": "dashboard.rentenluckedashboard.010",
+    "de": "Voraussichtliche Netto-Rente vs. Wunschnetto.",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · jsx-text · src/features/dashboard/RentenluckeDashboard.tsx:111"
+  },
+  {
+    "key": "dashboard.rentenluckedashboard.011",
+    "de": "Lücke (mtl.)",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/RentenluckeDashboard.tsx:141"
+  },
+  {
+    "key": "dashboard.rentenluckedashboard.012",
+    "de": "über Ziel",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/dashboard/RentenluckeDashboard.tsx:145"
+  },
+  {
+    "key": "dashboard.rentenluckedashboard.013",
+    "de": "Differenz zum Wunschnetto",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/RentenluckeDashboard.tsx:147"
+  },
+  {
+    "key": "dashboard.rentenluckedashboard.014",
+    "de": "Wunschnetto nicht gesetzt",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/RentenluckeDashboard.tsx:148"
+  },
+  {
+    "key": "dashboard.rentenluckedashboard.015",
+    "de": "Voraussichtliche Rente , Ziel erreicht.",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/dashboard/RentenluckeDashboard.tsx:159"
+  },
+  {
+    "key": "dashboard.rentenluckedashboard.016",
+    "de": "Voraussichtliche Rente , Ziel , Lücke .",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/dashboard/RentenluckeDashboard.tsx:160"
+  },
+  {
+    "key": "dashboard.rentenluckedashboard.017",
+    "de": "Lücke:",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "⚠ interpolated — needs parameterised key · auto-import · template-expr · src/features/dashboard/RentenluckeDashboard.tsx:181, src/features/dashboard/RentenluckeDashboard.tsx:214"
+  },
+  {
+    "key": "dashboard.rentenluckedashboard.018",
+    "de": "Mehr sparen",
+    "surface": "dashboard",
+    "risk": "normal",
+    "description": "auto-import · string · src/features/dashboard/RentenluckeDashboard.tsx:253"
+  }
+]

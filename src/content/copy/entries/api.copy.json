@@ -1,0 +1,9 @@
+[
+  {
+    "key": "api.manifest.001",
+    "de": "Dieses Tool erstellt Illustrationen, keine Steuer-, Rechts- oder Anlageberatung.",
+    "surface": "api",
+    "risk": "normal",
+    "description": "auto-import · string · src/api/manifest.ts:79"
+  }
+]
