@@ -540,6 +540,30 @@ describe('LueckeSchliessenModal — contract return caption (#372)', () => {
     return utils.container.querySelector('.luecke-modal__body--saved')!
   }
 
+  it('names the target rate and counts only the other own return in the solver caption', () => {
+    const ctx = withTarget(0.02)
+    ctx.workspace.baseline.assumptions.bav[0].expectedReturn = 0.07
+    const { container } = render(
+      <LueckeSchliessenModal {...ctx} onClose={() => {}} onSaveAsPlan={() => {}} />,
+    )
+    const note = container.querySelector('.luecke-modal__solver .luecke-modal__note')!
+    expect(note.textContent).toContain(`${captions(ctx).contract} · 1 Vertrag mit eigener Rendite.`)
+  })
+
+  it.each([undefined, 0.02])('keeps other own returns visible on save (target rate %s)', (rate) => {
+    const ctx = withTarget(rate)
+    ctx.workspace.baseline.assumptions.bav[0].expectedReturn = 0.07
+    const saved = saveEtf(ctx)
+    expect(saved.textContent).toContain(' · 1 Vertrag mit eigener Rendite.')
+    if (rate !== undefined) {
+      expect(saved.textContent).toContain(captions(ctx).contract)
+    } else {
+      const basis = ctx.workspace.baseline.assumptions.returnScenarios.find((s) => s.id === 'basis')!
+      expect(saved.textContent).toContain(`Rendite-Szenario ${basis.label} (${formatPercent(basis.annualReturn, 1)} p.a.)`)
+      expect(saved.textContent).not.toContain('Dieser Vertrag')
+    }
+  })
+
   it('names the contract rate and the scenario for the other contracts on the saved confirmation', () => {
     const ctx = withTarget(0.02)
     const saved = saveEtf(ctx)

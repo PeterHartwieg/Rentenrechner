@@ -23,6 +23,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useState, useEffect } from 'react'
 import { cleanup, fireEvent, render } from '@testing-library/react'
 import type { Dispatch, SetStateAction } from 'react'
+import { formatPercent } from '../../../utils/format'
 import { AngabenAnnahmenSection } from './AngabenAnnahmenSection'
 import {
   DEFAULT_EXPERT_INFLATION_RATE,
@@ -119,4 +120,10 @@ describe('AngabenAnnahmenSection — inflation toggle prefill (#408)', () => {
     expect(findInflationToggle(container).checked).toBe(false)
     expect(lastCommitted(onState).inflationRate).toBe(0)
   })
+})
+
+
+it('renders the inflation prefill from the same constant as the toggle (#420)', () => {
+  const { container } = renderSection({ ...defaultAssumptions, inflationRate: DEFAULT_EXPERT_INFLATION_RATE })
+  expect(container.textContent).toContain(`EZB-Mittelfrist-Ziel ${formatPercent(DEFAULT_EXPERT_INFLATION_RATE, 0)} als Vorbelegung`)
 })

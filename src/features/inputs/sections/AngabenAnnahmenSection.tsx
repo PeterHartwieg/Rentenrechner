@@ -190,7 +190,7 @@ export function AngabenAnnahmenSection(props: AngabenAnnahmenSectionProps) {
           </span>
           <span className="angaben-field-meta">
             <span className="angaben-field-hint">
-              EZB-Mittelfrist-Ziel 2 % als Vorbelegung — beliebig anpassbar
+              EZB-Mittelfrist-Ziel {formatPercent(DEFAULT_EXPERT_INFLATION_RATE, 0)} als Vorbelegung — beliebig anpassbar
             </span>
           </span>
         </label>
