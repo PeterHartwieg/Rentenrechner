@@ -117,6 +117,8 @@ export function selectPortfolioCareerStarterRecipient(
           right.allowanceClaimAnnual - left.allowanceClaimAnnual ||
           // Riester candidates share the pooled contribution, so an empty and a
           // paying contract tie above. Follow the allowance destination (R2-2).
+          // This key also orders an AVD candidate against a Riester candidate
+          // when both claims tie; equal benefit and claim leave amounts unchanged.
           right.paying - left.paying ||
           left.contractStartYear - right.contractStartYear ||
           left.instanceId.localeCompare(right.instanceId),
