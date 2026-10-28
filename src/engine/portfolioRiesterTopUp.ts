@@ -8,6 +8,7 @@ import { calculateAvdFunding } from './altersvorsorgedepot'
 export function evaluateRiesterTopUp(
   context: NonNullable<PortfolioFunding['riesterFundingContext']>, rules: GermanRules,
   targetId: string, additionalMonthly: number,
+  options: { includeAvdFunding?: boolean } = {},
 ) {
   const activeRiester = context.activeRiester.map(contract => contract.instanceId === targetId
     ? { ...contract, monthlyOwnContribution: contract.monthlyOwnContribution + additionalMonthly }
@@ -24,7 +25,8 @@ export function evaluateRiesterTopUp(
   })
   const riester = calculateRiesterHouseholdFunding(entries, context.people, rules,
     { jointTaxableIncome: context.jointTaxableIncome })
-  const avd = Object.fromEntries(context.activeAvd.map(contract => [contract.instanceId,
+  // Headroom needs allocation effects on Riester, but not the competing AVD rows.
+  const avd = Object.fromEntries((options.includeAvdFunding === false ? [] : context.activeAvd).map(contract => [contract.instanceId,
     calculateAvdFunding(rules, context.salaryAfterBasisrenteDeduction, {
       ...contract, eligibility: { ...contract.eligibility,
         careerStarterBonusUsed: contract.eligibility.careerStarterBonusUsed || contract.instanceId !== recipient },

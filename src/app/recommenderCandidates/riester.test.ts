@@ -19,6 +19,8 @@
 
 import { describe, expect, it, vi } from 'vitest'
 import * as portfolioFundingModule from '../../engine/portfolioFunding'
+import * as avdFundingModule from '../../engine/altersvorsorgedepot'
+import { evaluateRiesterTopUp } from '../../engine/portfolioRiesterTopUp'
 import { defaultAssumptions } from '../../data/defaultScenario'
 import { calculateRiesterFunding } from '../../engine/riester'
 import { de2026Rules } from '../../rules/de2026'
@@ -65,6 +67,22 @@ describe('makeRiesterTopUpCandidate — visible candidate behavior', () => {
         directlyEligible: true, careerStarterBonusUsed: false, ageAtContractStart: 20 } }]
     const budget = avdMonthly > 0 ? 100 : 50
     const context = buildGeneratorContext(ws, budget)
+    if (avdMonthly === 10) {
+      // Review round 3: headroom skips unused AVD rows, while bonus reselection
+      // and the resulting Riester amounts remain identical to budget sizing.
+      const fundingContext = context.portfolioFunding.riesterFundingContext!
+      const spy = vi.spyOn(avdFundingModule, 'calculateAvdFunding')
+      try {
+        const full = evaluateRiesterTopUp(fundingContext, de2026Rules, a.riester[0].instanceId, 100)
+        const fullCalls = spy.mock.calls.length
+        spy.mockClear()
+        const headroom = evaluateRiesterTopUp(fundingContext, de2026Rules, a.riester[0].instanceId, 100,
+          { includeAvdFunding: false })
+        expect(headroom.riester).toEqual(full.riester)
+        expect(headroom.avd).toEqual({})
+        expect(fullCalls - spy.mock.calls.length).toBe(fundingContext.activeAvd.length)
+      } finally { spy.mockRestore() }
+    }
     const draft = makeRiesterTopUpCandidate(context)!
     expect(draft).not.toBeNull()
     a.riester[0].monthlyOwnContribution += draft.grossMonthlyEUR

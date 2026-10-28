@@ -681,7 +681,7 @@ export function buildPortfolioFunding(
           },
         }
       })
-      const funding = evaluateRiesterTopUp(riesterFundingContext, rules, targetId, additionalOwnAnnual / 12).riester
+      const funding = evaluateRiesterTopUp(riesterFundingContext, rules, targetId, additionalOwnAnnual / 12, { includeAvdFunding: false }).riester
       const owner = entries.find(e => e.instance.instanceId === targetId)?.instance.ownedBy ?? 'self'
       const owned = entries.filter(e => (e.instance.ownedBy ?? 'self') === owner && (funding[e.instance.instanceId].portfolioTaxBenefitShare ?? 0) > 0)
       if (owned.length === 0) return additionalOwnAnnual
