@@ -102,6 +102,7 @@ import type { Scenario } from '../domain/workspace'
  */
 export function scenarioDiff(a: Scenario, b: Scenario): DiffEntry[] {
   const out: DiffEntry[] = []
+  diffAny(a.riesterJointAssessment, b.riesterJointAssessment, 'riesterJointAssessment', out)
   diffAny(a.profile, b.profile, 'profile', out)
   diffAny(a.assumptions, b.assumptions, 'assumptions', out)
   return out

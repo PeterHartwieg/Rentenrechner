@@ -520,6 +520,8 @@ export function validateScenario(input: unknown): Scenario | null {
   if (typeof s.createdAt !== 'string') return null
   if (!['baseline', 'manual', 'recommender'].includes(s.origin)) return null
   if (!validateProfile(s.profile)) return null
+  if (s.partner !== undefined && !validateProfile(s.partner)) return null
+  if (s.riesterJointAssessment !== undefined && typeof s.riesterJointAssessment !== 'boolean') return null
   const assumptions = validateWorkspaceAssumptions(s.assumptions)
   if (assumptions === null) return null
   // Validate retirementEndAge > retirementAge cross-invariant

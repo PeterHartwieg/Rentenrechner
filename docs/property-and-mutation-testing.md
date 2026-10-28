@@ -85,8 +85,10 @@ strictly and proportionally.
 ### Deliberately not property-tested
 
 - **Riester order invariance** (excluded from F6): the allowance-recipient
-  allocation is max-selection with array-order tie-breaks by design, not
-  proportional. Example tests pin it.
+  allocation is max-selection by design, not proportional: the larger full
+  allowance, then a paying contract before a EUR 0 one, then `instanceId`.
+  The career-starter recipient uses the same paying tie-break.
+  Example tests in `src/engine/riesterSpouse.test.ts` pin it.
 - **Out-of-domain guards** (e.g. the `yearIdx` bounds in
   `calculateEtfAllowanceDemand`): unreachable from valid domains, so they are
   pinned by example-based tests instead.

@@ -2468,10 +2468,7 @@ describe('PortfolioAdapter — length-1 equivalence goldens (#18)', () => {
       expectedYearOneProductAnnual,
       8,
     )
-    const yearTwoOwnMonthly = (
-      de2026Rules.riester.annualCapInclAllowances -
-      de2026Rules.riester.grundzulage
-    ) / 12
+    const yearTwoOwnMonthly = riester.monthlyOwnContribution
     const expectedYearTwoFunding = calculateRiesterFunding(
       de2026Rules,
       portfolioFunding.salaryAfterBasisrenteDeduction,

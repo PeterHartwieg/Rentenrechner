@@ -1,4 +1,6 @@
 import { CHILD_ALLOWANCE_CLAIM_HINT } from '../../content/terms'
+import { RiesterFundingLimitation } from './RiesterFundingLimitation'
+import { RiesterSpouseInputs } from './RiesterSpouseInputs'
 import '../../ui/forms.css'
 import type React from 'react'
 import type {
@@ -49,6 +51,9 @@ export function RiesterInputs({
 
   return (
     <>
+      <RiesterFundingLimitation />
+      <RiesterSpouseInputs riester={assumptions.riester}
+        onChange={(riester) => onAssumptionsChange(current => ({ ...current, riester }))} />
       <div className="subsection-heading">
         <h3>Riester (Altvertrag)</h3>
         <p>
@@ -59,6 +64,11 @@ export function RiesterInputs({
       </div>
 
       <div className="field-grid">
+        <NumberField label="Relevantes Vorjahreseinkommen für Riester"
+          value={assumptions.riester.eligibility.priorYearRelevantIncome ?? profile.grossSalaryYear}
+          min={0} step={100}
+          onChange={(v) => onAssumptionsChange(current => ({ ...current, riester: { ...current.riester,
+            eligibility: { ...current.riester.eligibility, priorYearRelevantIncome: Number(v) } } }))} />
         <NumberField
           label="Netto-Aufwand mtl."
           feedbackTargetId="inputs.riester.monthlyNetCost"
@@ -142,6 +152,8 @@ export function RiesterInputs({
                         ...current.riester.eligibility,
                         claimsChildAllowance: checked,
                       },
+                      spouse: current.riester.spouse ? { ...current.riester.spouse,
+                        eligibility: { ...current.riester.spouse.eligibility, claimsChildAllowance: !checked } } : undefined,
                     },
                   }))
                 }}

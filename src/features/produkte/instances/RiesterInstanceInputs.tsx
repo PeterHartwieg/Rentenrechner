@@ -14,6 +14,7 @@
  */
 
 import { CHILD_ALLOWANCE_CLAIM_HINT } from '../../../content/terms'
+import { RiesterFundingLimitation } from '../../inputs/RiesterFundingLimitation'
 import { InfoTip } from '../../../ui/InfoTip'
 import type { PersonalProfile } from '../../../domain'
 import type { RiesterInstance } from '../../../domain/instances'
@@ -30,10 +31,12 @@ import { diffInstancePatch } from './instancePatch'
 interface Props {
   instance: RiesterInstance
   profile: PersonalProfile
+  partner?: PersonalProfile
   patchInstance: (patch: Partial<RiesterInstance>) => void
 }
 
-export function RiesterInstanceInputs({ instance, patchInstance, profile }: Props) {
+export function RiesterInstanceInputs({ instance, patchInstance, profile, partner }: Props) {
+  const ownerProfile = instance.ownedBy === 'partner' ? partner : profile
   const onCommonChange = (next: RiesterInstance) => {
     // Keep existingCapital in sync with currentValueEUR per the legacy
     // sidebar's behaviour (see CombineDashboardSidebar.RiesterInstanceCard
@@ -48,7 +51,29 @@ export function RiesterInstanceInputs({ instance, patchInstance, profile }: Prop
 
   return (
     <div className="combine-instance-fields">
+      <RiesterFundingLimitation />
       <CommonContractFields instance={instance} onChange={onCommonChange} />
+      <CombineField label="Vertrag gehört">
+        <InvSelect value={instance.ownedBy ?? 'self'}
+          options={[{ value: 'self', label: 'Mir' }, { value: 'partner', label: 'Partner / Partnerin' }]}
+          onChange={(value) => patchInstance({ ownedBy: value as 'self' | 'partner' })} />
+      </CombineField>
+      <CombineField label="Förderberechtigung der Person">
+        <InvSelect value={instance.eligibility.directlyEligible ? 'direct' : instance.eligibility.indirectSpouseEligible ? 'indirect' : 'none'}
+          options={[{ value: 'direct', label: 'Unmittelbar berechtigt' }, { value: 'indirect', label: 'Mittelbar über Ehepartner berechtigt' }, { value: 'none', label: 'Nicht berechtigt' }]}
+          onChange={(value) => patchInstance({ eligibility: { ...instance.eligibility,
+            directlyEligible: value === 'direct', indirectSpouseEligible: value === 'indirect' } })} />
+      </CombineField>
+      <p className="field-hint">Mittelbare Berechtigung setzt einen eigenen Vertrag vor der Auszahlung, nicht dauernd getrennt lebende Ehepartner und Wohnsitz in EU/EWR voraus. Die Beiträge beider Personen müssen im Haushalt erfasst sein.</p>
+      <CombineField label="Vertrag ist förderfähig">
+        <CombineNativeInput type="checkbox" checked={instance.fundingEligible !== false}
+          onChange={(e) => patchInstance({ fundingEligible: e.target.checked })} />
+      </CombineField>
+      <DraftNumberInput label="Rentenversicherungspflichtiges Vorjahreseinkommen (EUR/Jahr)"
+        value={instance.eligibility.priorYearRelevantIncome ?? ownerProfile?.grossSalaryYear ?? 0}
+        min={0} step={100}
+        onCommit={(value) => patchInstance({ eligibility: { ...instance.eligibility, priorYearRelevantIncome: value } })} />
+      <p className="field-hint">Ohne eigene Eingabe wird das aktuelle Einkommen der zugeordneten Person geschätzt. Verwende für alle Verträge derselben Person dieselbe Förderberechtigung und dasselbe Vorjahreseinkommen. Kinderzulagen bitte nur einer Person zuordnen.</p>
       <DraftNumberInput
         label="Eigenbeitrag (EUR/Monat)"
         value={instance.monthlyOwnContribution}

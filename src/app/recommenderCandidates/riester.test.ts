@@ -17,7 +17,10 @@
  *     target Riester instance.
  */
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import * as portfolioFundingModule from '../../engine/portfolioFunding'
+import * as avdFundingModule from '../../engine/altersvorsorgedepot'
+import { evaluateRiesterTopUp } from '../../engine/portfolioRiesterTopUp'
 import { defaultAssumptions } from '../../data/defaultScenario'
 import { calculateRiesterFunding } from '../../engine/riester'
 import { de2026Rules } from '../../rules/de2026'
@@ -50,6 +53,52 @@ function injectRiesterInstance(
 }
 
 describe('makeRiesterTopUpCandidate — visible candidate behavior', () => {
+  it.each([0, 1, 10])('review round 2: applied net budget matches with competing AVD contribution=%s', (avdMonthly) => {
+    const ws = buildBerndWorkspace()
+    Object.assign(ws.baseline.profile, { age: 22, retirementAge: 67, grossSalaryYear: avdMonthly === 10 ? 10000 : 30000, taxClass: 1, childBirthYears: [] })
+    const a = ws.baseline.assumptions
+    a.bav = []; a.etf = []; a.insurance = []; a.basisrente = []; a.altersvorsorgedepot = []
+    injectRiesterInstance(ws, { monthlyOwnContribution: 0, ownedBy: 'self',
+      eligibility: { ...defaultAssumptions.riester.eligibility, directlyEligible: true,
+        indirectSpouseEligible: false, careerStarterBonusUsed: false, ageAtContractStart: 20 } })
+    if (avdMonthly > 0) a.altersvorsorgedepot = [{ ...structuredClone(defaultAssumptions.altersvorsorgedepot),
+      instanceId: 'competing-avd', status: 'active', label: 'AVD', contractStartYear: 2026, evidenceMap: {},
+      monthlyOwnContribution: avdMonthly, eligibility: { ...defaultAssumptions.altersvorsorgedepot.eligibility,
+        directlyEligible: true, careerStarterBonusUsed: false, ageAtContractStart: 20 } }]
+    const budget = avdMonthly > 0 ? 100 : 50
+    const context = buildGeneratorContext(ws, budget)
+    if (avdMonthly === 10) {
+      // Review round 3: headroom skips unused AVD rows, while bonus reselection
+      // and the resulting Riester amounts remain identical to budget sizing.
+      const fundingContext = context.portfolioFunding.riesterFundingContext!
+      const spy = vi.spyOn(avdFundingModule, 'calculateAvdFunding')
+      try {
+        const full = evaluateRiesterTopUp(fundingContext, de2026Rules, a.riester[0].instanceId, 100)
+        const fullCalls = spy.mock.calls.length
+        spy.mockClear()
+        const headroom = evaluateRiesterTopUp(fundingContext, de2026Rules, a.riester[0].instanceId, 100,
+          { includeAvdFunding: false })
+        expect(headroom.riester).toEqual(full.riester)
+        expect(headroom.avd).toEqual({})
+        expect(fullCalls - spy.mock.calls.length).toBe(fundingContext.activeAvd.length)
+      } finally { spy.mockRestore() }
+    }
+    const draft = makeRiesterTopUpCandidate(context)!
+    expect(draft).not.toBeNull()
+    a.riester[0].monthlyOwnContribution += draft.grossMonthlyEUR
+    const after = portfolioFundingModule.buildPortfolioFunding(ws, de2026Rules)
+    const cost = (f: typeof after) => [...Object.values(f.riesterByInstanceId),
+      ...Object.values(f.altersvorsorgedepotByInstanceId)].reduce((total, row) => total + row.monthlyNetCost, 0)
+    const actual = cost(after) - cost(context.portfolioFunding)
+    if (avdMonthly === 10) {
+      expect(context.portfolioFunding.altersvorsorgedepotByInstanceId['competing-avd'].careerStarterBonusAnnual).toBeGreaterThan(0)
+      expect(after.altersvorsorgedepotByInstanceId['competing-avd'].careerStarterBonusAnnual).toBe(0)
+    }
+    expect(actual).toBeCloseTo(draft.netCashOutEUR, 8)
+    expect(actual).toBeLessThanOrEqual(budget + 1e-8)
+    expect(after.riesterByInstanceId[a.riester[0].instanceId].careerStarterBonusAnnual).toBeGreaterThan(0)
+  })
+
   it('sizes against salary after the accepted simultaneous Basisrente deduction', () => {
     const ws = buildBerndWorkspace()
     ws.baseline.profile.grossSalaryYear = 60_000
@@ -63,13 +112,13 @@ describe('makeRiesterTopUpCandidate — visible candidate behavior', () => {
     const draft = makeRiesterTopUpCandidate(g)!
     const target = ws.baseline.assumptions.riester[0]
     const expected = calculateRiesterFunding(de2026Rules, g.portfolioFunding.salaryAfterBasisrenteDeduction, {
-      ...target, monthlyOwnContribution: draft.grossMonthlyEUR,
+      ...target, monthlyOwnContribution: target.monthlyOwnContribution + draft.grossMonthlyEUR,
     }, ws.baseline.profile)
     const withoutBasisDeduction = calculateRiesterFunding(de2026Rules, g.portfolioFunding.salaryForOtherFunding, {
-      ...target, monthlyOwnContribution: draft.grossMonthlyEUR,
+      ...target, monthlyOwnContribution: target.monthlyOwnContribution + draft.grossMonthlyEUR,
     }, ws.baseline.profile)
     expect(expected.monthlyNetCost).toBeGreaterThan(withoutBasisDeduction.monthlyNetCost)
-    expect(draft.netCashOutEUR).toBeCloseTo(expected.monthlyNetCost, 8)
+    expect(draft.netCashOutEUR).toBeCloseTo(expected.monthlyNetCost - g.portfolioFunding.riesterByInstanceId[target.instanceId].monthlyNetCost, 8)
   })
 
   it('produces an "add to existing" candidate when an active Riester instance exists', () => {
@@ -107,6 +156,16 @@ describe('makeRiesterTopUpCandidate — visible candidate behavior', () => {
 })
 
 describe('makeRiesterTopUpCandidate — reasons', () => {
+  it('review round 1: reuses the prepared context without rebuilding portfolio funding', () => {
+    const ws = buildBerndWorkspace()
+    injectRiesterInstance(ws, { monthlyOwnContribution: 25 })
+    const context = buildGeneratorContext(ws, 50)
+    const spy = vi.spyOn(portfolioFundingModule, 'buildPortfolioFunding')
+    try {
+      expect(makeRiesterTopUpCandidate(context)).not.toBeNull()
+      expect(spy).not.toHaveBeenCalled()
+    } finally { spy.mockRestore() }
+  })
   it('afterTaxLumpSum is null (≤30 % partial-capital under §22 Nr. 5 EStG)', () => {
     const ws = buildBerndWorkspace()
     injectRiesterInstance(ws)

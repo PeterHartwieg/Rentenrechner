@@ -33,11 +33,9 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
     ? riester.capitalGuarantee.floorPctOfContributions
     : 0
 
-  // In combine mode the funding override carries a scaled (capped) own contribution.
-  // Use `riesterFunding.monthlyOwnContribution` rather than reading the raw assumption
-  // directly so the accumulation loop respects the household §10a cap apportionment
-  // computed by `portfolioFunding.ts`.  In compare mode (no override) the two values
-  // are identical, so this change is backwards-compatible.
+  // Consume the authoritative funding schedule. Actual payments are retained
+  // even above the deduction ceiling; only eligible considered payments earn
+  // the allocated tax refund. Both paths supply the effective own contribution.
   const effectiveMonthlyOwnContribution = riesterFunding.monthlyOwnContribution
 
   // Build a patched assumption object that carries the capped contribution so
@@ -47,7 +45,7 @@ export function simulate(ctx: SimulationContext, scenario: ReturnScenario): Ries
     ? riester
     : { ...riester, monthlyOwnContribution: effectiveMonthlyOwnContribution }
 
-  // Total monthly contribution = portfolio-capped Eigenbeitrag
+  // Total monthly contribution = actual Eigenbeitrag
   // + state allowances. The tax refund is retained by the household and already
   // reduces monthlyNetCost; investing it as well would count the refund twice.
   const totalMonthlyContribution =

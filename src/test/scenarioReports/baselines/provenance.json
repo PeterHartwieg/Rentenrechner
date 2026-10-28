@@ -1,9 +1,9 @@
 {
   "label": "INTERNAL REGRESSION",
-  "baseSha": "00fa2a53e23118a582e7995aa89420627bc55506",
-  "baseShaCapturedAt": "2026-10-28T04:40:30.312Z",
+  "baseSha": "54b4959ef75719fdf858da28db2af37e45a0e374",
+  "baseShaCapturedAt": "2026-10-28T14:21:33.599Z",
   "engineSources": {
-    "digestSha": "0982a6fe54e59658",
+    "digestSha": "60cff48c4b6d4f15",
     "dirty": false,
     "paths": []
   },
@@ -12,9 +12,9 @@
       "ruleSetId": "de2026",
       "ruleYear": 2026,
       "revision": 2,
-      "contentFingerprint": "667c4b15b58064a6"
+      "contentFingerprint": "083462e03b0836a5"
     },
-    "snapshotSha": "e620f7d6357edf6d",
+    "snapshotSha": "56ed0b209083527e",
     "cohortSchedules": {
       "besteuerungsanteilGrvByRetirementYear": {
         "2005": 0.5,
@@ -514,6 +514,7 @@
         "sockelbetrag": 60,
         "indirectEligibilityMinimumAnnual": 60,
         "annualCapInclAllowances": 2100,
+        "indirectSpouseDeductionIncreaseAnnual": 60,
         "payoutPlanMinEndAge": 85
       },
       "capitalGains": {
@@ -571,5 +572,5 @@
       "pvBeitragszuschlagKinderloseMinAge": 23
     }
   },
-  "notes": "Erfasst mit: npm run scenario:update -- --reason \"Refs #420: separate existing indirect eligibility minima without changing financial outputs; refresh rules identity\". rulesIdentity friert die RuleSetIdentity aus src/rules/ruleMetadata.ts (ruleSetId, Revision, Content-Fingerprint über Jahresregeln UND legalRuleData-Katalog), den Snapshot-Sha des kanonischen Regel-Snapshots, die evaluierten Kohortentabellen (Code, den kein JSON-Snapshot sehen kann) und die vollen Jahresregeln als kanonisches JSON ein; engineSources.digestSha identifiziert den Rechenwerkscode der Basis-Revision (sha256-Präfix). Rules-Identität dieser Erfassung: e34fcfd29b869c72. Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise."
+  "notes": "Erfasst mit: npm run scenario:update -- --reason \"Review round 4: Riester allowance recipient sorts by full allowance before the paying key and the career-starter bonus breaks equal claims towards the paying contract; no scenario values change\". rulesIdentity friert die RuleSetIdentity aus src/rules/ruleMetadata.ts (ruleSetId, Revision, Content-Fingerprint über Jahresregeln UND legalRuleData-Katalog), den Snapshot-Sha des kanonischen Regel-Snapshots, die evaluierten Kohortentabellen (Code, den kein JSON-Snapshot sehen kann) und die vollen Jahresregeln als kanonisches JSON ein; engineSources.digestSha identifiziert den Rechenwerkscode der Basis-Revision (sha256-Präfix). Rules-Identität dieser Erfassung: ab65d94d810d72d1. Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise."
 }

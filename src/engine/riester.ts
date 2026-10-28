@@ -46,6 +46,7 @@ import {
   isSection10aEligible,
 } from './salaryPhaseFunding'
 import { childBirthYearsUnder25InYear } from './childEligibility'
+import { calculateRiesterHouseholdFunding } from './riesterHousehold'
 
 // ---------------------------------------------------------------------------
 // Allowance helpers
@@ -102,7 +103,7 @@ export function computeRiesterChildAllowance(
  * The §86 Mindesteigenbeitrag is derived from the reduced allowance total below,
  * so it rises by exactly the removed Zulage — no separate subtraction.
  */
-function computeFullRiesterAllowances(
+export function computeFullRiesterAllowances(
   riester: RiesterAssumptions,
   profile: PersonalProfile,
   rules: GermanRules,
@@ -178,7 +179,37 @@ export function calculateRiesterFunding(
   profile: PersonalProfile,
   options: RiesterFundingOptions = {},
 ): RiesterFundingResult {
+  const spouse = riester.spouse
+  if (!spouse) return calculateRiesterIndividualFunding(rules, salaryResult, riester, profile, options)
+  const spouseProfile = { ...profile, grossSalaryYear: spouse.grossSalaryYear }
+  const spouseSalary = { ...salaryResult, annualGross: spouse.grossSalaryYear,
+    taxableIncomeForDeductions: spouse.taxableIncomeAnnual }
+  const selfContract = options.isFirstContributionYear === false
+    ? { ...riester, eligibility: { ...riester.eligibility, careerStarterBonusUsed: true } } : riester
+  const spouseContract = { ...selfContract, spouse: undefined, fundingEligible: true, monthlyOwnContribution: spouse.monthlyOwnContribution,
+    eligibility: { ...spouse.eligibility, careerStarterBonusUsed: options.isFirstContributionYear === false || spouse.eligibility.careerStarterBonusUsed } }
+  return calculateRiesterHouseholdFunding([
+    { instanceId: 'self', ownedBy: 'self', contract: selfContract },
+    { instanceId: 'partner', ownedBy: 'partner', contract: spouseContract },
+  ], { self: { profile, salary: salaryResult }, partner: { profile: spouseProfile, salary: spouseSalary } }, rules, {
+    yearIndex: (options.contributionYear ?? rules.year) - rules.year,
+    jointTaxableIncome: spouse.jointAssessment
+      ? (salaryResult.taxableIncomeForDeductions ?? salaryResult.taxableIncome) + spouse.taxableIncomeAnnual : undefined,
+  }).self
+}
+
+/** Single-person primitive; household orchestration must use the wrapper above. */
+export function calculateRiesterIndividualFunding(
+  rules: GermanRules,
+  salaryResult: SalaryResult,
+  riester: RiesterAssumptions,
+  profile: PersonalProfile,
+  options: RiesterFundingOptions = {},
+): RiesterFundingResult {
   const r = rules.riester
+  if (riester.fundingEligible === false) {
+    riester = { ...riester, eligibility: { ...riester.eligibility, directlyEligible: false, indirectSpouseEligible: false } }
+  }
   const annualOwnContribution = riester.monthlyOwnContribution * 12
   const contributionYear = options.contributionYear ?? rules.year
   const isFirstContributionYear =
@@ -210,9 +241,9 @@ export function calculateRiesterFunding(
   const indirectOnly = !riester.eligibility.directlyEligible && riester.eligibility.indirectSpouseEligible === true
   let minRequired: number
   if (indirectOnly) {
-    minRequired = r.sockelbetrag
+    minRequired = r.indirectEligibilityMinimumAnnual
   } else {
-    const relevantIncome = Math.min(
+    const relevantIncome = riester.eligibility.priorYearRelevantIncome ?? Math.min(
       salaryResult.annualGross,
       rules.socialSecurity.pensionCapYear,
     )
@@ -306,48 +337,6 @@ export function calculateRiesterFunding(
     specialExpenseDeductibleAnnual,
     guenstigerpruefungBenefitAnnual,
     monthlyNetCost,
-  }
-}
-
-/**
- * Allocates one household Riester allowance/tax calculation back to a single
- * contract while preserving that contract's own minimum-contribution fields.
- * One recipient receives the household allowance fields; every contract gets
- * its pro-rata share of the household §10a tax benefit.
- */
-export function allocateRiesterHouseholdFunding(
-  ownFunding: RiesterFundingResult,
-  householdFunding: RiesterFundingResult,
-  receivesPortfolioAllowance: boolean,
-  portfolioTaxBenefitShare: number,
-): RiesterFundingResult {
-  const allocatedTaxBenefitAnnual =
-    householdFunding.guenstigerpruefungBenefitAnnual * portfolioTaxBenefitShare
-  const allocatedSpecialExpenseAnnual =
-    householdFunding.specialExpenseDeductibleAnnual * portfolioTaxBenefitShare
-  return {
-    ...ownFunding,
-    grundzulageAnnual:
-      receivesPortfolioAllowance ? householdFunding.grundzulageAnnual : 0,
-    childAllowanceAnnual:
-      receivesPortfolioAllowance ? householdFunding.childAllowanceAnnual : 0,
-    careerStarterBonusAnnual:
-      receivesPortfolioAllowance ? householdFunding.careerStarterBonusAnnual : 0,
-    totalAllowanceAnnual:
-      receivesPortfolioAllowance ? householdFunding.totalAllowanceAnnual : 0,
-    ...(receivesPortfolioAllowance
-      ? {
-          minEigenbeitragAnnual: householdFunding.minEigenbeitragAnnual,
-          meetsMinContribution: householdFunding.meetsMinContribution,
-          prorationFactor: householdFunding.prorationFactor,
-        }
-      : {}),
-    specialExpenseDeductibleAnnual: allocatedSpecialExpenseAnnual,
-    guenstigerpruefungBenefitAnnual: allocatedTaxBenefitAnnual,
-    monthlyNetCost: Math.max(
-      0,
-      ownFunding.monthlyOwnContribution - allocatedTaxBenefitAnnual / 12,
-    ),
   }
 }
 

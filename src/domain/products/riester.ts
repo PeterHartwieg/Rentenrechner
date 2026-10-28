@@ -9,6 +9,8 @@ import type { CapitalGuaranteeAssumptions, PayoutMode } from './common'
  * Eligibility inputs for Riester allowance calculation (§79–§86 EStG old law).
  */
 export interface RiesterEligibility {
+  /** Prior-year §86 relevant income; absent uses the current payroll estimate. */
+  priorYearRelevantIncome?: number
   /** True when directly eligible (GRV member, civil servant, self-employed in GRV, etc.). */
   directlyEligible: boolean
   /**
@@ -17,12 +19,11 @@ export interface RiesterEligibility {
    * (typical case: spouse outside the GRV — housewife, self-employed without
    * GRV membership, etc.). Requires:
    *   1. Own Riester contract with at least the Sockelbetrag (60 EUR/year).
-   *   2. The directly eligible spouse meets THEIR §86 Mindesteigenbeitrag in full
-   *      (caller's responsibility — not validated here).
-   *   3. Spouses are jointly assessed (Zusammenveranlagung).
-   * Yields the Grundzulage (175 EUR) only — no Kinderzulage (children flow to the
-   * directly eligible spouse by default per §85 Abs. 2 EStG) and no Berufseinsteiger-
-   * Bonus (§84 Satz 2 limits the bonus to "unmittelbar Zulageberechtigte").
+   *   2. Not permanently separated, both spouses resident in EU/EEA.
+   *   3. Payout has not started. Underpayment by the direct spouse reduces
+   *      both allowances; the household helper checks their contributions.
+   * Kinderzulage follows the explicit attribution below. No career-starter
+   * bonus for indirect eligibility.
    * Ignored when `directlyEligible = true`.
    * Optional for backwards compatibility with existing stored state.
    */
@@ -50,6 +51,17 @@ export interface RiesterEligibility {
  * (fully taxable at personal marginal rate — same as §10a-certified products).
  */
 export interface RiesterAssumptions {
+  /** Compare-mode spouse facts. Combine mode uses owned instances and baseline.partner. */
+  spouse?: {
+    grossSalaryYear: number
+    /** Taxable income before the Riester deduction, not gross salary. */
+    taxableIncomeAnnual: number
+    monthlyOwnContribution: number
+    eligibility: RiesterEligibility
+    jointAssessment: boolean
+  }
+  /** Contract qualifies for support; person eligibility is a separate condition. */
+  fundingEligible?: boolean
   /** Monthly own contribution (before state allowances). */
   monthlyOwnContribution: number
   /** Capital already accumulated in the existing contract (0 for new contracts). */
@@ -76,6 +88,8 @@ export interface RiesterAssumptions {
 }
 
 export interface RiesterFundingResult {
+  /** Authoritative household deduction ceiling, set by the owner-aware path. */
+  portfolioDeductionCapAnnual?: number
   /** Eligibility computed with the same rules as this funding result. */
   section10aEligible: boolean
   monthlyOwnContribution: number
@@ -104,12 +118,12 @@ export interface RiesterFundingResult {
   /** Net monthly cost = own contribution minus Günstigerprüfung extra refund / 12. */
   monthlyNetCost: number
   /**
-   * Combine-mode allocation marker. Multiple Riester contracts belong to the
-   * same saver, so the household allowance and §10a benefit are calculated
+   * Combine-mode allocation marker. Contracts are grouped by owner, so each
+   * owner allowance and §10a benefit are calculated
    * once and assigned to one instance. Undefined on the singleton path.
    */
   receivesPortfolioAllowance?: boolean
-  /** Aggregate own contribution used for that household calculation. */
+  /** Eligible own contribution in this owner pool. */
   portfolioHouseholdOwnContributionMonthly?: number
   /** Raw per-instance own contribution before the current-year cap scale. */
   portfolioRequestedOwnContributionMonthly?: number
