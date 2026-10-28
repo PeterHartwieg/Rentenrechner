@@ -20,16 +20,19 @@ import { afterTaxInsuranceLumpSum, deriveInsuranceTaxMode } from '../engine/insu
 import { getProductMeta } from '../engine/productRegistry'
 
 /**
- * Resolve the active scenario id, falling back to 'basis' when the user just
- * removed a custom row.
+ * Resolve the active scenario id after a selection or removed custom row.
+ * Prefer basis over array order, then the first available scenario; an empty
+ * set retains the legacy 'basis' sentinel.
  */
 export function resolveEffectiveScenarioId(
-  assumptions: ScenarioAssumptions,
+  assumptions: { returnScenarios: ReadonlyArray<{ id: string }> },
   selectedScenarioId: string,
 ): string {
   return assumptions.returnScenarios.some((s) => s.id === selectedScenarioId)
     ? selectedScenarioId
-    : 'basis'
+    : assumptions.returnScenarios.find((s) => s.id === 'basis')?.id
+      ?? assumptions.returnScenarios[0]?.id
+      ?? 'basis'
 }
 
 /**

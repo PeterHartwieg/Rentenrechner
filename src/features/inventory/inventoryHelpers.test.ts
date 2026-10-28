@@ -151,7 +151,7 @@ describe('detectLegacyEpSeed', () => {
 
     it('ignores a seed behind a manual gross override even without a recorded method', () => {
       // Same guard as the recorded-method branch: the manual figure wins in
-      // the projection, so the stored seed cannot influence any shown number.
+      // the pension projection; the DRV card can still show the stored points.
       expect(detectAbsent(50_000, { manualMonthlyGross: 1500 })).toEqual({ legacy: false })
     })
 

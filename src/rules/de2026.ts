@@ -29,6 +29,8 @@ export const de2026Rules: GermanRules = {
     specialExpenseOwnContributionCap: 1_800,
     contractContributionCapAnnual: 6_840,
     minimumOwnContributionAnnual: 120,
+    // Separate reform-law indirect eligibility gate; not the allowance floor.
+    indirectEligibilityMinimumAnnual: 120,
     basicAllowanceTier1MaxContribution: 360,
     basicAllowanceTier1Rate: 0.50,
     basicAllowanceTier2MaxContribution: 1_800,
@@ -160,10 +162,11 @@ export const de2026Rules: GermanRules = {
     minEigenbeitragPct: 0.04,
     // §86 Abs. 1 Satz 4 EStG: direct saver's Sockelbetrag 60 EUR/year.
     sockelbetrag: 60,
+    // §79 Satz 2 Nr. 4: separate indirect-eligibility minimum, version through
+    // 2026; preserved for legacy contracts by §52 Abs. 50a.
+    indirectEligibilityMinimumAnnual: 60,
     // §10a Abs. 1 EStG: annual Sonderausgabenabzug cap = 2,100 EUR (own contribution + allowances).
     annualCapInclAllowances: 2_100,
-    // Legacy §79 Satz 2 Nr. 4 EStG, distinct from the §86 Sockelbetrag.
-    indirectEligibilityMinimumAnnual: 60,
     // Legacy §10a Abs. 3 Satz 3 EStG, shared direct/indirect deduction increase.
     indirectSpouseDeductionIncreaseAnnual: 60,
     // AltZertG: an Auszahlungsplan must run at least through age 85.

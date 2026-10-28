@@ -19,6 +19,8 @@ export interface GermanRules {
     contractContributionCapAnnual: number
     /** Minimum own contribution required for any allowances (120 EUR/year). */
     minimumOwnContributionAnnual: number
+    /** Separate minimum for indirect eligibility under §79 Satz 2 Nr. 4 EStG (reform). */
+    indirectEligibilityMinimumAnnual: number
     /** Tier-1 basic allowance: 50% of own contributions up to this amount (360 EUR). */
     basicAllowanceTier1MaxContribution: number
     basicAllowanceTier1Rate: number
@@ -151,10 +153,10 @@ export interface GermanRules {
     minEigenbeitragPct: number
     /** §86 EStG Sockelbetrag: minimum own contribution regardless of income (60 EUR/year). */
     sockelbetrag: number
+    /** §79 Satz 2 Nr. 4 EStG; independent of the §86 allowance minimum. */
+    indirectEligibilityMinimumAnnual: number
     /** §10a EStG annual deductible cap including own contributions + allowances (2,100 EUR). */
     annualCapInclAllowances: number
-    /** Legacy §79 sentence 2 no. 4: constitutive indirect eligibility minimum. */
-    indirectEligibilityMinimumAnnual: number
     /** Legacy §10a(3): increase of the shared direct/indirect deduction ceiling. */
     indirectSpouseDeductionIncreaseAnnual: number
     /** AltZertG: payout plan must run at least through this age (85). */

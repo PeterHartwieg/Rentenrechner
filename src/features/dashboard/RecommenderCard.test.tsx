@@ -436,7 +436,7 @@ describe('RecommenderCard — contract return caption (#372)', () => {
       <RecommenderCard {...ctx} marginalMonthlyEUR={400} onSaveAsPlan={() => {}} />,
     )
     expect(etfCard(container).querySelector('.recommender-candidate-return')?.textContent)
-      .toContain(`Vertragsrendite ${formatPercent(0.02, 1)} p.a. (eigene Annahme dieses Vertrags)`)
+      .toContain(`eigene Marktrendite ${formatPercent(0.02, 1)} p.a. (eigene Annahme dieses Vertrags)`)
     // Candidates without an override keep only the scenario caption.
     const others = Array.from(container.querySelectorAll('.recommender-candidate')).filter((el) => el !== etfCard(container))
     expect(others.length).toBeGreaterThan(0)
@@ -452,7 +452,7 @@ describe('RecommenderCard — contract return caption (#372)', () => {
     expect(container.querySelector('.recommender-basis-note')?.textContent)
       .toContain(`Rendite-Szenario ${basis.label} (${formatPercent(basis.annualReturn, 1)} p.a.)`)
     expect(etfCard(container).querySelector('.recommender-candidate-return')).toBeNull()
-    expect(container.textContent).not.toContain('Vertragsrendite')
+    expect(container.textContent).not.toContain('eigene Marktrendite')
   })
 
   it('notes contracts with their own return next to the shared scenario caption', () => {

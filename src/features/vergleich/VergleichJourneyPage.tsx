@@ -85,6 +85,8 @@ export interface VergleichJourneyControls {
 
 interface Props {
   navigate: (target: Route, search?: string) => void
+  selectedScenarioId?: string
+  onSelectScenario?: (id: string) => void
   moneyBasis?: MoneyBasis
   onMoneyBasisChange?: (basis: MoneyBasis) => void
   /**
@@ -100,7 +102,7 @@ const ALL_PRODUCT_IDS: readonly ProductId[] = PRODUCT_REGISTRY.map(
   (entry) => entry.metadata.id as ProductId,
 )
 
-export function VergleichJourneyPage({ navigate, pendingChoice, onPendingChoiceConsumed, moneyBasis, onMoneyBasisChange }: Props) {
+export function VergleichJourneyPage({ navigate, pendingChoice, onPendingChoiceConsumed, moneyBasis, onMoneyBasisChange, selectedScenarioId: sharedScenarioId, onSelectScenario }: Props) {
   const {
     profile,
     setProfile,
@@ -109,7 +111,9 @@ export function VergleichJourneyPage({ navigate, pendingChoice, onPendingChoiceC
     setSyncedMonthlyContribution,
   } = useCalculatorState()
 
-  const [selectedScenarioId, setSelectedScenarioId] = useState('basis')
+  const [localScenarioId, setLocalScenarioId] = useState('basis')
+  const selectedScenarioId = sharedScenarioId ?? localScenarioId
+  const setSelectedScenarioId = onSelectScenario ?? setLocalScenarioId
   const [linkCopied, setLinkCopied] = useState(false)
 
   // Saved plan detection. Read once on mount — the workspace is not a live

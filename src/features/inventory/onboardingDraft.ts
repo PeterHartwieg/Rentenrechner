@@ -1031,7 +1031,7 @@ export function applyOnboardingToScenario(
     healthAdditionalContributionPct: profileDraft.healthAdditionalContributionPct,
   }
 
-  const statutoryPension = applyPensionDraft(
+  const pension = applyPensionDraft(
     scenario.assumptions.statutoryPension,
     pensionDraft,
     profileDraft,
@@ -1041,8 +1041,8 @@ export function applyOnboardingToScenario(
 
   const assumptions: WorkspaceAssumptionsV2 = {
     ...scenario.assumptions,
-    statutoryPension,
-    inputStatus: status,
+    statutoryPension: pension.statutoryPension,
+    inputStatus: pension.inputStatus,
   }
 
   const next: Scenario = {
@@ -1061,7 +1061,7 @@ function applyPensionDraft(
   profileDraft: ProfileDraft,
   status: InputStatusMap,
   rules: GermanRules,
-): StatutoryPensionAssumptions {
+): { statutoryPension: StatutoryPensionAssumptions; inputStatus: InputStatusMap } {
   const next: StatutoryPensionAssumptions = { ...prev }
   next.pensionBaselineType = draft.system
   status[KEY_BASELINE_TYPE] = 'entered'
@@ -1088,14 +1088,14 @@ function applyPensionDraft(
   )
 
   // "Keine Pflichtversorgung" is a complete answer, not a missing one.
-  if (draft.system === 'none') return next
+  if (draft.system === 'none') return { statutoryPension: next, inputStatus: status }
 
   switch (draft.method) {
     case 'skipped': {
       next.pensionEntryMethod = { kind: 'skipped' }
       status[KEY_EP] = 'unknown'
       status[KEY_MANUAL_GROSS] = 'unknown'
-      return next
+      return { statutoryPension: next, inputStatus: status }
     }
     case 'document':
     case 'projected-gross': {
@@ -1106,13 +1106,13 @@ function applyPensionDraft(
         next.pensionEntryMethod = { kind: 'skipped' }
         status[KEY_EP] = 'unknown'
         status[KEY_MANUAL_GROSS] = 'unknown'
-        return next
+        return { statutoryPension: next, inputStatus: status }
       }
       next.manualMonthlyGross = gross
       next.pensionEntryMethod = { kind: draft.method, monthlyGrossEUR: gross }
       status[KEY_MANUAL_GROSS] =
         draft.method === 'document' ? 'document' : statusOfField(draft.monthlyGrossEUR)
-      return next
+      return { statutoryPension: next, inputStatus: status }
     }
     case 'career': {
       const start = fieldValue(draft.careerStartAge)
@@ -1135,7 +1135,7 @@ function applyPensionDraft(
       }
       // A career estimate is a model estimate, never a confirmed figure (§7).
       status[KEY_EP] = 'assumed'
-      return next
+      return { statutoryPension: next, inputStatus: status }
     }
     case 'years': {
       const years = fieldValue(draft.contributionYears)
@@ -1147,7 +1147,7 @@ function applyPensionDraft(
       }
       // The years are entered; the resulting Entgeltpunkte are still derived.
       status[KEY_EP] = 'assumed'
-      return next
+      return { statutoryPension: next, inputStatus: status }
     }
     case 'points': {
       const points = applyPensionPoints(
@@ -1155,8 +1155,7 @@ function applyPensionDraft(
         fieldValue(draft.entgeltpunkte),
         statusOfField(draft.entgeltpunkte),
       )
-      Object.assign(status, points.inputStatus)
-      return points.statutoryPension
+      return points
     }
   }
 }

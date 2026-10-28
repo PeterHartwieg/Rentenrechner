@@ -801,3 +801,20 @@ describe('fresh-scenario inflation assumption', () => {
     expect(next.profile.age).toBe(36)
   })
 })
+
+
+it('replaces pension status when switching from a manual amount to points (#420)', () => {
+  const scenario = baseScenario()
+  scenario.assumptions.statutoryPension.manualMonthlyGross = 1800
+  scenario.assumptions.inputStatus = {
+    'statutoryPension.manualMonthlyGross': 'document',
+    'profile.age': 'entered',
+  }
+  const { profile, pension } = draftsOf(scenario)
+  const points = setDraftFieldValue({ ...pension, method: 'points' as const }, 'entgeltpunkte', 20)
+  const next = applyOnboardingToScenario(scenario, profile, points)
+  expect(next.assumptions.inputStatus).not.toHaveProperty('statutoryPension.manualMonthlyGross')
+  expect(next.assumptions.inputStatus?.['statutoryPension.currentEntgeltpunkte']).toBe('entered')
+  expect(next.assumptions.inputStatus?.['profile.age']).toBe('entered')
+  expect(scenario.assumptions.inputStatus['statutoryPension.manualMonthlyGross']).toBe('document')
+})

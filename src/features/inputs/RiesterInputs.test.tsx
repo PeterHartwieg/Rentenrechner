@@ -26,6 +26,7 @@ const FUNDING: RiesterFundingResult = {
   minEigenbeitragAnnual: 60,
   meetsMinContribution: true,
   prorationFactor: 1,
+  section10aEligible: true,
   specialExpenseDeductibleAnnual: 775,
 }
 
@@ -89,4 +90,20 @@ describe('RiesterInputs', () => {
     expect(screen.getByRole('tooltip')).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name })).toHaveAccessibleName(name)
   })
+})
+
+
+it('uses eligibility from the funding rules instead of activeRules (#420)', () => {
+  const rules = structuredClone(de2026Rules)
+  rules.riester.indirectEligibilityMinimumAnnual *= 2
+  const assumptions = structuredClone(defaultAssumptions)
+  assumptions.riester.monthlyOwnContribution = de2026Rules.riester.indirectEligibilityMinimumAnnual / 12
+  assumptions.riester.eligibility.directlyEligible = false
+  assumptions.riester.eligibility.indirectSpouseEligible = true
+  const funding = calculateRiesterFunding(rules, calculateSalaryResult(defaultProfile, rules), assumptions.riester, defaultProfile)
+  expect(funding.section10aEligible).toBe(false)
+  render(<RiesterInputs assumptions={assumptions} onAssumptionsChange={vi.fn()}
+    onSyncMonthlyContribution={vi.fn()} profile={defaultProfile}
+    riesterFunding={funding} riesterProductResult={undefined} />)
+  expect(screen.getByText(/Nicht förderberechtigt/)).toBeInTheDocument()
 })

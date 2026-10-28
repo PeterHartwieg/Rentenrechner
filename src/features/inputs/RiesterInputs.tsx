@@ -13,8 +13,6 @@ import type {
 import { InfoTip } from '../../ui/InfoTip'
 import { NumberField } from '../../ui/NumberField'
 import { formatCurrency, formatPercent } from '../../utils/format'
-import { isSection10aEligible } from '../../engine/salaryPhaseFunding'
-import { activeRules } from '../../rules'
 import { useFeedbackTarget } from '../qa-feedback'
 
 type Props = {
@@ -41,11 +39,7 @@ export function RiesterInputs({
   })
   // #363: outside the begünstigter Personenkreis there is no Zulage and no
   // §10a deduction; the hint line says so instead of listing zero allowances.
-  const section10aEligible = assumptions.riester.fundingEligible !== false && isSection10aEligible(
-    assumptions.riester.eligibility,
-    riesterFunding.annualOwnContribution,
-    activeRules.riester.indirectEligibilityMinimumAnnual,
-  )
+  const { section10aEligible } = riesterFunding
   const erweitertParts: string[] = []
   if (assumptions.riester.eligibility.careerStarterBonusUsed) erweitertParts.push('Berufseinsteiger-Bonus erhalten')
   if (assumptions.riester.partialCapitalPct > 0) erweitertParts.push(`${(assumptions.riester.partialCapitalPct * 100).toFixed(0)} % Einmalbetrag`)

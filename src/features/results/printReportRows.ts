@@ -367,7 +367,7 @@ export function buildPrintMethodeBullets(
         `Drei Standardszenarien (${PRINT_RENDITEN})${customClause} als nominale, langfristige Marktrenditen p. a. vor Inflation und Kosten; ` +
         'Inflation wird separat abgezogen. Modellannahmen, orientiert an langfristigen Aktienmarktrenditen, ' +
         'nicht extern validiert. Ohne vertragsspezifische Rendite rechnen Produkte je Szenario mit derselben Marktrendite; ' +
-        'im Plan ersetzt eine eigene Vertragsrendite den Szenariowert in allen drei Szenarien. ' +
+        'im Plan ersetzt eine eigene Marktrendite den Szenariowert in allen drei Szenarien. ' +
         'Das Altersvorsorgedepot mischt die jeweilige Marktrendite mit seinem Sicherheitsanteil und Gleitpfad.',
     },
     {

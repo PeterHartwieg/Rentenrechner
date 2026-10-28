@@ -88,6 +88,8 @@ export interface RiesterAssumptions {
 }
 
 export interface RiesterFundingResult {
+  /** Eligibility computed with the same rules as this funding result. */
+  section10aEligible: boolean
   monthlyOwnContribution: number
   annualOwnContribution: number
   /** §84 EStG Grundzulage (175 EUR/year, prorated when contribution insufficient). */

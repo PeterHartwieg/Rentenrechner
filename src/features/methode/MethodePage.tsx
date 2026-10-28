@@ -312,7 +312,7 @@ export function MethodePage({ navigate }: Props) {
                 So siehst du innerhalb dieser Grenzen, welcher Mantel bei gleichem
                 Nettoaufwand und gleichem Markt im Modell mehr übrig lässt.
                 In Mein Plan kannst du in den Vertragsdetails unter „Erwartete Marktrendite vor Kosten“
-                eine eigene Vertragsrendite festlegen, die den Szenariowert für diesen
+                eine eigene Marktrendite festlegen, die den Szenariowert für diesen
                 Vertrag in allen drei Szenarien ersetzt.
                 Diese vertragsspezifische Rendite wird in den Vertragsdetails, im
                 Druckbericht und im CSV-Export ausgewiesen.

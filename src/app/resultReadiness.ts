@@ -350,7 +350,7 @@ export function selectResultReadiness(
       code: 'shared-drawdown-horizon',
       severity: 'assumption',
       label: `Entnahmen laufen bis zum gemeinsam angenommenen Alter ${wsa.retirementEndAge}.`,
-      target: { route: ROUTES.kapital },
+      target: { route: ROUTES.eingaben, anchor: 'renteneintritt' },
     })
   }
 

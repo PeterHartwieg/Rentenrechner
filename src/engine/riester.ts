@@ -282,11 +282,12 @@ export function calculateRiesterIndividualFunding(
   //    eligible gets no Sonderausgabenabzug at all. Indirect eligibility
   //    requires the minimum own contribution (§79 Satz 2 Nr. 4).
   // -------------------------------------------------------------------------
-  const specialExpenseDeductibleAnnual = isSection10aEligible(
+  const section10aEligible = isSection10aEligible(
     riester.eligibility,
     annualOwnContribution,
     r.indirectEligibilityMinimumAnnual,
   )
+  const specialExpenseDeductibleAnnual = section10aEligible
     ? Math.min(
         annualOwnContribution + totalAllowanceAnnual,
         r.annualCapInclAllowances,
@@ -332,6 +333,7 @@ export function calculateRiesterIndividualFunding(
     minEigenbeitragAnnual: minRequired,
     meetsMinContribution: annualOwnContribution >= minRequired,
     prorationFactor,
+    section10aEligible,
     specialExpenseDeductibleAnnual,
     guenstigerpruefungBenefitAnnual,
     monthlyNetCost,

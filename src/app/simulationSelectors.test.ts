@@ -204,3 +204,10 @@ describe('simulationSelectors', () => {
     })
   })
 })
+
+
+it('resolves custom-only and empty scenario sets consistently (#420)', () => {
+  expect(resolveEffectiveScenarioId({ returnScenarios: [{ id: 'custom' }] }, 'missing')).toBe('custom')
+  expect(resolveEffectiveScenarioId({ returnScenarios: [] }, 'missing')).toBe('basis')
+  expect(resolveEffectiveScenarioId({ returnScenarios: [{ id: 'konservativ' }, { id: 'basis' }] }, 'missing')).toBe('basis')
+})
