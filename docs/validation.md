@@ -114,7 +114,8 @@ while product fees, taxes, and payout modes diverge normally.
 Users see the scenarios in these places:
 
 - `/eingaben`, Annahmen section (`src/features/inputs/sections/AngabenAnnahmenSection.tsx`):
-  all three default rates plus the equity-market orientation sentence
+  all three default rates; the equity-market orientation sentence is in the
+  right rail of `src/features/inputs/AngabenPage.tsx`
 - `/methode`, § 1 "Renditeannahmen" (`src/features/methode/MethodePage.tsx`)
 - compare mode: the Rendite strip on `/vergleich`
   (`src/features/vergleich/VergleichRenditeStrip.tsx`) selects among the defaults

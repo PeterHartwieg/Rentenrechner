@@ -132,3 +132,21 @@ describe('/ — the personal plan', () => {
     expect(screen.getByRole('button', { name: 'Zum Rentenbeginn' })).toHaveAttribute('aria-pressed', 'true')
   })
 })
+
+
+it('keeps the capital-page scenario on return to comparison and print (#420)', async () => {
+  localStorage.setItem(STORAGE_KEY_V1, buildStateJson(defaultProfile, defaultAssumptions))
+  window.history.pushState(null, '', '/kapital?quelle=vergleich&scenario=konservativ')
+  render(<App />)
+  // Like the other route tests, allow the lazy page chunk to load under the
+  // full suite's concurrent workload before querying its controls.
+  await waitFor(() => expect(document.querySelector('.kapital-shell')).not.toBeNull(), {
+    timeout: 8000,
+  })
+  const optimistic = screen.getByRole('button', { name: /Rendite-Annahme: Optimistisch/ })
+  fireEvent.click(optimistic)
+  fireEvent.click(screen.getByRole('link', { name: /Zurück zum Vergleich/ }))
+  await waitFor(() => expect(document.querySelector('.vergleich-journey')).not.toBeNull())
+  expect(screen.getByRole('button', { name: /Rendite-Annahme: Optimistisch/ })).toHaveAttribute('aria-pressed', 'true')
+  expect(document.querySelector('#print-report')?.textContent).toContain('Optimistisch-Szenario')
+})

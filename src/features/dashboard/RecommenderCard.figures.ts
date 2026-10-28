@@ -131,9 +131,9 @@ export function contractAndScenarioLabel(
     + ownReturnAnnotation(otherOwnReturnCount)
 }
 
-/** "Vertragsrendite 2 % p.a. (eigene Annahme dieses Vertrags)" */
+/** "eigene Marktrendite 2 % p.a. (eigene Annahme dieses Vertrags)" */
 export function contractReturnLabel(rate: number): string {
-  return `Vertragsrendite ${formatPercent(rate, 1)} p.a. (eigene Annahme dieses Vertrags)`
+  return `eigene Marktrendite ${formatPercent(rate, 1)} p.a. (eigene Annahme dieses Vertrags)`
 }
 
 /**

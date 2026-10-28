@@ -126,8 +126,8 @@ const EP_INPUT_STATUS_KEY = 'statutoryPension.currentEntgeltpunkte'
  *
  * A manual gross-pension override suppresses detection in both shapes: while
  * `manualMonthlyGross` is non-null (including zero), the projection ignores `currentEntgeltpunkte`
- * entirely, so a stored seed behind an override cannot influence any number
- * the user sees and a re-estimate would do nothing.
+ * for the projected pension, so re-estimating the seed would not change that
+ * pension. The DRV card can still display the stored Entgeltpunkte.
  */
 export function detectLegacyEpSeed({
   statutoryPension,
