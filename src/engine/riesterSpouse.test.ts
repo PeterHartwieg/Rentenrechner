@@ -384,7 +384,8 @@ describe('memo #420: owner-aware legacy Riester funding', () => {
       const onPaid = careerStarter([['a-empty', 0, 30], ['z-paid', 100, 23]], gross)
       const f = evaluated(onEmpty).riesterByInstanceId
       expect(f['a-empty'].receivesPortfolioAllowance).toBe(true)
-      expect(f['a-empty'].careerStarterBonusAnnual).toBeGreaterThan(0)
+      expect(f['a-empty'].careerStarterBonusAnnual).toBeCloseTo(200 * f['a-empty'].prorationFactor, 8)
+      expect(totals(onEmpty).allowance).toBeCloseTo(375 * f['a-empty'].prorationFactor, 8)
       evaluated(onPaid)
       expect(totals(onEmpty)).toEqual(totals(onPaid))
       if (gross === 15000) expect(totals(onEmpty).zulagePlusRefund).toBeCloseTo(totals(onEmpty).allowance, 8)
