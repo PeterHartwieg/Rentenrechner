@@ -14,6 +14,7 @@
  */
 
 import { CHILD_ALLOWANCE_CLAIM_HINT } from '../../../content/terms'
+import { RiesterFundingLimitation } from '../../inputs/RiesterFundingLimitation'
 import { InfoTip } from '../../../ui/InfoTip'
 import type { PersonalProfile } from '../../../domain'
 import type { RiesterInstance } from '../../../domain/instances'
@@ -48,6 +49,7 @@ export function RiesterInstanceInputs({ instance, patchInstance, profile }: Prop
 
   return (
     <div className="combine-instance-fields">
+      <RiesterFundingLimitation />
       <CommonContractFields instance={instance} onChange={onCommonChange} />
       <DraftNumberInput
         label="Eigenbeitrag (EUR/Monat)"

@@ -1,4 +1,5 @@
 import { CHILD_ALLOWANCE_CLAIM_HINT } from '../../content/terms'
+import { RiesterFundingLimitation } from './RiesterFundingLimitation'
 import '../../ui/forms.css'
 import type React from 'react'
 import type {
@@ -55,6 +56,7 @@ export function RiesterInputs({
 
   return (
     <>
+      <RiesterFundingLimitation />
       <div className="subsection-heading">
         <h3>Riester (Altvertrag)</h3>
         <p>
