@@ -45,6 +45,7 @@ export function selectPortfolioCareerStarterRecipient(
             return {
               instanceId: instance.instanceId,
               contractStartYear: instance.contractStartYear,
+              paying: instance.monthlyOwnContribution > 0 ? 1 : 0,
               allowanceClaimAnnual: withBonus.totalAllowanceAnnual,
               careerStarterBonusAnnual: withBonus.careerStarterBonusAnnual,
               realisedBenefitAnnual:
@@ -93,6 +94,7 @@ export function selectPortfolioCareerStarterRecipient(
             return {
               instanceId: instance.instanceId,
               contractStartYear: instance.contractStartYear,
+              paying: instance.monthlyOwnContribution > 0 ? 1 : 0,
               allowanceClaimAnnual: withBonus.totalAllowanceAnnual,
               careerStarterBonusAnnual: withBonus.careerStarterBonusAnnual,
               realisedBenefitAnnual:
@@ -113,6 +115,9 @@ export function selectPortfolioCareerStarterRecipient(
         (left, right) =>
           right.realisedBenefitAnnual - left.realisedBenefitAnnual ||
           right.allowanceClaimAnnual - left.allowanceClaimAnnual ||
+          // Riester candidates share the pooled contribution, so an empty and a
+          // paying contract tie above. Follow the allowance destination (R2-2).
+          right.paying - left.paying ||
           left.contractStartYear - right.contractStartYear ||
           left.instanceId.localeCompare(right.instanceId),
       )

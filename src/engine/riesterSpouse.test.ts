@@ -3,6 +3,7 @@ import { defaultAssumptions, defaultProfile } from '../data/defaultScenario'
 import { de2026Rules as rules } from '../rules/de2026'
 import { migrateV1ToV2, buildWorkspaceJson, parseWorkspaceJson, buildStateJson, parseStateFromJson } from '../storage'
 import { buildPortfolioFunding } from './portfolioFunding'
+import { evaluateRiesterTopUp } from './portfolioRiesterTopUp'
 import { calculateRiesterHouseholdFunding, riesterHouseholdInputIssues } from './riesterHousehold'
 import { calculateRiesterFunding, solveRiesterOwnFromNet } from './riester'
 import { calculateSalaryResult } from './salary'
@@ -318,8 +319,75 @@ describe('memo #420: owner-aware legacy Riester funding', () => {
       reversed.baseline.assumptions.riester.reverse()
       expect(buildPortfolioFunding(reversed, rules).riesterByInstanceId).toEqual(f)
     })
-    it('a paying contract beats a EUR 0 contract with the larger full allowance', () => {
-      expect(recipients(directOnly([['a-empty', 0, true], ['z-paid', 175]]))).toEqual(['z-paid'])
+    // Review round 4: the destination rule must never change the amount.
+    const totals = (ws: ReturnType<typeof directOnly>) => {
+      const f = Object.values(buildPortfolioFunding(ws, rules).riesterByInstanceId)
+      const allowance = f.reduce((s, r) => s + r.totalAllowanceAnnual, 0)
+      return { allowance, zulagePlusRefund: allowance + f.reduce((s, r) => s + r.guenstigerpruefungBenefitAnnual, 0),
+        netCost: f.reduce((s, r) => s + r.monthlyNetCost, 0) }
+    }
+    it.each([[50000, 175], [25000, 825 / 12]])(
+      'review round 4: the child flag on the EUR 0 contract keeps the Kinderzulage (gross %s)', (gross, paid) => {
+        const onEmpty = directOnly([['a-empty', 0, true], ['z-paid', paid]])
+        const onPaid = directOnly([['a-empty', 0], ['z-paid', paid, true]])
+        for (const ws of [onEmpty, onPaid]) ws.baseline.profile.grossSalaryYear = gross
+        const f = buildPortfolioFunding(onEmpty, rules).riesterByInstanceId
+        // The larger claim wins; the allowance stays on the contract that claims it.
+        expect(f['a-empty'].totalAllowanceAnnual).toBe(475)
+        expect(f['a-empty'].childAllowanceAnnual).toBe(300)
+        expect(f['z-paid'].totalAllowanceAnnual).toBe(0)
+        expect(f['a-empty'].minEigenbeitragAnnual).toBeCloseTo(Math.max(60, 0.04 * gross - 475), 8)
+        expect(f['z-paid'].meetsMinContribution).toBe(true)
+        expect(totals(onEmpty)).toEqual(totals(onPaid))
+        if (gross === 25000) expect(totals(onEmpty).zulagePlusRefund).toBeCloseTo(475, 8)
+        const reversed = structuredClone(onEmpty)
+        reversed.baseline.assumptions.riester.reverse()
+        expect(buildPortfolioFunding(reversed, rules).riesterByInstanceId).toEqual(f)
+      })
+    const careerStarter = (contracts: Array<[string, number, number]>, gross = 15000) => {
+      const ws = directOnly(contracts.map(([id, monthly]) => [id, monthly]))
+      ws.baseline.profile = { ...ws.baseline.profile, age: 23, grossSalaryYear: gross, childBirthYears: [] }
+      ws.baseline.assumptions.riester.forEach((c, i) => {
+        c.eligibility = { ...c.eligibility, careerStarterBonusUsed: false, ageAtContractStart: contracts[i][2] }
+      })
+      return ws
+    }
+    const evaluated = (ws: ReturnType<typeof directOnly>) => {
+      const funding = buildPortfolioFunding(ws, rules)
+      const prepared = evaluateRiesterTopUp(funding.riesterFundingContext!, rules, 'z-paid', 0).riester
+      for (const [id, full] of Object.entries(funding.riesterByInstanceId)) {
+        expect(prepared[id].totalAllowanceAnnual).toBeCloseTo(full.totalAllowanceAnnual, 8)
+        expect(prepared[id].careerStarterBonusAnnual).toBeCloseTo(full.careerStarterBonusAnnual, 8)
+        expect(prepared[id].guenstigerpruefungBenefitAnnual).toBeCloseTo(full.guenstigerpruefungBenefitAnnual, 8)
+        expect(prepared[id].receivesPortfolioAllowance).toBe(full.receivesPortfolioAllowance)
+      }
+      return funding
+    }
+    it.each([15000, 30000])('review round 4: an unused career-starter bonus follows the paying destination (gross %s)', (gross) => {
+      const ws = careerStarter([['a-empty', 0, 23], ['z-paid', 100, 23]], gross)
+      const f = evaluated(ws)
+      expect(f.riesterByInstanceId['z-paid'].receivesPortfolioAllowance).toBe(true)
+      expect(f.riesterByInstanceId['z-paid'].careerStarterBonusAnnual).toBeCloseTo(200 * f.riesterByInstanceId['z-paid'].prorationFactor, 8)
+      expect(totals(ws).allowance).toBeCloseTo(375 * f.riesterByInstanceId['z-paid'].prorationFactor, 8)
+      expect(f.riesterByInstanceId['a-empty'].totalAllowanceAnnual).toBe(0)
+      const reversed = structuredClone(ws)
+      reversed.baseline.assumptions.riester.reverse()
+      expect(evaluated(reversed).riesterByInstanceId).toEqual(f.riesterByInstanceId)
+      // Paid once only: from year two both contracts claim the same 175 and the bonus is gone.
+      for (const yearly of [f.riesterYearlyByInstanceId['a-empty'], f.riesterYearlyByInstanceId['z-paid']]) {
+        expect(yearly.slice(1).every(y => y.careerStarterBonusAnnual === 0)).toBe(true)
+      }
+      expect(f.riesterYearlyByInstanceId['z-paid'][1].receivesPortfolioAllowance).toBe(true)
+    })
+    it.each([15000, 30000])('review round 4: career-starter eligibility on the EUR 0 contract keeps the bonus (gross %s)', (gross) => {
+      const onEmpty = careerStarter([['a-empty', 0, 23], ['z-paid', 100, 30]], gross)
+      const onPaid = careerStarter([['a-empty', 0, 30], ['z-paid', 100, 23]], gross)
+      const f = evaluated(onEmpty).riesterByInstanceId
+      expect(f['a-empty'].receivesPortfolioAllowance).toBe(true)
+      expect(f['a-empty'].careerStarterBonusAnnual).toBeGreaterThan(0)
+      evaluated(onPaid)
+      expect(totals(onEmpty)).toEqual(totals(onPaid))
+      if (gross === 15000) expect(totals(onEmpty).zulagePlusRefund).toBeCloseTo(totals(onEmpty).allowance, 8)
     })
     it('keeps the full-allowance then instanceId tie-break when all contracts pay or none pay', () => {
       expect(recipients(directOnly([['a-empty', 0], ['z-empty', 0]]))).toEqual(['a-empty'])

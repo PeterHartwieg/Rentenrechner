@@ -70,10 +70,12 @@ export function calculateRiesterHouseholdFunding(
       e.contract, { ...person!.profile, childBirthYears: people.self.profile.childBirthYears }, rules,
       yearIndex === 0, rules.year + yearIndex,
     ) }))
-    // Allowance destination: a paying contract before a EUR 0 one (R2-2 decision),
-    // then the larger full allowance, then instanceId. The amount paid is not a key.
+    // Allowance destination: the larger full allowance first, so the person's
+    // total never drops; among equal claims a paying contract before a EUR 0 one
+    // (R2-2 decision), then instanceId. The amount paid is not a key. Indirect
+    // pools only hold paying contracts, so the paying key never applies there.
     const paying = (e: RiesterFundingEntry) => e.contract.monthlyOwnContribution > 0 ? 1 : 0
-    candidates.sort((a, b) => paying(b.entry) - paying(a.entry) || b.full.total - a.full.total ||
+    candidates.sort((a, b) => b.full.total - a.full.total || paying(b.entry) - paying(a.entry) ||
       a.entry.instanceId.localeCompare(b.entry.instanceId))
     const recipient = candidates[0]
     return { owner, person, contracts, pool, own, direct: !!person && direct, indirect,
