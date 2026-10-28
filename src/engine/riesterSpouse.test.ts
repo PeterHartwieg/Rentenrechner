@@ -293,4 +293,66 @@ describe('memo #420: owner-aware legacy Riester funding', () => {
     ws.baseline.assumptions.riester[1].eligibility.directlyEligible = false
     expect(riesterHouseholdInputIssues(ws.baseline)).toHaveLength(1)
   })
+  describe('R2-2 decision: direct owner allowance destination', () => {
+    const directOnly = (contracts: Array<[string, number, boolean?]>) => {
+      const ws = spouseFixture(50000, 30000, false, 1)
+      ws.baseline.partner = undefined; ws.baseline.profile.taxClass = 1
+      const direct = ws.baseline.assumptions.riester[0]
+      ws.baseline.assumptions.riester = contracts.map(([instanceId, monthly, child]) => ({
+        ...structuredClone(direct), instanceId, monthlyOwnContribution: monthly,
+        eligibility: { ...direct.eligibility, claimsChildAllowance: child ?? false },
+      }))
+      return ws
+    }
+    const recipients = (ws: ReturnType<typeof directOnly>) => Object.entries(buildPortfolioFunding(ws, rules).riesterByInstanceId)
+      .filter(([, f]) => f.receivesPortfolioAllowance).map(([id]) => id)
+
+    it('prefers the paying contract over a EUR 0 contract that sorts first by id', () => {
+      const ws = directOnly([['a-empty', 0], ['z-paid', 175]])
+      const f = buildPortfolioFunding(ws, rules).riesterByInstanceId
+      expect(f['z-paid'].totalAllowanceAnnual).toBe(175)
+      expect(f['z-paid'].receivesPortfolioAllowance).toBe(true)
+      expect(f['a-empty'].totalAllowanceAnnual).toBe(0)
+      expect(f['a-empty'].receivesPortfolioAllowance).toBe(false)
+      const reversed = structuredClone(ws)
+      reversed.baseline.assumptions.riester.reverse()
+      expect(buildPortfolioFunding(reversed, rules).riesterByInstanceId).toEqual(f)
+    })
+    it('a paying contract beats a EUR 0 contract with the larger full allowance', () => {
+      expect(recipients(directOnly([['a-empty', 0, true], ['z-paid', 175]]))).toEqual(['z-paid'])
+    })
+    it('keeps the full-allowance then instanceId tie-break when all contracts pay or none pay', () => {
+      expect(recipients(directOnly([['a-empty', 0], ['z-empty', 0]]))).toEqual(['a-empty'])
+      // The amount paid is not a key: the smaller payment keeps the id tie-break.
+      expect(recipients(directOnly([['a-small', 10], ['z-big', 175]]))).toEqual(['a-small'])
+      expect(recipients(directOnly([['a-small', 10], ['z-big', 175, true]]))).toEqual(['z-big'])
+      expect(recipients(directOnly([['a-empty', 0], ['m-child', 0, true], ['z-paid', 0]]))).toEqual(['m-child'])
+    })
+    it('household helper applies the same key outside the portfolio path', () => {
+      const ws = directOnly([['a-empty', 0], ['z-paid', 175]])
+      const salary = calculateSalaryResult(ws.baseline.profile, rules)
+      const f = calculateRiesterHouseholdFunding(ws.baseline.assumptions.riester.map(c => ({
+        instanceId: c.instanceId, ownedBy: c.ownedBy, contract: c,
+      })), { self: { profile: ws.baseline.profile, salary } }, rules)
+      expect(f['z-paid'].receivesPortfolioAllowance).toBe(true)
+      expect(f['a-empty'].receivesPortfolioAllowance).toBe(false)
+    })
+    it('top-up candidate on the EUR 0 contract matches the applied portfolio', () => {
+      // z-paid meets the 4 % minimum (2000 - 175), leaving 100 EUR/year cap headroom.
+      const ws = directOnly([['a-empty', 0], ['z-paid', 1825 / 12]])
+      const before = buildPortfolioFunding(ws, rules)
+      expect(before.riesterByInstanceId['z-paid'].receivesPortfolioAllowance).toBe(true)
+      const candidate = makeRiesterTopUpCandidate(buildGeneratorContext(ws, 50))
+      expect(candidate).not.toBeNull()
+      expect(candidate!.targetInstanceId).toBe('a-empty')
+      ws.baseline.assumptions.riester[0].monthlyOwnContribution += candidate!.grossMonthlyEUR
+      const after = buildPortfolioFunding(ws, rules)
+      const cost = (f: typeof before) => Object.values(f.riesterByInstanceId).reduce((s, r) => s + r.monthlyNetCost, 0)
+      expect(cost(after) - cost(before)).toBeCloseTo(candidate!.netCashOutEUR, 8)
+      // Once both pay, the existing tie-break returns the allowance to a-empty.
+      expect(after.riesterByInstanceId['a-empty'].receivesPortfolioAllowance).toBe(true)
+      const allowance = (f: typeof before) => Object.values(f.riesterByInstanceId).reduce((s, r) => s + r.totalAllowanceAnnual, 0)
+      expect(allowance(after)).toBe(allowance(before))
+    })
+  })
 })

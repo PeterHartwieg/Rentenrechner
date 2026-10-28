@@ -69,7 +69,12 @@ export function calculateRiesterHouseholdFunding(
     const candidates = pool.map(e => ({ entry: e, full: computeFullRiesterAllowances(
       e.contract, { ...person!.profile, childBirthYears: people.self.profile.childBirthYears }, rules,
       yearIndex === 0, rules.year + yearIndex,
-    ) })).sort((a, b) => b.full.total - a.full.total || a.entry.instanceId.localeCompare(b.entry.instanceId))
+    ) }))
+    // Allowance destination: a paying contract before a EUR 0 one (R2-2 decision),
+    // then the larger full allowance, then instanceId. The amount paid is not a key.
+    const paying = (e: RiesterFundingEntry) => e.contract.monthlyOwnContribution > 0 ? 1 : 0
+    candidates.sort((a, b) => paying(b.entry) - paying(a.entry) || b.full.total - a.full.total ||
+      a.entry.instanceId.localeCompare(b.entry.instanceId))
     const recipient = candidates[0]
     return { owner, person, contracts, pool, own, direct: !!person && direct, indirect,
       recipient, full: recipient?.full ?? { grundzulage: 0, childAllowance: 0, careerStarter: 0, total: 0 },
