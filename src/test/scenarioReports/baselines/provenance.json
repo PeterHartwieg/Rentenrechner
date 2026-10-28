@@ -1,9 +1,9 @@
 {
   "label": "INTERNAL REGRESSION",
-  "baseSha": "8f5ee34ce60554ee42f7953f35a654a4b2203e38",
-  "baseShaCapturedAt": "2026-10-28T06:12:58.647Z",
+  "baseSha": "ce9ee8e52630acd69f8c5d8751f3bae989d7ce9d",
+  "baseShaCapturedAt": "2026-10-28T06:27:01.444Z",
   "engineSources": {
-    "digestSha": "1c514e51dbeca2de",
+    "digestSha": "f49a9547e3716190",
     "dirty": false,
     "paths": []
   },
@@ -572,5 +572,5 @@
       "pvBeitragszuschlagKinderloseMinAge": 23
     }
   },
-  "notes": "Erfasst mit: npm run scenario:update -- --reason \"Review round 1: integrate PR 434 statutory metadata with owner-aware Riester funding; preserve eligible pools, assessment forks and threshold headroom\". rulesIdentity friert die RuleSetIdentity aus src/rules/ruleMetadata.ts (ruleSetId, Revision, Content-Fingerprint über Jahresregeln UND legalRuleData-Katalog), den Snapshot-Sha des kanonischen Regel-Snapshots, die evaluierten Kohortentabellen (Code, den kein JSON-Snapshot sehen kann) und die vollen Jahresregeln als kanonisches JSON ein; engineSources.digestSha identifiziert den Rechenwerkscode der Basis-Revision (sha256-Präfix). Rules-Identität dieser Erfassung: ab65d94d810d72d1. Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise."
+  "notes": "Erfasst mit: npm run scenario:update -- --reason \"Review round 2: share contribution-dependent career-starter allocation between portfolio funding and marginal Riester evaluation; include competing AVD net costs\". rulesIdentity friert die RuleSetIdentity aus src/rules/ruleMetadata.ts (ruleSetId, Revision, Content-Fingerprint über Jahresregeln UND legalRuleData-Katalog), den Snapshot-Sha des kanonischen Regel-Snapshots, die evaluierten Kohortentabellen (Code, den kein JSON-Snapshot sehen kann) und die vollen Jahresregeln als kanonisches JSON ein; engineSources.digestSha identifiziert den Rechenwerkscode der Basis-Revision (sha256-Präfix). Rules-Identität dieser Erfassung: ab65d94d810d72d1. Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise."
 }
