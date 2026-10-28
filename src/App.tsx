@@ -297,6 +297,8 @@ function App() {
       // plan) and `/vergleich` cannot overwrite each other.
       body = (
         <VergleichJourneyPage
+          selectedScenarioId={workspaceUi.selectedScenarioId}
+          onSelectScenario={workspaceUi.setSelectedScenarioId}
           moneyBasis={workspaceUi.moneyBasis}
           onMoneyBasisChange={workspaceUi.setMoneyBasis}
           navigate={navigate}
@@ -309,7 +311,9 @@ function App() {
       // Full-page lifecycle chart + Wendepunkte table (PR 8). Dual-source:
       // the page itself reads workspace.mode and renders compare-mode or
       // combine-mode data — no per-mode App.tsx branching needed.
-      body = <KapitalPage navigate={navigate} />
+      body = <KapitalPage navigate={navigate}
+        selectedScenarioId={workspaceUi.selectedScenarioId}
+        onSelectScenario={workspaceUi.setSelectedScenarioId} />
       break
     case 'vergleich-detail':
       // Compare-mode-only per-product breakdown drill-in (PR 10). The page

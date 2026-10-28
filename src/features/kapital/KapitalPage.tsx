@@ -3,6 +3,7 @@ import './KapitalPage.css'
 import type { Route } from '../../app/useRoute'
 import { ROUTES, routeToHref } from '../../app/useRoute'
 import { shouldUseSpaNavigation } from '../../app/spaNavigation'
+import { resolveEffectiveScenarioId } from '../../utils/simulationSelectors'
 import { usePortfolioState } from '../../app/portfolioState'
 import { useCombineSimulation } from '../../app/useCombineSimulation'
 import { useCalculatorState } from '../../app/useCalculatorState'
@@ -28,6 +29,8 @@ import {
 interface Props {
   /** SPA navigator threaded from `App.tsx`. Used by the back-link. */
   navigate: (target: Route) => void
+  selectedScenarioId?: string
+  onSelectScenario?: (id: string) => void
 }
 
 const SECTION_WENDEPUNKTE = {
@@ -75,7 +78,7 @@ function readQuelleParam(): string | null {
   }
 }
 
-/** Read the incoming scenario only on mount; later choices are local UI state. */
+/** Read the incoming scenario on mount; the resolved choice also syncs to App. */
 function readScenarioParam(): string | null {
   if (typeof window === 'undefined') return null
   try {
@@ -85,7 +88,7 @@ function readScenarioParam(): string | null {
   }
 }
 
-export function KapitalPage({ navigate }: Props) {
+export function KapitalPage({ navigate, selectedScenarioId: sharedScenarioId = 'basis', onSelectScenario }: Props) {
   // ---- 1. Hook prelude — runs unconditionally. ----------------------------
   const portfolioState = usePortfolioState()
   const workspace = portfolioState.workspace
@@ -94,8 +97,8 @@ export function KapitalPage({ navigate }: Props) {
   // Validate independently: the comparison and plan can have different sets.
   const compareScenarios = compareState.assumptions.returnScenarios
   const combineScenarios = workspace.baseline.assumptions.returnScenarios
-  const compareScenarioId = resolveScenarioId(compareScenarios, pickedScenarioId)
-  const scenarioId = resolveScenarioId(combineScenarios, pickedScenarioId)
+  const compareScenarioId = resolveEffectiveScenarioId(compareState.assumptions, pickedScenarioId ?? sharedScenarioId)
+  const scenarioId = resolveEffectiveScenarioId(workspace.baseline.assumptions, pickedScenarioId ?? sharedScenarioId)
 
   // Both simulations run on every render (cheap, memoised). The unused one
   // is dropped in the render branch below.
@@ -122,6 +125,11 @@ export function KapitalPage({ navigate }: Props) {
 
   const scenarios = isCombine ? combineScenarios : compareScenarios
   const selectedScenarioId = isCombine ? scenarioId : compareScenarioId
+
+  // Keep comparison, plan and print selection in sync across route changes.
+  useEffect(() => {
+    onSelectScenario?.(selectedScenarioId)
+  }, [selectedScenarioId, onSelectScenario])
 
   function selectScenario(id: string) {
     setPickedScenarioId(id)
@@ -282,6 +290,7 @@ export function KapitalPage({ navigate }: Props) {
             </a>
           </div>
 
+          <h2 className="kapital-section-title">Rendite-Annahme</h2>
           <VergleichRenditeStrip
             scenarios={scenarios}
             selectedId={selectedScenarioId}
@@ -362,25 +371,4 @@ export function KapitalPage({ navigate }: Props) {
       <LegalFooter navigate={navigate} />
     </div>
   )
-}
-
-/**
- * Resolve the basis scenario id from a workspace's `returnScenarios` array.
- * Defensive in two ways: first `find('basis')`, then fall back to the first
- * scenario, then a literal `'basis'` string for the degenerate empty-array
- * case. The CLAUDE.md "returnScenarios[0] is not necessarily basis" gotcha
- * notes that indexing by position picks `konservativ` (3 %) over `basis`
- * (5 %), so the `find` pass is required.
- */
-function pickBasisScenarioId(
-  scenarios: ReadonlyArray<{ id: string }>,
-): string {
-  return scenarios.find((s) => s.id === 'basis')?.id ?? scenarios[0]?.id ?? 'basis'
-}
-
-function resolveScenarioId(
-  scenarios: ReadonlyArray<{ id: string }>,
-  pickedId: string | null,
-): string {
-  return scenarios.find((s) => s.id === pickedId)?.id ?? pickBasisScenarioId(scenarios)
 }

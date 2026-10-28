@@ -16,7 +16,7 @@
  *   - No emojis introduced in user-visible copy
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react'
 import { createElement, type ReactElement } from 'react'
 import { AppShell } from '../../ui/chrome/AppShell'
@@ -318,5 +318,26 @@ describe('units and scope on the capital page (audit F06)', () => {
     expect(scope).toHaveTextContent('Alle Beträge nominal')
     expect(scope).toHaveTextContent('nicht in heutigen Euro')
     expect(scope).toHaveTextContent('für sich allein versteuert')
+  })
+})
+
+
+describe('KapitalPage ? shared selection (#420)', () => {
+  it.each(['compare', 'combine'] as const)('syncs incoming and picked scenarios in %s mode', (mode) => {
+    if (mode === 'compare') seedCompareMode()
+    else seedCombineMode()
+    window.history.replaceState(null, '', '/kapital?scenario=konservativ')
+    const onSelectScenario = vi.fn()
+    render(<KapitalPage navigate={() => {}} selectedScenarioId="basis" onSelectScenario={onSelectScenario} />)
+    expect(onSelectScenario).toHaveBeenLastCalledWith('konservativ')
+    expect(screen.getByRole('heading', { name: 'Rendite-Annahme' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Rendite-Annahme: Optimistisch/ }))
+    expect(onSelectScenario).toHaveBeenLastCalledWith('optimistisch')
+  })
+
+  it('inherits the shared selection when there is no query', () => {
+    seedCompareMode()
+    render(<KapitalPage navigate={() => {}} selectedScenarioId="optimistisch" />)
+    expect(screen.getByRole('button', { name: /Rendite-Annahme: Optimistisch/ })).toHaveAttribute('aria-pressed', 'true')
   })
 })
