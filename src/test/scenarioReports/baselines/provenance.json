@@ -1,9 +1,9 @@
 {
   "label": "INTERNAL REGRESSION",
-  "baseSha": "56b238a5d5dfd747a81c0c81060a79b8b9301b1a",
-  "baseShaCapturedAt": "2026-10-28T13:42:08.496Z",
+  "baseSha": "54b4959ef75719fdf858da28db2af37e45a0e374",
+  "baseShaCapturedAt": "2026-10-28T14:21:33.599Z",
   "engineSources": {
-    "digestSha": "2c9b06687598a044",
+    "digestSha": "60cff48c4b6d4f15",
     "dirty": false,
     "paths": []
   },
@@ -572,5 +572,5 @@
       "pvBeitragszuschlagKinderloseMinAge": 23
     }
   },
-  "notes": "Erfasst mit: npm run scenario:update -- --reason \"R2-2 decision: direct-owner Riester allowance destination prefers a paying contract before a EUR 0 one; no scenario values change\". rulesIdentity friert die RuleSetIdentity aus src/rules/ruleMetadata.ts (ruleSetId, Revision, Content-Fingerprint über Jahresregeln UND legalRuleData-Katalog), den Snapshot-Sha des kanonischen Regel-Snapshots, die evaluierten Kohortentabellen (Code, den kein JSON-Snapshot sehen kann) und die vollen Jahresregeln als kanonisches JSON ein; engineSources.digestSha identifiziert den Rechenwerkscode der Basis-Revision (sha256-Präfix). Rules-Identität dieser Erfassung: ab65d94d810d72d1. Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise."
+  "notes": "Erfasst mit: npm run scenario:update -- --reason \"Review round 4: Riester allowance recipient sorts by full allowance before the paying key and the career-starter bonus breaks equal claims towards the paying contract; no scenario values change\". rulesIdentity friert die RuleSetIdentity aus src/rules/ruleMetadata.ts (ruleSetId, Revision, Content-Fingerprint über Jahresregeln UND legalRuleData-Katalog), den Snapshot-Sha des kanonischen Regel-Snapshots, die evaluierten Kohortentabellen (Code, den kein JSON-Snapshot sehen kann) und die vollen Jahresregeln als kanonisches JSON ein; engineSources.digestSha identifiziert den Rechenwerkscode der Basis-Revision (sha256-Präfix). Rules-Identität dieser Erfassung: ab65d94d810d72d1. Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise."
 }
