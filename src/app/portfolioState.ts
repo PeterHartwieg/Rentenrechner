@@ -216,6 +216,7 @@ export function forkBaselineScenario(
   return {
     id: newScenarioId('whatif'),
     label,
+    riesterJointAssessment: baseline.riesterJointAssessment,
     profile: deepCloneScenario(baseline.profile),
     partner: baseline.partner ? deepCloneScenario(baseline.partner) : undefined,
     assumptions: deepCloneScenario(baseline.assumptions),

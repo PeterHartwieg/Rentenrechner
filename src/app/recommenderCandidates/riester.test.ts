@@ -17,7 +17,8 @@
  *     target Riester instance.
  */
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import * as portfolioFundingModule from '../../engine/portfolioFunding'
 import { defaultAssumptions } from '../../data/defaultScenario'
 import { calculateRiesterFunding } from '../../engine/riester'
 import { de2026Rules } from '../../rules/de2026'
@@ -107,6 +108,16 @@ describe('makeRiesterTopUpCandidate — visible candidate behavior', () => {
 })
 
 describe('makeRiesterTopUpCandidate — reasons', () => {
+  it('review round 1: reuses the prepared context without rebuilding portfolio funding', () => {
+    const ws = buildBerndWorkspace()
+    injectRiesterInstance(ws, { monthlyOwnContribution: 25 })
+    const context = buildGeneratorContext(ws, 50)
+    const spy = vi.spyOn(portfolioFundingModule, 'buildPortfolioFunding')
+    try {
+      expect(makeRiesterTopUpCandidate(context)).not.toBeNull()
+      expect(spy).not.toHaveBeenCalled()
+    } finally { spy.mockRestore() }
+  })
   it('afterTaxLumpSum is null (≤30 % partial-capital under §22 Nr. 5 EStG)', () => {
     const ws = buildBerndWorkspace()
     injectRiesterInstance(ws)

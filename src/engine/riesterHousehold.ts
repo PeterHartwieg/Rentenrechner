@@ -1,11 +1,14 @@
 import type { GermanRules, PersonalProfile, RiesterAssumptions, RiesterFundingResult, SalaryResult } from '../domain'
 import { calculateRiesterIndividualFunding, computeFullRiesterAllowances } from './riester'
 import { calculateSalaryPhaseTaxDelta } from './salaryPhaseFunding'
+import { childBirthYearsUnder25InYear } from './childEligibility'
+import { activeRules } from '../rules'
 import type { Scenario } from '../domain/workspace'
 
 /** Do not resolve contradictory person facts by choosing one contract. */
-export function riesterHouseholdInputIssues(scenario: Scenario): string[] {
-  const entries = scenario.assumptions.riester.filter(r => r.status === 'active')
+export function riesterHouseholdInputIssues(scenario: Scenario, contributionYear = activeRules.year): string[] {
+  const allActive = scenario.assumptions.riester.filter(r => r.status === 'active')
+  const entries = allActive.filter(r => r.fundingEligible !== false)
   const issues: string[] = []
   if (entries.some(r => r.ownedBy === 'partner') && !scenario.partner) {
     issues.push('Riester: Für den Partnervertrag fehlen die Angaben zur zweiten Person im Haushalt.')
@@ -16,13 +19,13 @@ export function riesterHouseholdInputIssues(scenario: Scenario): string[] {
     const incomes = new Set(owned.map(r => r.eligibility.priorYearRelevantIncome).filter(v => v !== undefined))
     if (kinds.size > 1 || incomes.size > 1) issues.push('Riester: Förderberechtigung und Vorjahreseinkommen müssen für alle Verträge derselben Person übereinstimmen. Die Förderfähigkeit des Vertrags ist separat einstellbar.')
   }
-  if (scenario.profile.childBirthYears.length > 0 && new Set(entries.filter(r =>
+  if (childBirthYearsUnder25InYear(scenario.profile.childBirthYears, contributionYear).length > 0 && new Set(entries.filter(r =>
     r.fundingEligible !== false && r.eligibility.claimsChildAllowance !== false &&
     (r.eligibility.directlyEligible || r.eligibility.indirectSpouseEligible)).map(r => r.ownedBy ?? 'self')).size > 1) {
     issues.push('Riester: Die Kinderzulagen sind beiden Personen zugeordnet. Bitte nur bei der empfangenden Person aktivieren.')
   }
   if (entries.some(r => r.eligibility.indirectSpouseEligible && !r.eligibility.directlyEligible &&
-    !entries.some(other => (other.ownedBy ?? 'self') !== (r.ownedBy ?? 'self') && other.eligibility.directlyEligible))) {
+    !allActive.some(other => (other.ownedBy ?? 'self') !== (r.ownedBy ?? 'self') && other.eligibility.directlyEligible))) {
     issues.push('Riester: Für die mittelbare Berechtigung fehlen der Vertrag und die Beiträge der unmittelbar berechtigten Person.')
   }
   return issues
@@ -59,10 +62,10 @@ export function calculateRiesterHouseholdFunding(
     // flags that inconsistent person-level input instead of silently upgrading it.
     const direct = contracts.some(e => e.contract.eligibility.directlyEligible)
     const pool = person ? contracts.filter(e => e.contract.fundingEligible !== false &&
-      (direct ? e.contract.eligibility.directlyEligible : e.contract.eligibility.indirectSpouseEligible)) : []
+      (direct ? e.contract.eligibility.directlyEligible : e.contract.eligibility.indirectSpouseEligible &&
+        e.contract.monthlyOwnContribution * 12 >= r.indirectEligibilityMinimumAnnual)) : []
     const own = pool.reduce((s, e) => s + e.contract.monthlyOwnContribution * 12, 0)
-    const indirect = !direct && own >= r.indirectEligibilityMinimumAnnual && pool.some(e =>
-      e.contract.monthlyOwnContribution * 12 >= r.indirectEligibilityMinimumAnnual)
+    const indirect = !direct && pool.length > 0
     const candidates = pool.map(e => ({ entry: e, full: computeFullRiesterAllowances(
       e.contract, { ...person!.profile, childBirthYears: people.self.profile.childBirthYears }, rules,
       yearIndex === 0, rules.year + yearIndex,
@@ -74,6 +77,8 @@ export function calculateRiesterHouseholdFunding(
   })
   const directGroup = groups.find(g => g.direct)
   const indirectGroup = groups.find(g => g.indirect && !g.direct && g.person && directGroup)
+  const householdDeductionCapAnnual = groups.filter(g => g.direct).length * r.annualCapInclAllowances +
+    (indirectGroup ? r.indirectSpouseDeductionIncreaseAnnual : 0)
   for (const g of groups) {
     if (!g.direct) continue
     const priorIncome = g.pool.find(e => e.contract.eligibility.priorYearRelevantIncome !== undefined)?.contract.eligibility.priorYearRelevantIncome ??
@@ -131,6 +136,8 @@ export function calculateRiesterHouseholdFunding(
     const refund = g.refund * share
     return [e.instanceId, {
       ...base,
+      section10aEligible: included,
+      portfolioDeductionCapAnnual: householdDeductionCapAnnual,
       grundzulageAnnual: recipient ? g.full.grundzulage * g.ratio : 0,
       childAllowanceAnnual: recipient ? g.full.childAllowance * g.ratio : 0,
       careerStarterBonusAnnual: recipient ? g.full.careerStarter * g.ratio : 0,

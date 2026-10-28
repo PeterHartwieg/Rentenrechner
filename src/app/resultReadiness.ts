@@ -172,7 +172,7 @@ export function selectResultReadiness(
   const profile = workspace.baseline.profile
   for (const label of riesterHouseholdInputIssues(workspace.baseline)) {
     reasons.push({ code: 'riester-household-incomplete', severity: 'blocking', label,
-      target: { route: ROUTES.eingaben } })
+      target: { route: ROUTES.eingabenProdukte } })
   }
   const scenarioStatus = (key: string): InputStatus =>
     resolveInputStatus(wsa.inputStatus, undefined, key)

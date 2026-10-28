@@ -88,6 +88,8 @@ export interface RiesterAssumptions {
 }
 
 export interface RiesterFundingResult {
+  /** Authoritative household deduction ceiling, set by the owner-aware path. */
+  portfolioDeductionCapAnnual?: number
   /** Eligibility computed with the same rules as this funding result. */
   section10aEligible: boolean
   monthlyOwnContribution: number

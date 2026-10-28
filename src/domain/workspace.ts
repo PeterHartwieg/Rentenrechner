@@ -4,7 +4,7 @@ import type { StatutoryPensionAssumptions } from './products/grv'
 import type { BavFundingResult } from './products/bav'
 import type { BasisrenteFundingResult } from './products/basisrente'
 import type { AltersvorsorgedepotFundingResult } from './products/altersvorsorgedepot'
-import type { RiesterFundingResult } from './products/riester'
+import type { RiesterFundingResult, RiesterAssumptions } from './products/riester'
 import type { ProductId } from './products/common'
 import type { ContributionInput } from './results'
 import type { MonteCarloAssumptions } from './monteCarlo'
@@ -113,6 +113,16 @@ export interface Workspace {
  * `BuildContextOverrides` so existing engine code stays untouched.
  */
 export interface PortfolioFunding {
+  /** Prepared year-one context for cheap marginal Riester evaluations. */
+  riesterFundingContext?: {
+    entries: { instanceId: string; ownedBy?: 'self' | 'partner'; contract: RiesterAssumptions }[]
+    people: {
+      self: { profile: PersonalProfile; salary: SalaryResult }
+      partner?: { profile: PersonalProfile; salary: SalaryResult }
+    }
+    jointTaxableIncome?: number
+  }
+
   /** Map of bav instance id → funding result for that instance after cross-instance cap apportionment. */
   bavByInstanceId: Record<string, BavFundingResult>
   /** Map of basisrente instance id → funding result after Schicht-1 cap apportionment. */

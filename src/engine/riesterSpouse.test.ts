@@ -8,6 +8,10 @@ import { calculateRiesterFunding, solveRiesterOwnFromNet } from './riester'
 import { calculateSalaryResult } from './salary'
 import { calculateSalaryPhaseTaxDelta } from './salaryPhaseFunding'
 import type { RiesterInstance } from '../domain/instances'
+import { forkBaselineScenario, applyWhatIfToBaseline, rebaseWhatIf } from '../app/portfolioState'
+import { scenarioDiff } from '../app/scenarioDiff'
+import { buildGeneratorContext } from '../app/recommenderCandidates/testHelpers'
+import { makeRiesterTopUpCandidate } from '../app/recommenderCandidates/riester'
 
 export function spouseFixture(gross = 50000, partnerGross = 30000, indirect = false, kids = 0) {
   const profile = { ...defaultProfile, age: 37, retirementAge: 67, grossSalaryYear: gross,
@@ -30,6 +34,80 @@ export function spouseFixture(gross = 50000, partnerGross = 30000, indirect = fa
 }
 
 describe('memo #420: owner-aware legacy Riester funding', () => {
+  it('review round 1: the indirect recipient must qualify on its own contract', () => {
+    const ws = spouseFixture(50000, 0, true)
+    const paid = ws.baseline.assumptions.riester[1]
+    paid.instanceId = 'z-paid'; paid.expectedReturn = 0.03
+    ws.baseline.assumptions.riester.push({ ...paid, instanceId: 'a-empty', monthlyOwnContribution: 0, expectedReturn: 0.07 })
+    const f = buildPortfolioFunding(ws, rules)
+    expect(f.riesterByInstanceId['a-empty'].totalAllowanceAnnual).toBe(0)
+    expect(f.riesterByInstanceId['a-empty'].section10aEligible).toBe(false)
+    expect(f.riesterByInstanceId['z-paid'].totalAllowanceAnnual).toBe(175)
+    expect(f.riesterByInstanceId['z-paid'].section10aEligible).toBe(true)
+  })
+  it.each([0, 59])('review round 1: candidate reaches the indirect minimum from EUR %s', (annual) => {
+    const ws = spouseFixture(50000, 0, true)
+    const [direct, indirect] = ws.baseline.assumptions.riester
+    direct.monthlyOwnContribution = 1925 / 12
+    indirect.monthlyOwnContribution = annual / 12
+    ws.baseline.assumptions.riester = [indirect, direct]
+    const context = buildGeneratorContext(ws, 100)
+    expect(context.portfolioFunding.headroom.riester.remainingAnnual).toBeCloseTo(60 - annual, 6)
+    const candidate = makeRiesterTopUpCandidate(context)
+    expect(candidate).not.toBeNull()
+    expect(candidate!.grossMonthlyEUR * 12).toBeCloseTo(60 - annual, 6)
+    indirect.monthlyOwnContribution += candidate!.grossMonthlyEUR
+    expect(buildPortfolioFunding(ws, rules).riesterByInstanceId[indirect.instanceId].totalAllowanceAnnual).toBe(175)
+  })
+  it('review round 1: cap follows direct person eligibility even with an unfunded direct contract', () => {
+    const ws = spouseFixture(50000, 0, true)
+    ws.baseline.assumptions.riester[0].fundingEligible = false
+    const f = buildPortfolioFunding(ws, rules)
+    expect(f.headroom.riester.capAnnual).toBe(2160)
+    expect(f.headroom.riester.fundedAnnual).toBe(60)
+    expect(f.riesterByInstanceId['riester-self'].section10aEligible).toBe(false)
+    // No allowance with an underpaid direct spouse, but indirect deduction eligibility remains.
+    expect(f.riesterByInstanceId['riester-partner'].section10aEligible).toBe(true)
+  })
+  it('review round 1: allowance-only recipient still enters the requested total', () => {
+    const ws = spouseFixture()
+    ws.baseline.partner = undefined
+    const direct = ws.baseline.assumptions.riester[0]
+    ws.baseline.assumptions.riester = [
+      { ...direct, instanceId: 'a-empty', monthlyOwnContribution: 0 },
+      { ...direct, instanceId: 'z-paid', monthlyOwnContribution: 175 },
+    ]
+    const f = buildPortfolioFunding(ws, rules)
+    expect(f.headroom.riester.requestedAnnual).toBe(2275)
+    expect(f.headroom.riester.constrained).toBe(true)
+  })
+  it('review round 1: assessment survives unchanged forks and preview/rebase/apply', () => {
+    const ws = spouseFixture()
+    ws.baseline.riesterJointAssessment = false
+    const fork = forkBaselineScenario(ws.baseline, 'Alternative')
+    expect(fork.riesterJointAssessment).toBe(false)
+    expect(scenarioDiff(ws.baseline, fork)).toEqual([])
+    expect(buildPortfolioFunding({ ...ws, baseline: fork }, rules).riesterByInstanceId)
+      .toEqual(buildPortfolioFunding(ws, rules).riesterByInstanceId)
+    fork.riesterJointAssessment = true
+    expect(scenarioDiff(ws.baseline, fork)).toContainEqual({ fieldPath: 'riesterJointAssessment', oldValue: false, newValue: true })
+    const rebased = rebaseWhatIf(fork, ws.baseline)
+    const applied = applyWhatIfToBaseline(rebased, ws.baseline)
+    expect(applied.riesterJointAssessment).toBe(true)
+    expect(buildPortfolioFunding({ ...ws, baseline: applied }, rules).riesterByInstanceId)
+      .toEqual(buildPortfolioFunding({ ...ws, baseline: fork }, rules).riesterByInstanceId)
+  })
+  it('review round 1: expired children and unfunded indirect contracts do not block readiness', () => {
+    const ws = spouseFixture()
+    ws.baseline.profile.childBirthYears = [1990]
+    ws.baseline.assumptions.riester.forEach(r => { r.eligibility.claimsChildAllowance = true })
+    expect(riesterHouseholdInputIssues(ws.baseline, rules.year)).toEqual([])
+    ws.baseline.profile.childBirthYears = [2020]
+    expect(riesterHouseholdInputIssues(ws.baseline, rules.year)).toHaveLength(1)
+    ws.baseline.assumptions.riester = [{ ...ws.baseline.assumptions.riester[0], fundingEligible: false,
+      eligibility: { ...ws.baseline.assumptions.riester[0].eligibility, directlyEligible: false, indirectSpouseEligible: true } }]
+    expect(riesterHouseholdInputIssues(ws.baseline, rules.year)).toEqual([])
+  })
   it('keeps the indirect eligibility minimum separate from the direct allowance minimum', () => {
     const ws = spouseFixture(50000, 0, true)
     const changedSockel = { ...rules, riester: { ...rules.riester, sockelbetrag: 100 } }

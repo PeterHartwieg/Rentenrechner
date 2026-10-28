@@ -672,34 +672,27 @@ export function buildPortfolioFunding(
     partner: partnerSalary && workspace.baseline.partner
       ? { profile: workspace.baseline.partner, salary: partnerSalary } : undefined,
   }
+  const riesterFundingContext = {
+    entries: activeRiesterSingletons.map(({ instance, singleton }) => ({
+      instanceId: instance.instanceId, ownedBy: instance.ownedBy, contract: singleton,
+    })),
+    people: riesterPeople,
+    jointTaxableIncome: (workspace.baseline.riesterJointAssessment ?? jointAssessment)
+      ? salaryAfterBasisrenteDeduction.taxableIncomeForDeductions ?? salaryAfterBasisrenteDeduction.taxableIncome
+      : undefined,
+  }
   function calculateActiveRiester(entries: typeof activeRiesterSingletons, yearIndex = 0) {
     return calculateRiesterHouseholdFunding(entries.map(({ instance, singleton }) => ({
       instanceId: instance.instanceId, ownedBy: instance.ownedBy, contract: singleton,
-    })), riesterPeople, rules, {
-      yearIndex,
-      jointTaxableIncome: (workspace.baseline.riesterJointAssessment ?? jointAssessment)
-        ? salaryAfterBasisrenteDeduction.taxableIncomeForDeductions ?? salaryAfterBasisrenteDeduction.taxableIncome
-        : undefined,
-    })
+    })), riesterPeople, rules, { yearIndex, jointTaxableIncome: riesterFundingContext.jointTaxableIncome })
   }
-  const directOwners = new Set(activeRiester.filter(i => i.eligibility.directlyEligible && i.fundingEligible !== false &&
-    (i.ownedBy !== 'partner' || riesterPeople.partner))
-    .map(i => i.ownedBy ?? 'self'))
-  const indirectOwner = activeRiester.some(i => !i.eligibility.directlyEligible &&
-    i.eligibility.indirectSpouseEligible && i.fundingEligible !== false &&
-    (i.ownedBy !== 'partner' || riesterPeople.partner) &&
-    i.monthlyOwnContribution * 12 >= rules.riester.indirectEligibilityMinimumAnnual &&
-    !directOwners.has(i.ownedBy ?? 'self'))
-  const riesterCapAnnual = rules.riester.annualCapInclAllowances * (activeRiester.length === 0 ? 1 : directOwners.size) +
-    (directOwners.size === 1 && indirectOwner ? rules.riester.indirectSpouseDeductionIncreaseAnnual : 0)
   const aggregateRiesterContractAnnual = (entries: Record<string, RiesterFundingResult>): number =>
     Object.values(entries).reduce((sum, f) => sum + f.specialExpenseDeductibleAnnual, 0)
   function calculateRiesterYear(yearIndex: number) {
     const acceptedByInstanceId = calculateActiveRiester(activeRiesterSingletons, yearIndex)
     const requestedAnnual = activeRiesterSingletons.reduce((sum, { instance, singleton }) => {
       const funding = acceptedByInstanceId[instance.instanceId]
-      return sum + ((funding.portfolioTaxBenefitShare ?? 0) > 0
-        ? singleton.monthlyOwnContribution * 12 + funding.totalAllowanceAnnual : 0)
+      return sum + (funding.section10aEligible ? singleton.monthlyOwnContribution * 12 : 0) + funding.totalAllowanceAnnual
     }, 0)
     return { acceptedByInstanceId, requestedAnnual,
       deductionLimited: requestedAnnual > aggregateRiesterContractAnnual(acceptedByInstanceId) + 1e-7 }
@@ -710,6 +703,8 @@ export function buildPortfolioFunding(
     (_, yearIndex) => calculateRiesterYear(yearIndex),
   )
   const currentRiesterYear = riesterYears[0]
+  const riesterCapAnnual = Object.values(currentRiesterYear.acceptedByInstanceId)[0]?.portfolioDeductionCapAnnual
+    ?? rules.riester.annualCapInclAllowances
   const requestedRiesterAnnual = currentRiesterYear.requestedAnnual
   const riesterDeductionLimited = currentRiesterYear.deductionLimited
   const riesterByInstanceId: Record<string, RiesterFundingResult> = {
@@ -796,16 +791,21 @@ export function buildPortfolioFunding(
       return requested - considered
     }
 
-    let lo = 0
-    let hi = riesterCapAnnual
-    for (let i = 0; i < 60; i++) {
-      const mid = (lo + hi) / 2
-      const aggregate = aggregateWithTopUp(mid)
-      if (aggregate <= 1e-8) {
-        lo = mid
-      } else hi = mid
+    const target = activeRiesterSingletons[0].singleton
+    // Below the indirect minimum the feasible interval is disconnected from
+    // zero. Start at the qualifying payment instead of bisecting it away.
+    const qualifyingTopUp = target.eligibility.directlyEligible ? 0 : Math.max(0,
+      rules.riester.indirectEligibilityMinimumAnnual - target.monthlyOwnContribution * 12)
+    let lo = qualifyingTopUp
+    let hi = riesterCapAnnual + rules.riester.indirectSpouseDeductionIncreaseAnnual
+    if (aggregateWithTopUp(lo) <= 1e-8) {
+      for (let i = 0; i < 60; i++) {
+        const mid = (lo + hi) / 2
+        if (aggregateWithTopUp(mid) <= 1e-8) lo = mid
+        else hi = mid
+      }
+      remainingRiesterAnnual = lo
     }
-    remainingRiesterAnnual = lo
   }
 
   const altersvorsorgedepotHeadroomByInstanceId = Object.fromEntries(
@@ -850,6 +850,7 @@ export function buildPortfolioFunding(
     altersvorsorgedepotYearlyByInstanceId,
     riesterByInstanceId,
     riesterYearlyByInstanceId,
+    riesterFundingContext,
     salaryForOtherFunding,
     salaryAfterBasisrenteDeduction,
     headroom: {

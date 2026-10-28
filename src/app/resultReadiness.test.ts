@@ -50,6 +50,7 @@ it('blocks household totals when a Riester partner contract has no partner facts
   const readiness = selectResultReadiness(ws, bundleFor(ws))
   expect(readiness.canShowHouseholdTotal).toBe(false)
   expect(readiness.blocking.some(r => r.code === 'riester-household-incomplete')).toBe(true)
+  expect(readiness.blocking.find(r => r.code === 'riester-household-incomplete')?.target.route).toBe(ROUTES.eingabenProdukte)
 })
 
 /** One ETF contract with every readiness-relevant input marked as entered. */
