@@ -153,6 +153,10 @@ export interface GermanRules {
     sockelbetrag: number
     /** §10a EStG annual deductible cap including own contributions + allowances (2,100 EUR). */
     annualCapInclAllowances: number
+    /** Legacy §79 sentence 2 no. 4: constitutive indirect eligibility minimum. */
+    indirectEligibilityMinimumAnnual: number
+    /** Legacy §10a(3): increase of the shared direct/indirect deduction ceiling. */
+    indirectSpouseDeductionIncreaseAnnual: number
     /** AltZertG: payout plan must run at least through this age (85). */
     payoutPlanMinEndAge: number
   }

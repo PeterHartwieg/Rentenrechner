@@ -737,6 +737,7 @@ function CombinePanel({
                   >
                     {uiEntry?.renderInstanceInputs ? (
                       uiEntry.renderInstanceInputs({
+                        partner: baseline.partner,
                         instance,
                         patchInstance,
                         profile: baseline.profile,

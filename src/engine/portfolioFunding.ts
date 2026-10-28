@@ -14,8 +14,8 @@
  *     derived from the combined capped conversions across all active instances.
  *   - Basisrente §10 Abs. 3 (Schicht-1): proportional scaling when aggregate
  *     exceeds the remaining cap after GRV/Versorgungswerk contributions.
- *   - Riester §10a EStG: proportional scaling when aggregate exceeds the
- *     2 100 EUR/year cap incl. allowances.
+ *   - Riester §10a EStG: owner-specific eligible pools and considered-payment
+ *     refund shares; deduction ceilings do not truncate actual contributions.
  *   - AVD (AltZertG): per-contract cap plus one career-starter bonus per saver.
  *
  * Projection helpers live in `portfolioProjection.ts`.
@@ -40,7 +40,8 @@ import type { PortfolioFunding, Workspace } from '../domain/workspace'
 import { bavHasStatutoryMinimumSubsidyRoute, calculateBavFunding, calculateSalaryResult } from './salary'
 import { basisrenteDeductionHeadroom, calculateBasisrenteFunding } from './basisrente'
 import { calculateAvdFunding, maxAvdMonthlyOwnContribution } from './altersvorsorgedepot'
-import { allocateRiesterHouseholdFunding, calculateRiesterFunding } from './riester'
+import { calculateRiesterFunding } from './riester'
+import { calculateRiesterHouseholdFunding } from './riesterHousehold'
 import { stripInstanceCommonKeys } from './portfolioProjection'
 import { childBirthYearsUnder25InYear } from './childEligibility'
 import { calculateSalaryPhaseTaxDelta } from './salaryPhaseFunding'
@@ -167,7 +168,7 @@ export function hasUsedCareerStarterBonus(
   )
   const riesterUsed = assumptions.riester.some(
     (instance) =>
-      instance.status !== 'offered' &&
+      instance.status !== 'offered' && instance.ownedBy !== 'partner' &&
       instance.eligibility.careerStarterBonusUsed &&
       instance.eligibility.directlyEligible &&
       instance.eligibility.ageAtContractStart <=
@@ -475,7 +476,7 @@ export function buildPortfolioFunding(
   // `careerStarterBonusUsed` records historical use. Surrendering or replacing
   // the contract does not restore the saver's once-per-lifetime entitlement.
   const careerStarterBonusAlreadyUsed = hasUsedCareerStarterBonus(wsa, rules)
-  const householdRiesterOwnMonthly = activeRiester.reduce(
+  const householdRiesterOwnMonthly = activeRiester.filter(instance => instance.ownedBy !== 'partner' && instance.fundingEligible !== false && instance.eligibility.directlyEligible).reduce(
     (sum, instance) => sum + instance.monthlyOwnContribution,
     0,
   )
@@ -524,7 +525,7 @@ export function buildPortfolioFunding(
               candidate.careerStarterBonusAnnual > 0 &&
               candidate.realisedBenefitAnnual >= 0,
           ),
-        ...activeRiester
+        ...activeRiester.filter(instance => instance.ownedBy !== 'partner' && instance.fundingEligible !== false && instance.eligibility.directlyEligible)
           .map((instance) => {
             const singleton = stripInstanceCommonKeys(
               instance as unknown as Record<string, unknown>,
@@ -650,161 +651,58 @@ export function buildPortfolioFunding(
       ) as unknown as RiesterAssumptions
       return {
         ...singleton,
-        eligibility: eligibilityForCareerStarterAllocation(
+        eligibility: instance.ownedBy === 'partner' ? {
+          ...singleton.eligibility,
+          careerStarterBonusUsed: wsa.riester.some(r => r.ownedBy === 'partner' &&
+            r.status !== 'offered' && r.eligibility.careerStarterBonusUsed &&
+            r.eligibility.ageAtContractStart <= rules.riester.careerStarterMaxAge),
+        } : eligibilityForCareerStarterAllocation(
           instance.instanceId,
           singleton.eligibility,
         ),
       }
     })(),
   }))
-  // §10a EStG caps own contributions plus allowances at €2,100 per saver.
-  // V1 instances all belong to that saver: calculate the household benefit
-  // from aggregate own contributions and assign it to the eligible contract
-  // with the largest allowance claim. Other contracts retain only their own
-  // contributions. The simulator carries this allocation through every year.
-  // Calculate both parts inside the scale pass: allowance proration changes
-  // with the accepted own contribution, so scaling own contributions alone can
-  // leave the simulated contract inflow above the cap.
-  const riesterCapAnnual = rules.riester.annualCapInclAllowances
-
-  function calculateActiveRiester(
-    entries: typeof activeRiesterSingletons,
-    yearIndex = 0,
-  ): Record<string, RiesterFundingResult> {
-    const contributionYear = rules.year + yearIndex
-    const householdOwnMonthly = entries.reduce(
-      (sum, { singleton }) => sum + singleton.monthlyOwnContribution,
-      0,
-    )
-    const householdCandidates = entries.map(({ instance, singleton }) => ({
-      instanceId: instance.instanceId,
-      eligibility: singleton.eligibility,
-      funding: calculateRiesterFunding(
-        rules,
-        salaryAfterBasisrenteDeduction,
-        { ...singleton, monthlyOwnContribution: householdOwnMonthly },
-        profile,
-        {
-          contributionYear,
-          isFirstContributionYear:
-            yearIndex === 0 && !singleton.eligibility.careerStarterBonusUsed,
-        },
-      ),
-    }))
-    const recipient = householdCandidates.reduce<(typeof householdCandidates)[number] | undefined>(
-      (best, candidate) =>
-        !best || candidate.funding.totalAllowanceAnnual > best.funding.totalAllowanceAnnual
-          ? candidate
-          : best,
-      undefined,
-    )
-    if (!recipient) return {}
-
-    return Object.fromEntries(entries.map(({ instance, singleton }) => {
-      const ownFunding = calculateRiesterFunding(
-        rules,
-        salaryAfterBasisrenteDeduction,
-        singleton,
-        profile,
-        {
-          contributionYear,
-          isFirstContributionYear:
-            yearIndex === 0 && !singleton.eligibility.careerStarterBonusUsed,
-        },
-      )
-      const receivesPortfolioAllowance = instance.instanceId === recipient?.instanceId
-      const portfolioTaxBenefitShare = householdOwnMonthly > 0
-        ? ownFunding.monthlyOwnContribution / householdOwnMonthly
-        : 0
-      const allocated = allocateRiesterHouseholdFunding(
-        ownFunding,
-        recipient.funding,
-        receivesPortfolioAllowance,
-        portfolioTaxBenefitShare,
-      )
-
-      return [instance.instanceId, {
-        ...allocated,
-        receivesPortfolioAllowance,
-        portfolioHouseholdOwnContributionMonthly: householdOwnMonthly,
-        portfolioTaxBenefitShare,
-        portfolioHouseholdEligibility: recipient.eligibility,
-      }]
-    }))
+  // Separate owner pools; deduction caps do not reduce actual payments.
+  const riesterPeople = {
+    self: { profile, salary: { ...salaryForOtherFunding,
+      taxableIncomeForDeductions: Math.max(0,
+        (salaryForOtherFunding.taxableIncomeForDeductions ?? salaryForOtherFunding.taxableIncome) - totalBasisrenteDeductible),
+    } },
+    partner: partnerSalary && workspace.baseline.partner
+      ? { profile: workspace.baseline.partner, salary: partnerSalary } : undefined,
   }
-
-  function calculateActiveRiesterAtScale(
-    scale: number,
-    yearIndex = 0,
-  ): Record<string, RiesterFundingResult> {
-    return calculateActiveRiester(activeRiesterSingletons.map(({ instance, singleton }) => ({
-      instance,
-      singleton: scale === 1
-        ? singleton
-        : {
-            ...singleton,
-            monthlyOwnContribution: singleton.monthlyOwnContribution * scale,
-          },
-    })), yearIndex)
+  function calculateActiveRiester(entries: typeof activeRiesterSingletons, yearIndex = 0) {
+    return calculateRiesterHouseholdFunding(entries.map(({ instance, singleton }) => ({
+      instanceId: instance.instanceId, ownedBy: instance.ownedBy, contract: singleton,
+    })), riesterPeople, rules, {
+      yearIndex,
+      jointTaxableIncome: (workspace.baseline.riesterJointAssessment ?? jointAssessment)
+        ? salaryAfterBasisrenteDeduction.taxableIncomeForDeductions ?? salaryAfterBasisrenteDeduction.taxableIncome
+        : undefined,
+    })
   }
-
-  const aggregateRiesterContractAnnual = (
-    entries: Record<string, RiesterFundingResult>,
-  ): number => Object.values(entries).reduce(
-    (sum, funding) =>
-      sum + funding.annualOwnContribution + funding.totalAllowanceAnnual,
-    0,
-  )
-
-  const householdRequestedOwnMonthly = activeRiesterSingletons.reduce(
-    (sum, { singleton }) => sum + singleton.monthlyOwnContribution,
-    0,
-  )
-
-  function calculateRiesterYear(yearIndex: number): {
-    acceptedByInstanceId: Record<string, RiesterFundingResult>
-    requestedAnnual: number
-    needsScaling: boolean
-  } {
-    const requestedByInstanceId = calculateActiveRiesterAtScale(1, yearIndex)
-    const requestedAnnual = aggregateRiesterContractAnnual(requestedByInstanceId)
-    const needsScaling = requestedAnnual > riesterCapAnnual
-    let scale = 1
-    if (needsScaling) {
-      let lo = 0
-      let hi = 1
-      for (let i = 0; i < 60; i++) {
-        const mid = (lo + hi) / 2
-        const aggregate = aggregateRiesterContractAnnual(
-          calculateActiveRiesterAtScale(mid, yearIndex),
-        )
-        if (aggregate <= riesterCapAnnual) {
-          lo = mid
-          if (riesterCapAnnual - aggregate < 0.001) break
-        } else hi = mid
-      }
-      scale = lo
-    }
-
-    const accepted = scale === 1
-      ? requestedByInstanceId
-      : calculateActiveRiesterAtScale(scale, yearIndex)
-    const acceptedByInstanceId = Object.fromEntries(
-      activeRiesterSingletons.map(({ instance, singleton }) => [
-        instance.instanceId,
-        {
-          ...accepted[instance.instanceId],
-          portfolioRequestedOwnContributionMonthly: singleton.monthlyOwnContribution,
-          portfolioHouseholdRequestedOwnContributionMonthly: householdRequestedOwnMonthly,
-        },
-      ]),
-    )
-
-    return {
-      acceptedByInstanceId,
-      requestedAnnual,
-      needsScaling,
-    }
+  const directOwners = new Set(activeRiester.filter(i => i.eligibility.directlyEligible && i.fundingEligible !== false &&
+    (i.ownedBy !== 'partner' || riesterPeople.partner))
+    .map(i => i.ownedBy ?? 'self'))
+  const indirectOwner = activeRiester.some(i => !i.eligibility.directlyEligible &&
+    i.eligibility.indirectSpouseEligible && i.fundingEligible !== false &&
+    (i.ownedBy !== 'partner' || riesterPeople.partner) &&
+    i.monthlyOwnContribution * 12 >= rules.riester.indirectEligibilityMinimumAnnual &&
+    !directOwners.has(i.ownedBy ?? 'self'))
+  const riesterCapAnnual = rules.riester.annualCapInclAllowances * (activeRiester.length === 0 ? 1 : directOwners.size) +
+    (directOwners.size === 1 && indirectOwner ? rules.riester.indirectSpouseDeductionIncreaseAnnual : 0)
+  const aggregateRiesterContractAnnual = (entries: Record<string, RiesterFundingResult>): number =>
+    Object.values(entries).reduce((sum, f) => sum + f.specialExpenseDeductibleAnnual, 0)
+  function calculateRiesterYear(yearIndex: number) {
+    const acceptedByInstanceId = calculateActiveRiester(activeRiesterSingletons, yearIndex)
+    const requestedAnnual = activeRiesterSingletons.reduce((sum, { instance, singleton }) => {
+      const funding = acceptedByInstanceId[instance.instanceId]
+      return sum + ((funding.portfolioTaxBenefitShare ?? 0) > 0
+        ? singleton.monthlyOwnContribution * 12 + funding.totalAllowanceAnnual : 0)
+    }, 0)
+    return { acceptedByInstanceId, requestedAnnual,
+      deductionLimited: requestedAnnual > aggregateRiesterContractAnnual(acceptedByInstanceId) + 1e-7 }
   }
 
   const riesterYears = Array.from(
@@ -813,7 +711,7 @@ export function buildPortfolioFunding(
   )
   const currentRiesterYear = riesterYears[0]
   const requestedRiesterAnnual = currentRiesterYear.requestedAnnual
-  const needsRiesterScaling = currentRiesterYear.needsScaling
+  const riesterDeductionLimited = currentRiesterYear.deductionLimited
   const riesterByInstanceId: Record<string, RiesterFundingResult> = {
     ...currentRiesterYear.acceptedByInstanceId,
   }
@@ -873,7 +771,8 @@ export function buildPortfolioFunding(
   // additional own contribution that remains after its allowance changes,
   // using the same aggregate function as the simulation funding pass.
   let remainingRiesterAnnual = 0
-  if (!needsRiesterScaling && activeRiesterSingletons.length > 0) {
+  if (activeRiesterSingletons.length > 0 && activeRiesterSingletons[0].singleton.fundingEligible !== false &&
+    (activeRiesterSingletons[0].singleton.eligibility.directlyEligible || activeRiesterSingletons[0].singleton.eligibility.indirectSpouseEligible)) {
     const targetId = activeRiesterSingletons[0].instance.instanceId
     const aggregateWithTopUp = (additionalOwnAnnual: number): number => {
       const entries = activeRiesterSingletons.map(({ instance, singleton }) => {
@@ -888,7 +787,13 @@ export function buildPortfolioFunding(
           },
         }
       })
-      return aggregateRiesterContractAnnual(calculateActiveRiester(entries))
+      const funding = calculateActiveRiester(entries)
+      const owner = entries.find(e => e.instance.instanceId === targetId)?.instance.ownedBy ?? 'self'
+      const owned = entries.filter(e => (e.instance.ownedBy ?? 'self') === owner && (funding[e.instance.instanceId].portfolioTaxBenefitShare ?? 0) > 0)
+      if (owned.length === 0) return additionalOwnAnnual
+      const requested = owned.reduce((sum, e) => sum + e.singleton.monthlyOwnContribution * 12 + funding[e.instance.instanceId].totalAllowanceAnnual, 0)
+      const considered = owned.reduce((sum, e) => sum + funding[e.instance.instanceId].specialExpenseDeductibleAnnual, 0)
+      return requested - considered
     }
 
     let lo = 0
@@ -896,9 +801,8 @@ export function buildPortfolioFunding(
     for (let i = 0; i < 60; i++) {
       const mid = (lo + hi) / 2
       const aggregate = aggregateWithTopUp(mid)
-      if (aggregate <= riesterCapAnnual) {
+      if (aggregate <= 1e-8) {
         lo = mid
-        if (riesterCapAnnual - aggregate < 0.001) break
       } else hi = mid
     }
     remainingRiesterAnnual = lo
@@ -996,7 +900,7 @@ export function buildPortfolioFunding(
         usedPct: riesterCapAnnual > 0
           ? Math.min(1, fundedRiesterAnnual / riesterCapAnnual)
           : 0,
-        constrained: needsRiesterScaling,
+        constrained: riesterDeductionLimited,
         allowanceAnnual: riesterAllowanceAnnual,
       },
       altersvorsorgedepotByInstanceId: altersvorsorgedepotHeadroomByInstanceId,

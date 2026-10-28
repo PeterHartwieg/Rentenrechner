@@ -23,7 +23,7 @@ describe('CombineHaushaltSection — Ehegattensplitting', () => {
     const { getByRole } = render(
       <CombineHaushaltSection baseline={withPartner} onPatchBaseline={vi.fn()} />,
     )
-    expect((getByRole('checkbox') as HTMLInputElement).checked).toBe(true)
+    expect((getByRole('checkbox', { name: /Ehegattensplitting gemeinsam/  }) as HTMLInputElement).checked).toBe(true)
   })
 
   it('enabling splitting patches a zero-salary partner clone', () => {
@@ -31,7 +31,7 @@ describe('CombineHaushaltSection — Ehegattensplitting', () => {
     const { getByRole } = render(
       <CombineHaushaltSection baseline={baseline} onPatchBaseline={onPatchBaseline} />,
     )
-    fireEvent.click(getByRole('checkbox'))
+    fireEvent.click(getByRole('checkbox', { name: /Ehegattensplitting gemeinsam/  }))
     expect(onPatchBaseline).toHaveBeenCalledTimes(1)
     const patch = onPatchBaseline.mock.calls[0]![0] as { partner?: { grossSalaryYear: number } }
     expect(patch.partner).toBeDefined()
@@ -43,7 +43,7 @@ describe('CombineHaushaltSection — Ehegattensplitting', () => {
     const { getByRole } = render(
       <CombineHaushaltSection baseline={withPartner} onPatchBaseline={onPatchBaseline} />,
     )
-    fireEvent.click(getByRole('checkbox'))
+    fireEvent.click(getByRole('checkbox', { name: /Ehegattensplitting gemeinsam/  }))
     expect(onPatchBaseline).toHaveBeenCalledWith({ partner: undefined })
   })
 })

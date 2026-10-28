@@ -86,6 +86,7 @@ export type WorkspaceInstance =
  * the panel passes the union shape because it iterates a heterogeneous list.
  */
 export interface InstanceInputsContext {
+  readonly partner?: PersonalProfile
   readonly instance: WorkspaceInstance
   readonly patchInstance: (patch: Partial<WorkspaceInstance>) => void
   readonly profile: PersonalProfile
@@ -232,6 +233,7 @@ export const PRODUCT_UI_REGISTRY: Record<ProductId, ProductUiEntry> = {
       <RiesterInstanceInputs
         instance={ctx.instance as RiesterInstance}
         profile={ctx.profile}
+        partner={ctx.partner}
         patchInstance={
           ctx.patchInstance as (p: Partial<RiesterInstance>) => void
         }

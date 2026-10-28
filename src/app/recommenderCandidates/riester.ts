@@ -6,8 +6,8 @@
  * such instance exists — the recommender does not generate a brand-new Riester
  * instance because eligibility (direct / indirect) must be verified first.
  *
- * Net-cost sizing uses `solveRiesterOwnFromNet` (bisection accounting for
- * Grundzulage + Kinderzulagen). Own contribution is clamped to the remaining
+ * Net-cost sizing bisects the change in household cost through
+ * `buildPortfolioFunding`. Own contribution is clamped to the target owner's remaining
  * §10a annual cap (€2,100 incl. allowances).
  *
  * Riester is a §22 Nr. 5 EStG certified pension: §93 Abs. 2 EStG limits the
@@ -15,7 +15,8 @@
  * annuitise. `afterTaxLumpSum` is null → `payoutOnly` in the UI.
  */
 
-import { calculateRiesterFunding, solveRiesterOwnFromNet } from '../../engine/riester'
+import { buildPortfolioFunding } from '../../engine/portfolioFunding'
+import { riesterHouseholdInputIssues } from '../../engine/riesterHousehold'
 import {
   type CandidateDraft,
   type GeneratorContext,
@@ -26,33 +27,34 @@ import {
 
 export function makeRiesterTopUpCandidate(g: GeneratorContext): CandidateDraft | null {
   const wsa = g.workspace.baseline.assumptions
-  const target = wsa.riester.find((r) => r.status !== 'surrendered' && r.status !== 'offered')
+  const target = wsa.riester.find((r) => r.status === 'active')
   if (!target) return null
-  const profile = g.workspace.baseline.profile
-  const salary = g.portfolioFunding.salaryAfterBasisrenteDeduction
-
-  const isolatedOwn = solveRiesterOwnFromNet(
-    g.marginalMonthlyEUR,
-    g.rules,
-    salary,
-    target,
-    profile,
-  )
-  if (isolatedOwn <= 0) return null
-
-  // Clamp to the same household-level §10a headroom snapshot as simulation.
+  if (riesterHouseholdInputIssues(g.workspace.baseline).length > 0) return null
   const remainingMonthly = g.portfolioFunding.headroom.riester.remainingAnnual / 12
-  const cappedToRemaining = isolatedOwn > remainingMonthly
-  const own = Math.min(isolatedOwn, remainingMonthly)
-  if (own <= 0) return null
-
-  const fundingForOwn = calculateRiesterFunding(g.rules, salary, {
-    ...target,
-    monthlyOwnContribution: own,
-  }, profile)
-  const netCash = Math.max(0, fundingForOwn.monthlyNetCost)
-
-  const totalMonthly = own + fundingForOwn.totalAllowanceAnnual / 12
+  if (remainingMonthly <= 0) return null
+  const sum = (f: typeof g.portfolioFunding, field: 'monthlyNetCost' | 'totalAllowanceAnnual') =>
+    Object.values(f.riesterByInstanceId).reduce((total, row) => total + row[field], 0)
+  const baselineCost = sum(g.portfolioFunding, 'monthlyNetCost')
+  const fundingAt = (additionalMonthly: number) => {
+    const workspace = { ...g.workspace, baseline: { ...g.workspace.baseline,
+      assumptions: { ...wsa, riester: wsa.riester.map(r => r.instanceId === target.instanceId
+        ? { ...r, monthlyOwnContribution: r.monthlyOwnContribution + additionalMonthly } : r) },
+    } }
+    return buildPortfolioFunding(workspace, g.rules)
+  }
+  let lo = 0
+  let hi = remainingMonthly
+  for (let i = 0; i < 35; i++) {
+    const mid = (lo + hi) / 2
+    if (sum(fundingAt(mid), 'monthlyNetCost') - baselineCost <= g.marginalMonthlyEUR) lo = mid
+    else hi = mid
+  }
+  const own = lo
+  if (own <= 1e-8) return null
+  const funding = fundingAt(own)
+  const netCash = sum(funding, 'monthlyNetCost') - baselineCost
+  const cappedToRemaining = remainingMonthly - own < 0.01
+  const totalMonthly = own + (sum(funding, 'totalAllowanceAnnual') - sum(g.portfolioFunding, 'totalAllowanceAnnual')) / 12
   const fees = (target.fees?.wrapperAssetFee ?? 0) + (target.fees?.fundAssetFee ?? 0)
   const annualReturn = candidateAnnualReturn(g.basis, target)
   const netReturn = Math.max(-0.5, annualReturn - fees)

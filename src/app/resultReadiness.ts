@@ -25,6 +25,7 @@ import type { InstanceCommon } from '../domain/instances'
 import type { Workspace, WorkspaceAssumptionsV2 } from '../domain/workspace'
 import type { ProductId } from '../engine/productRegistry'
 import { capitalTaxReadinessForInstance } from '../engine/capitalTaxReadiness'
+import { riesterHouseholdInputIssues } from '../engine/riesterHousehold'
 import { activeRules } from '../rules'
 import { PRODUCT_REGISTRY } from '../engine/productRegistry'
 import { resolveInputStatus } from '../features/results/provenanceHelpers'
@@ -34,6 +35,7 @@ import { ROUTES, type Route } from './useRoute'
 export type ReadinessStatus = 'available' | 'estimated' | 'incomplete' | 'error'
 
 export type ReadinessCode =
+  | 'riester-household-incomplete'
   | 'statutory-pension-unknown'
   | 'pension-entry-skipped'
   | 'instance-capital-unknown'
@@ -168,6 +170,10 @@ export function selectResultReadiness(
   const reasons: ReadinessReason[] = []
   const wsa = workspace.baseline.assumptions
   const profile = workspace.baseline.profile
+  for (const label of riesterHouseholdInputIssues(workspace.baseline)) {
+    reasons.push({ code: 'riester-household-incomplete', severity: 'blocking', label,
+      target: { route: ROUTES.eingaben } })
+  }
   const scenarioStatus = (key: string): InputStatus =>
     resolveInputStatus(wsa.inputStatus, undefined, key)
 

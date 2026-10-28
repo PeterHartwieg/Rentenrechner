@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import type { Scenario } from '../../domain/workspace'
 import { InfoTip } from '../../ui/InfoTip'
-import { CombineField, CombineNativeInput } from './instances/_shared'
+import { riesterHouseholdInputIssues } from '../../engine/riesterHousehold'
+import { CombineField, CombineNativeInput, DraftNumberInput } from './instances/_shared'
 
 /**
  * `CombineHaushaltSection` — combine-mode household fields that must stay
@@ -44,6 +45,7 @@ export function CombineHaushaltSection({
   return (
     <section className="produkte-haushalt" aria-label="Haushalt">
       <h2 className="produkte-haushalt__heading">Haushalt</h2>
+      {riesterHouseholdInputIssues(baseline).map((issue) => <p className="field-warning" key={issue}>{issue}</p>)}
       <div className="combine-instance-fields">
         <CombineField
           label="Ehegattensplitting"
@@ -80,6 +82,16 @@ export function CombineHaushaltSection({
             }}
           />
         </CombineField>
+        {baseline.partner && <>
+          <DraftNumberInput label="Bruttoeinkommen Partner / Partnerin (EUR/Jahr)"
+            value={baseline.partner.grossSalaryYear} min={0} step={1000}
+            onCommit={(grossSalaryYear) => onPatchBaseline({ partner: { ...baseline.partner!, grossSalaryYear } })} />
+          <CombineField label="Riester: Zusammenveranlagung">
+            <CombineNativeInput type="checkbox" checked={baseline.riesterJointAssessment ?? true}
+              onChange={(e) => onPatchBaseline({ riesterJointAssessment: e.target.checked })} />
+          </CombineField>
+          <p className="field-hint">Die Riester-Auswahl bestimmt die Günstigerprüfung unabhängig von der Steuerklasse. Die übrigen Produkte und die Rentenphase verwenden weiterhin die Haushaltseinstellung. Die übrigen Lohndaten der zweiten Person werden aus dem bestehenden Partnerprofil übernommen.</p>
+        </>}
       </div>
     </section>
   )

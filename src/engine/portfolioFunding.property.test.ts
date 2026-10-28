@@ -238,7 +238,7 @@ describe('buildPortfolioFunding — generated cap invariants', () => {
     )
   })
 
-  it('F3: accepted Riester own + allowance stays within the §10a cap in every accumulation year', () => {
+  it('F3: Riester deductible amount stays within the §10a cap in every accumulation year', () => {
     fc.assert(
       fc.property(fundingShapeArb, (shape) => {
         const funding = buildPortfolioFunding(makeFundingWorkspace(shape), de2026Rules)
@@ -253,7 +253,7 @@ describe('buildPortfolioFunding — generated cap invariants', () => {
             let aggregate = 0
             for (const schedule of yearly) {
               const f = schedule[y]
-              aggregate += f.annualOwnContribution + f.totalAllowanceAnnual
+              aggregate += f.specialExpenseDeductibleAnnual
             }
             expect(aggregate).toBeLessThanOrEqual(cap + 0.01)
           }

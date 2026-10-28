@@ -158,12 +158,14 @@ export const de2026Rules: GermanRules = {
     careerStarterMaxAge: 24,
     // §86 Abs. 1 EStG: Mindesteigenbeitrag = max(Sockelbetrag, 4% × RV-Pflichtentgelt − Zulagen).
     minEigenbeitragPct: 0.04,
-    // §86 Abs. 1 Satz 4 EStG: Sockelbetrag 60 EUR/year. Also the constitutive
-    // indirect-eligibility minimum (§79 Satz 2 Nr. 4, version through 2026;
-    // preserved for legacy contracts by §52 Abs. 50a).
+    // §86 Abs. 1 Satz 4 EStG: direct saver's Sockelbetrag 60 EUR/year.
     sockelbetrag: 60,
     // §10a Abs. 1 EStG: annual Sonderausgabenabzug cap = 2,100 EUR (own contribution + allowances).
     annualCapInclAllowances: 2_100,
+    // Legacy §79 Satz 2 Nr. 4 EStG, distinct from the §86 Sockelbetrag.
+    indirectEligibilityMinimumAnnual: 60,
+    // Legacy §10a Abs. 3 Satz 3 EStG, shared direct/indirect deduction increase.
+    indirectSpouseDeductionIncreaseAnnual: 60,
     // AltZertG: an Auszahlungsplan must run at least through age 85.
     payoutPlanMinEndAge: 85,
   },

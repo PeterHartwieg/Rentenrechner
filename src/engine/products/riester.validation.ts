@@ -15,11 +15,19 @@ import {
 const VALID_RIESTER_PAYOUT_MODES: readonly string[] = ['leibrente', 'zeitrente']
 
 export function validateRiester(r: RiesterAssumptions): boolean {
+  if (r.spouse !== undefined) {
+    const s = r.spouse
+    if (!s || typeof s !== 'object' || typeof s.jointAssessment !== 'boolean') return false
+    if (![s.grossSalaryYear, s.taxableIncomeAnnual, s.monthlyOwnContribution].every(v => isFiniteNumber(v) && v >= 0)) return false
+    if (!validateRiester({ ...r, spouse: undefined, eligibility: s.eligibility })) return false
+  }
+  if (r.fundingEligible !== undefined && typeof r.fundingEligible !== 'boolean') return false
   if (!isFiniteNumber(r.monthlyOwnContribution) || r.monthlyOwnContribution < 0) return false
   if (!isFiniteNumber(r.existingCapital) || r.existingCapital < 0) return false
   // eligibility
   const e = r.eligibility
   if (!e || typeof e !== 'object') return false
+  if (e.priorYearRelevantIncome !== undefined && (!isFiniteNumber(e.priorYearRelevantIncome) || e.priorYearRelevantIncome < 0)) return false
   if (typeof e.directlyEligible !== 'boolean') return false
   // indirectSpouseEligible is optional for backwards compatibility; reject only
   // when present and of the wrong type.

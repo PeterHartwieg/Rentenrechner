@@ -63,13 +63,13 @@ describe('makeRiesterTopUpCandidate — visible candidate behavior', () => {
     const draft = makeRiesterTopUpCandidate(g)!
     const target = ws.baseline.assumptions.riester[0]
     const expected = calculateRiesterFunding(de2026Rules, g.portfolioFunding.salaryAfterBasisrenteDeduction, {
-      ...target, monthlyOwnContribution: draft.grossMonthlyEUR,
+      ...target, monthlyOwnContribution: target.monthlyOwnContribution + draft.grossMonthlyEUR,
     }, ws.baseline.profile)
     const withoutBasisDeduction = calculateRiesterFunding(de2026Rules, g.portfolioFunding.salaryForOtherFunding, {
-      ...target, monthlyOwnContribution: draft.grossMonthlyEUR,
+      ...target, monthlyOwnContribution: target.monthlyOwnContribution + draft.grossMonthlyEUR,
     }, ws.baseline.profile)
     expect(expected.monthlyNetCost).toBeGreaterThan(withoutBasisDeduction.monthlyNetCost)
-    expect(draft.netCashOutEUR).toBeCloseTo(expected.monthlyNetCost, 8)
+    expect(draft.netCashOutEUR).toBeCloseTo(expected.monthlyNetCost - g.portfolioFunding.riesterByInstanceId[target.instanceId].monthlyNetCost, 8)
   })
 
   it('produces an "add to existing" candidate when an active Riester instance exists', () => {

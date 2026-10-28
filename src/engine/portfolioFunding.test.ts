@@ -80,15 +80,15 @@ describe('buildPortfolioFunding — subsidised-product top-up headroom', () => {
     expect(funding.headroom.riester.remainingAnnual).toBeCloseTo(1_325, 2)
   })
 
-  it('Riester funding scales own contribution when own plus allowance exceeds the cap', () => {
+  it('Riester deduction is capped while actual contributions are retained', () => {
     const ws = makeBaseWorkspace()
     ws.baseline.assumptions.riester[0].monthlyOwnContribution = 170
 
     const funding = buildPortfolioFunding(ws, de2026Rules)
     const accepted = funding.riesterByInstanceId['riester-singleton']
-    const acceptedAnnual = accepted.annualOwnContribution + accepted.totalAllowanceAnnual
+    const acceptedAnnual = accepted.specialExpenseDeductibleAnnual
 
-    expect(accepted.monthlyOwnContribution).toBeLessThan(170)
+    expect(accepted.monthlyOwnContribution).toBe(170)
     expect(accepted.monthlyOwnContribution).toBeGreaterThan(0)
     expect(acceptedAnnual).toBeLessThanOrEqual(RIESTER_CAP_ANNUAL + 0.01)
     expect(acceptedAnnual).toBeGreaterThan(RIESTER_CAP_ANNUAL - 1)
@@ -717,7 +717,7 @@ describe('buildPortfolioFunding — AVD', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildPortfolioFunding — Riester', () => {
-  it('two active Riester instances: aggregate is scaled when over §10a cap', () => {
+  it('two active Riester instances: deduction is limited when over §10a cap', () => {
     const ws = makeBaseWorkspace()
     // §10a cap = 2 100 EUR/year. Two instances at 100 EUR/month each = 2 400 EUR/year → over cap.
     const instA: RiesterInstance = {
@@ -755,10 +755,11 @@ describe('buildPortfolioFunding — Riester', () => {
     expect(fundA).toBeDefined()
     expect(fundB).toBeDefined()
 
-    // Aggregate annual own contribution must be ≤ cap.
+    // #420: the deduction ceiling does not truncate actual own payments.
     const totalAnnualOwn =
       fundA.annualOwnContribution + fundB.annualOwnContribution
-    expect(totalAnnualOwn).toBeLessThanOrEqual(RIESTER_CAP_ANNUAL + 0.01)
+    expect(totalAnnualOwn).toBe(2400)
+    expect(fundA.specialExpenseDeductibleAnnual + fundB.specialExpenseDeductibleAnnual).toBeCloseTo(RIESTER_CAP_ANNUAL, 6)
   })
 
   it('single active Riester instance under cap: no scaling', () => {
@@ -1194,7 +1195,7 @@ describe('buildPortfolioFunding — downstream salary baseline accuracy', () => 
 //     Zulagen than a single equivalent instance.
 // ---------------------------------------------------------------------------
 
-describe('gh#56 — multi-Riester simulator uses capped contributions', () => {
+describe('gh#56 / #420 — multi-Riester caps deductions, preserving payments', () => {
   // §10a cap = 2 100 EUR/year. Two instances at 100 EUR/month each = 2 400 EUR/year,
   // above the cap. portfolioFunding scales each to ~87.5 EUR/month (total = 2 100 EUR/year ≤ cap).
   // The simulator must use the ~87.5 EUR/month scaled value, not the raw 100 EUR/month.
@@ -1274,31 +1275,29 @@ describe('gh#56 — multi-Riester simulator uses capped contributions', () => {
 
     const singleCapital = singleResult['riester-single-ref']?.[0]?.capitalAtRetirement ?? 0
 
-    // Two capped instances together must not exceed the single uncapped reference
-    // (which represents the maximum the cap allows for combined contributions).
-    expect(twoTotalCapital).toBeLessThanOrEqual(singleCapital * 1.01) // 1% tolerance for rounding
+    // #420: additional own payments accumulate even above the deduction cap.
+    expect(twoTotalCapital).toBeGreaterThan(singleCapital)
     // Sanity: both instances have positive capital.
     expect(twoCapitalA).toBeGreaterThan(0)
     expect(twoCapitalB).toBeGreaterThan(0)
   })
 
-  it('two instances above cap: funding entry shows scaled contribution below raw input', () => {
-    // Two instances at 100 EUR/month each (2 400 EUR/year) → cap triggers scaling.
-    // Funding entries must have monthlyOwnContribution < 100.
+  it('two instances above cap: actual payment and considered deduction stay distinct', () => {
+    // Actual payments remain 2,400 EUR/year; only the deduction is capped.
     const ws = makeTwoRiesterWorkspace(100, 100)
     const funding = buildPortfolioFunding(ws, de2026Rules)
     const fundA = funding.riesterByInstanceId['riester-cap-a']
     const fundB = funding.riesterByInstanceId['riester-cap-b']
 
-    expect(fundA.monthlyOwnContribution).toBeLessThan(100)
-    expect(fundB.monthlyOwnContribution).toBeLessThan(100)
+    expect(fundA.monthlyOwnContribution).toBe(100)
+    expect(fundB.monthlyOwnContribution).toBe(100)
 
-    // The single household allowance is assigned to one recipient contract,
-    // so the two accepted own contributions together must leave room for it.
-    expect(fundA.monthlyOwnContribution).toBeLessThan(RIESTER_CAP_ANNUAL / 24)
-    expect(fundB.monthlyOwnContribution).toBeLessThan(RIESTER_CAP_ANNUAL / 24)
+    // One allowance per owner. Considered own payments leave room for it;
+    // actual contributions are recorded separately.
+    expect(fundA.specialExpenseDeductibleAnnual).toBeLessThan(RIESTER_CAP_ANNUAL)
+    expect(fundB.specialExpenseDeductibleAnnual).toBeLessThan(RIESTER_CAP_ANNUAL)
     const acceptedAnnual = [fundA, fundB].reduce(
-      (sum, entry) => sum + entry.annualOwnContribution + entry.totalAllowanceAnnual,
+      (sum, entry) => sum + entry.specialExpenseDeductibleAnnual,
       0,
     )
     expect(acceptedAnnual).toBeLessThanOrEqual(RIESTER_CAP_ANNUAL + 0.01)
@@ -1311,8 +1310,7 @@ describe('gh#56 — multi-Riester simulator uses capped contributions', () => {
     scheduleA.forEach((entryA, yearIndex) => {
       const entryB = scheduleB[yearIndex]
       expect(
-        entryA.annualOwnContribution + entryA.totalAllowanceAnnual +
-          entryB.annualOwnContribution + entryB.totalAllowanceAnnual,
+        entryA.specialExpenseDeductibleAnnual + entryB.specialExpenseDeductibleAnnual,
       ).toBeLessThanOrEqual(RIESTER_CAP_ANNUAL + 0.01)
       expect(
         [entryA, entryB].filter((entry) => entry.receivesPortfolioAllowance),
@@ -1352,9 +1350,9 @@ describe('gh#56 — multi-Riester simulator uses capped contributions', () => {
     expect(
       yearTwo.reduce((sum, entry) => sum + entry.careerStarterBonusAnnual, 0),
     ).toBe(0)
-    expect(aggregateOwnAnnual(yearTwo)).toBeGreaterThan(aggregateOwnAnnual(yearOne))
-    expect(aggregateFundedAnnual(yearOne)).toBeLessThanOrEqual(RIESTER_CAP_ANNUAL + 0.01)
-    expect(aggregateFundedAnnual(yearTwo)).toBeLessThanOrEqual(RIESTER_CAP_ANNUAL + 0.01)
+    expect(aggregateOwnAnnual(yearTwo)).toBe(aggregateOwnAnnual(yearOne))
+    expect(aggregateFundedAnnual(yearOne)).toBeGreaterThan(RIESTER_CAP_ANNUAL)
+    expect(aggregateFundedAnnual(yearTwo)).toBeGreaterThan(RIESTER_CAP_ANNUAL)
   })
 
   it('two instances share one household allowance instead of doubling it', () => {

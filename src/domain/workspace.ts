@@ -64,6 +64,8 @@ export interface Scenario {
   label: string
   profile: PersonalProfile
   partner?: PersonalProfile
+  /** Explicit Riester assessment choice; absent preserves the household setting. */
+  riesterJointAssessment?: boolean
   assumptions: WorkspaceAssumptionsV2
   createdAt: string
   origin: 'baseline' | 'manual' | 'recommender'
