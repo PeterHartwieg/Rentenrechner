@@ -1,9 +1,9 @@
 {
   "label": "INTERNAL REGRESSION",
-  "baseSha": "4b7d263c09caeba79ff5264abf0b1c6c1bb87890",
-  "baseShaCapturedAt": "2026-10-28T06:39:24.000Z",
+  "baseSha": "56b238a5d5dfd747a81c0c81060a79b8b9301b1a",
+  "baseShaCapturedAt": "2026-10-28T13:42:08.496Z",
   "engineSources": {
-    "digestSha": "f1f46bf01bafecea",
+    "digestSha": "2c9b06687598a044",
     "dirty": false,
     "paths": []
   },
@@ -572,5 +572,5 @@
       "pvBeitragszuschlagKinderloseMinAge": 23
     }
   },
-  "notes": "Erfasst mit: npm run scenario:update -- --reason \"Review round 3: headroom omits unused AVD funding rows while retaining shared bonus reselection and identical Riester funding\". rulesIdentity friert die RuleSetIdentity aus src/rules/ruleMetadata.ts (ruleSetId, Revision, Content-Fingerprint über Jahresregeln UND legalRuleData-Katalog), den Snapshot-Sha des kanonischen Regel-Snapshots, die evaluierten Kohortentabellen (Code, den kein JSON-Snapshot sehen kann) und die vollen Jahresregeln als kanonisches JSON ein; engineSources.digestSha identifiziert den Rechenwerkscode der Basis-Revision (sha256-Präfix). Rules-Identität dieser Erfassung: ab65d94d810d72d1. Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise."
+  "notes": "Erfasst mit: npm run scenario:update -- --reason \"R2-2 decision: direct-owner Riester allowance destination prefers a paying contract before a EUR 0 one; no scenario values change\". rulesIdentity friert die RuleSetIdentity aus src/rules/ruleMetadata.ts (ruleSetId, Revision, Content-Fingerprint über Jahresregeln UND legalRuleData-Katalog), den Snapshot-Sha des kanonischen Regel-Snapshots, die evaluierten Kohortentabellen (Code, den kein JSON-Snapshot sehen kann) und die vollen Jahresregeln als kanonisches JSON ein; engineSources.digestSha identifiziert den Rechenwerkscode der Basis-Revision (sha256-Präfix). Rules-Identität dieser Erfassung: ab65d94d810d72d1. Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise."
 }
