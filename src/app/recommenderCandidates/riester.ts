@@ -15,7 +15,8 @@
  * annuitise. `afterTaxLumpSum` is null → `payoutOnly` in the UI.
  */
 
-import { calculateRiesterHouseholdFunding, riesterHouseholdInputIssues } from '../../engine/riesterHousehold'
+import { riesterHouseholdInputIssues } from '../../engine/riesterHousehold'
+import { evaluateRiesterTopUp } from '../../engine/portfolioRiesterTopUp'
 import {
   type CandidateDraft,
   type GeneratorContext,
@@ -33,30 +34,28 @@ export function makeRiesterTopUpCandidate(g: GeneratorContext): CandidateDraft |
   if (remainingMonthly <= 0) return null
   const sum = (f: typeof g.portfolioFunding.riesterByInstanceId, field: 'monthlyNetCost' | 'totalAllowanceAnnual') =>
     Object.values(f).reduce((total, row) => total + row[field], 0)
-  const baselineCost = sum(g.portfolioFunding.riesterByInstanceId, 'monthlyNetCost')
   const context = g.portfolioFunding.riesterFundingContext
   if (!context) return null
-  const fundingAt = (additionalMonthly: number) => calculateRiesterHouseholdFunding(
-    context.entries.map(entry => entry.instanceId === target.instanceId
-      ? { ...entry, contract: { ...entry.contract, monthlyOwnContribution: entry.contract.monthlyOwnContribution + additionalMonthly } }
-      : entry), context.people, g.rules, { jointTaxableIncome: context.jointTaxableIncome },
-  )
+  const fundingAt = (additionalMonthly: number) => evaluateRiesterTopUp(context, g.rules, target.instanceId, additionalMonthly)
+  const netCost = (funding: ReturnType<typeof fundingAt>) => sum(funding.riester, 'monthlyNetCost') +
+    Object.values(funding.avd).reduce((total, row) => total + row.monthlyNetCost, 0)
+  const baselineCost = netCost(fundingAt(0))
   let lo = 0
   let hi = remainingMonthly
   for (let i = 0; i < 35; i++) {
     const mid = (lo + hi) / 2
-    if (sum(fundingAt(mid), 'monthlyNetCost') - baselineCost <= g.marginalMonthlyEUR) lo = mid
+    if (netCost(fundingAt(mid)) - baselineCost <= g.marginalMonthlyEUR) lo = mid
     else hi = mid
   }
   // Evaluate the endpoint exactly: approaching an indirect spouse's minimum
   // from below never qualifies, even when the full top-up is affordable.
-  const own = sum(fundingAt(remainingMonthly), 'monthlyNetCost') - baselineCost <= g.marginalMonthlyEUR
+  const own = netCost(fundingAt(remainingMonthly)) - baselineCost <= g.marginalMonthlyEUR
     ? remainingMonthly : lo
   if (own <= 1e-8) return null
   const funding = fundingAt(own)
-  const netCash = sum(funding, 'monthlyNetCost') - baselineCost
+  const netCash = netCost(funding) - baselineCost
   const cappedToRemaining = remainingMonthly - own < 0.01
-  const totalMonthly = own + (sum(funding, 'totalAllowanceAnnual') - sum(g.portfolioFunding.riesterByInstanceId, 'totalAllowanceAnnual')) / 12
+  const totalMonthly = own + (sum(funding.riester, 'totalAllowanceAnnual') - sum(g.portfolioFunding.riesterByInstanceId, 'totalAllowanceAnnual')) / 12
   const fees = (target.fees?.wrapperAssetFee ?? 0) + (target.fees?.fundAssetFee ?? 0)
   const annualReturn = candidateAnnualReturn(g.basis, target)
   const netReturn = Math.max(-0.5, annualReturn - fees)

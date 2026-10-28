@@ -51,6 +51,36 @@ function injectRiesterInstance(
 }
 
 describe('makeRiesterTopUpCandidate — visible candidate behavior', () => {
+  it.each([0, 1, 10])('review round 2: applied net budget matches with competing AVD contribution=%s', (avdMonthly) => {
+    const ws = buildBerndWorkspace()
+    Object.assign(ws.baseline.profile, { age: 22, retirementAge: 67, grossSalaryYear: avdMonthly === 10 ? 10000 : 30000, taxClass: 1, childBirthYears: [] })
+    const a = ws.baseline.assumptions
+    a.bav = []; a.etf = []; a.insurance = []; a.basisrente = []; a.altersvorsorgedepot = []
+    injectRiesterInstance(ws, { monthlyOwnContribution: 0, ownedBy: 'self',
+      eligibility: { ...defaultAssumptions.riester.eligibility, directlyEligible: true,
+        indirectSpouseEligible: false, careerStarterBonusUsed: false, ageAtContractStart: 20 } })
+    if (avdMonthly > 0) a.altersvorsorgedepot = [{ ...structuredClone(defaultAssumptions.altersvorsorgedepot),
+      instanceId: 'competing-avd', status: 'active', label: 'AVD', contractStartYear: 2026, evidenceMap: {},
+      monthlyOwnContribution: avdMonthly, eligibility: { ...defaultAssumptions.altersvorsorgedepot.eligibility,
+        directlyEligible: true, careerStarterBonusUsed: false, ageAtContractStart: 20 } }]
+    const budget = avdMonthly > 0 ? 100 : 50
+    const context = buildGeneratorContext(ws, budget)
+    const draft = makeRiesterTopUpCandidate(context)!
+    expect(draft).not.toBeNull()
+    a.riester[0].monthlyOwnContribution += draft.grossMonthlyEUR
+    const after = portfolioFundingModule.buildPortfolioFunding(ws, de2026Rules)
+    const cost = (f: typeof after) => [...Object.values(f.riesterByInstanceId),
+      ...Object.values(f.altersvorsorgedepotByInstanceId)].reduce((total, row) => total + row.monthlyNetCost, 0)
+    const actual = cost(after) - cost(context.portfolioFunding)
+    if (avdMonthly === 10) {
+      expect(context.portfolioFunding.altersvorsorgedepotByInstanceId['competing-avd'].careerStarterBonusAnnual).toBeGreaterThan(0)
+      expect(after.altersvorsorgedepotByInstanceId['competing-avd'].careerStarterBonusAnnual).toBe(0)
+    }
+    expect(actual).toBeCloseTo(draft.netCashOutEUR, 8)
+    expect(actual).toBeLessThanOrEqual(budget + 1e-8)
+    expect(after.riesterByInstanceId[a.riester[0].instanceId].careerStarterBonusAnnual).toBeGreaterThan(0)
+  })
+
   it('sizes against salary after the accepted simultaneous Basisrente deduction', () => {
     const ws = buildBerndWorkspace()
     ws.baseline.profile.grossSalaryYear = 60_000

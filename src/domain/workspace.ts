@@ -115,6 +115,10 @@ export interface Workspace {
 export interface PortfolioFunding {
   /** Prepared year-one context for cheap marginal Riester evaluations. */
   riesterFundingContext?: {
+    activeAvd: AltersvorsorgedepotInstance[]
+    activeRiester: RiesterInstance[]
+    careerStarterBonusAlreadyUsed: boolean
+    salaryAfterBasisrenteDeduction: SalaryResult
     entries: { instanceId: string; ownedBy?: 'self' | 'partner'; contract: RiesterAssumptions }[]
     people: {
       self: { profile: PersonalProfile; salary: SalaryResult }

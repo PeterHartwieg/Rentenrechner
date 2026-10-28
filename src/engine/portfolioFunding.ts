@@ -41,6 +41,8 @@ import { bavHasStatutoryMinimumSubsidyRoute, calculateBavFunding, calculateSalar
 import { basisrenteDeductionHeadroom, calculateBasisrenteFunding } from './basisrente'
 import { calculateAvdFunding, maxAvdMonthlyOwnContribution } from './altersvorsorgedepot'
 import { calculateRiesterFunding } from './riester'
+import { selectPortfolioCareerStarterRecipient } from './portfolioCareerStarter'
+import { evaluateRiesterTopUp } from './portfolioRiesterTopUp'
 import { calculateRiesterHouseholdFunding } from './riesterHousehold'
 import { stripInstanceCommonKeys } from './portfolioProjection'
 import { childBirthYearsUnder25InYear } from './childEligibility'
@@ -476,113 +478,9 @@ export function buildPortfolioFunding(
   // `careerStarterBonusUsed` records historical use. Surrendering or replacing
   // the contract does not restore the saver's once-per-lifetime entitlement.
   const careerStarterBonusAlreadyUsed = hasUsedCareerStarterBonus(wsa, rules)
-  const householdRiesterOwnMonthly = activeRiester.filter(instance => instance.ownedBy !== 'partner' && instance.fundingEligible !== false && instance.eligibility.directlyEligible).reduce(
-    (sum, instance) => sum + instance.monthlyOwnContribution,
-    0,
+  const careerStarterBonusRecipientId = selectPortfolioCareerStarterRecipient(
+    activeAvd, activeRiester, careerStarterBonusAlreadyUsed, profile, salaryAfterBasisrenteDeduction, rules,
   )
-  const careerStarterCandidates = careerStarterBonusAlreadyUsed
-    ? []
-    : [
-        ...activeAvd
-          .map((instance) => {
-            const singleton = stripInstanceCommonKeys(
-              instance as unknown as Record<string, unknown>,
-            ) as unknown as AltersvorsorgedepotAssumptions
-            const withBonus = calculateAvdFunding(
-              rules,
-              salaryAfterBasisrenteDeduction,
-              singleton,
-              {
-                profile,
-                contributionYear: rules.year,
-                isFirstContributionYear: true,
-              },
-            )
-            const withoutBonus = calculateAvdFunding(
-              rules,
-              salaryAfterBasisrenteDeduction,
-              singleton,
-              {
-                profile,
-                contributionYear: rules.year,
-                isFirstContributionYear: false,
-              },
-            )
-            return {
-              instanceId: instance.instanceId,
-              contractStartYear: instance.contractStartYear,
-              allowanceClaimAnnual: withBonus.totalAllowanceAnnual,
-              careerStarterBonusAnnual: withBonus.careerStarterBonusAnnual,
-              realisedBenefitAnnual:
-                withBonus.totalContractContributionAnnual +
-                withBonus.guenstigerpruefungBenefitAnnual -
-                withoutBonus.totalContractContributionAnnual -
-                withoutBonus.guenstigerpruefungBenefitAnnual,
-            }
-          })
-          .filter(
-            (candidate) =>
-              candidate.careerStarterBonusAnnual > 0 &&
-              candidate.realisedBenefitAnnual >= 0,
-          ),
-        ...activeRiester.filter(instance => instance.ownedBy !== 'partner' && instance.fundingEligible !== false && instance.eligibility.directlyEligible)
-          .map((instance) => {
-            const singleton = stripInstanceCommonKeys(
-              instance as unknown as Record<string, unknown>,
-            ) as unknown as RiesterAssumptions
-            const withBonus = calculateRiesterFunding(
-              rules,
-              salaryAfterBasisrenteDeduction,
-              {
-                ...singleton,
-                monthlyOwnContribution: householdRiesterOwnMonthly,
-              },
-              profile,
-              {
-                contributionYear: rules.year,
-                isFirstContributionYear: true,
-              },
-            )
-            const withoutBonus = calculateRiesterFunding(
-              rules,
-              salaryAfterBasisrenteDeduction,
-              {
-                ...singleton,
-                monthlyOwnContribution: householdRiesterOwnMonthly,
-              },
-              profile,
-              {
-                contributionYear: rules.year,
-                isFirstContributionYear: false,
-              },
-            )
-            return {
-              instanceId: instance.instanceId,
-              contractStartYear: instance.contractStartYear,
-              allowanceClaimAnnual: withBonus.totalAllowanceAnnual,
-              careerStarterBonusAnnual: withBonus.careerStarterBonusAnnual,
-              realisedBenefitAnnual:
-                withBonus.annualOwnContribution +
-                withBonus.totalAllowanceAnnual +
-                withBonus.guenstigerpruefungBenefitAnnual -
-                withoutBonus.annualOwnContribution -
-                withoutBonus.totalAllowanceAnnual -
-                withoutBonus.guenstigerpruefungBenefitAnnual,
-            }
-          })
-          .filter(
-            (candidate) =>
-              candidate.careerStarterBonusAnnual > 0 &&
-              candidate.realisedBenefitAnnual >= 0,
-          ),
-      ].sort(
-        (left, right) =>
-          right.realisedBenefitAnnual - left.realisedBenefitAnnual ||
-          right.allowanceClaimAnnual - left.allowanceClaimAnnual ||
-          left.contractStartYear - right.contractStartYear ||
-          left.instanceId.localeCompare(right.instanceId),
-      )
-  const careerStarterBonusRecipientId = careerStarterCandidates[0]?.instanceId
   const eligibilityForCareerStarterAllocation = <T extends { careerStarterBonusUsed: boolean }>(
     instanceId: string,
     eligibility: T,
@@ -673,6 +571,7 @@ export function buildPortfolioFunding(
       ? { profile: workspace.baseline.partner, salary: partnerSalary } : undefined,
   }
   const riesterFundingContext = {
+    activeAvd, activeRiester, careerStarterBonusAlreadyUsed, salaryAfterBasisrenteDeduction,
     entries: activeRiesterSingletons.map(({ instance, singleton }) => ({
       instanceId: instance.instanceId, ownedBy: instance.ownedBy, contract: singleton,
     })),
@@ -782,7 +681,7 @@ export function buildPortfolioFunding(
           },
         }
       })
-      const funding = calculateActiveRiester(entries)
+      const funding = evaluateRiesterTopUp(riesterFundingContext, rules, targetId, additionalOwnAnnual / 12).riester
       const owner = entries.find(e => e.instance.instanceId === targetId)?.instance.ownedBy ?? 'self'
       const owned = entries.filter(e => (e.instance.ownedBy ?? 'self') === owner && (funding[e.instance.instanceId].portfolioTaxBenefitShare ?? 0) > 0)
       if (owned.length === 0) return additionalOwnAnnual
