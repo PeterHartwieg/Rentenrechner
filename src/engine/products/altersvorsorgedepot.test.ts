@@ -11,6 +11,7 @@ import {
   validateAvdPayoutAge,
 } from '../altersvorsorgedepot'
 import { AVD_UI_SELECTABLE_PAYOUT_MODES } from './altersvorsorgedepot.validation'
+import { calculateSalaryResult } from '../salary'
 import { de2026Rules } from '../../rules/de2026'
 import { defaultAssumptions, defaultProfile } from '../../data/defaultScenario'
 
@@ -629,5 +630,25 @@ describe('#64: transferCostEUR deducted exactly once with partialCapitalPct > 0'
     expect(lumpSumDiff).toBeLessThan(1_000)
     // Sanity: some difference exists (the initial 1000 EUR does reduce capital)
     expect(lumpSumDiff).toBeGreaterThan(0)
+  })
+})
+
+
+describe('separate AVD indirect eligibility minimum (#420)', () => {
+  it('pins the current rule independently of the allowance minimum', () => {
+    expect(rules.altersvorsorgedepot.indirectEligibilityMinimumAnnual).toBe(120)
+  })
+
+  it('changing the allowance minimum does not move the deduction gate', () => {
+    const changed = structuredClone(rules)
+    changed.altersvorsorgedepot.minimumOwnContributionAnnual *= 2
+    const assumptions = structuredClone(defaultAssumptions.altersvorsorgedepot)
+    assumptions.monthlyOwnContribution = rules.altersvorsorgedepot.indirectEligibilityMinimumAnnual / 12
+    assumptions.eligibility.directlyEligible = false
+    assumptions.eligibility.indirectSpouseEligible = true
+    const salary = calculateSalaryResult(defaultProfile, changed)
+    expect(calculateAvdFunding(changed, salary, assumptions).specialExpenseBaseAnnual).toBeGreaterThan(0)
+    changed.altersvorsorgedepot.indirectEligibilityMinimumAnnual *= 2
+    expect(calculateAvdFunding(changed, salary, assumptions).specialExpenseBaseAnnual).toBe(0)
   })
 })

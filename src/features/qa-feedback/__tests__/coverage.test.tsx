@@ -656,6 +656,7 @@ const RIESTER_FUNDING: RiesterFundingResult = {
   minEigenbeitragAnnual: 60,
   meetsMinContribution: true,
   prorationFactor: 1,
+  section10aEligible: true,
   specialExpenseDeductibleAnnual: 775,
 }
 

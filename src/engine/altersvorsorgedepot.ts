@@ -305,7 +305,7 @@ export function calculateAvdFunding(
   const specialExpenseBaseAnnual = isSection10aEligible(
     effectiveEligibility,
     annualOwnContribution,
-    avdRules.minimumOwnContributionAnnual,
+    avdRules.indirectEligibilityMinimumAnnual,
   )
     ? Math.min(annualOwnContribution, avdRules.specialExpenseOwnContributionCap) + totalAllowanceAnnual
     : 0

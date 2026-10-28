@@ -776,3 +776,27 @@ describe('validateState includes Riester', () => {
     expect(result).toBeNull()
   })
 })
+
+
+describe('separate indirect eligibility minimum (#420)', () => {
+  it('pins the current rule independently of the allowance floor', () => {
+    expect(rules.riester.indirectEligibilityMinimumAnnual).toBe(60)
+  })
+
+  it('changing the allowance floor does not move the deduction gate', () => {
+    const changed = structuredClone(rules)
+    changed.riester.sockelbetrag *= 2
+    const assumptions = structuredClone(defaultRiesterAssumptions)
+    assumptions.monthlyOwnContribution = rules.riester.indirectEligibilityMinimumAnnual / 12
+    assumptions.eligibility.directlyEligible = false
+    assumptions.eligibility.indirectSpouseEligible = true
+    const salary = calculateSalaryResult(defaultProfile, changed)
+    const result = calculateRiesterFunding(changed, salary, assumptions, defaultProfile)
+    expect(result.section10aEligible).toBe(true)
+    expect(result.specialExpenseDeductibleAnnual).toBeGreaterThan(0)
+    changed.riester.indirectEligibilityMinimumAnnual *= 2
+    const ineligible = calculateRiesterFunding(changed, salary, assumptions, defaultProfile)
+    expect(ineligible.section10aEligible).toBe(false)
+    expect(ineligible.specialExpenseDeductibleAnnual).toBe(0)
+  })
+})
