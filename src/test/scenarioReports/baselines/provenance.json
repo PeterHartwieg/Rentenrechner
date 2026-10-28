@@ -1,9 +1,9 @@
 {
   "label": "INTERNAL REGRESSION",
-  "baseSha": "0d52fddf7aad159dd0238a07cbdd83e5a6168c63",
-  "baseShaCapturedAt": "2026-10-28T05:29:22.071Z",
+  "baseSha": "8f5ee34ce60554ee42f7953f35a654a4b2203e38",
+  "baseShaCapturedAt": "2026-10-28T06:12:58.647Z",
   "engineSources": {
-    "digestSha": "e281659115426fcd",
+    "digestSha": "1c514e51dbeca2de",
     "dirty": false,
     "paths": []
   },
@@ -12,9 +12,9 @@
       "ruleSetId": "de2026",
       "ruleYear": 2026,
       "revision": 2,
-      "contentFingerprint": "3c99b0f9e506c0e2"
+      "contentFingerprint": "083462e03b0836a5"
     },
-    "snapshotSha": "5adf071fde22bf11",
+    "snapshotSha": "56ed0b209083527e",
     "cohortSchedules": {
       "besteuerungsanteilGrvByRetirementYear": {
         "2005": 0.5,
@@ -434,6 +434,7 @@
         "specialExpenseOwnContributionCap": 1800,
         "contractContributionCapAnnual": 6840,
         "minimumOwnContributionAnnual": 120,
+        "indirectEligibilityMinimumAnnual": 120,
         "basicAllowanceTier1MaxContribution": 360,
         "basicAllowanceTier1Rate": 0.5,
         "basicAllowanceTier2MaxContribution": 1800,
@@ -511,8 +512,8 @@
         "careerStarterMaxAge": 24,
         "minEigenbeitragPct": 0.04,
         "sockelbetrag": 60,
-        "annualCapInclAllowances": 2100,
         "indirectEligibilityMinimumAnnual": 60,
+        "annualCapInclAllowances": 2100,
         "indirectSpouseDeductionIncreaseAnnual": 60,
         "payoutPlanMinEndAge": 85
       },
@@ -571,5 +572,5 @@
       "pvBeitragszuschlagKinderloseMinAge": 23
     }
   },
-  "notes": "Erfasst mit: npm run scenario:update -- --reason \"Issue 420: owner-specific eligible Riester deduction pools preserve actual payments instead of scaling them to a deduction ceiling; indirect eligibility and shared-cap rules are distinct. Four combine baselines change; AVD regime and external tax oracles remain unchanged.\". rulesIdentity friert die RuleSetIdentity aus src/rules/ruleMetadata.ts (ruleSetId, Revision, Content-Fingerprint über Jahresregeln UND legalRuleData-Katalog), den Snapshot-Sha des kanonischen Regel-Snapshots, die evaluierten Kohortentabellen (Code, den kein JSON-Snapshot sehen kann) und die vollen Jahresregeln als kanonisches JSON ein; engineSources.digestSha identifiziert den Rechenwerkscode der Basis-Revision (sha256-Präfix). Rules-Identität dieser Erfassung: dc7872facd64355d. Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise."
+  "notes": "Erfasst mit: npm run scenario:update -- --reason \"Review round 1: integrate PR 434 statutory metadata with owner-aware Riester funding; preserve eligible pools, assessment forks and threshold headroom\". rulesIdentity friert die RuleSetIdentity aus src/rules/ruleMetadata.ts (ruleSetId, Revision, Content-Fingerprint über Jahresregeln UND legalRuleData-Katalog), den Snapshot-Sha des kanonischen Regel-Snapshots, die evaluierten Kohortentabellen (Code, den kein JSON-Snapshot sehen kann) und die vollen Jahresregeln als kanonisches JSON ein; engineSources.digestSha identifiziert den Rechenwerkscode der Basis-Revision (sha256-Präfix). Rules-Identität dieser Erfassung: ab65d94d810d72d1. Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise."
 }
