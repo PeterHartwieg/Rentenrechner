@@ -1,5 +1,7 @@
 # Redesign Handoff — PR 5 onwards
 
+> Historical handoff note. The in-repo agent pipeline (claude-review, review-loop, etc.) was removed on 2026-10-29; `pr-verify` now runs on every PR.
+
 > **Status:** Handoff prompt for a fresh session.
 > **Last updated:** 2026-05-19.
 > **Previous session landed:** PR 4 — Methode & Quellen page (squash commit `13fdde5d06`, merged via #278).

@@ -24,7 +24,9 @@ shared out-of-repo coding workflow; it is recoverable via git history.
 2. Sketch the design — which agents, which authentication, which gates.
 3. Write a doc in this folder: overview → design decisions → prerequisites
    → workflow files → operator playbook → cost model → known quirks →
-   customization points → adapting to other projects.
+   customization points → adapting to other projects. Use
+   [`calculation-review-toolchain.md`](calculation-review-toolchain.md) as the
+   reference example.
 4. Add the workflow YAML under `.github/workflows/` (if any).
 5. Add a row to the "Current automations" table above.
 6. Validate end-to-end on a throwaway issue/PR before relying on it.

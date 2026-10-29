@@ -23,9 +23,9 @@ These shape every change. Read before touching UI, exports, or anything user-fac
 2. **License posture is product-shaping.** When adding features, ask whether they advantage commercial users in a way that erodes the donation model (bulk-export, white-label, batch scenarios). Such features either gate behind a future commercial-license check, or are explicitly free. Default to free until we have a reason to gate.
 3. **No PII collection without a backend story.** Frontend is purely localStorage today. Anything that would phone home (analytics, error tracking, OCR upload) must be GDPR-compliant by design (region, retention, consent) and is a separate backlog item, not a casual addition.
 
-### Cron-dispatch guardrails
+### Agent-authored PR guardrails
 
-These apply to every PR shipped by the QA implementer cron (engine/combine/export math fixes and polish issues alike).
+These apply to every agent-authored PR that touches engine/combine/export math or ships a polish fix (UI layout, mobile, accessibility, copy).
 
 1. **Wrong-number-fix preflight.** Every PR fixing a wrong-number bug (engine/combine/export tax, payout, or funding math) must name in the PR body: (a) one invariant the fix preserves or restores — cite the `CONTEXT.md` or `CLAUDE.md` invariant by name; (b) one affected user-visible surface (UI metric, CSV column, PDF row); (c) one regression test file created or updated in the same PR.
 2. **Paired test assertions.** For combine-mode bugs, the regression test must cover both the compare-mode singleton path (fix must not break it) and a combine-mode multi-instance or transfer case. For export-layer bugs (CSV/PDF), the test must assert the exported cell value or blank directly, not only the helper output.

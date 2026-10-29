@@ -73,8 +73,8 @@ describe('pr-verify runs for every pull request (issue #375)', () => {
       'feat/export-projection-layer',
       'renovate/vite-8.x',
       'docs/typo-fix',
-      'agent/issue-12',
-      'automation/retro-curate-2026-09-08',
+      'chore/remove-x',
+      'fix/some-bug',
     ]) {
       expect(jobRunsForBranch(prVerify, 'verify', branch)).toBe(true)
     }

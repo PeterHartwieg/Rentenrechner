@@ -1,5 +1,7 @@
 # PR 12 Handoff — Export projection layer for CSV/PDF report consistency
 
+> Historical handoff note. The in-repo agent pipeline (claude-review, review-loop, etc.) was removed on 2026-10-29; `pr-verify` now runs on every PR.
+
 > **Status:** Handoff prompt for a fresh session.
 > **Last updated:** 2026-05-21.
 > **Previous session landed:**
