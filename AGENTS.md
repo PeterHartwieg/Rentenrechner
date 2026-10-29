@@ -37,7 +37,7 @@ Outside these three sanctioned triggers, do not add fetch/auth/cookies to the fr
 
 ## Review guidelines
 
-Read by the Codex GitHub review integration (and the Claude reviewer in `.github/workflows/claude-review.yml`) to focus PR review on serious findings. Mirrored in `CLAUDE.md` so both reviewers apply the same bar. **P0 = block merge; P1 = strong objection; everything else = nit at most.**
+Read by the Codex GitHub review integration (and any Claude reviewer) to focus PR review on serious findings. Mirrored in `CLAUDE.md` so both reviewers apply the same bar. **P0 = block merge; P1 = strong objection; everything else = nit at most.**
 
 ### P0 — must be addressed before merge
 
