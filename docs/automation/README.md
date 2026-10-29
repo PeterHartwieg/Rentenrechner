@@ -14,9 +14,8 @@ shared out-of-repo coding workflow; it is recoverable via git history.
 
 ## Current automations
 
-| Doc | Workflows | Status |
-|-----|-----------|--------|
-| [`calculation-review-toolchain.md`](calculation-review-toolchain.md) | none — local CLI tooling (`scripts/review/`, issue #382) | ✅ Built, awaiting live proof |
+None. The local multi-model calculation review toolchain was also removed
+on 2026-10-29; it is recoverable via git history.
 
 ## How to add a new automation
 
@@ -24,9 +23,7 @@ shared out-of-repo coding workflow; it is recoverable via git history.
 2. Sketch the design — which agents, which authentication, which gates.
 3. Write a doc in this folder: overview → design decisions → prerequisites
    → workflow files → operator playbook → cost model → known quirks →
-   customization points → adapting to other projects. Use
-   [`calculation-review-toolchain.md`](calculation-review-toolchain.md) as the
-   reference example.
+   customization points → adapting to other projects.
 4. Add the workflow YAML under `.github/workflows/` (if any).
-5. Add a row to the "Current automations" table above.
+5. List it under "Current automations" above.
 6. Validate end-to-end on a throwaway issue/PR before relying on it.
