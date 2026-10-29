@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-const prVerify = readFileSync('.github/workflows/pr-verify.yml', 'utf8')
+// Normalize CRLF so the line-based parsing works on Windows checkouts
+// (core.autocrlf=true), not just on Linux CI.
+const prVerify = readFileSync('.github/workflows/pr-verify.yml', 'utf8').replace(/\r\n/g, '\n')
 
 /** Slice one top-level job block (two-space-indented key) out of a workflow. */
 function jobBlock(workflow, jobKey) {
