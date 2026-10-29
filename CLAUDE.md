@@ -23,15 +23,14 @@ These shape every change. Read before touching UI, exports, or anything user-fac
 2. **License posture is product-shaping.** When adding features, ask whether they advantage commercial users in a way that erodes the donation model (bulk-export, white-label, batch scenarios). Such features either gate behind a future commercial-license check, or are explicitly free. Default to free until we have a reason to gate.
 3. **No PII collection without a backend story.** Frontend is purely localStorage today. Anything that would phone home (analytics, error tracking, OCR upload) must be GDPR-compliant by design (region, retention, consent) and is a separate backlog item, not a casual addition.
 
-### Cron-dispatch guardrails
+### Agent-authored PR guardrails
 
-These apply to every PR shipped by the QA implementer cron (engine/combine/export math fixes and polish issues alike).
+These apply to every agent-authored PR that touches engine/combine/export math or ships a polish fix (UI layout, mobile, accessibility, copy).
 
 1. **Wrong-number-fix preflight.** Every PR fixing a wrong-number bug (engine/combine/export tax, payout, or funding math) must name in the PR body: (a) one invariant the fix preserves or restores — cite the `CONTEXT.md` or `CLAUDE.md` invariant by name; (b) one affected user-visible surface (UI metric, CSV column, PDF row); (c) one regression test file created or updated in the same PR.
 2. **Paired test assertions.** For combine-mode bugs, the regression test must cover both the compare-mode singleton path (fix must not break it) and a combine-mode multi-instance or transfer case. For export-layer bugs (CSV/PDF), the test must assert the exported cell value or blank directly, not only the helper output.
 3. **Oracle-snapshot guardrail.** Do NOT update oracle snapshots (`simulate.integration.test.ts`, dedicated oracle tests) unless the issue body explicitly states the old oracle was wrong. Oracles pin externally-verified math — if a fix breaks an oracle, the fix is wrong, not the oracle.
 4. **Architectural-invariant naming.** Polish fixes (UI layout, mobile, accessibility, copy) that do not touch engine/tax math must still name the nearest architectural invariant from `CONTEXT.md` in the PR body.
-5. **Stage-2 already-completed detection.** At the start of every Stage 2 (`implement.yml`) run, check `git log --oneline origin/main..HEAD`. If it shows **two or more commits** (a test commit and an implementation commit), a prior Stage 2 run already completed the fix. Confirm `npm run verify` passes and the PR is open (`gh pr list --head $(git branch --show-current)`), then write the retro and exit — do not re-implement or escalate to `ready-for-human`.
 
 ## Backend boundary
 
@@ -52,7 +51,7 @@ Outside these three sanctioned triggers, do not add fetch/auth/cookies to the fr
 
 ## Review guidelines
 
-Read by the Codex GitHub review integration (and the Claude reviewer in `.github/workflows/claude-review.yml`) to focus PR review on serious findings. Mirrored in `AGENTS.md` so both reviewers apply the same bar. **P0 = block merge; P1 = strong objection; everything else = nit at most.**
+Read by the Codex GitHub review integration (and any Claude reviewer) to focus PR review on serious findings. Mirrored in `AGENTS.md` so both reviewers apply the same bar. **P0 = block merge; P1 = strong objection; everything else = nit at most.**
 
 ### P0 — must be addressed before merge
 

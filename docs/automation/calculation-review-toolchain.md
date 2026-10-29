@@ -8,8 +8,7 @@ the CLIs keep using their own existing login state in place.
 
 Decision record: [`ADR-0004`](../adr/0004-local-calculation-review-toolchain.md).
 
-Pair with [`issue-to-merge-pipeline.md`](issue-to-merge-pipeline.md) (GitHub-side
-automation) and [`docs/validation.md`](../validation.md) (external golden
+Pair with [`docs/validation.md`](../validation.md) (external golden
 suite). The two are complementary: goldens pin captured values; this toolchain
 reviews *changes* against statutory sources before merge.
 

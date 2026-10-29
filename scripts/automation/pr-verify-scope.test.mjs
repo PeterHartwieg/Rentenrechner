@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 const prVerify = readFileSync('.github/workflows/pr-verify.yml', 'utf8')
-const claudeReview = readFileSync('.github/workflows/claude-review.yml', 'utf8')
 
 /** Slice one top-level job block (two-space-indented key) out of a workflow. */
 function jobBlock(workflow, jobKey) {
@@ -74,19 +73,24 @@ describe('pr-verify runs for every pull request (issue #375)', () => {
       'feat/export-projection-layer',
       'renovate/vite-8.x',
       'docs/typo-fix',
-      'agent/issue-12',
-      'automation/retro-curate-2026-09-08',
+      'chore/remove-x',
+      'fix/some-bug',
     ]) {
       expect(jobRunsForBranch(prVerify, 'verify', branch)).toBe(true)
     }
   })
 
-  it('keeps the branch evaluator honest by re-detecting claude-review scoping', () => {
+  it('keeps the branch evaluator honest by detecting a branch-gated job', () => {
     // Guard the guard: the evaluator must distinguish gated from ungated
     // jobs, not just answer true unconditionally.
-    expect(jobRunsForBranch(claudeReview, 'review', 'agent/issue-12')).toBe(true)
-    expect(jobRunsForBranch(claudeReview, 'review', 'automation/retro-curate-2026-09-08')).toBe(true)
-    expect(jobRunsForBranch(claudeReview, 'review', 'codex/universal-verification')).toBe(false)
+    const gated = [
+      'jobs:',
+      '  review:',
+      "    if: startsWith(github.head_ref, 'agent/issue-')",
+      '    runs-on: ubuntu-latest',
+    ].join('\n')
+    expect(jobRunsForBranch(gated, 'review', 'agent/issue-12')).toBe(true)
+    expect(jobRunsForBranch(gated, 'review', 'codex/universal-verification')).toBe(false)
   })
 
   it('triggers on pull_request for all branches and paths, so fork PRs run too', () => {

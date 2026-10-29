@@ -1,35 +1,32 @@
-# Automation workflows
+# Automation
 
-Design + operator docs for the agentic GitHub Actions automations that run
-on this repo. Each automation has its own document here. The actual workflow
-YAML lives in `.github/workflows/` (GitHub requires that path).
+Design + operator docs for automation tooling on this repo. Each automation
+has its own document here. Any GitHub Actions workflow YAML lives in
+`.github/workflows/` (GitHub requires that path).
 
 These docs are written to be **portable** — they describe the design and
 prerequisites in enough detail to set the same automation up on another
 repo, not just operate it on this one.
 
+The old GitHub-Actions agent pipeline (triage → investigate → implement →
+review loop → retro) was removed on 2026-10-29 in favor of the owner's
+shared out-of-repo coding workflow; it is recoverable via git history.
+
 ## Current automations
 
 | Doc | Workflows | Status |
 |-----|-----------|--------|
-| [`issue-to-merge-pipeline.md`](issue-to-merge-pipeline.md) | `triage.yml`, `investigate.yml`, `implement.yml`, `pr-verify.yml`, `claude-review.yml`, `review-loop.yml`, `review-loop-sweep.yml`, `retro-curate.yml` | ✅ Live |
 | [`calculation-review-toolchain.md`](calculation-review-toolchain.md) | none — local CLI tooling (`scripts/review/`, issue #382) | ✅ Built, awaiting live proof |
-
-The QA-feedback "feedback loop" originally planned as a separate workflow
-is now folded into `triage.yml` as an 8-step decision tree (see the
-`triage.yml` section in `issue-to-merge-pipeline.md`). A separate workflow
-becomes worth building only when we want a different trigger surface —
-e.g. a periodic cron that re-scans the existing open-issue queue for
-emergent duplicates as new issues land.
 
 ## How to add a new automation
 
 1. Decide the trigger surface (GitHub event / cron / manual dispatch).
 2. Sketch the design — which agents, which authentication, which gates.
-3. Write a doc in this folder following the pattern in
-   `issue-to-merge-pipeline.md`: overview → design decisions → prerequisites
+3. Write a doc in this folder: overview → design decisions → prerequisites
    → workflow files → operator playbook → cost model → known quirks →
-   customization points → adapting to other projects.
-4. Add the workflow YAML under `.github/workflows/`.
+   customization points → adapting to other projects. Use
+   [`calculation-review-toolchain.md`](calculation-review-toolchain.md) as the
+   reference example.
+4. Add the workflow YAML under `.github/workflows/` (if any).
 5. Add a row to the "Current automations" table above.
 6. Validate end-to-end on a throwaway issue/PR before relying on it.
