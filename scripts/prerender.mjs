@@ -56,6 +56,14 @@ async function loadSourceModules() {
   })
 
   try {
+    const prerenderRoutesMod = await server.ssrLoadModule('/src/seo/prerenderRoutes.ts')
+    const { PRERENDER_COMPONENTS, buildComponentMap, EDITORIAL_ROUTE_IDS } = prerenderRoutesMod
+    const pageModules = {}
+    for (const [id, entry] of Object.entries(PRERENDER_COMPONENTS)) {
+      if (entry) pageModules[id] = await server.ssrLoadModule(entry.module)
+    }
+    const componentMap = buildComponentMap(pageModules)
+
     const seoMod = await server.ssrLoadModule('/src/seo/publicRouteRegistry.ts')
     const headMod = await server.ssrLoadModule('/src/seo/renderRouteHead.ts')
     const sitemapMod = await server.ssrLoadModule('/src/seo/sitemap.ts')
@@ -65,27 +73,6 @@ async function loadSourceModules() {
     // CJS interop is handled by the package's "exports" map.
     const reactMod = await import('react')
     const reactDomServer = await import('react-dom/server')
-    const rentenluecke = await server.ssrLoadModule('/src/features/publicPages/RentenluckeRechnerPage.tsx')
-    const pageNotFound = await server.ssrLoadModule('/src/features/publicPages/PageNotFound.tsx')
-    const bavRechner = await server.ssrLoadModule('/src/features/publicPages/BavRechnerPage.tsx')
-    const etfVsBav = await server.ssrLoadModule('/src/features/publicPages/EtfVsBavPage.tsx')
-    const riesterRechner = await server.ssrLoadModule('/src/features/publicPages/RiesterRechnerPage.tsx')
-    const altersvorsorgedepotRechner = await server.ssrLoadModule('/src/features/publicPages/AltersvorsorgedepotRechnerPage.tsx')
-    const riesterVsAvd = await server.ssrLoadModule('/src/features/publicPages/RiesterVsAltersvorsorgedepotPage.tsx')
-    const basisrenteRechner = await server.ssrLoadModule('/src/features/publicPages/BasisrenteRechnerPage.tsx')
-    const privateRvRechner = await server.ssrLoadModule('/src/features/publicPages/PrivateRentenversicherungRechnerPage.tsx')
-    const renteNettoBerechnen = await server.ssrLoadModule('/src/features/publicPages/RenteNettoBerechnePage.tsx')
-    const altersvorsorgeprodukte = await server.ssrLoadModule('/src/features/publicPages/AltersvorsorgeproduktePage.tsx')
-    const articleHub = await server.ssrLoadModule('/src/features/articles/ArticleHubPage.tsx')
-    const methode = await server.ssrLoadModule('/src/features/methode/MethodePage.tsx')
-    const angaben = await server.ssrLoadModule('/src/features/inputs/AngabenPage.tsx')
-    const angabenProdukte = await server.ssrLoadModule(
-      '/src/features/inputs/AngabenProduktePage.tsx',
-    )
-    const vergleich = await server.ssrLoadModule('/src/features/vergleich/VergleichJourneyPage.tsx')
-    const vergleichDetail = await server.ssrLoadModule('/src/features/vergleich-detail/VergleichDetailPage.tsx')
-    const impressum = await server.ssrLoadModule('/src/features/legal/ImpressumPage.tsx')
-    const datenschutz = await server.ssrLoadModule('/src/features/legal/DatenschutzPage.tsx')
     // `PrerenderShell` wraps every prerendered page in the AppShell chrome, so
     // the disclaimer banner appears in the static HTML the crawler fetches (P0
     // compliance invariant — verified by publicPages.test.tsx prerender
@@ -102,6 +89,8 @@ async function loadSourceModules() {
 
     return {
       server,
+      componentMap,
+      EDITORIAL_ROUTE_IDS,
       seoMod,
       headMod,
       sitemapMod,
@@ -109,25 +98,6 @@ async function loadSourceModules() {
       llmsTxtMod,
       reactMod,
       reactDomServer,
-      rentenluecke,
-      pageNotFound,
-      bavRechner,
-      etfVsBav,
-      riesterRechner,
-      altersvorsorgedepotRechner,
-      riesterVsAvd,
-      basisrenteRechner,
-      privateRvRechner,
-      renteNettoBerechnen,
-      altersvorsorgeprodukte,
-      articleHub,
-      methode,
-      angaben,
-      angabenProdukte,
-      vergleich,
-      vergleichDetail,
-      impressum,
-      datenschutz,
       prerenderShellMod,
       useRouteMod,
     }
@@ -136,64 +106,6 @@ async function loadSourceModules() {
     throw err
   }
 }
-
-// Explicit mapping from every PUBLIC_ROUTE_IDS entry to its prerender
-// component (or null for routes that deliberately use LandingPage as the
-// static first-paint shell). If a route ID appears in PUBLIC_ROUTE_IDS but
-// is absent from this map, prerender will exit with a non-zero code so the
-// build fails loudly instead of silently writing wrong page content.
-//
-// `/` is intentionally mapped to null: the dashboard requires a DOM
-// environment unavailable during static prerender, so LandingPage is used
-// as the static first-paint variant. Returning users swap to their dashboard
-// on hydration.
-function buildComponentMap(modules) {
-  return {
-    '/': null,
-    '/404': modules.pageNotFound.PageNotFound,
-    '/artikel': modules.articleHub.ArticleHubPage,
-    '/methode': modules.methode.MethodePage,
-    '/eingaben': modules.angaben.AngabenPage,
-    '/eingaben/produkte': modules.angabenProdukte.AngabenProduktePage,
-    '/rentenluecke-rechner': modules.rentenluecke.RentenluckeRechnerPage,
-    '/bav-rechner': modules.bavRechner.BavRechnerPage,
-    '/etf-vs-bav': modules.etfVsBav.EtfVsBavPage,
-    '/riester-rechner': modules.riesterRechner.RiesterRechnerPage,
-    '/altersvorsorgedepot-rechner': modules.altersvorsorgedepotRechner.AltersvorsorgedepotRechnerPage,
-    '/riester-vs-altersvorsorgedepot': modules.riesterVsAvd.RiesterVsAltersvorsorgedepotPage,
-    '/basisrente-rechner': modules.basisrenteRechner.BasisrenteRechnerPage,
-    '/private-rentenversicherung-rechner': modules.privateRvRechner.PrivateRentenversicherungRechnerPage,
-    '/rente-netto-berechnen': modules.renteNettoBerechnen.RenteNettoBerechnePage,
-    '/altersvorsorgeprodukte-vergleichen': modules.altersvorsorgeprodukte.AltersvorsorgeproduktePage,
-    '/vergleich': modules.vergleich.VergleichJourneyPage,
-    '/vergleich/details': modules.vergleichDetail.VergleichDetailPage,
-    '/impressum': modules.impressum.ImpressumPage,
-    '/datenschutz': modules.datenschutz.DatenschutzPage,
-  }
-}
-
-/**
- * Mirror of `isEditorialChromeRoute` from `src/features/articles/
- * articleResolver.ts`. Kept inline because the prerender script runs in a
- * plain Node ESM context and we want to avoid an extra `ssrLoadModule` call
- * just to read this set. If the article-route taxonomy changes, both this
- * list and the resolver must update in lockstep — the PR3 acceptance test
- * pins the two together.
- */
-const EDITORIAL_ROUTE_IDS = new Set([
-  '/',
-  '/artikel',
-  '/rentenluecke-rechner',
-  '/bav-rechner',
-  '/etf-vs-bav',
-  '/riester-rechner',
-  '/altersvorsorgedepot-rechner',
-  '/riester-vs-altersvorsorgedepot',
-  '/basisrente-rechner',
-  '/private-rentenversicherung-rechner',
-  '/rente-netto-berechnen',
-  '/altersvorsorgeprodukte-vergleichen',
-])
 
 /**
  * Client-only app routes that are NOT public SEO pages (not in
@@ -246,7 +158,7 @@ async function renderRoute(routeId, componentMap, modules, { React, renderToStri
   // plus every clustered topic page (they all sit inside ArticleLayout).
   // The homepage stays editorial because the LandingPage renders in
   // editorial styling during prerender. PR 4 will add `/methode`.
-  const editorial = EDITORIAL_ROUTE_IDS.has(routeId)
+  const editorial = modules.EDITORIAL_ROUTE_IDS.has(routeId)
   // `PrerenderShell` (src/seo/prerenderShell.tsx) owns the chrome + the
   // Suspense boundary. The boundary is not decoration: `App.tsx` renders every
   // route body inside `<Suspense fallback={null}>` because each page component
@@ -422,7 +334,7 @@ async function main() {
 
     // Build the component map once and validate all PUBLIC_ROUTE_IDS up front
     // so missing mappings fail early (before any files are written).
-    const componentMap = buildComponentMap(modules)
+    const componentMap = modules.componentMap
     for (const routeId of PUBLIC_ROUTE_IDS) {
       pickComponent(routeId, componentMap) // exits with code 1 if not mapped
     }
@@ -452,7 +364,9 @@ async function main() {
       const html = await renderRoute(routeId, componentMap, modules, { React, renderToString })
       const headHtml = renderRouteHeadHtml(routeId)
 
-      let pageHtml = indexHtml
+      // Document-level evidence of prerendering is independent of #root's
+      // hydration contract: stateful pages must still mount with createRoot.
+      let pageHtml = indexHtml.replace('<html ', '<html data-rentenwiki-prerendered="1" ')
       // Replace the placeholder default title/description with route-specific
       // tags. The marker (`<!--SSG_HEAD-->`) is the single source of truth for
       // injected head content; we also remove the dev-only `<title>` and
