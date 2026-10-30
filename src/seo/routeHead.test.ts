@@ -186,11 +186,13 @@ describe('renderRouteHeadHtml — JSON-LD parses + visible-content alignment', (
       expect(matches).toBeNull()
       return
     }
-    expect(matches?.length).toBe(1)
-    const inner = matches![0]
-      .replace(/^<script type="application\/ld\+json">\s*/, '')
-      .replace(/\s*<\/script>$/, '')
-    expect(() => JSON.parse(inner)).not.toThrow()
+    expect(matches?.length).toBe((publicRouteRegistry[routeId] as PublicRoute).faq?.length ? 2 : 1)
+    for (const block of matches!) {
+      const inner = block
+        .replace(/^<script type="application\/ld\+json">\s*/, '')
+        .replace(/\s*<\/script>$/, '')
+      expect(() => JSON.parse(inner)).not.toThrow()
+    }
   })
 
   it.each(PUBLIC_ROUTE_IDS.filter((id) => id !== '/'))(
@@ -249,4 +251,36 @@ describe('renderRouteHeadHtml — JSON-LD parses + visible-content alignment', (
       expect(ogTitle).not.toMatch(/&(?!amp;|quot;|lt;|gt;|apos;)/)
     }
   })
+
+  it('emits two FAQ Questions alongside the existing route type and escapes script terminators', () => {
+    const entry = publicRouteRegistry['/altersvorsorgedepot-rechner']
+    const original = entry.faq.slice()
+    const fixture = [
+      { question: 'First question?', answer: 'Plain text with "quotes" & </script><script>markup</script>' },
+      { question: 'Second question?', answer: 'Another answer.' },
+    ]
+    try {
+      entry.faq.splice(0, entry.faq.length, ...fixture)
+      const html = renderRouteHeadHtml('/altersvorsorgedepot-rechner')
+      const blocks = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+        .map((match) => JSON.parse(match[1]))
+      expect(blocks.map((block) => block['@type'])).toEqual(['WebApplication', 'FAQPage'])
+      expect(blocks[1]).toEqual({
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: fixture.map(({ question, answer }) => ({
+          '@type': 'Question', name: question,
+          acceptedAnswer: { '@type': 'Answer', text: answer },
+        })),
+      })
+      expect(html).not.toContain('</script><script>markup')
+    } finally {
+      entry.faq.splice(0, entry.faq.length, ...original)
+    }
+  })
+
+  it.each(PUBLIC_ROUTE_IDS.filter((id) => !(publicRouteRegistry[id] as PublicRoute).faq))(
+    'keeps the head HTML unchanged for routes without FAQ (%s)',
+    (routeId) => expect(renderRouteHeadHtml(routeId)).toMatchSnapshot(),
+  )
 })

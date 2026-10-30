@@ -1,4 +1,6 @@
 import { RULES_YEAR } from '../rules'
+import { validateFaq } from '../content/faq'
+import avdFaq from '../features/publicPages/altersvorsorgedepot-rechner.faq.json'
 
 // ---------------------------------------------------------------------------
 // publicRouteRegistry — single source of truth for every prerendered public
@@ -44,7 +46,7 @@ export type RobotsPolicy = 'index,follow' | 'noindex,follow'
  * `Article` is used for comparison/explanatory pages (e.g.
  * `/riester-vs-altersvorsorgedepot`) per the locked decision in issue #05.
  */
-export type JsonLdType = 'WebApplication' | 'WebSite' | 'Article' | 'AboutPage' | 'WebPage'
+export type JsonLdType = 'WebApplication' | 'WebSite' | 'Article' | 'AboutPage' | 'WebPage' | 'FAQPage'
 
 export interface CalculatorCta {
   /** Visible button label (German). */
@@ -119,6 +121,8 @@ export interface PublicRoute {
   readonly inSitemap: boolean
   /** schema.org @type for the route's JSON-LD block. */
   readonly jsonLdType: JsonLdType
+  /** Additional FAQPage markup; author from the same .faq.json shown in MDX. */
+  readonly faq?: readonly { question: string; answer: string }[]
   /** Sibling slugs for internal-link compliance and breadcrumb hints. */
   readonly relatedRoutes: readonly string[]
   /**
@@ -352,6 +356,8 @@ export const publicRouteRegistry = {
     },
   },
   '/altersvorsorgedepot-rechner': {
+    faq: validateFaq(avdFaq, 'altersvorsorgedepot-rechner.faq.json')
+      .map(({ q, a }) => ({ question: q, answer: a })),
     canonical: '/altersvorsorgedepot-rechner',
     title: `Altersvorsorgedepot (AVD) Rechner ${RULES_YEAR} | RentenWiki.de`,
     metaDescription:

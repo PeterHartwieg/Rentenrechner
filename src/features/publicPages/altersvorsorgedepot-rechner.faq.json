@@ -1,0 +1,36 @@
+[
+  {
+    "q": "Wer kann ein Altersvorsorgedepot eröffnen?",
+    "a": "Die genaue Berechtigtenliste steht im Altersvorsorgereformgesetz und ist für das jeweilige Beitragsjahr zu prüfen. Der Personenkreis ist an die Förderberechtigten der zweiten Schicht angelehnt, weicht aber im Detail vom § 10a Abs. 1 EStG-Kreis ab. Mittelbar förderberechtigte Ehepartner erhalten höchstens 175 € Grundzulage.",
+    "sources": [
+      "https://www.gesetze-im-internet.de/estg/__10a.html"
+    ]
+  },
+  {
+    "q": "Was passiert mit dem Depotwert in schlechten Marktphasen?",
+    "a": "Das AVD trägt Marktrisiko ohne Kapitalgarantie. Der gesetzlich vorgeschriebene Glidepath senkt den Anteil hochriskanter Anlagen ab fünf Jahren vor Rentenbeginn auf höchstens 50 % und ab zwei Jahren vor Rentenbeginn auf höchstens 30 %. Das reduziert das Kursrisiko zur Auszahlung, eliminiert es aber nicht. Im Rechner zeigt der Monte-Carlo-Modus die Streubreite über verschiedene Marktszenarien.",
+    "sources": []
+  },
+  {
+    "q": "Wer beaufsichtigt und zertifiziert das AVD?",
+    "a": "Die steuerliche Zertifizierung der AVD-Verträge erfolgt durch das Bundeszentralamt für Steuern (BZSt). Die Zulagenverwaltung läuft über die Zentrale Zulagenstelle für Altersvermögen (ZfA) bei der Deutschen Rentenversicherung Bund. Die BaFin bleibt zuständig für Anbieter, soweit ein Versicherungsmantel im Spiel ist; das reine AVD-Depot fällt jedoch nicht in deren Produkt-Zertifizierung.",
+    "sources": [
+      "https://www.bzst.de",
+      "https://www.zfa.deutsche-rentenversicherung-bund.de",
+      "https://www.bafin.de"
+    ]
+  },
+  {
+    "q": "Wie funktioniert die Übertragung von Riester auf das AVD?",
+    "a": "Das Altersvorsorgereformgesetz wertet die Übertragung Riester nach AVD nicht als schädliche Verwendung im Sinne des § 93 EStG. Die Förderhistorie (Zulagen) geht in das aufnehmende Depot über. Die Übertragung ist Teil der Reform, technisch greift sie ab Inkrafttreten 2027. Anbieter, die die Schnittstellen schon umgesetzt haben, können sie früh anbieten; für Bestandskunden ist die Übertragung freiwillig. Mehr zum Vergleich auf der Vergleichsseite Riester vs. Altersvorsorgedepot.",
+    "sources": [
+      "https://www.gesetze-im-internet.de/estg/__93.html",
+      "https://rentenwiki.de/riester-vs-altersvorsorgedepot"
+    ]
+  },
+  {
+    "q": "Wie hoch sind die Kosten?",
+    "a": "Für das gesetzliche Standarddepot gilt ein Effektivkosten-Deckel von 1,0 % pro Jahr. Anbieter dürfen darunter liegen; höhere Kostenquoten sind nur in nicht-standardisierten Vertragsvarianten möglich. Im Rechner ist die Effektivkostenannahme einstellbar.",
+    "sources": []
+  }
+]

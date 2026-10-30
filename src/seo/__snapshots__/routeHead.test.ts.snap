@@ -1,0 +1,634 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > keeps the head HTML unchanged for routes without FAQ (/) 1`] = `
+"<title>Altersvorsorge-Rechner 2026 | RentenWiki.de</title>
+    <meta name="description" content="Kostenloser Rechner für deine Altersvorsorge: ETF, bAV, Riester, Basisrente, AVD und private Rente vergleichen. Lokal im Browser, kein Account, Werte 2026." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://rentenwiki.de/" />
+    <meta property="og:title" content="Altersvorsorge-Rechner 2026 | RentenWiki.de" />
+    <meta property="og:description" content="Kostenloser Rechner für deine Altersvorsorge: ETF, bAV, Riester, Basisrente, AVD und private Rente vergleichen. Lokal im Browser, kein Account, Werte 2026." />
+    <meta property="og:url" content="https://rentenwiki.de/" />
+    <meta property="og:image" content="https://rentenwiki.de/og/home.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RentenWiki.de" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Altersvorsorge-Rechner 2026 | RentenWiki.de" />
+    <meta name="twitter:description" content="Kostenloser Rechner für deine Altersvorsorge: ETF, bAV, Riester, Basisrente, AVD und private Rente vergleichen. Lokal im Browser, kein Account, Werte 2026." />
+    <meta name="twitter:image" content="https://rentenwiki.de/og/home.png" />"
+`;
+
+exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > keeps the head HTML unchanged for routes without FAQ (/404) 1`] = `
+"<title>Seite nicht gefunden | RentenWiki.de</title>
+    <meta name="description" content="Die angeforderte Seite ist auf RentenWiki.de nicht verfügbar. Zurück zum Altersvorsorge-Rechner." />
+    <meta name="robots" content="noindex,follow" />
+    <link rel="canonical" href="https://rentenwiki.de/404" />
+    <meta property="og:title" content="Seite nicht gefunden | RentenWiki.de" />
+    <meta property="og:description" content="Die angeforderte Seite ist auf RentenWiki.de nicht verfügbar. Zurück zum Altersvorsorge-Rechner." />
+    <meta property="og:url" content="https://rentenwiki.de/404" />
+    <meta property="og:image" content="https://rentenwiki.de/og/default.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RentenWiki.de" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Seite nicht gefunden | RentenWiki.de" />
+    <meta name="twitter:description" content="Die angeforderte Seite ist auf RentenWiki.de nicht verfügbar. Zurück zum Altersvorsorge-Rechner." />
+    <meta name="twitter:image" content="https://rentenwiki.de/og/default.png" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "name": "Seite nicht gefunden | RentenWiki.de",
+  "description": "Die angeforderte URL existiert nicht. Über den Link unten gelangst du zurück zum Rechner.",
+  "url": "https://rentenwiki.de/404",
+  "inLanguage": "de-DE",
+  "dateModified": "2026-05-06",
+  "@type": "WebSite"
+}
+</script>"
+`;
+
+exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > keeps the head HTML unchanged for routes without FAQ (/altersvorsorgeprodukte-vergleichen) 1`] = `
+"<title>Altersvorsorge vergleichen 2026 | RentenWiki.de</title>
+    <meta name="description" content="Mehrere Vorsorgeverträge gemeinsam planen: ETF, bAV, Riester, Basisrente, AVD, private Rente. Portfolio-Modus, kein Broker, keine Provision. Werte 2026." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://rentenwiki.de/altersvorsorgeprodukte-vergleichen/" />
+    <meta property="og:title" content="Altersvorsorge vergleichen 2026 | RentenWiki.de" />
+    <meta property="og:description" content="Mehrere Vorsorgeverträge gemeinsam planen: ETF, bAV, Riester, Basisrente, AVD, private Rente. Portfolio-Modus, kein Broker, keine Provision. Werte 2026." />
+    <meta property="og:url" content="https://rentenwiki.de/altersvorsorgeprodukte-vergleichen/" />
+    <meta property="og:image" content="https://rentenwiki.de/og/altersvorsorgeprodukte-vergleichen.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RentenWiki.de" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Altersvorsorge vergleichen 2026 | RentenWiki.de" />
+    <meta name="twitter:description" content="Mehrere Vorsorgeverträge gemeinsam planen: ETF, bAV, Riester, Basisrente, AVD, private Rente. Portfolio-Modus, kein Broker, keine Provision. Werte 2026." />
+    <meta name="twitter:image" content="https://rentenwiki.de/og/altersvorsorgeprodukte-vergleichen.png" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "name": "Altersvorsorge vergleichen 2026 | RentenWiki.de",
+  "description": "Portfolio-Modus für mehrere Vorsorgeverträge gleichzeitig (ETF, bAV, Riester, Basisrente, AVD, private Rente) mit Transfer-Ereignissen und Haushaltsperspektive.",
+  "url": "https://rentenwiki.de/altersvorsorgeprodukte-vergleichen/",
+  "inLanguage": "de-DE",
+  "dateModified": "2026-08-02",
+  "@type": "Article",
+  "headline": "Altersvorsorgeprodukte vergleichen: ETF, bAV, Riester und mehr gemeinsam planen 2026",
+  "image": "https://rentenwiki.de/og/altersvorsorgeprodukte-vergleichen.png",
+  "datePublished": "2026-05-05",
+  "author": {
+    "@type": "Organization",
+    "name": "RentenWiki.de",
+    "url": "https://rentenwiki.de"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "RentenWiki.de",
+    "url": "https://rentenwiki.de"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://rentenwiki.de/altersvorsorgeprodukte-vergleichen/"
+  }
+}
+</script>"
+`;
+
+exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > keeps the head HTML unchanged for routes without FAQ (/artikel) 1`] = `
+"<title>Artikel zur Altersvorsorge | RentenWiki.de</title>
+    <meta name="description" content="Übersicht aller Artikel von RentenWiki.de: Rentenlücke, bAV, ETF, Riester, Altersvorsorgedepot, Basisrente, private Rentenversicherung und Portfolio-Planung. Quelloffen, ohne Werbung, Werte 2026." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://rentenwiki.de/artikel/" />
+    <meta property="og:title" content="Artikel zur Altersvorsorge | RentenWiki.de" />
+    <meta property="og:description" content="Übersicht aller Artikel von RentenWiki.de: Rentenlücke, bAV, ETF, Riester, Altersvorsorgedepot, Basisrente, private Rentenversicherung und Portfolio-Planung. Quelloffen, ohne Werbung, Werte 2026." />
+    <meta property="og:url" content="https://rentenwiki.de/artikel/" />
+    <meta property="og:image" content="https://rentenwiki.de/og/artikel.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RentenWiki.de" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Artikel zur Altersvorsorge | RentenWiki.de" />
+    <meta name="twitter:description" content="Übersicht aller Artikel von RentenWiki.de: Rentenlücke, bAV, ETF, Riester, Altersvorsorgedepot, Basisrente, private Rentenversicherung und Portfolio-Planung. Quelloffen, ohne Werbung, Werte 2026." />
+    <meta name="twitter:image" content="https://rentenwiki.de/og/artikel.png" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "name": "Artikel zur Altersvorsorge | RentenWiki.de",
+  "description": "Übersicht aller Themen rund um die deutsche Altersvorsorge. Jede Seite ist quelloffen und kann auf GitHub kommentiert oder verbessert werden.",
+  "url": "https://rentenwiki.de/artikel/",
+  "inLanguage": "de-DE",
+  "dateModified": "2026-05-19",
+  "@type": "WebPage"
+}
+</script>"
+`;
+
+exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > keeps the head HTML unchanged for routes without FAQ (/basisrente-rechner) 1`] = `
+"<title>Basisrente (Rürup) Rechner 2026 | RentenWiki.de</title>
+    <meta name="description" content="Basisrente (Rürup) berechnen: Sonderausgabenabzug § 10 Abs. 3 EStG, kohortenbezogener Besteuerungsanteil und gesetzliche Auszahlung als lebenslange Leibrente. Werte 2026." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://rentenwiki.de/basisrente-rechner/" />
+    <meta property="og:title" content="Basisrente (Rürup) Rechner 2026 | RentenWiki.de" />
+    <meta property="og:description" content="Basisrente (Rürup) berechnen: Sonderausgabenabzug § 10 Abs. 3 EStG, kohortenbezogener Besteuerungsanteil und gesetzliche Auszahlung als lebenslange Leibrente. Werte 2026." />
+    <meta property="og:url" content="https://rentenwiki.de/basisrente-rechner/" />
+    <meta property="og:image" content="https://rentenwiki.de/og/basisrente-rechner.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RentenWiki.de" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Basisrente (Rürup) Rechner 2026 | RentenWiki.de" />
+    <meta name="twitter:description" content="Basisrente (Rürup) berechnen: Sonderausgabenabzug § 10 Abs. 3 EStG, kohortenbezogener Besteuerungsanteil und gesetzliche Auszahlung als lebenslange Leibrente. Werte 2026." />
+    <meta name="twitter:image" content="https://rentenwiki.de/og/basisrente-rechner.png" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "name": "Basisrente (Rürup) Rechner 2026 | RentenWiki.de",
+  "description": "Erklärt die Basisrente (Rürup): Sonderausgabenabzug nach § 10 Abs. 3 EStG, kohortenbezogener Besteuerungsanteil und gesetzliche Auszahlungsbeschränkung (keine Kapitalauszahlung).",
+  "url": "https://rentenwiki.de/basisrente-rechner/",
+  "inLanguage": "de-DE",
+  "dateModified": "2026-05-06",
+  "@type": "WebApplication",
+  "applicationCategory": "FinanceApplication",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "EUR"
+  }
+}
+</script>"
+`;
+
+exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > keeps the head HTML unchanged for routes without FAQ (/bav-rechner) 1`] = `
+"<title>bAV Rechner: Entgeltumwandlung 2026 | RentenWiki.de</title>
+    <meta name="description" content="Betriebliche Altersvorsorge berechnen: Entgeltumwandlung, Arbeitgeberzuschuss, GRV-Reduktion, KV/PV in der Rente. Lokal im Browser, kostenlos, Werte 2026." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://rentenwiki.de/bav-rechner/" />
+    <meta property="og:title" content="bAV Rechner: Entgeltumwandlung 2026 | RentenWiki.de" />
+    <meta property="og:description" content="Betriebliche Altersvorsorge berechnen: Entgeltumwandlung, Arbeitgeberzuschuss, GRV-Reduktion, KV/PV in der Rente. Lokal im Browser, kostenlos, Werte 2026." />
+    <meta property="og:url" content="https://rentenwiki.de/bav-rechner/" />
+    <meta property="og:image" content="https://rentenwiki.de/og/bav-rechner.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RentenWiki.de" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="bAV Rechner: Entgeltumwandlung 2026 | RentenWiki.de" />
+    <meta name="twitter:description" content="Betriebliche Altersvorsorge berechnen: Entgeltumwandlung, Arbeitgeberzuschuss, GRV-Reduktion, KV/PV in der Rente. Lokal im Browser, kostenlos, Werte 2026." />
+    <meta name="twitter:image" content="https://rentenwiki.de/og/bav-rechner.png" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "name": "bAV Rechner: Entgeltumwandlung 2026 | RentenWiki.de",
+  "description": "Zeigt, wie sich Entgeltumwandlung mit Steuer- und SV-Vorteil, Arbeitgeberzuschuss und nachgelagerter Besteuerung rechnet und wo bAV gegenüber einem ETF-Sparplan profitiert oder zurückfällt.",
+  "url": "https://rentenwiki.de/bav-rechner/",
+  "inLanguage": "de-DE",
+  "dateModified": "2026-05-06",
+  "@type": "WebApplication",
+  "applicationCategory": "FinanceApplication",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "EUR"
+  }
+}
+</script>"
+`;
+
+exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > keeps the head HTML unchanged for routes without FAQ (/datenschutz) 1`] = `
+"<title>Datenschutzerklärung | RentenWiki.de</title>
+    <meta name="description" content="Datenschutzerklärung von RentenWiki.de: lokale Speicherung im Browser, freiwillige Projektunterstützung und optionales QA-Feedback. Kein Tracking." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://rentenwiki.de/datenschutz/" />
+    <meta property="og:title" content="Datenschutzerklärung | RentenWiki.de" />
+    <meta property="og:description" content="Datenschutzerklärung von RentenWiki.de: lokale Speicherung im Browser, freiwillige Projektunterstützung und optionales QA-Feedback. Kein Tracking." />
+    <meta property="og:url" content="https://rentenwiki.de/datenschutz/" />
+    <meta property="og:image" content="https://rentenwiki.de/og/default.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RentenWiki.de" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Datenschutzerklärung | RentenWiki.de" />
+    <meta name="twitter:description" content="Datenschutzerklärung von RentenWiki.de: lokale Speicherung im Browser, freiwillige Projektunterstützung und optionales QA-Feedback. Kein Tracking." />
+    <meta name="twitter:image" content="https://rentenwiki.de/og/default.png" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "name": "Datenschutzerklärung | RentenWiki.de",
+  "description": "Beschreibt die Datenverarbeitung von RentenWiki.de: lokale Speicherung im Browser, freiwillige Projektunterstützung und optionales QA-Feedback.",
+  "url": "https://rentenwiki.de/datenschutz/",
+  "inLanguage": "de-DE",
+  "dateModified": "2026-09-09",
+  "@type": "WebPage"
+}
+</script>"
+`;
+
+exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > keeps the head HTML unchanged for routes without FAQ (/eingaben) 1`] = `
+"<title>Deine Angaben | RentenWiki.de</title>
+    <meta name="description" content="Eingabeflächen für den RentenWiki-Modellrechner: Person, Einkommen, geplanter Renteneintritt und wirtschaftliche Annahmen. Lokal im Browser, kein Account, Werte 2026." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://rentenwiki.de/eingaben/" />
+    <meta property="og:title" content="Deine Angaben | RentenWiki.de" />
+    <meta property="og:description" content="Eingabeflächen für den RentenWiki-Modellrechner: Person, Einkommen, geplanter Renteneintritt und wirtschaftliche Annahmen. Lokal im Browser, kein Account, Werte 2026." />
+    <meta property="og:url" content="https://rentenwiki.de/eingaben/" />
+    <meta property="og:image" content="https://rentenwiki.de/og/eingaben.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RentenWiki.de" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Deine Angaben | RentenWiki.de" />
+    <meta name="twitter:description" content="Eingabeflächen für den RentenWiki-Modellrechner: Person, Einkommen, geplanter Renteneintritt und wirtschaftliche Annahmen. Lokal im Browser, kein Account, Werte 2026." />
+    <meta name="twitter:image" content="https://rentenwiki.de/og/eingaben.png" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "name": "Deine Angaben | RentenWiki.de",
+  "description": "Person, Einkommen, geplanter Renteneintritt und wirtschaftliche Annahmen. Die Rechnerwerte bleiben lokal in deinem Browser; nichts wird an Server übertragen.",
+  "url": "https://rentenwiki.de/eingaben/",
+  "inLanguage": "de-DE",
+  "dateModified": "2026-05-19",
+  "@type": "WebPage"
+}
+</script>"
+`;
+
+exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > keeps the head HTML unchanged for routes without FAQ (/eingaben/produkte) 1`] = `
+"<title>Deine Verträge und Sparformen | RentenWiki.de</title>
+    <meta name="description" content="Erfasse deine bestehenden Altersvorsorge-Verträge — gesetzliche Rente, ETF-Sparpläne, bAV, private Renten, Riester und Basisrente. Lokal im Browser, kein Account." />
+    <meta name="robots" content="noindex,follow" />
+    <link rel="canonical" href="https://rentenwiki.de/eingaben/produkte/" />
+    <meta property="og:title" content="Deine Verträge und Sparformen | RentenWiki.de" />
+    <meta property="og:description" content="Erfasse deine bestehenden Altersvorsorge-Verträge — gesetzliche Rente, ETF-Sparpläne, bAV, private Renten, Riester und Basisrente. Lokal im Browser, kein Account." />
+    <meta property="og:url" content="https://rentenwiki.de/eingaben/produkte/" />
+    <meta property="og:image" content="https://rentenwiki.de/og/default.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RentenWiki.de" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Deine Verträge und Sparformen | RentenWiki.de" />
+    <meta name="twitter:description" content="Erfasse deine bestehenden Altersvorsorge-Verträge — gesetzliche Rente, ETF-Sparpläne, bAV, private Renten, Riester und Basisrente. Lokal im Browser, kein Account." />
+    <meta name="twitter:image" content="https://rentenwiki.de/og/default.png" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "name": "Deine Verträge und Sparformen | RentenWiki.de",
+  "description": "Schritt 2 des RentenWiki-Eingabe-Flows: trage deine bestehenden Verträge ein. Du kannst Einträge jederzeit ergänzen oder entfernen.",
+  "url": "https://rentenwiki.de/eingaben/produkte/",
+  "inLanguage": "de-DE",
+  "dateModified": "2026-05-28",
+  "@type": "WebPage"
+}
+</script>"
+`;
+
+exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > keeps the head HTML unchanged for routes without FAQ (/etf-vs-bav) 1`] = `
+"<title>ETF vs. bAV vergleichen 2026 | RentenWiki.de</title>
+    <meta name="description" content="ETF-Sparplan und bAV bei gleicher Nettokostenbasis vergleichen: Steuern, Arbeitgeberzuschuss, Kosten und KV/PV-Unterschiede. Kostenlos, Werte 2026." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://rentenwiki.de/etf-vs-bav/" />
+    <meta property="og:title" content="ETF vs. bAV vergleichen 2026 | RentenWiki.de" />
+    <meta property="og:description" content="ETF-Sparplan und bAV bei gleicher Nettokostenbasis vergleichen: Steuern, Arbeitgeberzuschuss, Kosten und KV/PV-Unterschiede. Kostenlos, Werte 2026." />
+    <meta property="og:url" content="https://rentenwiki.de/etf-vs-bav/" />
+    <meta property="og:image" content="https://rentenwiki.de/og/etf-vs-bav.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RentenWiki.de" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ETF vs. bAV vergleichen 2026 | RentenWiki.de" />
+    <meta name="twitter:description" content="ETF-Sparplan und bAV bei gleicher Nettokostenbasis vergleichen: Steuern, Arbeitgeberzuschuss, Kosten und KV/PV-Unterschiede. Kostenlos, Werte 2026." />
+    <meta name="twitter:image" content="https://rentenwiki.de/og/etf-vs-bav.png" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "name": "ETF vs. bAV vergleichen 2026 | RentenWiki.de",
+  "description": "Vergleicht ETF-Sparplan und bAV bei identischer Nettokostenbasis: Steuervorteil, Arbeitgeberzuschuss, GRV-Reduktion, Kosten sowie Steuer und KV/PV in der Auszahlphase.",
+  "url": "https://rentenwiki.de/etf-vs-bav/",
+  "inLanguage": "de-DE",
+  "dateModified": "2026-05-06",
+  "@type": "Article",
+  "headline": "ETF vs. bAV: Vergleich der Altersvorsorge bei gleicher Nettokostenbasis 2026",
+  "image": "https://rentenwiki.de/og/etf-vs-bav.png",
+  "datePublished": "2026-05-05",
+  "author": {
+    "@type": "Organization",
+    "name": "RentenWiki.de",
+    "url": "https://rentenwiki.de"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "RentenWiki.de",
+    "url": "https://rentenwiki.de"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://rentenwiki.de/etf-vs-bav/"
+  }
+}
+</script>"
+`;
+
+exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > keeps the head HTML unchanged for routes without FAQ (/impressum) 1`] = `
+"<title>Impressum | RentenWiki.de</title>
+    <meta name="description" content="Impressum von RentenWiki.de mit Anbieterangaben gemäß § 5 TMG, Kontakt, Hinweis zur beruflichen Stellung sowie Haftungs- und Lizenzhinweisen." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://rentenwiki.de/impressum/" />
+    <meta property="og:title" content="Impressum | RentenWiki.de" />
+    <meta property="og:description" content="Impressum von RentenWiki.de mit Anbieterangaben gemäß § 5 TMG, Kontakt, Hinweis zur beruflichen Stellung sowie Haftungs- und Lizenzhinweisen." />
+    <meta property="og:url" content="https://rentenwiki.de/impressum/" />
+    <meta property="og:image" content="https://rentenwiki.de/og/default.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RentenWiki.de" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Impressum | RentenWiki.de" />
+    <meta name="twitter:description" content="Impressum von RentenWiki.de mit Anbieterangaben gemäß § 5 TMG, Kontakt, Hinweis zur beruflichen Stellung sowie Haftungs- und Lizenzhinweisen." />
+    <meta name="twitter:image" content="https://rentenwiki.de/og/default.png" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "name": "Impressum | RentenWiki.de",
+  "description": "Anbieterangaben gemäß § 5 TMG, Kontakt, Hinweis zur beruflichen Stellung sowie Haftungs- und Lizenzhinweise für RentenWiki.de.",
+  "url": "https://rentenwiki.de/impressum/",
+  "inLanguage": "de-DE",
+  "dateModified": "2026-05-05",
+  "@type": "AboutPage"
+}
+</script>"
+`;
+
+exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > keeps the head HTML unchanged for routes without FAQ (/methode) 1`] = `
+"<title>Methode &amp; Quellen | RentenWiki.de</title>
+    <meta name="description" content="Wie RentenWiki.de rechnet: Renditeannahmen, Steuer- und Sozialversicherungs-Modell, statutorische Werte 2026 und Quellen. Quelloffen, ohne Werbung, ohne Provisionen." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://rentenwiki.de/methode/" />
+    <meta property="og:title" content="Methode &amp; Quellen | RentenWiki.de" />
+    <meta property="og:description" content="Wie RentenWiki.de rechnet: Renditeannahmen, Steuer- und Sozialversicherungs-Modell, statutorische Werte 2026 und Quellen. Quelloffen, ohne Werbung, ohne Provisionen." />
+    <meta property="og:url" content="https://rentenwiki.de/methode/" />
+    <meta property="og:image" content="https://rentenwiki.de/og/methode.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RentenWiki.de" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Methode &amp; Quellen | RentenWiki.de" />
+    <meta name="twitter:description" content="Wie RentenWiki.de rechnet: Renditeannahmen, Steuer- und Sozialversicherungs-Modell, statutorische Werte 2026 und Quellen. Quelloffen, ohne Werbung, ohne Provisionen." />
+    <meta name="twitter:image" content="https://rentenwiki.de/og/methode.png" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "name": "Methode & Quellen | RentenWiki.de",
+  "description": "Diese Seite dokumentiert alle Berechnungsmodelle, Annahmen und Datenquellen, die RentenWiki.de verwendet. Sämtliche Algorithmen sind quelloffen auf GitHub einsehbar.",
+  "url": "https://rentenwiki.de/methode/",
+  "inLanguage": "de-DE",
+  "dateModified": "2026-05-19",
+  "@type": "WebPage"
+}
+</script>"
+`;
+
+exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > keeps the head HTML unchanged for routes without FAQ (/private-rentenversicherung-rechner) 1`] = `
+"<title>Private Rentenversicherung Rechner 2026 | RentenWiki.de</title>
+    <meta name="description" content="Private Rentenversicherung berechnen: Versicherungsmantel-Kosten, Steuerregime nach Vertragsbeginn, Leibrente vs. Kapitalverzehr. Kostenlos, Werte 2026." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://rentenwiki.de/private-rentenversicherung-rechner/" />
+    <meta property="og:title" content="Private Rentenversicherung Rechner 2026 | RentenWiki.de" />
+    <meta property="og:description" content="Private Rentenversicherung berechnen: Versicherungsmantel-Kosten, Steuerregime nach Vertragsbeginn, Leibrente vs. Kapitalverzehr. Kostenlos, Werte 2026." />
+    <meta property="og:url" content="https://rentenwiki.de/private-rentenversicherung-rechner/" />
+    <meta property="og:image" content="https://rentenwiki.de/og/private-rentenversicherung-rechner.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RentenWiki.de" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Private Rentenversicherung Rechner 2026 | RentenWiki.de" />
+    <meta name="twitter:description" content="Private Rentenversicherung berechnen: Versicherungsmantel-Kosten, Steuerregime nach Vertragsbeginn, Leibrente vs. Kapitalverzehr. Kostenlos, Werte 2026." />
+    <meta name="twitter:image" content="https://rentenwiki.de/og/private-rentenversicherung-rechner.png" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "name": "Private Rentenversicherung Rechner 2026 | RentenWiki.de",
+  "description": "Modelliert die private Rentenversicherung: Mantel- und Fondskosten, Steuerregime je nach Vertragsbeginn (vor 2005, Halbeinkünfte, Abgeltungsteuer) und Leibrente vs. Kapitalverzehr.",
+  "url": "https://rentenwiki.de/private-rentenversicherung-rechner/",
+  "inLanguage": "de-DE",
+  "dateModified": "2026-05-06",
+  "@type": "WebApplication",
+  "applicationCategory": "FinanceApplication",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "EUR"
+  }
+}
+</script>"
+`;
+
+exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > keeps the head HTML unchanged for routes without FAQ (/rente-netto-berechnen) 1`] = `
+"<title>Rente netto berechnen 2026 | RentenWiki.de</title>
+    <meta name="description" content="Gesetzliche Rente netto berechnen: nachgelagerte Besteuerung, KVdR oder freiwillige GKV, Pflegeversicherung. Kostenlos, lokal im Browser, Werte 2026." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://rentenwiki.de/rente-netto-berechnen/" />
+    <meta property="og:title" content="Rente netto berechnen 2026 | RentenWiki.de" />
+    <meta property="og:description" content="Gesetzliche Rente netto berechnen: nachgelagerte Besteuerung, KVdR oder freiwillige GKV, Pflegeversicherung. Kostenlos, lokal im Browser, Werte 2026." />
+    <meta property="og:url" content="https://rentenwiki.de/rente-netto-berechnen/" />
+    <meta property="og:image" content="https://rentenwiki.de/og/rente-netto-berechnen.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RentenWiki.de" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Rente netto berechnen 2026 | RentenWiki.de" />
+    <meta name="twitter:description" content="Gesetzliche Rente netto berechnen: nachgelagerte Besteuerung, KVdR oder freiwillige GKV, Pflegeversicherung. Kostenlos, lokal im Browser, Werte 2026." />
+    <meta name="twitter:image" content="https://rentenwiki.de/og/rente-netto-berechnen.png" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "name": "Rente netto berechnen 2026 | RentenWiki.de",
+  "description": "Rechnet die gesetzliche Rente netto: nachgelagerte Besteuerung nach § 22 EStG, KVdR (§ 226 SGB V) oder freiwillige GKV (§ 240 SGB V) und Pflegeversicherung.",
+  "url": "https://rentenwiki.de/rente-netto-berechnen/",
+  "inLanguage": "de-DE",
+  "dateModified": "2026-05-06",
+  "@type": "WebApplication",
+  "applicationCategory": "FinanceApplication",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "EUR"
+  }
+}
+</script>"
+`;
+
+exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > keeps the head HTML unchanged for routes without FAQ (/rentenluecke-rechner) 1`] = `
+"<title>Rentenlücke berechnen 2026 | RentenWiki.de</title>
+    <meta name="description" content="Rentenlücke berechnen: gewünschte Nettorente minus erwartete GRV-Rente plus weitere Vorsorge. Kostenlos, lokal im Browser, Werte 2026." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://rentenwiki.de/rentenluecke-rechner/" />
+    <meta property="og:title" content="Rentenlücke berechnen 2026 | RentenWiki.de" />
+    <meta property="og:description" content="Rentenlücke berechnen: gewünschte Nettorente minus erwartete GRV-Rente plus weitere Vorsorge. Kostenlos, lokal im Browser, Werte 2026." />
+    <meta property="og:url" content="https://rentenwiki.de/rentenluecke-rechner/" />
+    <meta property="og:image" content="https://rentenwiki.de/og/rentenluecke-rechner.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RentenWiki.de" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Rentenlücke berechnen 2026 | RentenWiki.de" />
+    <meta name="twitter:description" content="Rentenlücke berechnen: gewünschte Nettorente minus erwartete GRV-Rente plus weitere Vorsorge. Kostenlos, lokal im Browser, Werte 2026." />
+    <meta name="twitter:image" content="https://rentenwiki.de/og/rentenluecke-rechner.png" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "name": "Rentenlücke berechnen 2026 | RentenWiki.de",
+  "description": "Berechnet die Rentenlücke aus Wunschrente, gesetzlicher Rente und privater Vorsorge. Zeigt, welche Werte aus deiner Renteninformation der Rechner braucht.",
+  "url": "https://rentenwiki.de/rentenluecke-rechner/",
+  "inLanguage": "de-DE",
+  "dateModified": "2026-05-06",
+  "@type": "WebApplication",
+  "applicationCategory": "FinanceApplication",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "EUR"
+  }
+}
+</script>"
+`;
+
+exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > keeps the head HTML unchanged for routes without FAQ (/riester-rechner) 1`] = `
+"<title>Riester-Rechner 2026 | RentenWiki.de</title>
+    <meta name="description" content="Riester-Rente berechnen: Grund- und Kinderzulage, Sonderausgabenabzug § 10a EStG, Günstigerprüfung, nachgelagerte Auszahlung. Kostenlos, Werte 2026." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://rentenwiki.de/riester-rechner/" />
+    <meta property="og:title" content="Riester-Rechner 2026 | RentenWiki.de" />
+    <meta property="og:description" content="Riester-Rente berechnen: Grund- und Kinderzulage, Sonderausgabenabzug § 10a EStG, Günstigerprüfung, nachgelagerte Auszahlung. Kostenlos, Werte 2026." />
+    <meta property="og:url" content="https://rentenwiki.de/riester-rechner/" />
+    <meta property="og:image" content="https://rentenwiki.de/og/riester-rechner.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RentenWiki.de" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Riester-Rechner 2026 | RentenWiki.de" />
+    <meta name="twitter:description" content="Riester-Rente berechnen: Grund- und Kinderzulage, Sonderausgabenabzug § 10a EStG, Günstigerprüfung, nachgelagerte Auszahlung. Kostenlos, Werte 2026." />
+    <meta name="twitter:image" content="https://rentenwiki.de/og/riester-rechner.png" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "name": "Riester-Rechner 2026 | RentenWiki.de",
+  "description": "Modelliert Riester-Förderung (Zulagen plus Sonderausgabenabzug § 10a EStG mit Günstigerprüfung) und die Auszahlung nach § 22 Nr. 5 EStG. Werte 2026.",
+  "url": "https://rentenwiki.de/riester-rechner/",
+  "inLanguage": "de-DE",
+  "dateModified": "2026-08-02",
+  "@type": "WebApplication",
+  "applicationCategory": "FinanceApplication",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "EUR"
+  }
+}
+</script>"
+`;
+
+exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > keeps the head HTML unchanged for routes without FAQ (/riester-vs-altersvorsorgedepot) 1`] = `
+"<title>Riester oder AVD? Vergleich 2026 | RentenWiki.de</title>
+    <meta name="description" content="Riester-Rente vs. Altersvorsorgedepot (AVD): Förderstruktur, Zulagen, Übertragung und Auszahlung im Modell vergleichen. Kostenlos, Werte 2026." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://rentenwiki.de/riester-vs-altersvorsorgedepot/" />
+    <meta property="og:title" content="Riester oder AVD? Vergleich 2026 | RentenWiki.de" />
+    <meta property="og:description" content="Riester-Rente vs. Altersvorsorgedepot (AVD): Förderstruktur, Zulagen, Übertragung und Auszahlung im Modell vergleichen. Kostenlos, Werte 2026." />
+    <meta property="og:url" content="https://rentenwiki.de/riester-vs-altersvorsorgedepot/" />
+    <meta property="og:image" content="https://rentenwiki.de/og/riester-vs-altersvorsorgedepot.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RentenWiki.de" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Riester oder AVD? Vergleich 2026 | RentenWiki.de" />
+    <meta name="twitter:description" content="Riester-Rente vs. Altersvorsorgedepot (AVD): Förderstruktur, Zulagen, Übertragung und Auszahlung im Modell vergleichen. Kostenlos, Werte 2026." />
+    <meta name="twitter:image" content="https://rentenwiki.de/og/riester-vs-altersvorsorgedepot.png" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "name": "Riester oder AVD? Vergleich 2026 | RentenWiki.de",
+  "description": "Stellt Riester und Altersvorsorgedepot (AVD) gegenüber: Förderstruktur, Produktform (Versicherung oder Depot), Übertragungsmöglichkeiten und nachgelagerte Auszahlung.",
+  "url": "https://rentenwiki.de/riester-vs-altersvorsorgedepot/",
+  "inLanguage": "de-DE",
+  "dateModified": "2026-08-02",
+  "@type": "Article",
+  "headline": "Riester oder Altersvorsorgedepot? Vergleich der geförderten Schicht-2-Wege 2026",
+  "image": "https://rentenwiki.de/og/riester-vs-altersvorsorgedepot.png",
+  "datePublished": "2026-05-05",
+  "author": {
+    "@type": "Organization",
+    "name": "RentenWiki.de",
+    "url": "https://rentenwiki.de"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "RentenWiki.de",
+    "url": "https://rentenwiki.de"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://rentenwiki.de/riester-vs-altersvorsorgedepot/"
+  }
+}
+</script>"
+`;
+
+exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > keeps the head HTML unchanged for routes without FAQ (/vergleich) 1`] = `
+"<title>Sparformen vergleichen 2026 | RentenWiki.de</title>
+    <meta name="description" content="Sparformen für die Altersvorsorge direkt vergleichen: ETF, bAV, Riester, Basisrente, Altersvorsorgedepot und private Rente bei gleichem Eigenanteil. Lokal im Browser, kein Account, Werte 2026." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://rentenwiki.de/vergleich/" />
+    <meta property="og:title" content="Sparformen vergleichen 2026 | RentenWiki.de" />
+    <meta property="og:description" content="Sparformen für die Altersvorsorge direkt vergleichen: ETF, bAV, Riester, Basisrente, Altersvorsorgedepot und private Rente bei gleichem Eigenanteil. Lokal im Browser, kein Account, Werte 2026." />
+    <meta property="og:url" content="https://rentenwiki.de/vergleich/" />
+    <meta property="og:image" content="https://rentenwiki.de/og/vergleich.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RentenWiki.de" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Sparformen vergleichen 2026 | RentenWiki.de" />
+    <meta name="twitter:description" content="Sparformen für die Altersvorsorge direkt vergleichen: ETF, bAV, Riester, Basisrente, Altersvorsorgedepot und private Rente bei gleichem Eigenanteil. Lokal im Browser, kein Account, Werte 2026." />
+    <meta name="twitter:image" content="https://rentenwiki.de/og/vergleich.png" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "name": "Sparformen vergleichen 2026 | RentenWiki.de",
+  "description": "Vergleicht die gewählten Sparformen bei gleichem eigenem Monatsbeitrag und zeigt für jede, was nach Kosten, Steuern und Krankenversicherung im Alter übrig bleibt. Der Vergleich ist eigenständig — dein persönlicher Plan bleibt unverändert.",
+  "url": "https://rentenwiki.de/vergleich/",
+  "inLanguage": "de-DE",
+  "dateModified": "2026-09-09",
+  "@type": "WebApplication",
+  "applicationCategory": "FinanceApplication",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "EUR"
+  }
+}
+</script>"
+`;
+
+exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > keeps the head HTML unchanged for routes without FAQ (/vergleich/details) 1`] = `
+"<title>Wohin geht das Geld? Vergleich im Detail | RentenWiki.de</title>
+    <meta name="description" content="Aufschlüsselung pro Sparform: was du selbst zahlst, was Förderung oder Arbeitgeber beisteuert, was Kosten und Steuer wegnehmen und was im Alter monatlich übrig bleibt. Werte 2026." />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://rentenwiki.de/vergleich/details/" />
+    <meta property="og:title" content="Wohin geht das Geld? Vergleich im Detail | RentenWiki.de" />
+    <meta property="og:description" content="Aufschlüsselung pro Sparform: was du selbst zahlst, was Förderung oder Arbeitgeber beisteuert, was Kosten und Steuer wegnehmen und was im Alter monatlich übrig bleibt. Werte 2026." />
+    <meta property="og:url" content="https://rentenwiki.de/vergleich/details/" />
+    <meta property="og:image" content="https://rentenwiki.de/og/vergleich/details.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="RentenWiki.de" />
+    <meta property="og:locale" content="de_DE" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Wohin geht das Geld? Vergleich im Detail | RentenWiki.de" />
+    <meta name="twitter:description" content="Aufschlüsselung pro Sparform: was du selbst zahlst, was Förderung oder Arbeitgeber beisteuert, was Kosten und Steuer wegnehmen und was im Alter monatlich übrig bleibt. Werte 2026." />
+    <meta name="twitter:image" content="https://rentenwiki.de/og/vergleich/details.png" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "name": "Wohin geht das Geld? Vergleich im Detail | RentenWiki.de",
+  "description": "Pro-Produkt-Aufschlüsselung der sechs Sparformen entlang dreier Phasen — Ansparphase, Rentenbeginn und laufender Bezug. Modell-Werte 2026 mit Beispielannahmen, wenn noch kein eigener Vergleich angelegt ist.",
+  "url": "https://rentenwiki.de/vergleich/details/",
+  "inLanguage": "de-DE",
+  "dateModified": "2026-05-21",
+  "@type": "WebPage"
+}
+</script>"
+`;

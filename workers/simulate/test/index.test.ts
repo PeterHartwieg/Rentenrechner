@@ -1,6 +1,18 @@
-import { describe, expect, it } from 'vitest'
+/// <reference types="node" />
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { timingSafeEqual } from 'node:crypto'
+import * as comparison from '../../../src/api/comparison'
 
 import worker from '../src/index'
+
+// Node's Web Crypto lacks this Cloudflare extension. Use the native Node
+// constant-time primitive for HTTP tests, including successful authentication.
+beforeAll(() => {
+  Object.defineProperty(crypto.subtle, 'timingSafeEqual', { value: timingSafeEqual, configurable: true })
+})
+afterAll(() => {
+  Reflect.deleteProperty(crypto.subtle, 'timingSafeEqual')
+})
 
 interface Env {
   API_SHARED_SECRET: string
@@ -27,6 +39,40 @@ async function json(response: Response) {
 }
 
 describe('simulate Worker HTTP API', () => {
+  it.each(['test-secrex', 'xest-secret', 'short', 'test-secret-longer'])(
+    'rejects an incorrect token (%s)', async (token) => {
+      const response = await worker.fetch(simulateRequest({
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: '{}',
+      }), env)
+      expect(response.status).toBe(401)
+      expect(await json(response)).toEqual({ ok: false, error: 'Unauthorized' })
+    },
+  )
+
+  it('logs an engine failure and returns a generic 500 without its detail', async () => {
+    const detail = 'Internal calculation detail that must stay out of the response'
+    const engine = vi.spyOn(comparison, 'runComparison').mockImplementationOnce(() => { throw new Error(detail) })
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const response = await worker.fetch(simulateRequest({
+        method: 'POST', origin: env.CRM_ALLOWED_ORIGIN,
+        headers: { Authorization: `Bearer ${env.API_SHARED_SECRET}`, 'Content-Type': 'application/json' },
+        body: '{}',
+      }), env)
+      expect(response.status).toBe(500)
+      const body = await response.text()
+      expect(JSON.parse(body)).toEqual({ ok: false, error: 'Engine error' })
+      expect(body).not.toContain(detail)
+      expect(log).toHaveBeenCalledWith('Simulation engine failed:', detail)
+      expect(response.headers.get('Access-Control-Allow-Origin')).toBe(env.CRM_ALLOWED_ORIGIN)
+    } finally {
+      engine.mockRestore()
+      log.mockRestore()
+    }
+  })
+
   it('returns 503 when the API secret is not configured (fail closed on misconfigured deploy)', async () => {
     const unconfiguredEnv = { API_SHARED_SECRET: '', CRM_ALLOWED_ORIGIN: env.CRM_ALLOWED_ORIGIN }
     const response = await worker.fetch(

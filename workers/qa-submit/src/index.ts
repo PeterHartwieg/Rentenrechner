@@ -36,6 +36,9 @@ export interface Env {
 const TITLE_MAX = 250;
 const BODY_MAX = 10_000;
 const SCREENSHOT_MAX_BYTES = 8 * 1024 * 1024;
+const SCREENSHOT_MAX_BASE64_LENGTH = 4 * Math.ceil(SCREENSHOT_MAX_BYTES / 3);
+// Base64 screenshot plus room for JSON, text fields and the Turnstile token.
+const REQUEST_MAX_BYTES = SCREENSHOT_MAX_BASE64_LENGTH + 128 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg"]);
 const SCREENSHOT_KEY_PATTERN = /^[a-zA-Z0-9-]+\.(png|jpe?g)$/;
 
@@ -121,6 +124,11 @@ async function handleSubmit(
     );
   }
 
+  const contentLength = request.headers.get("content-length");
+  if (contentLength !== null && Number(contentLength) > REQUEST_MAX_BYTES) {
+    return errorResponse(413, "body_too_large", "Anfrage zu groß.", origin);
+  }
+
   let payload: SubmitRequest;
   try {
     payload = (await request.json()) as SubmitRequest;
@@ -185,6 +193,15 @@ async function handleSubmit(
         400,
         "invalid_image_type",
         "Nur PNG oder JPEG erlaubt.",
+        origin,
+      );
+    }
+
+    if (payload.screenshotBase64.length > SCREENSHOT_MAX_BASE64_LENGTH) {
+      return errorResponse(
+        413,
+        "screenshot_too_large",
+        `Screenshot zu groß (max ${SCREENSHOT_MAX_BYTES / 1024 / 1024} MB).`,
         origin,
       );
     }
