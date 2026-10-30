@@ -31,7 +31,7 @@ permissions:
 
 concurrency:
   group: pr-verify-${{ github.event.pull_request.number || inputs.pr_number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 jobs:
   verify:
