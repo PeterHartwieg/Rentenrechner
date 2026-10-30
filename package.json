@@ -51,7 +51,7 @@
     "@fontsource/newsreader": "^5.2.10",
     "@mdx-js/rollup": "^3.1.1",
     "@resvg/resvg-js": "^2.6.2",
-    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/core": "^10.1.1",
     "@stryker-mutator/vitest-runner": "^10.0.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
