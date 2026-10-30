@@ -511,7 +511,7 @@ exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > ke
   "description": "Modelliert Riester-Förderung (Zulagen plus Sonderausgabenabzug § 10a EStG mit Günstigerprüfung) und die Auszahlung nach § 22 Nr. 5 EStG. Werte 2026.",
   "url": "https://rentenwiki.de/riester-rechner/",
   "inLanguage": "de-DE",
-  "dateModified": "2026-08-02",
+  "dateModified": "2026-10-31",
   "@type": "WebApplication",
   "applicationCategory": "FinanceApplication",
   "offers": {
@@ -546,7 +546,7 @@ exports[`renderRouteHeadHtml — JSON-LD parses + visible-content alignment > ke
   "description": "Stellt Riester und Altersvorsorgedepot (AVD) gegenüber: Förderstruktur, Produktform (Versicherung oder Depot), Übertragungsmöglichkeiten und nachgelagerte Auszahlung.",
   "url": "https://rentenwiki.de/riester-vs-altersvorsorgedepot/",
   "inLanguage": "de-DE",
-  "dateModified": "2026-08-02",
+  "dateModified": "2026-10-31",
   "@type": "Article",
   "headline": "Riester oder Altersvorsorgedepot? Vergleich der geförderten Schicht-2-Wege 2026",
   "image": "https://rentenwiki.de/og/riester-vs-altersvorsorgedepot.png",
