@@ -73,7 +73,7 @@ Preselection (issue #13): `{ mode: 'compare', visibleProducts: ['etf', 'versiche
   Rentenversicherungen; Halbeinkünfteverfahren für Verträge ab 2005 mit
   Laufzeit ≥ 12 Jahre; Abgeltungsteuer für Verträge ab 2009.
 - **§ 20 Abs. 9 EStG** — Sparerpauschbetrag 1 000 €/Jahr.
-- **§ 22 Nr. 1 Satz 3 a bb EStG** — Ertragsanteil-Besteuerung bei Leibrenten
+- **§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG** — Ertragsanteil-Besteuerung bei Leibrenten
   aus privaten Rentenversicherungen (Tabelle nach Alter bei Rentenbeginn).
 - **§ 32d EStG** — Abgeltungsteuer-Tarif (25 % + SolZ).
 - **§ 226 SGB V** — KV-Beitragspflicht auf Leibrenten (KVdR).

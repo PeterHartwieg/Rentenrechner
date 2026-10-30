@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ertragsanteilByAge } from './legalConstants'
 
-// Independently transcribed from the official §22 Nr. 1 Satz 3 a bb EStG table:
+// Independently transcribed from the official §22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG table:
 // https://www.gesetze-im-internet.de/estg/__22.html (verified 2026-10-30).
 // One percentage per completed age, grouped by decades starting at age 0.
 // Keep this oracle independent of the production bands.

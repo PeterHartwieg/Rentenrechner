@@ -19,7 +19,7 @@
  *   reported in `abgeltungsteuerOnPrivateInsurance`.
  *
  * ERTRAGSANTEIL ROUTING (#59)
- *   §22 Nr. 1 Satz 3 a aa EStG: for lifelong private Leibrenten, only the
+ *   §22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG: for lifelong private Leibrenten, only the
  *   age-based Ertragsanteil fraction enters the personal-income-tax base.
  *   The caller (netInsurancePayout) pre-multiplies by the fraction and passes
  *   the result as privateInsuranceTaxableAnnual; this branch passes it through
@@ -153,7 +153,7 @@ export function calculateRetirementTax(
       return
     }
     if (mode === 'ertragsanteil') {
-      // §22 Nr. 1 Satz 3 a aa EStG: Ertragsanteil enters the personal-income-tax base directly.
+      // §22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG: Ertragsanteil enters the personal-income-tax base directly.
       // The amount must already be (grossMonthlyPayout × 12 × ertragsanteil);
       // no further reduction — the age-based fraction is the statutory taxable share.
       privateInsuranceTaxable += safeAmount
