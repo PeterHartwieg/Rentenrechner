@@ -51,6 +51,13 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
   },
   test: {
+    coverage: {
+      provider: 'v8',
+      include: ['src/app/useRoute.ts'],
+      thresholds: { branches: 95 },
+      reportsDirectory: 'reports/route-coverage',
+      reporter: ['text', 'json-summary'],
+    },
     // Concurrent jsdom/React startup can exhaust the default UI wait budgets
     // when Vitest creates a worker for every available CPU. Bound contention
     // so `npm run verify` is reliable without a VITEST_MAX_WORKERS override.
