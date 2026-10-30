@@ -231,9 +231,9 @@ const contractRuntimeYears = payoutYear - assumptions.insurance.contractStartYea
 
 ### Schicht-3 Leibrente Ertragsanteil Taxation — resolved
 
-Private Rentenversicherung monthly Leibrente payouts were originally taxed using a gain-ratio approximation. The correct statutory method for an ungeförderte private Leibrente is the §22 Nr. 1 Satz 3 a EStG Ertragsanteil (age-dependent fixed fraction, e.g. 17 % at age 67).
+Private Rentenversicherung monthly Leibrente payouts were originally taxed using a gain-ratio approximation. The correct statutory method for an ungeförderte private Leibrente is the §22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG Ertragsanteil (age-dependent fixed fraction, e.g. 17 % at age 67).
 
-Fix: `netInsurancePayout` (`src/engine/insurancePayout.ts`) now overrides the derived tax mode with §22 Nr. 1 Satz 3 a EStG Ertragsanteil whenever `payoutMode === 'leibrente'`, including pre-2005 contracts. See CLAUDE.md → "Non-obvious architecture" for the routing summary.
+Fix: `netInsurancePayout` (`src/engine/insurancePayout.ts`) now overrides the derived tax mode with §22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG Ertragsanteil whenever `payoutMode === 'leibrente'`, including pre-2005 contracts. See CLAUDE.md → "Non-obvious architecture" for the routing summary.
 
 ## Open Legal Modeling Questions
 

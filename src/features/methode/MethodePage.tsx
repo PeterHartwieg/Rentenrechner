@@ -372,7 +372,7 @@ export function MethodePage({ navigate }: Props) {
                 <li>
                   <span className="methode-deflist-key">Ertragsanteil (Schicht 3)</span>
                   <span className="methode-deflist-val">
-                    Private Leibrenten nach § 22 Nr. 1 Satz 3 a aa EStG; Anlage 1
+                    Private Leibrenten nach § 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG
                     (z. B. {formatPercent(ertragsanteilByAge(65), 0)} mit Rentenbeginn 65/66,{' '}
                     {formatPercent(ertragsanteilByAge(67), 0)} mit 67). Der restliche Anteil bleibt
                     als Kapitalrückgewähr steuerfrei.

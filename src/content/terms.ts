@@ -195,7 +195,7 @@ export const TERMS_LIST: Term[] = [
     expertLabel: 'Ertrags­anteils­besteuerung',
     shortHelp:
       'Bei lebens­langer Rente aus pAV ist nur ein vom Renten­beginn­alter abhängiger Anteil der Rente steuer­pflichtig (z. B. 17 % bei Renten­beginn 67).',
-    legalReference: '§22 Nr. 1 Satz 3 a aa EStG',
+    legalReference: '§22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG',
     category: 'insurance',
   },
   {
