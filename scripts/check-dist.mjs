@@ -30,6 +30,7 @@ export async function checkDist({ distDir, publicRouteRegistry, buildCanonicalUr
     try {
       const doc = dom.window.document
       assert.ok(doc.querySelector('[data-rentenwiki-prerendered="1"]'), `${url}: missing prerender marker`)
+      assert.ok(doc.getElementById('root')?.childElementCount > 0, `${url}: missing prerendered content in #root`)
       const canonicals = doc.querySelectorAll('link[rel~="canonical"]')
       assert.equal(canonicals.length, 1, `${url}: expected exactly one canonical`)
       assert.equal(canonicals[0].getAttribute('href'), url, `${url}: canonical differs from sitemap`)

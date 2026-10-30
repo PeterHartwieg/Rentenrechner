@@ -13,7 +13,7 @@ const pageHtml = (id) => `<html data-rentenwiki-prerendered="1"><head>
   <title>${publicRouteRegistry[id].title.replaceAll('&', '&amp;')}</title>
   <link href="${buildCanonicalUrl(id)}" rel="canonical">
   <script type="application/ld+json">{"@type":"${publicRouteRegistry[id].jsonLdType}"}</script>
-  </head><body></body></html>`
+  </head><body><div id="root"><main>Rendered page</main></div></body></html>`
 
 let distDir
 async function put(file, content) {
@@ -47,6 +47,9 @@ describe('check-dist', () => {
 
   it.each([
     ['missing marker', (html) => html.replace('data-rentenwiki-prerendered="1"', ''), 'missing prerender marker'],
+    ['missing root', (html) => html.replace('<div id="root"><main>Rendered page</main></div>', ''), 'missing prerendered content in #root'],
+    ['empty root', (html) => html.replace('<main>Rendered page</main>', ''), 'missing prerendered content in #root'],
+    ['whitespace-only root', (html) => html.replace('<main>Rendered page</main>', ' \n '), 'missing prerendered content in #root'],
     ['duplicate canonical', (html) => html.replace('</head>', '<link rel="canonical" href="https://rentenwiki.de/"></head>'), 'exactly one canonical'],
     ['missing canonical', (html) => html.replace(/<link[^>]+>/, ''), 'exactly one canonical'],
     ['wrong canonical', (html) => html.replace('href="https://rentenwiki.de/"', 'href="https://rentenwiki.de/wrong/"'), 'canonical differs'],
