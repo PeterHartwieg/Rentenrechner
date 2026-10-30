@@ -88,6 +88,6 @@ Validation:
 - `npm ci`
 - Regression-first run reproduced all 69 incorrect integer ages and the age-60 taxable-income error before the fix.
 - Programmatic comparison of both production bands and the independent 0–120 test fixture against the fetched official table.
-- `npm run verify` with `VITEST_MAX_WORKERS=4` (lint, unit/integration/property tests, Worker typechecks and tests, production build and prerender). The main suite passed all 282 files: 5,407 tests passed and one skipped. The unrestricted worker pool hit intermittent UI wait failures on this machine; no test was relaxed or given extra time. The isolated `src/Calculator.test.tsx` rerun also passed all seven tests.
+- `npm run verify` without environment overrides (lint, unit/integration/property tests, Worker typechecks and tests, production build and prerender). The main suite passed all 282 files: 5,407 tests passed and one skipped. Vitest now caps workers at four in repository configuration to prevent CPU contention from causing intermittent UI wait failures. File isolation and all existing test time limits are preserved. The isolated `src/Calculator.test.tsx` rerun also passed all seven tests.
 
 Follow-up after merge: redeploy `workers/simulate`, which bundles `src/api`, so the hosted API uses the corrected table.

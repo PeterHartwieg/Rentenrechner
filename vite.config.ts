@@ -51,6 +51,10 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
   },
   test: {
+    // Concurrent jsdom/React startup can exhaust the default UI wait budgets
+    // when Vitest creates a worker for every available CPU. Bound contention
+    // so `npm run verify` is reliable without a VITEST_MAX_WORKERS override.
+    maxWorkers: 4,
     // Default per-file isolation is load-bearing: several engine/rules tests
     // mutate the shared `legalConstants` singleton (always restored per test).
     // If `isolate: false` is ever adopted, those mutations would leak across
