@@ -1,3 +1,4 @@
+import { getCurrentYear } from '../../rules/currentYear'
 import { useState } from 'react'
 import type React from 'react'
 import './ProdukteEingabenPanel.css'
@@ -1203,33 +1204,35 @@ function toSingletonAssumptionsForGrvOverride(
   // same as `singletonViewOfWorkspace` would produce; we inline the minimum
   // here so the panel does not have to import the engine projection helper.
   // This keeps the combine-mode body React/feature-layer only.
+  // Rules year: calculation stubs share the engine baseline for all contract defaults.
+  const { rulesYear } = getCurrentYear()
   const defaultEntry = INVENTORY_PRODUCT_REGISTRY.bav.createDefault(
-    new Date().getFullYear(),
+    rulesYear,
     1,
     (id) => `${id}-grv-stub`,
   )
   const insuranceEntry = INVENTORY_PRODUCT_REGISTRY.versicherung.createDefault(
-    new Date().getFullYear(),
+    rulesYear,
     1,
     (id) => `${id}-grv-stub`,
   )
   const basisrenteEntry = INVENTORY_PRODUCT_REGISTRY.basisrente.createDefault(
-    new Date().getFullYear(),
+    rulesYear,
     1,
     (id) => `${id}-grv-stub`,
   )
   const avdEntry = INVENTORY_PRODUCT_REGISTRY.altersvorsorgedepot.createDefault(
-    new Date().getFullYear(),
+    rulesYear,
     1,
     (id) => `${id}-grv-stub`,
   )
   const riesterEntry = INVENTORY_PRODUCT_REGISTRY.riester.createDefault(
-    new Date().getFullYear(),
+    rulesYear,
     1,
     (id) => `${id}-grv-stub`,
   )
   const etfEntry = INVENTORY_PRODUCT_REGISTRY.etf.createDefault(
-    new Date().getFullYear(),
+    rulesYear,
     1,
     (id) => `${id}-grv-stub`,
   )

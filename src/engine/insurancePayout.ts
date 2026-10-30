@@ -68,7 +68,7 @@ export function deriveInsuranceTaxMode(
 export interface InsuranceMonthlyIncomeClassification {
   /**
    * Tax mode entering `calculateRetirementTax`. `'ertragsanteil'` for every
-   * lifelong payout (§22 Nr. 1 Satz 3 a EStG — applies to ALL contract eras,
+   * lifelong payout (§22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG — applies to ALL contract eras,
    * even pre-2005); otherwise the resolved contract tax mode.
    */
   effectiveTaxMode: InsuranceTaxMode
@@ -87,7 +87,7 @@ export interface InsuranceMonthlyIncomeClassification {
  * (cost basis includes transferred principal from inbound transfers), the
  * payout mode/age, and the resolved contract tax mode.
  *
- * - `payoutMode === 'leibrente'` (#59): §22 Nr. 1 Satz 3 a aa EStG Ertragsanteil
+ * - `payoutMode === 'leibrente'` (#59): §22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG Ertragsanteil
  *   method — `effectiveTaxMode: 'ertragsanteil'`, taxable = gross × 12 ×
  *   `ertragsanteilByAge(age)`. Overrides the contract tax mode in every era.
  * - `contractTaxMode === 'pre2005'` otherwise: the payout is tax-free —
@@ -136,7 +136,7 @@ export function classifyInsuranceMonthlyIncome(input: {
 // Net monthly insurance payout after tax and KV/PV where applicable. (#46, #47, #59)
 // Classification (effective tax mode + taxable base) is owned by
 // `classifyInsuranceMonthlyIncome` — the same pure helper combine mode uses.
-// For payoutMode === 'leibrente' (#59): §22 Nr. 1 Satz 3 a aa EStG Ertragsanteil method.
+// For payoutMode === 'leibrente' (#59): §22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG Ertragsanteil method.
 // For other payout modes: gain-ratio method — capital-payout tax modes (halbeinkuenfte / abgeltungsteuer / pre2005).
 // Routed through calculateRetirementTax so retirement deductions are applied before computing the marginal rate. (#46)
 export function netInsurancePayout(

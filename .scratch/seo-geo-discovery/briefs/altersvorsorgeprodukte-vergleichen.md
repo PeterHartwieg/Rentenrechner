@@ -77,7 +77,8 @@ This page MUST:
 - **§ 18 InvStG** — Vorabpauschale ETF.
 - **§ 20 Abs. 1 Nr. 1, Nr. 2, Abs. 9 EStG** — ETF-Kapitalerträge,
   Sparerpauschbetrag (1 000 EUR).
-- **§ 22 Nr. 1 Satz 3 a EStG** — Leibrenten-Ertragsanteil, Besteuerungsanteil.
+- **§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG** — Leibrenten-Ertragsanteil.
+- **§ 22 Nr. 1 Satz 3 a EStG** — Besteuerungsanteil.
 - **§ 22 Nr. 5 EStG** — Besteuerung geförderter Verträge (Riester, AVD).
 - **§ 34 Abs. 1 EStG** — Fünftelregelung (Direktzusage, Unterstützungskasse).
 - **§§ 84, 85 EStG** — Riester-Grundzulage und Kinderzulagen.

@@ -13,6 +13,7 @@
  * it appears ONLY in user-visible placeholder text, not elsewhere (CLAUDE.md).
  */
 
+import { getCurrentYear } from '../../rules/currentYear'
 import { useState } from 'react'
 import { formatCurrency, formatNumber } from '../../utils/format'
 import type { FeeModel } from '../../domain/fees'
@@ -101,11 +102,12 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvid
   const update = (patch: Partial<ProductDraftState>) =>
     onChange({ ...draft, ...patch } as T)
 
-  const currentYear = new Date().getFullYear()
+  // Calendar year bounds real contract dates; rules year identifies the calculation default.
+  const { calendarYear, rulesYear } = getCurrentYear()
   // Suppress estimate badges for placeholder values that are not meaningful estimates.
-  // contractStartYear = currentYear is the default "not yet set" placeholder for all products.
+  // contractStartYear = rulesYear is the default "not yet set" placeholder for all products.
   // currentValueEUR = 0 means the user hasn't entered a value yet.
-  const isPlaceholderContractStart = draft.contractStartYear === currentYear
+  const isPlaceholderContractStart = draft.contractStartYear === rulesYear
   const isPlaceholderCurrentValue = (draft.currentValueEUR ?? 0) <= 0
 
   return (
@@ -119,7 +121,7 @@ function UniversalFields<T extends ProductDraftState>({ draft, onChange, setEvid
           <InvNumber
             value={draft.contractStartYear}
             min={1970}
-            max={currentYear}
+            max={calendarYear}
             step={1}
             suffix="Jahr"
             onChange={(n) => {
@@ -752,8 +754,9 @@ export function RiesterCard({
   childBirthYears,
   vintageAtoms,
 }: BaseProps<RiesterDraft> & { childBirthYears: readonly number[]; vintageAtoms?: Atom[] }) {
-  const currentYear = new Date().getFullYear()
-  const youngChildren = childBirthYears.filter((y) => y <= currentYear && currentYear - y < 25).length
+  // Rules year: the allowance label must use the same child eligibility as the engine.
+  const { rulesYear } = getCurrentYear()
+  const youngChildren = childBirthYearsUnder25InYear(childBirthYears, rulesYear).length
   const hasChildren = youngChildren > 0
   const [beitragsdynamik, setBeitragsdynamik] = useState(0)
 

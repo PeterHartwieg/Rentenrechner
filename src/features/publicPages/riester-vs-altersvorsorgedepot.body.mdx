@@ -2,6 +2,8 @@ import { activeRules, RULES_YEAR } from '../../rules'
 
 export const AVD_SPECIAL_EXPENSE_OWN_CAP = activeRules.altersvorsorgedepot.specialExpenseOwnContributionCap.toLocaleString('de-DE')
 export const AVD_CONTRACT_CONTRIBUTION_CAP = activeRules.altersvorsorgedepot.contractContributionCapAnnual.toLocaleString('de-DE')
+export const AVD_MINIMUM_OWN_CONTRIBUTION = activeRules.altersvorsorgedepot.minimumOwnContributionAnnual.toLocaleString('de-DE')
+export const AVD_PRODUCT_START_YEAR = String(activeRules.altersvorsorgedepot.productStartYear)
 
 ## Riester oder AVD: die Kernunterschiede
 
@@ -39,7 +41,7 @@ In der Ansparphase unterscheidet sich die Förderlogik: Beide Produkte nutzen ei
 | Grundzulage | feste Grundzulage nach §&nbsp;84 EStG | zweistufige Förderquote: 50&nbsp;% auf das untere Beitragsband, 25&nbsp;% auf das obere Beitragsband, gesetzlich gedeckelt; reduzierter Höchstbetrag für mittelbar Förderberechtigte |
 | Kinderzulage | 185&nbsp;€ pro Kind/Jahr für Kinder vor 2008 geboren, 300&nbsp;€ pro Kind/Jahr ab 2008 (§&nbsp;85 EStG) | bis zu 300&nbsp;€ pro Kind/Jahr (100&nbsp;% des Eigenbeitrags, gedeckelt auf 300&nbsp;€) |
 | Berufseinsteiger-Bonus | einmalig bis Vertragsalter 24 (§&nbsp;84 EStG) | einmalig bis Vertragsalter 24 |
-| Eigenbeitrags-Regel | Mindesteigenbeitrag §&nbsp;86 EStG: max(60&nbsp;€, min(4&nbsp;% Brutto-Vorjahr, 2.100&nbsp;€) − Zulagenanspruch) | Sockelbetrag 120&nbsp;€ pro Jahr (kein einkommensproportionaler Anteil); Förder-Cap auf Eigenbeitragsseite niedriger als bei Riester, vertragsbezogene Beitragsobergrenze höher |
+| Eigenbeitrags-Regel | Mindesteigenbeitrag §&nbsp;86 EStG (bisherige Fassung, Bestandsverträge): max(60&nbsp;€, min(4&nbsp;% Brutto-Vorjahr, 2.100&nbsp;€) − Zulagenanspruch) | Mindesteigenbeitrag {AVD_MINIMUM_OWN_CONTRIBUTION}&nbsp;€ pro Jahr (§&nbsp;86 EStG ab Beitragsjahr {AVD_PRODUCT_START_YEAR}). Die alte Berechnung (4&nbsp;% des Vorjahreseinkommens minus Zulagen) gilt nicht mehr. Förder-Cap auf Eigenbeitragsseite niedriger als bei Riester, vertragsbezogene Beitragsobergrenze höher |
 | Sonderausgabenabzug | §&nbsp;10a EStG (Altvertragsregime): Eigenbeitrag plus Zulagen bis 2.100&nbsp;€ pro Jahr, Günstigerprüfung | §&nbsp;10a EStG (nach Altersvorsorgereformgesetz): Eigenbeitrag bis {AVD_SPECIAL_EXPENSE_OWN_CAP}&nbsp;€ pro Jahr plus zugehörige Zulagen, Günstigerprüfung |
 | Standarddepot-Kosten | abhängig vom Anbieter | gesetzlicher Effektivkosten-Deckel für das Standarddepot |
 | Auszahlbeginn | Vertragsmodalität | frühestens 65, spätestens 70 Jahre |
@@ -63,7 +65,7 @@ Die Vorstellung, beide Produkte hätten dieselbe Förderung, trifft nicht zu.
 - 25&nbsp;% Förderquote auf das obere Beitragsband bis zum Förder-Cap.
 - Beide Stufen zusammen sind gesetzlich gedeckelt; mittelbar förderberechtigte Ehepartner erreichen einen reduzierten Höchstbetrag.
 
-Die Kinderzulage ist beim AVD einheitlich (kein Vor-2008/Ab-2008-Unterschied wie bei Riester) und beitragsproportional gedeckelt. Sockelbetrag, Förder-Cap und Vertragsobergrenze sind eigene Werte des AVD-Regimes, die der Rechner für deine konkreten Annahmen anwendet. Eigene Beiträge oberhalb des Förder-Caps sind möglich, lösen aber weder zusätzliche Zulagen noch zusätzlichen Sonderausgabenabzug aus.
+Die Kinderzulage ist beim AVD einheitlich (kein Vor-2008/Ab-2008-Unterschied wie bei Riester) und beitragsproportional gedeckelt. Das AVD gewährt Zulagen ab Beitragsjahr {AVD_PRODUCT_START_YEAR} nur ab einem Mindesteigenbeitrag von {AVD_MINIMUM_OWN_CONTRIBUTION}&nbsp;€ im Jahr (§&nbsp;86 EStG). Weggefallen ist nur die alte Berechnung aus 4&nbsp;% des Vorjahreseinkommens minus Zulagen. Förder-Cap und Vertragsobergrenze sind eigene Werte des AVD-Regimes, die der Rechner für deine konkreten Annahmen anwendet. Eigene Beiträge oberhalb des Förder-Caps sind möglich, lösen aber weder zusätzliche Zulagen noch zusätzlichen Sonderausgabenabzug aus.
 
 Das ergibt ein anderes Profil: Die volle Riester-Förderung erreichst du mit relativ niedrigem Eigenbeitrag, sobald du den 4&nbsp;%-Mindestbeitrag erbringst. Beim AVD steigt die Grundzulage über zwei Stufen mit dem Eigenbeitrag und ist erst am oberen Ende des Förderbands voll ausgeschöpft.
 
@@ -87,13 +89,13 @@ Per Altersvorsorgereformgesetz wird die Übertragung Riester nach AVD ausdrückl
 Für eine vergleichbare Konstellation (Anfang 30, ein Kind mit Geburtsjahr ab 2008, mittleres rentenversicherungspflichtiges Vorjahresentgelt, geplanter Renteneintritt mit 67) ergeben sich folgende strukturelle Unterschiede:
 
 - **Riester:** Grundzulage und Kinderzulage sind fixe Beträge; der Sonderausgabenabzug nach §&nbsp;10a EStG (Eigenbeitrag plus Zulagen, bis 2.100&nbsp;€ pro Jahr) greift zusätzlich, soweit die Steuerersparnis aus dem Abzug die Zulagen übersteigt. Der Mindesteigenbeitrag richtet sich nach §&nbsp;86 EStG: max(60&nbsp;€, min(4&nbsp;% Brutto-Vorjahr, 2.100&nbsp;€) − Zulagenanspruch).
-- **AVD:** Die Grundzulage ergibt sich aus der zweistufigen Förderquote (50&nbsp;% auf das untere Beitragsband, 25&nbsp;% auf das obere); der zugehörige Sonderausgabenabzug nach §&nbsp;10a EStG (Altersvorsorgereformgesetz) berücksichtigt Eigenbeiträge bis {AVD_SPECIAL_EXPENSE_OWN_CAP}&nbsp;€ pro Jahr plus die hierzu gewährten Zulagen, ebenfalls mit Günstigerprüfung. Die Kinderzulage ist einheitlich (kein Vor-2008/Ab-2008-Unterschied) und beitragsproportional gedeckelt.
+- **AVD:** Die Grundzulage ergibt sich aus der zweistufigen Förderquote (50&nbsp;% auf das untere Beitragsband, 25&nbsp;% auf das obere). Ab Beitragsjahr {AVD_PRODUCT_START_YEAR} gibt es Zulagen nur ab einem Mindesteigenbeitrag von {AVD_MINIMUM_OWN_CONTRIBUTION}&nbsp;€ im Jahr (§&nbsp;86 EStG). Die alte Berechnung (4&nbsp;% des Vorjahreseinkommens minus Zulagen) gilt nicht mehr. Der zugehörige Sonderausgabenabzug nach §&nbsp;10a EStG (Altersvorsorgereformgesetz) berücksichtigt Eigenbeiträge bis {AVD_SPECIAL_EXPENSE_OWN_CAP}&nbsp;€ pro Jahr plus die hierzu gewährten Zulagen, ebenfalls mit Günstigerprüfung. Die Kinderzulage ist einheitlich (kein Vor-2008/Ab-2008-Unterschied) und beitragsproportional gedeckelt.
 
 Welche Förderlogik im konkreten Fall mehr Zulage und mehr Steuerentlastung erzeugt, hängt von Eigenbeitrag, Brutto-Vorjahr, Anzahl und Alter der Kinder sowie dem persönlichen Steuersatz ab. Für die Gesamtbetrachtung kommen Produktkosten, Garantie versus Marktchance und Auszahlweg hinzu. Konkrete Zahlen liefert der Rechner mit den eigenen Eingaben.
 
 ## Was diese Seite nicht beantwortet
 
-Diese Seite vergleicht die Produkteigenschaften auf Basis der vom Bundestag beschlossenen Fassung des Altersvorsorgereformgesetzes (Stand 2026-05-06). Sie trifft keine Aussage darüber, welches Produkt für eine bestimmte Person besser geeignet ist. Konkrete Entscheidungen über Vertragsabschlüsse, Beitragsanpassungen oder Übertragungen erfordern eine individuelle Prüfung. RentenWiki.de ist kein Finanzberater, kein Versicherungsvermittler nach §§&nbsp;[34d](https://www.gesetze-im-internet.de/gewo/__34d.html), [34e](https://www.gesetze-im-internet.de/gewo/__34e.html) GewO und kein Anlageberater nach KWG, WpIG oder WpHG.
+Diese Seite vergleicht die Produkteigenschaften auf Basis des Altersvorsorgereformgesetzes (verkündet am 29. Mai 2026, BGBl. 2026 I Nr.&nbsp;156; Produktstart 1. Januar 2027). Sie trifft keine Aussage darüber, welches Produkt für eine bestimmte Person besser geeignet ist. Konkrete Entscheidungen über Vertragsabschlüsse, Beitragsanpassungen oder Übertragungen erfordern eine individuelle Prüfung. RentenWiki.de ist kein Finanzberater, kein Versicherungsvermittler nach §§&nbsp;[34d](https://www.gesetze-im-internet.de/gewo/__34d.html), [34e](https://www.gesetze-im-internet.de/gewo/__34e.html) GewO und kein Anlageberater nach KWG, WpIG oder WpHG.
 
 ## Häufige Fragen
 
@@ -119,7 +121,7 @@ Eine pauschale Antwort gibt es nicht. Relevante Faktoren sind: Risikobereitschaf
 
 ## Quellen
 
-- Einkommensteuergesetz (EStG): §§&nbsp;[10a](https://www.gesetze-im-internet.de/estg/__10a.html), [22](https://www.gesetze-im-internet.de/estg/__22.html), [84](https://www.gesetze-im-internet.de/estg/__84.html), [85](https://www.gesetze-im-internet.de/estg/__85.html), [86](https://www.gesetze-im-internet.de/estg/__86.html), [92a](https://www.gesetze-im-internet.de/estg/__92a.html), [93](https://www.gesetze-im-internet.de/estg/__93.html).
+- Einkommensteuergesetz (EStG): §§&nbsp;[10a](https://www.gesetze-im-internet.de/estg/__10a.html), [22](https://www.gesetze-im-internet.de/estg/__22.html), [84](https://www.gesetze-im-internet.de/estg/__84.html), [85](https://www.gesetze-im-internet.de/estg/__85.html), [86](https://www.gesetze-im-internet.de/estg/__86.html) (dort die bis 2026 geltende Fassung, die für Riester-Bestandsverträge nach §&nbsp;52 Abs.&nbsp;50a EStG weitergilt; für das AVD ab Beitragsjahr 2027 maßgeblich ist Art.&nbsp;2 Nr.&nbsp;9 des Altersvorsorgereformgesetzes, [BGBl. 2026 I Nr.&nbsp;156](https://www.recht.bund.de/bgbl/1/2026/156/regelungstext.pdf?__blob=publicationFile&v=1)), [92a](https://www.gesetze-im-internet.de/estg/__92a.html), [93](https://www.gesetze-im-internet.de/estg/__93.html).
 - Altersvorsorgeverträge-Zertifizierungsgesetz (AltZertG): §&nbsp;[1](https://www.gesetze-im-internet.de/altzertg/__1.html).
 - [Altersvorsorgereformgesetz: Fragen und Antworten der Bundesregierung](https://www.bundesregierung.de/breg-de/aktuelles/reform-private-altersvorsorge-2400072) (in Kraft seit Ende Mai 2026; Start der neuen Produkte zum 1. Januar 2027).
 - Sozialgesetzbuch V: §§&nbsp;[226](https://www.gesetze-im-internet.de/sgb_5/__226.html), [229](https://www.gesetze-im-internet.de/sgb_5/__229.html), [240](https://www.gesetze-im-internet.de/sgb_5/__240.html).

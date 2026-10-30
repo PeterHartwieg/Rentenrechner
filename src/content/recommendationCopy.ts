@@ -300,7 +300,7 @@ const ATOM_TEMPLATES: Record<AtomId, (atom: Atom) => AtomTemplate> = {
     body:
       'Dein Vertrag erfüllt die Bedingungen für die steuerfreie Kapitalauszahlung nach §52 Abs. 28 EStG a.F. ' +
       '(Vertragsbeginn vor 2005, Laufzeit ≥ 12 Jahre). Der Rechner wendet diese Befreiung automatisch an. ' +
-      'Achtung — bei Leibrente-Auszahlung gilt §22 Nr. 1 Satz 3 a EStG Ertragsanteil auch für pre-2005-Verträge.',
+      'Achtung — bei Leibrente-Auszahlung gilt §22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG Ertragsanteil auch für pre-2005-Verträge.',
   }),
 
   halbeinkuenfte_pav_eligible: (atom) => {

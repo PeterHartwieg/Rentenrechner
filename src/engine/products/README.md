@@ -34,7 +34,7 @@ Each product has a self-contained module here. To touch a product, read only its
 
 - **ETF**: Vorabpauschale (InvStG §18); Abgeltungsteuer on gain; partial exemption (InvStG §20); kapitalverzehr payout.
 - **bAV**: Salary conversion (§3 Nr. 63 EStG); employer SV savings subsidy (§1a BetrAVG); full marginal tax on payout (§22 Nr. 5 EStG); KV/PV as Versorgungsbezug (§229 SGB V).
-- **Private RV**: Tax mode derived from contract start year + runtime; Ertragsanteil for Leibrente (§22 Nr. 1 Satz 3a EStG); paid-up/surrender scenario.
+- **Private RV**: Tax mode derived from contract start year + runtime; Ertragsanteil for Leibrente (§22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG); paid-up/surrender scenario.
 - **Basisrente**: Schicht-1 deductible (§10 Abs. 3 EStG); payout tax = GRV Besteuerungsanteil; capital payout prohibited.
 - **AVD**: Schicht-2 allowances (§10a/AVD Reform 2026); Standarddepot glidepath; §22 Nr. 5 EStG payout; partial capital option.
 - **Riester**: Legacy §84–§86 EStG allowances; §10a Günstigerprüfung; §22 Nr. 5 EStG payout; ≤30% partial lump sum (§93 Abs. 2 EStG).

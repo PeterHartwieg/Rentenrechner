@@ -4,10 +4,12 @@
  * Year-specific rates (BBG, GKV Zusatzbeitrag, Rentenwert, Basiszins, cohort
  * tables, …) live in a year-named file like `de2026.ts`. To switch rule years:
  *
- *   1. Add `de2027.ts` (copy from `de2026.ts`, update changed values AND the
+ *   1. Add `de2027.ts` with officially verified statutory values AND the
  *      co-located provenance metadata block at the bottom of the file; any
  *      same-year amendment bumps `revision` and re-points the affected
- *      `source` in the same commit).
+ *      `source` in the same commit.
+ *      TODO(#171): implement the 2027 rollover with official source URLs;
+ *      never estimate or copy forward unverified statutory values.
  *   2. Change the `activeRules` re-export below to point at the new year.
  *   3. Run tests; goldens that depend on annual rates may need updates — and
  *      every new value set needs its own external captures before it may ship

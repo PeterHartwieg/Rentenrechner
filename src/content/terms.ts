@@ -195,7 +195,7 @@ export const TERMS_LIST: Term[] = [
     expertLabel: 'Ertrags­anteils­besteuerung',
     shortHelp:
       'Bei lebens­langer Rente aus pAV ist nur ein vom Renten­beginn­alter abhängiger Anteil der Rente steuer­pflichtig (z. B. 17 % bei Renten­beginn 67).',
-    legalReference: '§22 Nr. 1 Satz 3 a aa EStG',
+    legalReference: '§22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG',
     category: 'insurance',
   },
   {
@@ -256,10 +256,12 @@ export const TERMS_LIST: Term[] = [
   },
   {
     id: 'mindesteigenbeitrag',
-    plainLabel: 'Mindest­beitrag für volle Zulage',
+    plainLabel: 'Mindest­eigen­beitrag',
     expertLabel: 'Mindest­eigen­beitrag',
+    // 120 €/Jahr: § 86 EStG i.d.F. des Altersvorsorgereformgesetzes
+    // (BGBl. 2026 I Nr. 156, verkündet 29.05.2026).
     shortHelp:
-      'Riester / AVD: 4 % deines rentenversicherungs­pflichtigen Vorjahres­einkommens minus Zulagen. Wer weniger zahlt, bekommt Zulagen nur anteilig.',
+      'Bestehender Riester-Vertrag in der bisherigen Förderung: 4 % des renten­versicherungs­pflichtigen Vorjahres­einkommens minus Zulagen, mindestens 60 € im Jahr. Wer weniger zahlt, bekommt die Zulage nur anteilig. Alters­vorsorge­depot ab Beitrags­jahr 2027: Zulagen nur ab einem Eigen­beitrag von 120 € im Jahr. Weggefallen ist nur die alte Berechnung aus 4 % des Vorjahres­einkommens minus Zulagen. Wer ab 2027 einen neuen geförderten Vertrag abschließt oder in die neue Förderung wechselt, für den gilt die 120-€-Regel für alle Verträge (§ 52 Abs. 50a EStG).',
     legalReference: '§86 EStG',
     category: 'foerderung',
   },
