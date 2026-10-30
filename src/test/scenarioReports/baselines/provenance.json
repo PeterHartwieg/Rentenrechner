@@ -1,9 +1,9 @@
 {
   "label": "INTERNAL REGRESSION",
-  "baseSha": "54b4959ef75719fdf858da28db2af37e45a0e374",
-  "baseShaCapturedAt": "2026-10-28T14:21:33.599Z",
+  "baseSha": "4d7a317be5fda01d46d9e30d94e91fb6f1f2409d",
+  "baseShaCapturedAt": "2026-10-30T13:35:24.605Z",
   "engineSources": {
-    "digestSha": "60cff48c4b6d4f15",
+    "digestSha": "d8ceb5a95a2d3caf",
     "dirty": false,
     "paths": []
   },
@@ -11,10 +11,10 @@
     "ruleSet": {
       "ruleSetId": "de2026",
       "ruleYear": 2026,
-      "revision": 2,
-      "contentFingerprint": "083462e03b0836a5"
+      "revision": 3,
+      "contentFingerprint": "2ebfd51c7a0ed60b"
     },
-    "snapshotSha": "56ed0b209083527e",
+    "snapshotSha": "101e730879ce820c",
     "cohortSchedules": {
       "besteuerungsanteilGrvByRetirementYear": {
         "2005": 0.5,
@@ -361,8 +361,8 @@
         "56": 0.26,
         "57": 0.25,
         "58": 0.24,
-        "59": 0.24,
-        "60": 0.23,
+        "59": 0.23,
+        "60": 0.22,
         "61": 0.22,
         "62": 0.21,
         "63": 0.2,
@@ -370,13 +370,13 @@
         "65": 0.18,
         "66": 0.18,
         "67": 0.17,
-        "68": 0.17,
+        "68": 0.16,
         "69": 0.15,
         "70": 0.15,
         "71": 0.14,
-        "72": 0.14,
+        "72": 0.13,
         "73": 0.13,
-        "74": 0.13,
+        "74": 0.12,
         "75": 0.11
       },
       "halbeinkuenfteMinAgeByContractStartYear": {
@@ -569,8 +569,246 @@
         "married": 72
       },
       "aktienfondsTeilfreistellungPrivat": 0.3,
-      "pvBeitragszuschlagKinderloseMinAge": 23
+      "pvBeitragszuschlagKinderloseMinAge": 23,
+      "ertragsanteilBands": [
+        [
+          0,
+          59
+        ],
+        [
+          2,
+          58
+        ],
+        [
+          4,
+          57
+        ],
+        [
+          6,
+          56
+        ],
+        [
+          9,
+          55
+        ],
+        [
+          11,
+          54
+        ],
+        [
+          13,
+          53
+        ],
+        [
+          15,
+          52
+        ],
+        [
+          17,
+          51
+        ],
+        [
+          19,
+          50
+        ],
+        [
+          21,
+          49
+        ],
+        [
+          23,
+          48
+        ],
+        [
+          25,
+          47
+        ],
+        [
+          27,
+          46
+        ],
+        [
+          28,
+          45
+        ],
+        [
+          30,
+          44
+        ],
+        [
+          32,
+          43
+        ],
+        [
+          33,
+          42
+        ],
+        [
+          35,
+          41
+        ],
+        [
+          36,
+          40
+        ],
+        [
+          38,
+          39
+        ],
+        [
+          39,
+          38
+        ],
+        [
+          41,
+          37
+        ],
+        [
+          42,
+          36
+        ],
+        [
+          43,
+          35
+        ],
+        [
+          45,
+          34
+        ],
+        [
+          46,
+          33
+        ],
+        [
+          48,
+          32
+        ],
+        [
+          49,
+          31
+        ],
+        [
+          50,
+          30
+        ],
+        [
+          51,
+          29
+        ],
+        [
+          53,
+          28
+        ],
+        [
+          54,
+          27
+        ],
+        [
+          55,
+          26
+        ],
+        [
+          57,
+          25
+        ],
+        [
+          58,
+          24
+        ],
+        [
+          59,
+          23
+        ],
+        [
+          60,
+          22
+        ],
+        [
+          62,
+          21
+        ],
+        [
+          63,
+          20
+        ],
+        [
+          64,
+          19
+        ],
+        [
+          65,
+          18
+        ],
+        [
+          67,
+          17
+        ],
+        [
+          68,
+          16
+        ],
+        [
+          69,
+          15
+        ],
+        [
+          71,
+          14
+        ],
+        [
+          72,
+          13
+        ],
+        [
+          74,
+          12
+        ],
+        [
+          75,
+          11
+        ],
+        [
+          76,
+          10
+        ],
+        [
+          78,
+          9
+        ],
+        [
+          80,
+          8
+        ],
+        [
+          81,
+          7
+        ],
+        [
+          83,
+          6
+        ],
+        [
+          85,
+          5
+        ],
+        [
+          88,
+          4
+        ],
+        [
+          92,
+          3
+        ],
+        [
+          94,
+          2
+        ],
+        [
+          97,
+          1
+        ]
+      ]
     }
   },
-  "notes": "Erfasst mit: npm run scenario:update -- --reason \"Review round 4: Riester allowance recipient sorts by full allowance before the paying key and the career-starter bonus breaks equal claims towards the paying contract; no scenario values change\". rulesIdentity friert die RuleSetIdentity aus src/rules/ruleMetadata.ts (ruleSetId, Revision, Content-Fingerprint über Jahresregeln UND legalRuleData-Katalog), den Snapshot-Sha des kanonischen Regel-Snapshots, die evaluierten Kohortentabellen (Code, den kein JSON-Snapshot sehen kann) und die vollen Jahresregeln als kanonisches JSON ein; engineSources.digestSha identifiziert den Rechenwerkscode der Basis-Revision (sha256-Präfix). Rules-Identität dieser Erfassung: ab65d94d810d72d1. Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise."
+  "notes": "Erfasst mit: npm run scenario:update -- --reason \"Correct Ertragsanteil bands against official EStG section 22 table; revision 3 and fingerprint now include band data\". rulesIdentity friert die RuleSetIdentity aus src/rules/ruleMetadata.ts (ruleSetId, Revision, Content-Fingerprint über Jahresregeln UND legalRuleData-Katalog), den Snapshot-Sha des kanonischen Regel-Snapshots, die evaluierten Kohortentabellen (Code, den kein JSON-Snapshot sehen kann) und die vollen Jahresregeln als kanonisches JSON ein; engineSources.digestSha identifiziert den Rechenwerkscode der Basis-Revision (sha256-Präfix). Rules-Identität dieser Erfassung: 363d4c49930bdd91. Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise."
 }
