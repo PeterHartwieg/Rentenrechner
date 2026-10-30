@@ -1,3 +1,5 @@
+import { RULES_YEAR } from '../rules'
+
 // ---------------------------------------------------------------------------
 // publicRouteRegistry — single source of truth for every prerendered public
 // route on rentenwiki.de. Drives:
@@ -158,13 +160,13 @@ export const OG_DEFAULT_IMAGE_PATH = '/og/default.png'
 export const publicRouteRegistry = {
   '/': {
     canonical: '/',
-    title: 'Altersvorsorge-Rechner 2026 | RentenWiki.de',
+    title: `Altersvorsorge-Rechner ${RULES_YEAR} | RentenWiki.de`,
     metaDescription:
       'Kostenloser Rechner für deine Altersvorsorge: ETF, bAV, Riester, Basisrente, ' +
-      'AVD und private Rente vergleichen. Lokal im Browser, kein Account, Werte 2026.',
+      `AVD und private Rente vergleichen. Lokal im Browser, kein Account, Werte ${RULES_YEAR}.`,
     h1: 'Was bekommst du wirklich an Rente?',
     summary:
-      'Modellrechner für die deutsche Altersvorsorge mit Werten 2026. Vergleicht alle ' +
+      `Modellrechner für die deutsche Altersvorsorge mit Werten ${RULES_YEAR}. Vergleicht alle ` +
       'Schicht-1- bis Schicht-3-Wege unter denselben Annahmen, ermittelt Rentenlücke und ' +
       'Nettoauszahlung.',
     dateModified: '2026-09-11',
@@ -204,7 +206,7 @@ export const publicRouteRegistry = {
     metaDescription:
       'Übersicht aller Artikel von RentenWiki.de: Rentenlücke, bAV, ETF, ' +
       'Riester, Altersvorsorgedepot, Basisrente, private Rentenversicherung und ' +
-      'Portfolio-Planung. Quelloffen, ohne Werbung, Werte 2026.',
+      `Portfolio-Planung. Quelloffen, ohne Werbung, Werte ${RULES_YEAR}.`,
     h1: 'Artikel',
     summary:
       'Übersicht aller Themen rund um die deutsche Altersvorsorge. Jede Seite ' +
@@ -234,11 +236,11 @@ export const publicRouteRegistry = {
   },
   '/rentenluecke-rechner': {
     canonical: '/rentenluecke-rechner',
-    title: 'Rentenlücke berechnen 2026 | RentenWiki.de',
+    title: `Rentenlücke berechnen ${RULES_YEAR} | RentenWiki.de`,
     metaDescription:
       'Rentenlücke berechnen: gewünschte Nettorente minus erwartete GRV-Rente plus ' +
-      'weitere Vorsorge. Kostenlos, lokal im Browser, Werte 2026.',
-    h1: 'Rentenlücke berechnen: Versorgungslücke in Deutschland 2026',
+      `weitere Vorsorge. Kostenlos, lokal im Browser, Werte ${RULES_YEAR}.`,
+    h1: `Rentenlücke berechnen: Versorgungslücke in Deutschland ${RULES_YEAR}`,
     summary:
       'Berechnet die Rentenlücke aus Wunschrente, gesetzlicher Rente und privater Vorsorge. ' +
       'Zeigt, welche Werte aus deiner Renteninformation der Rechner braucht.',
@@ -267,11 +269,11 @@ export const publicRouteRegistry = {
   // ---------------------------------------------------------------------------
   '/bav-rechner': {
     canonical: '/bav-rechner',
-    title: 'bAV Rechner: Entgeltumwandlung 2026 | RentenWiki.de',
+    title: `bAV Rechner: Entgeltumwandlung ${RULES_YEAR} | RentenWiki.de`,
     metaDescription:
       'Betriebliche Altersvorsorge berechnen: Entgeltumwandlung, Arbeitgeberzuschuss, ' +
-      'GRV-Reduktion, KV/PV in der Rente. Lokal im Browser, kostenlos, Werte 2026.',
-    h1: 'bAV Rechner: Betriebliche Altersvorsorge und Entgeltumwandlung 2026',
+      `GRV-Reduktion, KV/PV in der Rente. Lokal im Browser, kostenlos, Werte ${RULES_YEAR}.`,
+    h1: `bAV Rechner: Betriebliche Altersvorsorge und Entgeltumwandlung ${RULES_YEAR}`,
     summary:
       'Zeigt, wie sich Entgeltumwandlung mit Steuer- und SV-Vorteil, Arbeitgeberzuschuss und ' +
       'nachgelagerter Besteuerung rechnet und wo bAV gegenüber einem ETF-Sparplan profitiert ' +
@@ -293,11 +295,11 @@ export const publicRouteRegistry = {
   },
   '/etf-vs-bav': {
     canonical: '/etf-vs-bav',
-    title: 'ETF vs. bAV vergleichen 2026 | RentenWiki.de',
+    title: `ETF vs. bAV vergleichen ${RULES_YEAR} | RentenWiki.de`,
     metaDescription:
       'ETF-Sparplan und bAV bei gleicher Nettokostenbasis vergleichen: Steuern, ' +
-      'Arbeitgeberzuschuss, Kosten und KV/PV-Unterschiede. Kostenlos, Werte 2026.',
-    h1: 'ETF vs. bAV: Vergleich der Altersvorsorge bei gleicher Nettokostenbasis 2026',
+      `Arbeitgeberzuschuss, Kosten und KV/PV-Unterschiede. Kostenlos, Werte ${RULES_YEAR}.`,
+    h1: `ETF vs. bAV: Vergleich der Altersvorsorge bei gleicher Nettokostenbasis ${RULES_YEAR}`,
     summary:
       'Vergleicht ETF-Sparplan und bAV bei identischer Nettokostenbasis: Steuervorteil, ' +
       'Arbeitgeberzuschuss, GRV-Reduktion, Kosten sowie Steuer und KV/PV in der Auszahlphase.',
@@ -321,14 +323,14 @@ export const publicRouteRegistry = {
   // ---------------------------------------------------------------------------
   '/riester-rechner': {
     canonical: '/riester-rechner',
-    title: 'Riester-Rechner 2026 | RentenWiki.de',
+    title: `Riester-Rechner ${RULES_YEAR} | RentenWiki.de`,
     metaDescription:
       'Riester-Rente berechnen: Grund- und Kinderzulage, Sonderausgabenabzug § 10a EStG, ' +
-      'Günstigerprüfung, nachgelagerte Auszahlung. Kostenlos, Werte 2026.',
-    h1: 'Riester-Rechner 2026: Zulagen, Steuerförderung und Auszahlung berechnen',
+      `Günstigerprüfung, nachgelagerte Auszahlung. Kostenlos, Werte ${RULES_YEAR}.`,
+    h1: `Riester-Rechner ${RULES_YEAR}: Zulagen, Steuerförderung und Auszahlung berechnen`,
     summary:
       'Modelliert Riester-Förderung (Zulagen plus Sonderausgabenabzug § 10a EStG mit ' +
-      'Günstigerprüfung) und die Auszahlung nach § 22 Nr. 5 EStG. Werte 2026.',
+      `Günstigerprüfung) und die Auszahlung nach § 22 Nr. 5 EStG. Werte ${RULES_YEAR}.`,
     dateModified: '2026-08-02',
     datePublished: '2026-05-05',
     robots: 'index,follow',
@@ -351,11 +353,11 @@ export const publicRouteRegistry = {
   },
   '/altersvorsorgedepot-rechner': {
     canonical: '/altersvorsorgedepot-rechner',
-    title: 'Altersvorsorgedepot (AVD) Rechner 2026 | RentenWiki.de',
+    title: `Altersvorsorgedepot (AVD) Rechner ${RULES_YEAR} | RentenWiki.de`,
     metaDescription:
       'Altersvorsorgedepot (AVD) berechnen: neues Schicht-2-Depot ab 2027 ohne ' +
-      'Versicherungsmantel, Grundzulage 50/25 %, Auszahlung. Kostenlos, Werte 2026.',
-    h1: 'Altersvorsorgedepot-Rechner 2026: Neues Schicht-2-Produkt vergleichen',
+      `Versicherungsmantel, Grundzulage 50/25 %, Auszahlung. Kostenlos, Werte ${RULES_YEAR}.`,
+    h1: `Altersvorsorgedepot-Rechner ${RULES_YEAR}: Neues Schicht-2-Produkt vergleichen`,
     summary:
       'Modelliert das Altersvorsorgedepot (AVD), das neue Schicht-2-Depotprodukt ohne ' +
       'Versicherungsmantel: Anlage, eigener Förderpfad nach Altersvorsorgereformgesetz, ' +
@@ -382,11 +384,11 @@ export const publicRouteRegistry = {
   },
   '/riester-vs-altersvorsorgedepot': {
     canonical: '/riester-vs-altersvorsorgedepot',
-    title: 'Riester oder AVD? Vergleich 2026 | RentenWiki.de',
+    title: `Riester oder AVD? Vergleich ${RULES_YEAR} | RentenWiki.de`,
     metaDescription:
       'Riester-Rente vs. Altersvorsorgedepot (AVD): Förderstruktur, Zulagen, Übertragung und ' +
-      'Auszahlung im Modell vergleichen. Kostenlos, Werte 2026.',
-    h1: 'Riester oder Altersvorsorgedepot? Vergleich der geförderten Schicht-2-Wege 2026',
+      `Auszahlung im Modell vergleichen. Kostenlos, Werte ${RULES_YEAR}.`,
+    h1: `Riester oder Altersvorsorgedepot? Vergleich der geförderten Schicht-2-Wege ${RULES_YEAR}`,
     summary:
       'Stellt Riester und Altersvorsorgedepot (AVD) gegenüber: Förderstruktur, Produktform ' +
       '(Versicherung oder Depot), Übertragungsmöglichkeiten und nachgelagerte Auszahlung.',
@@ -422,12 +424,12 @@ export const publicRouteRegistry = {
   // Issue #06: Basisrente + private RV topic cluster
   '/basisrente-rechner': {
     canonical: '/basisrente-rechner',
-    title: 'Basisrente (Rürup) Rechner 2026 | RentenWiki.de',
+    title: `Basisrente (Rürup) Rechner ${RULES_YEAR} | RentenWiki.de`,
     metaDescription:
       'Basisrente (Rürup) berechnen: Sonderausgabenabzug § 10 Abs. 3 EStG, ' +
       'kohortenbezogener Besteuerungsanteil und gesetzliche Auszahlung als ' +
-      'lebenslange Leibrente. Werte 2026.',
-    h1: 'Basisrente (Rürup) Rechner 2026: Steuervorteil und Auszahlungsbeschränkungen',
+      `lebenslange Leibrente. Werte ${RULES_YEAR}.`,
+    h1: `Basisrente (Rürup) Rechner ${RULES_YEAR}: Steuervorteil und Auszahlungsbeschränkungen`,
     summary:
       'Erklärt die Basisrente (Rürup): Sonderausgabenabzug nach § 10 Abs. 3 EStG, ' +
       'kohortenbezogener Besteuerungsanteil und gesetzliche Auszahlungsbeschränkung ' +
@@ -454,11 +456,11 @@ export const publicRouteRegistry = {
   },
   '/private-rentenversicherung-rechner': {
     canonical: '/private-rentenversicherung-rechner',
-    title: 'Private Rentenversicherung Rechner 2026 | RentenWiki.de',
+    title: `Private Rentenversicherung Rechner ${RULES_YEAR} | RentenWiki.de`,
     metaDescription:
       'Private Rentenversicherung berechnen: Versicherungsmantel-Kosten, Steuerregime ' +
-      'nach Vertragsbeginn, Leibrente vs. Kapitalverzehr. Kostenlos, Werte 2026.',
-    h1: 'Private Rentenversicherung Rechner 2026: Kosten, Steuerregime und Auszahlung',
+      `nach Vertragsbeginn, Leibrente vs. Kapitalverzehr. Kostenlos, Werte ${RULES_YEAR}.`,
+    h1: `Private Rentenversicherung Rechner ${RULES_YEAR}: Kosten, Steuerregime und Auszahlung`,
     summary:
       'Modelliert die private Rentenversicherung: Mantel- und Fondskosten, Steuerregime ' +
       'je nach Vertragsbeginn (vor 2005, Halbeinkünfte, Abgeltungsteuer) und Leibrente ' +
@@ -488,11 +490,11 @@ export const publicRouteRegistry = {
   // ---------------------------------------------------------------------------
   '/rente-netto-berechnen': {
     canonical: '/rente-netto-berechnen',
-    title: 'Rente netto berechnen 2026 | RentenWiki.de',
+    title: `Rente netto berechnen ${RULES_YEAR} | RentenWiki.de`,
     metaDescription:
       'Gesetzliche Rente netto berechnen: nachgelagerte Besteuerung, KVdR oder freiwillige ' +
-      'GKV, Pflegeversicherung. Kostenlos, lokal im Browser, Werte 2026.',
-    h1: 'Rente netto berechnen: gesetzliche Rente nach Steuer und KV/PV 2026',
+      `GKV, Pflegeversicherung. Kostenlos, lokal im Browser, Werte ${RULES_YEAR}.`,
+    h1: `Rente netto berechnen: gesetzliche Rente nach Steuer und KV/PV ${RULES_YEAR}`,
     summary:
       'Rechnet die gesetzliche Rente netto: nachgelagerte Besteuerung nach § 22 EStG, KVdR ' +
       '(§ 226 SGB V) oder freiwillige GKV (§ 240 SGB V) und Pflegeversicherung.',
@@ -520,11 +522,11 @@ export const publicRouteRegistry = {
   },
   '/altersvorsorgeprodukte-vergleichen': {
     canonical: '/altersvorsorgeprodukte-vergleichen',
-    title: 'Altersvorsorge vergleichen 2026 | RentenWiki.de',
+    title: `Altersvorsorge vergleichen ${RULES_YEAR} | RentenWiki.de`,
     metaDescription:
       'Mehrere Vorsorgeverträge gemeinsam planen: ETF, bAV, Riester, Basisrente, AVD, ' +
-      'private Rente. Portfolio-Modus, kein Broker, keine Provision. Werte 2026.',
-    h1: 'Altersvorsorgeprodukte vergleichen: ETF, bAV, Riester und mehr gemeinsam planen 2026',
+      `private Rente. Portfolio-Modus, kein Broker, keine Provision. Werte ${RULES_YEAR}.`,
+    h1: `Altersvorsorgeprodukte vergleichen: ETF, bAV, Riester und mehr gemeinsam planen ${RULES_YEAR}`,
     summary:
       'Portfolio-Modus für mehrere Vorsorgeverträge gleichzeitig (ETF, bAV, Riester, ' +
       'Basisrente, AVD, private Rente) mit Transfer-Ereignissen und Haushaltsperspektive.',
@@ -561,7 +563,7 @@ export const publicRouteRegistry = {
     title: 'Methode & Quellen | RentenWiki.de',
     metaDescription:
       'Wie RentenWiki.de rechnet: Renditeannahmen, Steuer- und Sozialversicherungs-Modell, ' +
-      'statutorische Werte 2026 und Quellen. Quelloffen, ohne Werbung, ohne Provisionen.',
+      `statutorische Werte ${RULES_YEAR} und Quellen. Quelloffen, ohne Werbung, ohne Provisionen.`,
     h1: 'Methode & Quellen',
     summary:
       'Diese Seite dokumentiert alle Berechnungsmodelle, Annahmen und Datenquellen, die ' +
@@ -595,11 +597,11 @@ export const publicRouteRegistry = {
   // ---------------------------------------------------------------------------
   '/vergleich': {
     canonical: '/vergleich',
-    title: 'Sparformen vergleichen 2026 | RentenWiki.de',
+    title: `Sparformen vergleichen ${RULES_YEAR} | RentenWiki.de`,
     metaDescription:
       'Sparformen für die Altersvorsorge direkt vergleichen: ETF, bAV, Riester, ' +
       'Basisrente, Altersvorsorgedepot und private Rente bei gleichem Eigenanteil. ' +
-      'Lokal im Browser, kein Account, Werte 2026.',
+      `Lokal im Browser, kein Account, Werte ${RULES_YEAR}.`,
     h1: 'Sparformen vergleichen',
     summary:
       'Vergleicht die gewählten Sparformen bei gleichem eigenem Monatsbeitrag und zeigt ' +
@@ -628,11 +630,11 @@ export const publicRouteRegistry = {
     metaDescription:
       'Aufschlüsselung pro Sparform: was du selbst zahlst, was Förderung oder Arbeitgeber ' +
       'beisteuert, was Kosten und Steuer wegnehmen und was im Alter monatlich übrig bleibt. ' +
-      'Werte 2026.',
+      `Werte ${RULES_YEAR}.`,
     h1: 'Wohin geht jeder Euro?',
     summary:
       'Pro-Produkt-Aufschlüsselung der sechs Sparformen entlang dreier Phasen — Ansparphase, ' +
-      'Rentenbeginn und laufender Bezug. Modell-Werte 2026 mit Beispielannahmen, wenn noch ' +
+      `Rentenbeginn und laufender Bezug. Modell-Werte ${RULES_YEAR} mit Beispielannahmen, wenn noch ` +
       'kein eigener Vergleich angelegt ist.',
     dateModified: '2026-05-21',
     datePublished: '2026-05-21',
@@ -662,7 +664,7 @@ export const publicRouteRegistry = {
     title: 'Deine Angaben | RentenWiki.de',
     metaDescription:
       'Eingabeflächen für den RentenWiki-Modellrechner: Person, Einkommen, geplanter ' +
-      'Renteneintritt und wirtschaftliche Annahmen. Lokal im Browser, kein Account, Werte 2026.',
+      `Renteneintritt und wirtschaftliche Annahmen. Lokal im Browser, kein Account, Werte ${RULES_YEAR}.`,
     h1: 'Deine Angaben',
     summary:
       'Person, Einkommen, geplanter Renteneintritt und wirtschaftliche Annahmen. ' +

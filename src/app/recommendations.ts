@@ -19,6 +19,7 @@
  *   into its existing public return shapes — compare-mode UI is byte-identical.
  */
 
+import { getCurrentYear } from '../rules/currentYear'
 import type { GermanRules, ProductResult } from '../domain'
 import type { PortfolioFunding, Workspace } from '../domain/workspace'
 import type { CombinedResult } from '../engine/portfolioCombine'
@@ -496,9 +497,8 @@ const sparerpauschbetragRemainingRule: Rule = (input: RuleEngineInput): Atom | n
 // Vintage-detection rules (issue 13)
 // ---------------------------------------------------------------------------
 
-// Use activeRules.year instead of new Date().getFullYear() so the engine and rules
-// engine stay consistent across year boundaries and in tests.
-const RULES_YEAR = activeRules.year
+// Rules year: vintage runtime and tax routing must match the engine baseline.
+const { rulesYear: RULES_YEAR } = getCurrentYear()
 
 /**
  * Emits vintage atoms for pAV (InsuranceInstance) instances.
