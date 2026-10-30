@@ -17,7 +17,12 @@ export interface GermanRules {
     specialExpenseOwnContributionCap: number
     /** Maximum annual contract own contribution (no extra allowance above subsidy band). */
     contractContributionCapAnnual: number
-    /** Minimum own contribution required for any allowances (120 EUR/year). */
+    /**
+     * Minimum own contribution required for any allowances (120 EUR/year).
+     * § 86 EStG i.d.F. des Altersvorsorgereformgesetzes (BGBl. 2026 I Nr. 156):
+     * from Beitragsjahr 2027, Zulagen require this amount. The old 4 % calculation
+     * is gone; this floor is not.
+     */
     minimumOwnContributionAnnual: number
     /** Separate minimum for indirect eligibility under §79 Satz 2 Nr. 4 EStG (reform). */
     indirectEligibilityMinimumAnnual: number

@@ -366,7 +366,9 @@ describe('calculateAvdFunding — §10a eligibility gate (#363)', () => {
   })
 
   it('keeps the §10a deduction for a directly eligible saver below the 120 EUR minimum contribution', () => {
-    // For directly eligible savers, the minimum gates only the Zulage.
+    // § 86 EStG i.d.F. des Altersvorsorgereformgesetzes (BGBl. 2026 I Nr. 156):
+    // from Beitragsjahr 2027, Zulagen require 120 EUR/year. Below that, the
+    // Zulage is zero. For directly eligible savers, the minimum gates only the Zulage.
     const result = calculateAvdFunding(rules, salary, {
       ...avdBase,
       monthlyOwnContribution: 5, // 60 EUR/year — below minimumOwnContributionAnnual

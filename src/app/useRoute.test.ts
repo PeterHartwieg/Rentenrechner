@@ -13,6 +13,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createElement } from 'react'
+import { renderToString } from 'react-dom/server'
 import { STORAGE_KEY_V1, STORAGE_KEY_V2 } from '../storageKeys'
 import {
   appViewFromUrl,
@@ -22,6 +24,8 @@ import {
   routeToPath,
   routeToHref,
   ROUTES,
+  useRoute,
+  type UseRouteResult,
 } from './useRoute'
 
 // ---------------------------------------------------------------------------
@@ -120,6 +124,28 @@ describe('detectSavedMode', () => {
     expect(detectSavedMode()).toBe('compare')
   })
 
+  it('recognizes share URLs before inspecting saved mode', () => {
+    window.location.search = '?s=shared-state'
+    store[STORAGE_KEY_V2] = JSON.stringify({ mode: 'combine' })
+    expect(detectSavedMode()).toBe('compare')
+  })
+
+  it.each(['{broken', 'null', '[]', 'false', '42', '"text"'])(
+    'falls back to v1 for unusable v2 data: %s', (raw) => {
+      store[STORAGE_KEY_V2] = raw
+      expect(detectSavedMode()).toBeNull()
+      store[STORAGE_KEY_V1] = '{}'
+      expect(detectSavedMode()).toBe('compare')
+    },
+  )
+
+  it('handles absent storage and storage access errors', () => {
+    vi.stubGlobal('localStorage', undefined)
+    expect(detectSavedMode()).toBeNull()
+    vi.stubGlobal('localStorage', { getItem() { throw new Error('blocked') } })
+    expect(detectSavedMode()).toBeNull()
+  })
+
   // -------------------------------------------------------------------------
   // Back-button regression (PR 296 R3 - Codex R2 P1)
   //
@@ -170,6 +196,44 @@ describe('detectSavedMode', () => {
     const restored = appViewFromMode(detectSavedMode())
     expect(restored).toBe('compare')
   })
+})
+
+describe('pathToRoute edge cases', () => {
+  it.each([
+    ['/methode/', ROUTES.methode],
+    ['/vertrag/', ROUTES.notFound],
+    ['/vertrag', ROUTES.notFound],
+    ['/unknown', ROUTES.notFound],
+    ['', ROUTES.notFound],
+    ['/vertrag/x/bearbeiten/', ROUTES.vertragBearbeiten('x')],
+    ['/vertrag/bav%3A1%2F%C3%A4%20x/', ROUTES.vertrag('bav:1/ä x')],
+    ['/vertrag/bav%3A1%2F%C3%A4%20x/bearbeiten/', ROUTES.vertragBearbeiten('bav:1/ä x')],
+    ['/vertrag/%E0%A4%A', ROUTES.notFound],
+  ])('parses %s', (path, expected) => {
+    expect(pathToRoute(path)).toEqual(expected)
+  })
+
+  it('encodes and round-trips arbitrary instance IDs in both dynamic routes', () => {
+    for (const makeRoute of [ROUTES.vertrag, ROUTES.vertragBearbeiten]) {
+      const route = makeRoute('bav:1/ä x%?#')
+      expect(pathToRoute(routeToPath(route))).toEqual(route)
+    }
+  })
+
+  it('round-trips the non-public capital route', () => {
+    expect(pathToRoute(routeToPath(ROUTES.kapital))).toEqual(ROUTES.kapital)
+  })
+})
+
+it('initializes to home and safely ignores navigation during SSR', () => {
+  let captured: UseRouteResult | undefined
+  function Probe() {
+    captured = useRoute()
+    return null
+  }
+  renderToString(createElement(Probe))
+  expect(captured?.route).toEqual(ROUTES.home)
+  expect(() => captured?.navigate(ROUTES.methode)).not.toThrow()
 })
 
 // ---------------------------------------------------------------------------

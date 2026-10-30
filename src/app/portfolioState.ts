@@ -14,6 +14,7 @@
  *   - `useCalculatorState`: compare-mode keeps the singleton API.
  */
 
+import { getCurrentYear } from '../rules/currentYear'
 import { useCallback, useSyncExternalStore } from 'react'
 import type {
   Scenario,
@@ -847,7 +848,8 @@ export function usePortfolioState(): UsePortfolioStateApi {
   }, [])
 
   const archiveAndRestart = useCallback((): SavedScenario => {
-    const currentYear = new Date().getFullYear()
+    // Calendar year: the archive label records when the user saved it.
+    const { calendarYear: currentYear } = getCurrentYear()
     const archiveName = `Baseline ${currentYear}`
     // Read the live workspace from the store rather than this render's
     // closure, so an archive that follows another mutation in the same tick

@@ -53,7 +53,9 @@ import { childBirthYearsUnder25InYear } from './childEligibility'
  * Tier 1: 50% of own contributions up to 360 EUR/year → max 180 EUR.
  * Tier 2: 25% of own contributions from 360 EUR to 1 800 EUR/year → max 360 EUR.
  * Maximum: 540 EUR/year at 1 800 EUR own contribution.
- * Below 120 EUR minimum own contribution: zero.
+ * Below 120 EUR/year: zero. § 86 EStG i.d.F. des Altersvorsorgereformgesetzes
+ * (BGBl. 2026 I Nr. 156): from Beitragsjahr 2027, Zulagen require that
+ * Mindesteigenbeitrag. The old 4 % calculation is gone; this floor is not.
  *
  * §10a EStG i.d.F. Altersvorsorgereformgesetz (BGBl. 2026 I Nr. 156).
  */
@@ -71,7 +73,9 @@ export function computeBasicAllowance(ownContributionAnnual: number, rules: Germ
  * Child allowance (Kinderzulage) per year.
  *
  * 100% of own contribution per eligible child, capped at 300 EUR/child/year.
- * Requires own contribution ≥ 120 EUR (minimum). See research file for Kindergeld attribution.
+ * Requires own contribution ≥ 120 EUR/year. § 86 EStG i.d.F. des
+ * Altersvorsorgereformgesetzes (BGBl. 2026 I Nr. 156). See research file
+ * for Kindergeld attribution.
  */
 export function computeChildAllowance(
   ownContributionAnnual: number,
