@@ -196,7 +196,7 @@ export const de2026Rules: GermanRules = {
 export const de2026RulesMetadata: RuleSetMetadata = {
   ruleSetId: 'de2026',
   ruleYear: 2026,
-  revision: 2,
+  revision: 3,
   calculationModel: TAX_CALCULATION_MODEL,
   scope:
     'Covers the tax areas routed through src/engine/tax.ts and their rule inputs ' +

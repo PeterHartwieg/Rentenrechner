@@ -189,7 +189,8 @@ export const REPLAY_LIMITATIONS: readonly string[] = [
  * `legalConstants.ts` (`besteuerungsanteilGrv`, `versorgungsfreibetrag`,
  * `ertragsanteilByAge`, `halbeinkuenfteMinAgeForContractStartYear`) are code,
  * not data — their behavior is pinned only by the engine revision, never by
- * this snapshot.
+ * this snapshot. The Ertragsanteil band values are data in the catalog;
+ * only their lookup logic remains outside the snapshot.
  */
 export function canonicalRuleSetSnapshot(rules: GermanRules, legalData: LegalRuleData): string {
   return canonicalize({ legalData, rules })

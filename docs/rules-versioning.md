@@ -54,8 +54,9 @@ as the values it describes.
   `legalRuleData` catalog, which enumerates EVERY exported non-function datum
   of `legalConstants.ts` (the `legalConstants` groups, the Werbungskosten- and
   Sonderausgaben-Pauschbeträge, the §20 InvStG Teilfreistellung, the childless
-  PV-surcharge age). Serialization is recursive key-sorted, so the fingerprint
-  is deterministic and independent of key insertion order, and it moves when
+  PV-surcharge age, and the Ertragsanteil bands). Serialization is recursive
+  key-sorted, so the fingerprint is deterministic and independent of key
+  insertion order, and it moves when
   EITHER input is amended (soli slope, §39b cap, §1a divisor, Pauschbeträge,
   Teilfreistellung — all included). An exhaustiveness test
   (`ruleMetadata.test.ts`, "rule-data catalog exhaustiveness") fails if a new
@@ -66,7 +67,8 @@ as the values it describes.
   rule values from a fingerprint. The snapshot covers rule *data* only — the
   cross-year functions (`besteuerungsanteilGrv`, `versorgungsfreibetrag`,
   `ertragsanteilByAge`, `halbeinkuenfteMinAgeForContractStartYear`) are code,
-  and their behavior is pinned only by the engine revision.
+  and their lookup behavior is pinned only by the engine revision. The
+  Ertragsanteil band values are exported data and included in the catalog.
 
 `de2026RulesMetadata.scope` is deliberately narrow: the provenance covers the
 tax areas routed through `src/engine/tax.ts` (tariff, soli, capital gains)

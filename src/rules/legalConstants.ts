@@ -316,44 +316,37 @@ export const aktienfondsTeilfreistellungPrivat = 0.30
 export const pvBeitragszuschlagKinderloseMinAge = 23
 
 /**
- * Ertragsanteil für lebenslange Leibrenten nach §22 Nr. 1 Satz 3 a aa EStG (Anlage 1 zu §22).
+ * Ertragsanteil für lebenslange Leibrenten nach §22 Nr. 1 Satz 3 a bb EStG.
+ * Bands are [fromAge, percent], with the last band applying from age 97 onwards.
+ * Source: https://www.gesetze-im-internet.de/estg/__22.html (verified 2026-10-30).
+ */
+export const ertragsanteilBands: readonly (readonly [fromAge: number, percent: number])[] = [
+  [0, 59], [2, 58], [4, 57], [6, 56], [9, 55], [11, 54], [13, 53],
+  [15, 52], [17, 51], [19, 50], [21, 49], [23, 48], [25, 47], [27, 46],
+  [28, 45], [30, 44], [32, 43], [33, 42], [35, 41], [36, 40], [38, 39],
+  [39, 38], [41, 37], [42, 36], [43, 35], [45, 34], [46, 33], [48, 32],
+  [49, 31], [50, 30], [51, 29], [53, 28], [54, 27], [55, 26], [57, 25],
+  [58, 24], [59, 23], [60, 22], [62, 21], [63, 20], [64, 19], [65, 18],
+  [67, 17], [68, 16], [69, 15], [71, 14], [72, 13], [74, 12], [75, 11],
+  [76, 10], [78, 9], [80, 8], [81, 7], [83, 6], [85, 5], [88, 4],
+  [92, 3], [94, 2], [97, 1],
+]
+
+/**
  * Returns the fraction (0–1) of each pension payment that is taxable at the personal income-tax rate.
  * Applies to ungefoerderte private Leibrenten (Schicht 3); NOT to bAV (§22 Nr. 5 EStG) or GRV.
  *
  * The remaining fraction is treated as a tax-free capital-return component.
- * Source: §22 Nr. 1 Satz 3 a aa EStG — Anlage 1 (Ertragsanteilstabelle).
  *
  * @param age - vollendetes Lebensjahr bei Beginn der Rente (age at annuity start)
  */
 export function ertragsanteilByAge(age: number): number {
-  // §22 Nr. 1 Satz 3 a aa EStG — Anlage 1 (Ertragsanteilstabelle für lebenslange Leibrenten).
-  // Monotonically non-increasing from 59 % (age 0) to 1 % (age 89+).
-  // Key values confirmed: 62 → 21 %, 65–66 → 18 %, 67 → 17 %, 69–70 → 15 % (backlog #59).
-  // Returns a fraction in [0, 1].
-  const table: Record<number, number> = {
-     0: 0.59,  1: 0.59,  2: 0.58,  3: 0.57,  4: 0.57,
-     5: 0.56,  6: 0.55,  7: 0.55,  8: 0.54,  9: 0.53,
-    10: 0.53, 11: 0.52, 12: 0.52, 13: 0.51, 14: 0.50,
-    15: 0.50, 16: 0.49, 17: 0.49, 18: 0.48, 19: 0.48,
-    20: 0.47, 21: 0.47, 22: 0.46, 23: 0.45, 24: 0.45,
-    25: 0.44, 26: 0.44, 27: 0.43, 28: 0.43, 29: 0.42,
-    30: 0.42, 31: 0.41, 32: 0.41, 33: 0.40, 34: 0.39,
-    35: 0.39, 36: 0.38, 37: 0.38, 38: 0.37, 39: 0.36,
-    40: 0.36, 41: 0.35, 42: 0.35, 43: 0.34, 44: 0.34,
-    45: 0.33, 46: 0.33, 47: 0.32, 48: 0.32, 49: 0.31,
-    50: 0.30, 51: 0.30, 52: 0.29, 53: 0.28, 54: 0.27,
-    55: 0.26, 56: 0.26, 57: 0.25, 58: 0.24, 59: 0.24,
-    60: 0.23, 61: 0.22, 62: 0.21, 63: 0.20, 64: 0.19,
-    65: 0.18, 66: 0.18, 67: 0.17, 68: 0.17,
-    69: 0.15, 70: 0.15, 71: 0.14, 72: 0.14,
-    73: 0.13, 74: 0.13, 75: 0.11, 76: 0.10,
-    77: 0.09, 78: 0.08, 79: 0.08, 80: 0.07,
-    81: 0.06, 82: 0.05, 83: 0.05, 84: 0.04,
-    85: 0.03, 86: 0.03, 87: 0.02, 88: 0.02,
-    89: 0.01,
+  const completedAge = Math.max(0, Math.floor(age))
+  for (let i = ertragsanteilBands.length - 1; i >= 0; i--) {
+    const [fromAge, percent] = ertragsanteilBands[i]
+    if (completedAge >= fromAge) return percent / 100
   }
-  const clamped = Math.max(0, Math.min(89, Math.floor(age)))
-  return table[clamped] ?? 0.01
+  return 0.01
 }
 
 // ---------------------------------------------------------------------------
@@ -363,7 +356,7 @@ export function ertragsanteilByAge(age: number): number {
 /**
  * Catalog of EVERY exported non-function rule datum in this module: the
  * `legalConstants` groups plus the standalone Pauschbeträge, the InvStG
- * Teilfreistellung, and the childless-surcharge age below. The rule-set
+ * Teilfreistellung, childless-surcharge age and Ertragsanteil bands. The rule-set
  * content identity (`ruleSetFingerprint`) hashes this catalog alongside the
  * year rules, so an amendment to any exported value moves the fingerprint —
  * see `ruleMetadata.ts`.
@@ -375,7 +368,8 @@ export function ertragsanteilByAge(age: number): number {
  * NOT covered (code, not data): the functions of this module —
  * `besteuerungsanteilGrv`, `versorgungsfreibetrag`,
  * `halbeinkuenfteMinAgeForContractStartYear`, `ertragsanteilByAge` — whose
- * behavior is pinned only by the engine revision.
+ * lookup behavior is pinned by the engine revision. The Ertragsanteil band
+ * values themselves are included in this catalog.
  */
 export const legalRuleData = {
   legalConstants,
@@ -384,6 +378,7 @@ export const legalRuleData = {
   sonderausgabenPauschbetrag,
   aktienfondsTeilfreistellungPrivat,
   pvBeitragszuschlagKinderloseMinAge,
+  ertragsanteilBands,
 } as const
 
 export type LegalRuleData = typeof legalRuleData
