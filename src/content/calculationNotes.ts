@@ -75,7 +75,9 @@ export const CALCULATION_NOTES: readonly CalculationNote[] = [
   {
     category: 'Altersvorsorgedepot (Schicht 2)',
     status: 'vereinfacht',
-    note: 'Altersvorsorgereformgesetz (Bundestag-Beschluss 2026-03-27; Bundesrat-Zustimmung 2026-05-08; Produktstart ab 2027). Modelliert: Grundzulage (Zweistufenformel, max. 540 EUR), Kinderzulage (100 %, max. 300 EUR/Kind), Berufseinsteiger-Bonus (200 EUR einmalig), indirekter Ehegatte (max. 175 EUR), §10a Günstigerprüfung. Standarddepot-Gleitpfad: 5 Jahre vor Rentenbeginn max. 50 % Risikoanlage, 2 Jahre vor Rentenbeginn max. 30 %. Effektivkosten-Warnung bei > 1,0 pp. Auszahlung: §22 Nr. 5 EStG (volle Progression, kein Besteuerungsanteil), KV/PV freiwillig-Pfad §240 SGB V. Nicht modelliert: Altvertrag-Riester-Fortführung; Wohn-Riester; Kleinbetragsrenten-Kommutierung. Werte nach Bundesrat-Drucksache 206/26; der Abgleich mit der Fassung im Bundesgesetzblatt steht noch aus.',
+    // 120 EUR/Jahr: § 86 EStG i.d.F. des Altersvorsorgereformgesetzes
+    // (BGBl. 2026 I Nr. 156, verkündet 29.05.2026).
+    note: 'Altersvorsorgereformgesetz (Bundestag-Beschluss 2026-03-27; Bundesrat-Zustimmung 2026-05-08; verkündet am 29. Mai 2026, BGBl. 2026 I Nr. 156; Produktstart ab 2027). Modelliert: Grundzulage (Zweistufenformel, max. 540 EUR), Kinderzulage (100 %, max. 300 EUR/Kind), Berufseinsteiger-Bonus (200 EUR einmalig), indirekter Ehegatte (max. 175 EUR), §10a Günstigerprüfung. Ab Beitragsjahr 2027 setzt die Zulage einen Mindesteigenbeitrag von 120 EUR im Jahr voraus (§ 86 EStG). Die alte Berechnung (4 % des Vorjahreseinkommens minus Zulagen) gilt dafür nicht mehr. Standarddepot-Gleitpfad: 5 Jahre vor Rentenbeginn max. 50 % Risikoanlage, 2 Jahre vor Rentenbeginn max. 30 %. Effektivkosten-Warnung bei > 1,0 pp. Auszahlung: §22 Nr. 5 EStG (volle Progression, kein Besteuerungsanteil), KV/PV freiwillig-Pfad §240 SGB V. Nicht modelliert: Altvertrag-Riester-Fortführung; Wohn-Riester; Kleinbetragsrenten-Kommutierung.',
   },
   {
     category: 'Rendite-Szenarien',

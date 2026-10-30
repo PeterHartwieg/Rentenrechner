@@ -16,8 +16,9 @@
  * ## AVD-Eigenbeitrag mode
  *
  * `ScenarioAssumptions.contributionInput` may flip the direction for the
- * Altersvorsorgedepot: the statutory AVD thresholds (120 EUR/yr Mindestbeitrag,
- * the 50 %/25 % Zulagenstufen, the AltZertG Vertragsrahmen) all apply to the
+ * Altersvorsorgedepot: the statutory AVD thresholds (120 EUR/yr Mindestbeitrag
+ * under § 86 EStG i.d.F. des Altersvorsorgereformgesetzes, BGBl. 2026 I Nr. 156;
+ * the 50 %/25 % Zulagenstufen; the AltZertG Vertragsrahmen) all apply to the
  * *Eigenbeitrag*, not to the net cost, so the UI lets the user steer that
  * instead. In `{ kind: 'avd-own' }` mode the Eigenbeitrag is held fixed and the
  * comparison anchor is **derived from it here, on every call** — never computed
@@ -125,7 +126,8 @@ export function avdMaxMonthlyOwn(
  *
  * solved by plain iteration. This runs *forward* through `calculateAvdFunding`
  * and never inverts it, so neither the discontinuity at the 120 EUR/yr
- * eligibility threshold nor the plateau at the AltZertG ceiling can produce an
+ * Mindesteigenbeitrag (§ 86 EStG i.d.F. Altersvorsorgereformgesetz,
+ * BGBl. 2026 I Nr. 156) nor the plateau at the AltZertG ceiling can produce an
  * unreachable target — which is exactly what sank the alternative design of
  * bisecting the inverse.
  *
