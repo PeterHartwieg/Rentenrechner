@@ -35,6 +35,7 @@
  * not wired today").
  */
 
+import { getCurrentYear } from '../../rules/currentYear'
 import { CHILD_ALLOWANCE_CLAIM_HINT } from '../../content/terms'
 import type { EvidenceState } from '../../domain/instances'
 import type { InputStatus, InputStatusMap } from '../../domain/inputStatus'
@@ -1102,7 +1103,8 @@ export function newDraft(
   productId: MultiInstanceProductId,
   context: NewDraftContext = {},
 ): ContractDraft {
-  const currentYear = context.currentYear ?? new Date().getFullYear()
+  // Rules year: an unprovided contract start shares the engine baseline, like workspace adds.
+  const currentYear = context.currentYear ?? getCurrentYear().rulesYear
   const entry = INVENTORY_PRODUCT_REGISTRY[productId]
   const base = entry.createDefault(currentYear, 1, () => '') as unknown as InstanceLike
   // The registry default carries a generated name ("ETF #1"). A brand-new

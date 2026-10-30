@@ -20,6 +20,7 @@
  *  - contractDecisions.ts (avdDraftToInstance, newInstanceId)
  */
 
+import { getCurrentYear } from '../../rules/currentYear'
 import type {
   GermanRules,
   InputStatusMap,
@@ -391,10 +392,12 @@ export function buildWorkspaceFromDraft(params: BuildWorkspaceDraftParams): Work
   } = params
 
   // Resolve effective profile values: prefer personalDetails when present.
-  const CURRENT_YEAR = new Date().getFullYear()
+  // Calendar year: birth-year conversion and historical contract ages describe the person today.
+  // Rules year: bonus usage is evaluated in the same contribution year as the engine.
+  const { calendarYear, rulesYear } = getCurrentYear()
   const effectiveSalary = personalDetails?.grossSalaryYear ?? grossSalaryYear
   const effectiveAge = personalDetails
-    ? Math.max(0, CURRENT_YEAR - personalDetails.birthYear)
+    ? Math.max(0, calendarYear - personalDetails.birthYear)
     : defaultProfile.age
   const effectiveRetirementAge = personalDetails?.retirementAge ?? defaultProfile.retirementAge
   const effectiveKv = personalDetails?.publicHealthInsurance ?? defaultProfile.publicHealthInsurance
@@ -418,7 +421,7 @@ export function buildWorkspaceFromDraft(params: BuildWorkspaceDraftParams): Work
         : null
 
   const ageAtContractStart = (contractStartYear: number) =>
-    Math.max(0, effectiveAge + contractStartYear - CURRENT_YEAR)
+    Math.max(0, effectiveAge + contractStartYear - calendarYear)
   const riesterInstances = toArray(riesterDraft).map((draft) => {
     const instance = riesterDraftToInstance(draft)
     return {
@@ -426,7 +429,7 @@ export function buildWorkspaceFromDraft(params: BuildWorkspaceDraftParams): Work
       eligibility: {
         ...instance.eligibility,
         ageAtContractStart: ageAtContractStart(draft.contractStartYear),
-        careerStarterBonusUsed: draft.contractStartYear < CURRENT_YEAR,
+        careerStarterBonusUsed: draft.contractStartYear < rulesYear,
       },
     }
   })
@@ -437,7 +440,7 @@ export function buildWorkspaceFromDraft(params: BuildWorkspaceDraftParams): Work
       eligibility: {
         ...instance.eligibility,
         ageAtContractStart: ageAtContractStart(draft.contractStartYear),
-        careerStarterBonusUsed: draft.contractStartYear < CURRENT_YEAR,
+        careerStarterBonusUsed: draft.contractStartYear < rulesYear,
       },
     }
   })

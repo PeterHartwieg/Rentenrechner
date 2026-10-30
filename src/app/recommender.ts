@@ -55,6 +55,7 @@
  *   score / rank candidates → materialise what-ifs.
  */
 
+import { getCurrentYear } from '../rules/currentYear'
 import type {
   GermanRules,
   ProductId,
@@ -984,13 +985,15 @@ function applyCandidateToAssumptions(
     }
     return
   }
+  // Rules year: new hypothetical contracts start at the simulation baseline.
+  const { rulesYear } = getCurrentYear()
   // New-instance candidates: append a fresh instance with the sized contribution.
   if (candidate.productId === 'basisrente') {
     wsa.basisrente.push({
       instanceId: newInstanceId('basisrente'),
       label: candidate.label,
       status: 'active',
-      contractStartYear: new Date().getFullYear(),
+      contractStartYear: rulesYear,
       evidenceMap: {},
       monthlyGrossContribution: candidate.grossMonthlyEUR,
       payoutMode: 'leibrente',
@@ -1007,7 +1010,7 @@ function applyCandidateToAssumptions(
       instanceId: newInstanceId('altersvorsorgedepot'),
       label: candidate.label,
       status: 'active',
-      contractStartYear: sizedInstance?.contractStartYear ?? new Date().getFullYear(),
+      contractStartYear: sizedInstance?.contractStartYear ?? rulesYear,
       evidenceMap: sizedInstance?.evidenceMap ?? {},
       monthlyOwnContribution: candidate.grossMonthlyEUR,
     } as AltersvorsorgedepotInstance)
@@ -1017,7 +1020,7 @@ function applyCandidateToAssumptions(
       instanceId: newInstanceId('bav'),
       label: candidate.label,
       status: 'active',
-      contractStartYear: new Date().getFullYear(),
+      contractStartYear: rulesYear,
       evidenceMap: {},
       ...defaultAssumptions.bav,
       ...offerPatch,

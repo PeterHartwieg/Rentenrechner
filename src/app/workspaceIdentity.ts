@@ -19,6 +19,7 @@
  *  - removeInstanceFromWorkspace — pure workspace mutation
  */
 
+import { getCurrentYear } from '../rules/currentYear'
 import type { Workspace, WorkspaceAssumptionsV2 } from '../domain/workspace'
 import type {
   AltersvorsorgedepotInstance,
@@ -186,7 +187,8 @@ export function addInstanceToWorkspace(
   productId: 'bav' | 'versicherung' | 'riester' | 'basisrente' | 'altersvorsorgedepot' | 'etf',
 ): Workspace {
   const wsa = workspace.baseline.assumptions
-  const CURRENT_YEAR = new Date().getFullYear()
+  // Rules year: default contracts start at the engine baseline, even after calendar rollover.
+  const { rulesYear } = getCurrentYear()
   const entry = INVENTORY_PRODUCT_REGISTRY[productId]
   const wsKey = entry.wsKey as keyof WorkspaceAssumptionsV2
   const currentArray = wsa[wsKey] as unknown[]
@@ -195,7 +197,7 @@ export function addInstanceToWorkspace(
   // One contract of a product is named after the product; the counter starts at
   // the second one.
   let newInst = {
-    ...entry.createDefault(CURRENT_YEAR, n, newInstanceId),
+    ...entry.createDefault(rulesYear, n, newInstanceId),
     label: defaultInstanceLabel(productId, n),
   }
   if (productId === 'riester') {
