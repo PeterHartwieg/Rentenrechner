@@ -5,11 +5,11 @@ import { describe, expect, it } from 'vitest'
 // (core.autocrlf=true), not just on Linux CI.
 const prVerify = readFileSync('.github/workflows/pr-verify.yml', 'utf8').replace(/\r\n/g, '\n')
 
-/** Slice one top-level job block (two-space-indented key) out of a workflow. */
-function jobBlock(workflow, jobKey) {
+/** Slice one two-space-indented block (job or event) out of its parent. */
+function nestedBlock(workflow, key) {
   const lines = workflow.split('\n')
-  const start = lines.findIndex((line) => line === `  ${jobKey}:`)
-  if (start === -1) throw new Error(`job "${jobKey}" not found`)
+  const start = lines.findIndex((line) => line === `  ${key}:`)
+  if (start === -1) throw new Error(`block "${key}" not found`)
   let end = lines.length
   for (let i = start + 1; i < lines.length; i++) {
     if (/^  \S/.test(lines[i])) {
@@ -46,7 +46,7 @@ function topLevelBlock(workflow, key) {
  * added `&&`/`!` fails loudly instead of being mis-evaluated to true.
  */
 function jobRunsForBranch(workflow, jobKey, branch) {
-  const block = jobBlock(workflow, jobKey)
+  const block = nestedBlock(topLevelBlock(workflow, 'jobs'), jobKey)
   const condition = block.split('\n').find((line) => line.trim().startsWith('if:'))
   if (condition === undefined) return true // no gate: every branch runs
   const expr = condition.trim().replace(/^if:\s*/, '').replace(/\$\{\{|\}\}/g, '')
@@ -95,14 +95,15 @@ describe('pr-verify runs for every pull request (issue #375)', () => {
     expect(jobRunsForBranch(gated, 'review', 'codex/universal-verification')).toBe(false)
   })
 
-  it('triggers on pull_request for all branches and paths, so fork PRs run too', () => {
+  it('triggers on main pushes and pull_request for all branches and paths, so fork PRs run too', () => {
     const trigger = triggerBlock(prVerify)
+    const pullRequest = nestedBlock(trigger, 'pull_request')
 
-    expect(trigger).toContain('pull_request:')
-    expect(trigger).toContain('types: [opened, synchronize, reopened]')
+    expect(nestedBlock(trigger, 'push')).toContain('branches: [main]')
+    expect(pullRequest).toContain('types: [opened, synchronize, reopened]')
     // No `branches:` filter (which would gate on the BASE branch) and no
     // `paths:` filter — a fork PR to any base branch must still verify.
-    expect(trigger).not.toMatch(/^\s+(branches|branches-ignore|paths|paths-ignore):/m)
+    expect(pullRequest).not.toMatch(/^\s+(branches|branches-ignore|paths|paths-ignore):/m)
   })
 
   it('stays safe for untrusted fork code: pull_request event, read-only token, no secrets', () => {
@@ -115,10 +116,10 @@ describe('pr-verify runs for every pull request (issue #375)', () => {
     expect(permissions).not.toContain(': write')
   })
 
-  it('still checks out the exact PR head SHA it verifies', () => {
-    const job = jobBlock(prVerify, 'verify')
+  it('checks out the exact PR, manual, or push SHA it verifies', () => {
+    const job = nestedBlock(topLevelBlock(prVerify, 'jobs'), 'verify')
 
-    expect(job).toContain('ref: ${{ github.event.pull_request.head.sha || inputs.head_sha }}')
+    expect(job).toContain('ref: ${{ github.event.pull_request.head.sha || inputs.head_sha || github.sha }}')
   })
 
   it('still supports manual re-verification of a specific head SHA', () => {
