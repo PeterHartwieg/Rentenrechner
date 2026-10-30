@@ -1,6 +1,6 @@
 name: pr-verify
 
-# Standalone `npm run verify` (lint + test + build) for EVERY pull request,
+# Standalone `npm run verify` for main pushes and EVERY pull request,
 # regardless of head branch (codex/*, feat/*, chore/*, forks, ...). This is
 # the CI gate; keep the `verify` job name stable (it is the check name).
 #
@@ -10,6 +10,8 @@ name: pr-verify
 # from forks can never reach credentials even though their code executes.
 
 on:
+  push:
+    branches: [main]
   pull_request:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
@@ -28,7 +30,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: pr-verify-${{ github.event.pull_request.number || inputs.pr_number }}
+  group: pr-verify-${{ github.event.pull_request.number || inputs.pr_number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -37,7 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.head.sha || inputs.head_sha }}
+          ref: ${{ github.event.pull_request.head.sha || inputs.head_sha || github.sha }}
           fetch-depth: 0
 
       - name: Setup Node
@@ -56,6 +58,23 @@ jobs:
               npm --prefix "$worker" ci
             fi
           done
+
+      - name: Audit all dependencies (informational)
+        continue-on-error: true
+        shell: bash
+        run: |
+          audit_status=0
+          npm audit > "$RUNNER_TEMP/npm-audit.txt" 2>&1 || audit_status=$?
+          {
+            echo '### Full npm audit (including dev dependencies; informational)'
+            echo '```text'
+            cat "$RUNNER_TEMP/npm-audit.txt"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "$audit_status"
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Run verify
         run: npm run verify
