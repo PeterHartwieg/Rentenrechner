@@ -110,6 +110,19 @@ beforeEach(() => {
 // 1. Request validation — missing / invalid fields
 // ---------------------------------------------------------------------------
 describe("request validation", () => {
+  it("returns 413 for an oversized Content-Length without parsing or calling services", async () => {
+    const req = makeSubmitRequest(VALID_PAYLOAD);
+    req.headers.set("content-length", String(12 * 1024 * 1024));
+    const parse = vi.spyOn(req, "json");
+    const res = await fetchWorker(req, makeEnv());
+    expect(res.status).toBe(413);
+    expect(await res.json()).toMatchObject({ error: "body_too_large" });
+    expect(parse).not.toHaveBeenCalled();
+    expect(req.bodyUsed).toBe(false);
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(res.headers.get("access-control-allow-origin")).toBe("https://rentenwiki.de");
+  });
+
   it("returns 403 for disallowed origin", async () => {
     const req = makeSubmitRequest(VALID_PAYLOAD, "https://evil.example.com");
     const res = await fetchWorker(req, makeEnv());
@@ -351,17 +364,24 @@ describe("screenshot upload failure", () => {
     // Turnstile passes
     mockFetch.mockResolvedValueOnce(turnstileSuccess());
 
-    // 9 MB — exceeds SCREENSHOT_MAX_BYTES (8 MB)
-    const bigData = "A".repeat(9 * 1024 * 1024);
+    // 12 MB of base64 exceeds the encoded limit for an 8 MB screenshot.
     const req = makeSubmitRequest({
       ...VALID_PAYLOAD,
-      screenshotBase64: btoa(bigData),
+      screenshotBase64: "A".repeat(12 * 1024 * 1024),
       screenshotContentType: "image/png",
     });
-    const res = await fetchWorker(req, makeEnv());
-    expect(res.status).toBe(413);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toBe("screenshot_too_large");
+    const env = makeEnv();
+    const decode = vi.spyOn(globalThis, "atob");
+    try {
+      const res = await fetchWorker(req, env);
+      expect(res.status).toBe(413);
+      const body = (await res.json()) as { error: string };
+      expect(body.error).toBe("screenshot_too_large");
+      expect(decode).not.toHaveBeenCalled();
+      expect(env.QA_SCREENSHOTS.put).not.toHaveBeenCalled();
+    } finally {
+      decode.mockRestore();
+    }
   });
 });
 

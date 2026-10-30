@@ -53,7 +53,11 @@ export default {
     }
 
     const authHeader = request.headers.get('Authorization')
-    if (authHeader !== `Bearer ${env.API_SHARED_SECRET}`) {
+    const encoder = new TextEncoder()
+    const expected = encoder.encode(`Bearer ${env.API_SHARED_SECRET}`)
+    const supplied = encoder.encode(authHeader ?? '')
+    // timingSafeEqual requires equal byte lengths; never compare secret text directly.
+    if (supplied.byteLength !== expected.byteLength || !crypto.subtle.timingSafeEqual(supplied, expected)) {
       // Include CORS headers so browsers from the allowed origin can read the 401 body.
       return jsonResponse({ ok: false, error: 'Unauthorized' }, 401, corsOrigin)
     }
@@ -83,7 +87,8 @@ export default {
       return jsonResponse(result, 200, corsOrigin)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
-      return jsonResponse({ ok: false, error: `Engine error: ${msg}` }, 500, corsOrigin)
+      console.error('Simulation engine failed:', msg)
+      return jsonResponse({ ok: false, error: 'Engine error' }, 500, corsOrigin)
     }
   },
 }

@@ -1,3 +1,5 @@
+import { Faq } from './Faq'
+import faq from './altersvorsorgedepot-rechner.faq.json'
 import { activeRules, RULES_YEAR } from '../../rules'
 
 export const AVD_SPECIAL_EXPENSE_OWN_CAP = activeRules.altersvorsorgedepot.specialExpenseOwnContributionCap.toLocaleString('de-DE')
@@ -121,27 +123,7 @@ Förderung für ein Beitragsjahr ab {AVD_PRODUCT_START_YEAR} (Modell nach beschl
 
 Bei einem Eigenbeitrag von {AVD_ALLOWANCE_TIER_2_MAX}&nbsp;€ pro Jahr schöpft Bernd die Grundzulage voll aus. Beiträge oberhalb des Zulagenbands von {AVD_ALLOWANCE_TIER_2_MAX}&nbsp;€ wären bis zur Vertragsobergrenze von {AVD_CONTRACT_CONTRIBUTION_CAP}&nbsp;€ möglich, erhielten aber keine zusätzliche Zulage; der Sonderausgabenabzug berücksichtigt Eigenbeiträge nur bis {AVD_SPECIAL_EXPENSE_OWN_CAP}&nbsp;€ im Jahr. Die spätere Auszahlung ist voll mit dem persönlichen Steuersatz im Rentenjahr nach §&nbsp;22 Nr.&nbsp;5 EStG zu versteuern. Die KV/PV-Behandlung folgt Bernds Krankenversicherungsstatus zu Rentenbeginn (KVdR, freiwillig gesetzlich oder PKV); siehe Tabellenzeile zur KV/PV.
 
-## Häufige Fragen
-
-### Wer kann ein Altersvorsorgedepot eröffnen?
-
-Die genaue Berechtigtenliste steht im Altersvorsorgereformgesetz und ist für das jeweilige Beitragsjahr zu prüfen. Der Personenkreis ist an die Förderberechtigten der zweiten Schicht angelehnt, weicht aber im Detail vom §&nbsp;10a Abs.&nbsp;1 [EStG](https://www.gesetze-im-internet.de/estg/__10a.html)-Kreis ab. Mittelbar förderberechtigte Ehepartner erhalten höchstens {AVD_INDIRECT_SPOUSE_ALLOWANCE_MAX}&nbsp;€ Grundzulage.
-
-### Was passiert mit dem Depotwert in schlechten Marktphasen?
-
-Das AVD trägt Marktrisiko ohne Kapitalgarantie. Der gesetzlich vorgeschriebene Glidepath senkt den Anteil hochriskanter Anlagen ab fünf Jahren vor Rentenbeginn auf höchstens {AVD_GLIDEPATH_5Y_MAX}&nbsp;% und ab zwei Jahren vor Rentenbeginn auf höchstens {AVD_GLIDEPATH_2Y_MAX}&nbsp;%. Das reduziert das Kursrisiko zur Auszahlung, eliminiert es aber nicht. Im Rechner zeigt der Monte-Carlo-Modus die Streubreite über verschiedene Marktszenarien.
-
-### Wer beaufsichtigt und zertifiziert das AVD?
-
-Die steuerliche Zertifizierung der AVD-Verträge erfolgt durch das [Bundeszentralamt für Steuern (BZSt)](https://www.bzst.de). Die Zulagenverwaltung läuft über die [Zentrale Zulagenstelle für Altersvermögen (ZfA)](https://www.zfa.deutsche-rentenversicherung-bund.de) bei der Deutschen Rentenversicherung Bund. Die [BaFin](https://www.bafin.de) bleibt zuständig für Anbieter, soweit ein Versicherungsmantel im Spiel ist; das reine AVD-Depot fällt jedoch nicht in deren Produkt-Zertifizierung.
-
-### Wie funktioniert die Übertragung von Riester auf das AVD?
-
-Das Altersvorsorgereformgesetz wertet die Übertragung Riester nach AVD nicht als schädliche Verwendung im Sinne des §&nbsp;93 [EStG](https://www.gesetze-im-internet.de/estg/__93.html). Die Förderhistorie (Zulagen) geht in das aufnehmende Depot über. Die Übertragung ist Teil der Reform, technisch greift sie ab Inkrafttreten {AVD_PRODUCT_START_YEAR}. Anbieter, die die Schnittstellen schon umgesetzt haben, können sie früh anbieten; für Bestandskunden ist die Übertragung freiwillig. Mehr zum Vergleich auf der [Vergleichsseite Riester vs. Altersvorsorgedepot](/riester-vs-altersvorsorgedepot).
-
-### Wie hoch sind die Kosten?
-
-Für das gesetzliche Standarddepot gilt ein Effektivkosten-Deckel von {AVD_STANDARD_COST_CAP}&nbsp;% pro Jahr. Anbieter dürfen darunter liegen; höhere Kostenquoten sind nur in nicht-standardisierten Vertragsvarianten möglich. Im Rechner ist die Effektivkostenannahme einstellbar.
+<Faq items={faq} />
 
 ## Quellen
 
