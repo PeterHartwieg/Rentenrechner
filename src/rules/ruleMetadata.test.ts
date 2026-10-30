@@ -273,6 +273,18 @@ describe('rule-set content identity (#376)', () => {
     expect(ruleSetFingerprint(activeRules, legalRuleData)).not.toBe(base)
   })
 
+  it('fingerprint moves when an Ertragsanteil band is amended', () => {
+    const amendedData: LegalRuleData = {
+      ...legalRuleData,
+      ertragsanteilBands: legalRuleData.ertragsanteilBands.map(([fromAge, percent]) =>
+        [fromAge, fromAge === 60 ? percent + 1 : percent],
+      ),
+    }
+    expect(ruleSetFingerprint(activeRules, amendedData)).not.toBe(
+      ruleSetFingerprint(activeRules, legalRuleData),
+    )
+  })
+
   it('ruleSetIdentity derives its fingerprint from the catalog it is handed', () => {
     const base = ruleSetIdentity(activeRules, legalRuleData, activeRulesMetadata)
     expect(base).toEqual(activeRuleSetIdentity)

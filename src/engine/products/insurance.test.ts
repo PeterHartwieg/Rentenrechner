@@ -96,7 +96,7 @@ describe('deriveInsuranceTaxMode — calendar-year classification', () => {
   })
 })
 
-describe('#59 ertragsanteilByAge — §22 EStG Anlage 1 table', () => {
+describe('#59 ertragsanteilByAge — §22 Nr. 1 Satz 3 a bb EStG table', () => {
   it('confirmed values: 62→21%, 65→18%, 66→18%, 67→17%, 69→15%, 70→15%', () => {
     expect(ertragsanteilByAge(62)).toBe(0.21)
     expect(ertragsanteilByAge(65)).toBe(0.18)
@@ -106,19 +106,19 @@ describe('#59 ertragsanteilByAge — §22 EStG Anlage 1 table', () => {
     expect(ertragsanteilByAge(70)).toBe(0.15)
   })
 
-  it('table is monotonically non-increasing over ages 0–89', () => {
-    for (let age = 1; age <= 89; age++) {
+  it('table is monotonically non-increasing over ages 0–120', () => {
+    for (let age = 1; age <= 120; age++) {
       expect(ertragsanteilByAge(age)).toBeLessThanOrEqual(ertragsanteilByAge(age - 1))
     }
   })
 
-  it('age 0 returns maximum (0.59) and age 89 returns minimum (0.01)', () => {
+  it('age 0 returns maximum (0.59) and age 89 returns 0.04', () => {
     expect(ertragsanteilByAge(0)).toBe(0.59)
-    expect(ertragsanteilByAge(89)).toBe(0.01)
+    expect(ertragsanteilByAge(89)).toBe(0.04)
   })
 
-  it('ages above 89 clamp to 0.01', () => {
-    expect(ertragsanteilByAge(95)).toBe(0.01)
+  it('age 95 returns 0.02 and ages from 97 return 0.01', () => {
+    expect(ertragsanteilByAge(95)).toBe(0.02)
     expect(ertragsanteilByAge(100)).toBe(0.01)
   })
 
