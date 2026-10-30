@@ -18,10 +18,7 @@ const BUNDESGESETZBLATT_PDF =
   'https://www.recht.bund.de/bgbl/1/2026/156/regelungstext.pdf?__blob=publicationFile&v=1'
 
 /** Art. 2 Nr. 9 Altersvorsorgereformgesetz (BGBl. 2026 I Nr. 156) replaces § 86 EStG. */
-function assertCurrentSection86Source(container: HTMLElement) {
-  const text = container.textContent ?? ''
-  expect(text).toMatch(/gesetze-im-internet\.de zeigt derzeit noch die bis 2026 geltende Fassung/)
-  expect(text).toMatch(/Art\.\s*2 Nr\.\s*9/)
+function assertBundesgesetzblattPdf(container: HTMLElement) {
   const hrefs = Array.from(container.querySelectorAll('a'), (anchor) => anchor.getAttribute('href'))
   expect(hrefs).toContain(BUNDESGESETZBLATT_PDF)
 }
@@ -52,22 +49,36 @@ describe('AVD Mindesteigenbeitrag copy (§ 86 EStG, 120 €/year from 2027)', ()
 
   it('states the 120 € floor on the Altersvorsorgedepot page', () => {
     const { container } = render(<AltersvorsorgedepotRechnerPage />)
-    assertMindesteigenbeitragCopy(container.textContent ?? '')
-    assertCurrentSection86Source(container)
-    expect(container.textContent).toMatch(/4\s*% des Vorjahreseinkommens minus Zulagen/)
-    expect(container.textContent).toMatch(/gilt hier nicht mehr/)
+    const text = container.textContent ?? ''
+    assertMindesteigenbeitragCopy(text)
+    expect(text).toMatch(/zeigt bis zum 31\.12\.2026 noch die bis 2026 geltende Fassung/)
+    expect(text).toMatch(/Art\.\s*2 Nr\.\s*9/)
+    expect(text).not.toMatch(/zeigt derzeit noch/)
+    assertBundesgesetzblattPdf(container)
+    expect(text).toMatch(/4\s*% des Vorjahreseinkommens minus Zulagen/)
+    expect(text).toMatch(/gilt hier nicht mehr/)
   })
 
   it('states the 120 € floor on the Riester-vs-AVD page', () => {
     const { container } = render(<RiesterVsAltersvorsorgedepotPage />)
-    assertMindesteigenbeitragCopy(container.textContent ?? '')
-    assertCurrentSection86Source(container)
-    expect(container.textContent).toMatch(/gilt nicht mehr/)
+    const text = container.textContent ?? ''
+    assertMindesteigenbeitragCopy(text)
+    expect(text).toMatch(/§\s*52 Abs\.\s*50a/)
+    expect(text).toMatch(/für Riester-Bestandsverträge/)
+    expect(text).toMatch(/für das AVD ab Beitragsjahr 2027 maßgeblich ist Art\.\s*2 Nr\.\s*9/)
+    expect(text).not.toMatch(/zeigt derzeit noch/)
+    assertBundesgesetzblattPdf(container)
+    expect(text).toMatch(/gilt nicht mehr/)
   })
 
-  it('points the Riester page § 86 link at the promulgated replacement', () => {
+  it('keeps the pre-2027 § 86 for Riester Bestandsverträge (§ 52 Abs. 50a)', () => {
     const { container } = render(<RiesterRechnerPage />)
-    assertCurrentSection86Source(container)
+    const text = container.textContent ?? ''
+    expect(text).toMatch(/§\s*52 Abs\.\s*50a/)
+    expect(text).toMatch(/bis zum Beginn der Auszahlungsphase weiter/)
+    expect(text).not.toMatch(/maßgeblich ist Art/)
+    expect(text).not.toMatch(/zeigt derzeit noch/)
+    assertBundesgesetzblattPdf(container)
   })
 
   it('states the 120 € floor on the product comparison page', () => {
