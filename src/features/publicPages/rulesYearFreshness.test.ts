@@ -34,29 +34,39 @@ describe('public freshness stamps', () => {
     expect(offenders).toEqual([])
   })
 
-  it('keeps registry titles and descriptions on the active rules year', () => {
+  it.each([...new Set([RULES_YEAR, 2027])])('does not hardcode rules year %i in registry copy', (rulesYear) => {
     const registrySource = readFileSync(join(root, 'src/seo/publicRouteRegistry.ts'), 'utf8')
     const copyLines = registrySource.split('\n').filter((line) =>
       !/^\s*(?:\/\/|\*|dateModified:|datePublished:)/.test(line),
     )
-    expect(copyLines.filter((line) => /\b2026\b/.test(line))).toEqual([])
+    const hardcodedRulesYear = new RegExp(`\\b${rulesYear}\\b`)
+    // The AVD launch year is a fixed fact, even when it coincides with RULES_YEAR.
+    expect(copyLines.filter((line) => hardcodedRulesYear.test(
+      line.replace('neues Schicht-2-Depot ab 2027', 'neues Schicht-2-Depot'),
+    ))).toEqual([])
     expect(publicRouteRegistry['/'].title).toBe(`Altersvorsorge-Rechner ${RULES_YEAR} | RentenWiki.de`)
   })
 
-  it('updates every year-bearing registry string when RULES_YEAR changes', async () => {
-    vi.resetModules()
-    vi.doMock('../../rules', async (importOriginal) => ({
-      ...await importOriginal<typeof import('../../rules')>(),
-      RULES_YEAR: RULES_YEAR + 1,
-    }))
+  it.each([2027, 2028])('updates rule-year copy to %i while preserving fixed-year facts', async (year) => {
+    const loadRegistry = async (rulesYear: number) => {
+      vi.resetModules()
+      vi.doMock('../../rules', async (importOriginal) => ({
+        ...await importOriginal<typeof import('../../rules')>(),
+        RULES_YEAR: rulesYear,
+      }))
+      return (await import('../../seo/publicRouteRegistry')).publicRouteRegistry
+    }
     try {
-      const { publicRouteRegistry: nextRegistry } = await import('../../seo/publicRouteRegistry')
+      // A sentinel distinguishes rule-year substitutions from fixed dates such as "ab 2027".
+      const sentinelYear = 9999
+      const templateRegistry = await loadRegistry(sentinelYear)
+      const nextRegistry = await loadRegistry(year)
       for (const path of Object.keys(publicRouteRegistry) as (keyof typeof publicRouteRegistry)[]) {
-        const original: PublicRoute = publicRouteRegistry[path]
+        const original: PublicRoute = templateRegistry[path]
         const next: PublicRoute = nextRegistry[path]
         for (const field of ['title', 'metaDescription', 'h1', 'summary'] as const) {
           expect(next[field], `${path}: ${field}`).toBe(
-            original[field].replaceAll(String(RULES_YEAR), String(RULES_YEAR + 1)),
+            original[field].replaceAll(String(sentinelYear), String(year)),
           )
         }
         // Editorial dates are historical facts, independent of the rule year.
