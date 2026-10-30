@@ -14,7 +14,9 @@ import { RiesterVsAltersvorsorgedepotPage } from './RiesterVsAltersvorsorgedepot
  * Mindesteigenbeitrag of 120 €/year. Only the old 4 % calculation is gone.
  */
 function assertMindesteigenbeitragCopy(text: string) {
-  expect(text).toMatch(/120/)
+  expect(text).toMatch(
+    /Mindesteigenbeitrag[^.]{0,80}120\s*€|120\s*€[^.]{0,40}(pro|im) Jahr/,
+  )
   expect(text).toMatch(/Mindesteigenbeitrag/)
   expect(text).toMatch(/§\s?86/)
   expect(text).not.toMatch(/Mindesteigenbeitrag[^.]{0,120}entfällt/i)
@@ -26,7 +28,9 @@ describe('AVD Mindesteigenbeitrag copy (§ 86 EStG, 120 €/year from 2027)', ()
     const term = getTerm('mindesteigenbeitrag')
     expect(term).toBeDefined()
     const help = term?.shortHelp ?? ''
-    expect(help).toContain('120')
+    expect(help).toMatch(/120\s*€ im Jahr/)
+    expect(help).toMatch(/Bestehender Riester-Vertrag in der bisherigen Förderung/)
+    expect(help).toMatch(/§ 52 Abs\. 50a EStG/)
     expect(help).toMatch(/Altersvorsorgedepot|Alters­vorsorge­depot/)
     expect(help).toMatch(/Weggefallen ist nur die alte Berechnung/)
     expect(help).not.toMatch(/Riester\s*\/\s*AVD:\s*4\s*%/)
