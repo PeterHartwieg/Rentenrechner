@@ -28,6 +28,10 @@ export const de2026Rules: GermanRules = {
     productStartYear: 2027,
     specialExpenseOwnContributionCap: 1_800,
     contractContributionCapAnnual: 6_840,
+    // § 86 EStG i.d.F. des Altersvorsorgereformgesetzes (BGBl. 2026 I Nr. 156,
+    // verkündet 2026-05-29): ab Beitragsjahr 2027 gibt es Zulagen nur bei einem
+    // Mindesteigenbeitrag von 120 €/Jahr. Weggefallen ist die alte Berechnung
+    // (4 % des Vorjahreseinkommens minus Zulagen), nicht der Mindesteigenbeitrag.
     minimumOwnContributionAnnual: 120,
     // Separate reform-law indirect eligibility gate; not the allowance floor.
     indirectEligibilityMinimumAnnual: 120,
