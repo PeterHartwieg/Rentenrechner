@@ -96,7 +96,7 @@ describe('deriveInsuranceTaxMode — calendar-year classification', () => {
   })
 })
 
-describe('#59 ertragsanteilByAge — §22 Nr. 1 Satz 3 a bb EStG table', () => {
+describe('#59 ertragsanteilByAge — §22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG table', () => {
   it('confirmed values: 62→21%, 65→18%, 66→18%, 67→17%, 69→15%, 70→15%', () => {
     expect(ertragsanteilByAge(62)).toBe(0.21)
     expect(ertragsanteilByAge(65)).toBe(0.18)

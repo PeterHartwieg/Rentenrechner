@@ -12,7 +12,7 @@ describe('classifyInsuranceMonthlyIncome — statutory Ertragsanteil', () => {
       retirementAge: 60,
     })
 
-    // §22 Nr. 1 Satz 3 a bb EStG: 12,000 EUR/year × 22% = 2,640 EUR.
+    // §22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG: 12,000 EUR/year × 22% = 2,640 EUR.
     expect(classification).toEqual({
       effectiveTaxMode: 'ertragsanteil',
       taxableAnnual: 2_640,

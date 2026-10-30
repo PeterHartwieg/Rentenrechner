@@ -383,7 +383,7 @@ function buildPayoutSection(
  * Sparerpauschbetrag). Every other product taxes the payout at the
  * marginal income-tax rate — Einkommensteuer.
  *
- * Note: for pAV with Leibrente the legal basis is §22 Nr. 1 Satz 3 a EStG
+ * Note: for pAV with Leibrente the legal basis is §22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG
  * (Ertragsanteil-style income tax) but the surface label "Einkommensteuer"
  * stays correct since it is still a marginal-rate income-tax deduction.
  *

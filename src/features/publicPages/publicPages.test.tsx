@@ -380,10 +380,10 @@ describe('PrivateRentenversicherungRechnerPage — visible content for prerender
     expect(text).toMatch(/§\s?20\s*Abs\.?\s*1\s*Nr\.?\s*6\s*EStG/i)
   })
 
-  it('cites §22 Nr. 1 Satz 3 a EStG (Ertragsanteil Leibrente) inline (YMYL guardrail)', () => {
+  it('cites §22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG (Ertragsanteil Leibrente) inline (YMYL guardrail)', () => {
     const { container } = render(<PrivateRentenversicherungRechnerPage />)
     const text = container.textContent ?? ''
-    expect(text).toMatch(/§\s?22\s*Nr\.?\s*1\s*Satz\s*3/i)
+    expect(text).toMatch(/§\s?22\s*Nr\.?\s*1\s*Satz\s*3\s*Buchst\.\s*a\s*Doppelbuchst\.\s*bb\s*EStG/i)
   })
 
   it('explains all three contract-era tax modes (pre2005, Halbeinkünfte, Abgeltungsteuer)', () => {

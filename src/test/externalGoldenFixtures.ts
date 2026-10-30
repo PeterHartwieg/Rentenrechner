@@ -919,7 +919,7 @@ export const bayernAlterseinkuenfte2026GoldenCases = [
     filingStatus: 'single',
     components: {
       // 12,000 EUR/year private Leibrente starting at completed age 67
-      // → §22 Nr. 1 Satz 3 a aa EStG Ertragsanteil 17 % → 2,040 EUR taxable.
+      // → §22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG Ertragsanteil 17 % → 2,040 EUR taxable.
       statutoryPensionAnnual: 18_000,
       bavPensionAnnual: 0,
       bavIsLumpSum: false,
