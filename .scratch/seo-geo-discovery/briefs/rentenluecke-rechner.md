@@ -69,7 +69,7 @@ list (or trigger an extension during review).
   Kinderzuschlag (long-term care insurance rate and child surcharge).
 - **§ 22 EStG** — Besteuerung von Renten (tax treatment of statutory pensions,
   Basisrente, certified pensions).
-- **§ 22 Nr. 1 Satz 3 a EStG** — Ertragsanteil bei Leibrenten aus privaten
+- **§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG** — Ertragsanteil bei Leibrenten aus privaten
   Rentenversicherungen.
 - **§ 22 Nr. 5 EStG** — Besteuerung geförderter Verträge (Riester, AVD).
 - **§ 20 Abs. 1 Nr. 6 EStG** — Tax mode for capital payouts from private

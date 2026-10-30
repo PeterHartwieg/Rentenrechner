@@ -316,7 +316,7 @@ export const aktienfondsTeilfreistellungPrivat = 0.30
 export const pvBeitragszuschlagKinderloseMinAge = 23
 
 /**
- * Ertragsanteil für lebenslange Leibrenten nach §22 Nr. 1 Satz 3 a bb EStG.
+ * Ertragsanteil für lebenslange Leibrenten nach §22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG.
  * Bands are [fromAge, percent], with the last band applying from age 97 onwards.
  * Source: https://www.gesetze-im-internet.de/estg/__22.html (verified 2026-10-30).
  */

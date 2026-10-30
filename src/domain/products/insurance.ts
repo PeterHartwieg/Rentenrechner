@@ -4,7 +4,7 @@ import type { CapitalGuaranteeAssumptions, PayoutMode } from './common'
 // pre2005: old-law contract (§52 Abs. 28 EStG) — tax-free capital payout; Leibrente still uses Ertragsanteil.
 // halbeinkuenfte: post-2004, ≥12 years, payout ≥ age 60 for contracts through 2011 or ≥ age 62 from 2012 — half the gain at personal income tax rate (§20 Abs. 1 Nr. 6 EStG). Capital payouts only.
 // abgeltungsteuer: post-2004, all other cases — full gain at 25% Abgeltungsteuer (§20 Abs. 2 EStG). Capital payouts only.
-// ertragsanteil: lifelong Leibrente (payoutMode === 'leibrente') — §22 Nr. 1 Satz 3 a aa EStG Anlage 1.
+// ertragsanteil: lifelong Leibrente (payoutMode === 'leibrente') — §22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG.
 //   The taxable fraction is age-based (ertragsanteilByAge), independent of the contract year.
 //   Applies to ALL private Leibrenten regardless of contract era; set by netInsurancePayout, not deriveInsuranceTaxMode.
 export type InsuranceTaxMode = 'pre2005' | 'halbeinkuenfte' | 'abgeltungsteuer' | 'ertragsanteil'

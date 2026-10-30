@@ -12,7 +12,7 @@
  *
  * Capital is taxed via `deriveInsuranceTaxMode` (halbeinkuenfte /
  * abgeltungsteuer / pre2005) when the payout mode is not Leibrente. Leibrente
- * payouts use §22 Nr. 1 Satz 3 a EStG Ertragsanteil — `afterTaxLumpSum` is
+ * payouts use §22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG Ertragsanteil — `afterTaxLumpSum` is
  * null in that case.
  */
 

@@ -63,7 +63,7 @@ SEO infrastructure in main. Homepage hub references both routes. `?topic=<slug>`
 | 4 | Static example tables | Allowed with `Beispiel: Persona X (Stand 2026)` framing + persona reference from `docs/user-scenarios.md`. Hardcoded numbers; no engine import |
 
 **Body-copy YMYL guardrails (same as #02):**
-- Citations: BMF, DRV, BMAS, §-references to EStG (especially §10 Abs. 3, §22 Nr. 1 Satz 3 a EStG for Ertragsanteil, §20 Abs. 1 Nr. 6 EStG for capital-gains tax on insurance), BaFin for insurance product mechanics, Statistisches Bundesamt.
+- Citations: BMF, DRV, BMAS, §-references to EStG (especially §10 Abs. 3, §22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG for Ertragsanteil, §20 Abs. 1 Nr. 6 EStG for capital-gains tax on insurance), BaFin for insurance product mechanics, Statistisches Bundesamt.
 - Make the contract-era tax mode auto-derivation explicit on `/private-rentenversicherung-rechner` — pre-2005, Halbeinkünfte, Abgeltungsteuer all need clear visual guidance.
 - For `/basisrente-rechner`, make the no-Kapitalauszahlung legal constraint visibly explicit — this is a frequent user surprise.
 - Citations inline + `.scratch/seo-geo-discovery/briefs/<slug>.md`.

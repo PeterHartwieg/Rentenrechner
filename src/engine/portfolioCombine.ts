@@ -356,7 +356,7 @@ function buildPerSourceLines(
  * private-insurance instance in combine-mode: vintage + calendar-year runtime
  * at payout + minimum payout age (§20 Abs. 1 Nr. 6 / §52 Abs. 28 EStG).
  *
- * The §22 Nr. 1 Satz 3 a EStG Ertragsanteil override for Leibrente — and the
+ * The §22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG Ertragsanteil override for Leibrente — and the
  * annual taxable amount — are owned by the shared
  * `classifyInsuranceMonthlyIncome` classifier (same as compare mode).
  */
