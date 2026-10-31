@@ -21,6 +21,34 @@ describe('focused CI selection', () => {
     expect(plan(['src/engine/tax.test.ts']).commands).toContainEqual(['vitest', ['run', 'src/engine/tax.test.ts']])
   })
 
+  it.each([
+    'src/content/copy/entries/landing.copy.json',
+    'src/features/publicPages/altersvorsorgedepot-rechner.faq.json',
+  ])('runs related tests for a source JSON-only change: %s', (file) => {
+    expect(plan([file]).commands).toEqual([
+      ['tsc', ['-b']],
+      ['vitest', ['related', '--run', '--passWithNoTests', file]],
+    ])
+  })
+
+  it.each([
+    ['src/engine/__snapshots__/simulate.integration.test.ts.snap', 'src/engine/simulate.integration.test.ts'],
+    ['src/features/results/__snapshots__/Results.test.tsx.snap', 'src/features/results/Results.test.tsx'],
+  ])('runs the owning test for a snapshot-only change: %s', (snapshot, owner) => {
+    // A removed snapshot must also run its surviving test.
+    expect(plan([snapshot], { exists: (file) => file === owner }).commands).toEqual([
+      ['tsc', ['-b']],
+      ['vitest', ['run', owner]],
+    ])
+  })
+
+  it('deduplicates a changed snapshot and its changed owning test', () => {
+    expect(plan([
+      'src/engine/__snapshots__/simulate.integration.test.ts.snap',
+      'src/engine/simulate.integration.test.ts',
+    ]).commands).toContainEqual(['vitest', ['run', 'src/engine/simulate.integration.test.ts']])
+  })
+
   it('passes filenames to the Vitest 4 parser instead of its ignored double-dash bucket', () => {
     const sources = plan(['src/engine/altersvorsorgedepot.ts']).commands.find(([command]) => command === 'vitest')
     expect(parseCLI(`vitest ${sources[1].join(' ')}`).options.related).toEqual(['src/engine/altersvorsorgedepot.ts'])

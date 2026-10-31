@@ -25,8 +25,11 @@ export function planChecks(files, { full = false, labels = [], exists = existsSy
   if (changedCode.length) commands.push(['eslint', ['--max-warnings=0', '--', ...changedCode]])
   commands.push(['tsc', ['-b']])
   // Keep deleted paths as related inputs: surviving importers must still be checked.
-  const sources = files.filter((file) => !file.startsWith('workers/') && /\.(?:ts|tsx|js|mjs|mdx)$/.test(file) && !test.test(file))
-  const tests = files.filter((file) => !file.startsWith('workers/') && test.test(file) && exists(file))
+  const sources = files.filter((file) => !file.startsWith('workers/') && (/\.(?:ts|tsx|js|mjs|mdx)$/.test(file) || (file.startsWith('src/') && file.endsWith('.json'))) && !test.test(file))
+  // Snapshot changes (including removals) must run their surviving owning test.
+  const tests = [...new Set(files
+    .map((file) => file.startsWith('src/') ? file.replace(/\/__snapshots__\/([^/]+)\.snap$/, '/$1') : file)
+    .filter((file) => !file.startsWith('workers/') && test.test(file) && exists(file)))]
   if (sources.length) commands.push(['vitest', ['related', '--run', '--passWithNoTests', ...sources]])
   // `related` is not guaranteed to include the changed test itself.
   if (tests.length) commands.push(['vitest', ['run', ...tests]])
