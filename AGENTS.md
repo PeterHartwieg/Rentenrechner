@@ -69,13 +69,39 @@ Read by the Codex GitHub review integration (and any Claude reviewer) to focus P
 ## Commands
 
 ```bash
-npm run verify          # lint + tests + build (run after every change)
+npm run verify:focused  # changed-file checks against origin/main (PR default)
+npm run verify          # full verification (before deploy / broad or high-risk changes)
 npx vitest run          # unit tests only
 npx tsc --noEmit        # type-check only
 npm run dev             # dev server
 npm run build           # production build
 npm run repo:stats      # file/symbol inventory
 ```
+
+## CI working mode
+
+PRs keep the required `verify` check, running `npm run verify:focused` against the
+PR base SHA. It lints changed code, runs `tsc -b` and related Vitest tests plus
+changed tests, and selects route coverage, worker checks and build checks by
+their inputs. Documentation-only diffs do no work after installation and the
+blocking production dependency audit. Workers Builds provides the preview build.
+
+Full verification automatically applies to >40 changed files, package manifests
+or locks (including workers), tsconfig files, Vite/Vitest/ESLint config, test setup,
+`src/test/**`, `src/rules/**`, `src/domain/**`, or `.github/workflows/**`.
+Add `full-ci` for other broad/high-risk PRs and explain why in the PR body;
+the job summary records automatic escalation reasons. PR dispatch accepts
+`suite: focused|full` (default full).
+
+Main pushes run full verification and both audits as the pre-deploy full run.
+The same workflow runs at 11:17 / 23:17 UTC and by dispatch on main; scheduled
+runs skip when this SHA already has a successful full workflow run. Weekly
+property/mutation sweeps skip unchanged main relative to their last successful
+scheduled run. Scenario artifacts come from main full runs, with push generation
+limited to scenario inputs. A failed main full job opens/comments on an assigned
+`ci-red` issue; the next green full run comments and closes it. PRs have read-only
+tokens and cannot reach issue-writing jobs. Workers Builds currently deploys
+independently of GitHub checks; gating deployment itself is separate work.
 
 ## Quick navigation
 

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 // Normalize CRLF so the line-based parsing works on Windows checkouts
 // (core.autocrlf=true), not just on Linux CI.
 const prVerify = readFileSync('.github/workflows/pr-verify.yml', 'utf8').replace(/\r\n/g, '\n')
+const mainVerify = readFileSync('.github/workflows/main-verify.yml', 'utf8').replace(/\r\n/g, '\n')
 
 /** Slice one two-space-indented block (job or event) out of its parent. */
 function nestedBlock(workflow, key) {
@@ -95,12 +96,13 @@ describe('pr-verify runs for every pull request (issue #375)', () => {
     expect(jobRunsForBranch(gated, 'review', 'codex/universal-verification')).toBe(false)
   })
 
-  it('triggers on main pushes and pull_request for all branches and paths, so fork PRs run too', () => {
+  it('runs every PR without path filters and moves main pushes to main-verify', () => {
     const trigger = triggerBlock(prVerify)
     const pullRequest = nestedBlock(trigger, 'pull_request')
 
-    expect(nestedBlock(trigger, 'push')).toContain('branches: [main]')
-    expect(pullRequest).toContain('types: [opened, synchronize, reopened]')
+    expect(trigger).not.toMatch(/^  push:/m)
+    expect(nestedBlock(triggerBlock(mainVerify), 'push')).toContain('branches: [main]')
+    expect(pullRequest).toContain('types: [opened, synchronize, reopened, labeled, unlabeled]')
     // No `branches:` filter (which would gate on the BASE branch) and no
     // `paths:` filter — a fork PR to any base branch must still verify.
     expect(pullRequest).not.toMatch(/^\s+(branches|branches-ignore|paths|paths-ignore):/m)
@@ -116,10 +118,10 @@ describe('pr-verify runs for every pull request (issue #375)', () => {
     expect(permissions).not.toContain(': write')
   })
 
-  it('checks out the exact PR, manual, or push SHA it verifies', () => {
+  it('checks out the exact PR or manual SHA it verifies', () => {
     const job = nestedBlock(topLevelBlock(prVerify, 'jobs'), 'verify')
 
-    expect(job).toContain('ref: ${{ github.event.pull_request.head.sha || inputs.head_sha || github.sha }}')
+    expect(job).toContain('ref: ${{ github.event.pull_request.head.sha || inputs.head_sha }}')
   })
 
   it('still supports manual re-verification of a specific head SHA', () => {
@@ -129,5 +131,14 @@ describe('pr-verify runs for every pull request (issue #375)', () => {
     expect(trigger).toContain('pr_number:')
     expect(trigger).toContain('head_sha:')
     expect(trigger).toContain('head_ref:')
+    expect(trigger).toContain('options: [focused, full]')
+    expect(trigger).toContain('default: full')
+  })
+
+  it('keeps escalation inside the focused script and the blocking audit on PRs', () => {
+    expect(prVerify).toContain('npm run verify:focused')
+    expect(prVerify).toContain('npm audit --omit=dev --audit-level=high')
+    expect(prVerify).not.toMatch(/run: npm run verify\s*$/m)
+    expect(prVerify).not.toContain('issues: write')
   })
 })

@@ -20,6 +20,7 @@
     "worker:typecheck": "npm --prefix workers/qa-submit run typecheck && npm --prefix workers/simulate run typecheck",
     "worker:test": "npm --prefix workers/qa-submit run test && npm --prefix workers/simulate run test",
     "verify": "npm run lint && npm test && npm run test:route-coverage && npm run worker:typecheck && npm run worker:test && npm run build && npm run check:dist",
+    "verify:focused": "node scripts/ci-focused.mjs",
     "repo:stats": "node scripts/repo-stats.mjs",
     "check:dist": "node scripts/check-dist.mjs",
     "prerender": "node scripts/prerender.mjs",

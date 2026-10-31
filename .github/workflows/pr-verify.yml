@@ -1,37 +1,33 @@
 name: pr-verify
 
-# Standalone `npm run verify` for main pushes and EVERY pull request,
-# regardless of head branch (codex/*, feat/*, chore/*, forks, ...). This is
-# the CI gate; keep the `verify` job name stable (it is the check name).
-#
-# Fork-safe by construction: `pull_request` (never `pull_request_target`)
-# runs in the base repo with a read-only GITHUB_TOKEN, and this workflow
-# declares `permissions: contents: read` and references no secrets — so PRs
-# from forks can never reach credentials even though their code executes.
-
+# Keep required job `verify`; no workflow path filters. Fork-safe:
+# pull_request, read-only token, no secrets or issue-writing jobs.
 on:
-  push:
-    branches: [main]
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   workflow_dispatch:
     inputs:
       pr_number:
-        description: "Pull request number to verify"
+        description: Pull request number to verify
         required: true
       head_sha:
-        description: "Exact pull request head SHA to verify"
+        description: Exact pull request head SHA to verify
         required: true
       head_ref:
-        description: "Pull request head branch"
+        description: Pull request head branch
         required: true
+      suite:
+        description: Verification suite
+        type: choice
+        options: [focused, full]
+        default: full
 
 permissions:
   contents: read
 
 concurrency:
   group: pr-verify-${{ github.event.pull_request.number || inputs.pr_number || github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'push' }}
+  cancel-in-progress: true
 
 jobs:
   verify:
@@ -39,8 +35,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.head.sha || inputs.head_sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || inputs.head_sha }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -59,22 +56,16 @@ jobs:
             fi
           done
 
-      - name: Audit all dependencies (informational)
-        continue-on-error: true
-        shell: bash
-        run: |
-          audit_status=0
-          npm audit > "$RUNNER_TEMP/npm-audit.txt" 2>&1 || audit_status=$?
-          {
-            echo '### Full npm audit (including dev dependencies; informational)'
-            echo '```text'
-            cat "$RUNNER_TEMP/npm-audit.txt"
-            echo '```'
-          } | tee -a "$GITHUB_STEP_SUMMARY"
-          exit "$audit_status"
-
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
-      - name: Run verify
-        run: npm run verify
+      - name: Run focused verification (automatically escalates broad/high-risk diffs)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || 'origin/main' }}
+          SUITE: ${{ inputs.suite || 'focused' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(--base "$BASE_SHA")
+          if [ "$SUITE" = full ]; then args+=(--full); fi
+          npm run verify:focused -- "${args[@]}"
