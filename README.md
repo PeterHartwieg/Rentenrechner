@@ -39,9 +39,33 @@ All contributions, after payment processing fees, go back into developing Renten
 ```bash
 npm install
 npm run dev         # local dev server
-npm run verify      # lint + tests + build
+npm run verify:focused # PR checks against origin/main (-- --base <sha> supported)
+npm run verify      # full checks before deploy / broad or high-risk changes
 npm test            # unit tests only
 ```
+
+## CI
+
+Every PR runs the required `verify` check with `npm run verify:focused`: changed
+code lint, `tsc -b`, related Vitest tests and changed tests. Route coverage,
+worker checks and build/dist checks run only for their relevant inputs;
+Workers Builds supplies the preview build. Documentation-only diffs skip checks
+after installation and the blocking production dependency audit.
+
+Changes to package manifests/locks, tsconfig, Vite/Vitest/ESLint config, test setup,
+`src/test/**`, `src/rules/**`, `src/domain/**`, `.github/workflows/**`, or >40 files
+automatically run full verification and explain why in the job summary. Use the
+`full-ci` label for other broad/high-risk PRs and explain the choice in the PR body.
+PR dispatch offers `suite: focused|full`, defaulting to full.
+
+Main gets full verification and both dependency audits on every push (the
+pre-deploy full run), at 11:17 / 23:17 UTC, and by manual dispatch on main.
+Schedules skip a SHA that this workflow already verified successfully. The
+weekly property/mutation sweep also skips unchanged main. Scenario reports are
+artifacts of main full runs; push artifact generation is limited to scenario
+inputs. Main full failures open/update an assigned `ci-red` issue; the next green
+full run comments and closes it. PR tokens remain read-only. Workers Builds
+deploys independently of GitHub checks today; deployment gating is separate work.
 
 ## Project Documents
 
