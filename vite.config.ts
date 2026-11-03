@@ -35,7 +35,10 @@ export default defineConfig({
     // comparison tables (issue #04 and onwards).
     { enforce: 'pre', ...mdx({ remarkPlugins: [remarkGfm] }) },
     react({ include: /\.(jsx|tsx|mdx)$/ }),
-    cloudflare(),
+    // Tests use Node/jsdom, not workerd. The Cloudflare dev plugin replaces
+    // server.config, breaking Vitest 5's config-identity lookup (#15969 in
+    // cloudflare/workers-sdk). Keep it enabled for app builds and dev only.
+    process.env.VITEST ? undefined : cloudflare(),
     // Dev-only (apply: 'serve'); absent from production builds.
     copyEditorPlugin(),
   ],

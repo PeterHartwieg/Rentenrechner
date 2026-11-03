@@ -49,7 +49,7 @@ describe('focused CI selection', () => {
     ]).commands).toContainEqual(['vitest', ['run', 'src/engine/simulate.integration.test.ts']])
   })
 
-  it('passes filenames to the Vitest 4 parser instead of its ignored double-dash bucket', () => {
+  it('passes filenames to the Vitest 5 parser instead of its ignored double-dash bucket', () => {
     const sources = plan(['src/engine/altersvorsorgedepot.ts']).commands.find(([command]) => command === 'vitest')
     expect(parseCLI(`vitest ${sources[1].join(' ')}`).options.related).toEqual(['src/engine/altersvorsorgedepot.ts'])
     const tests = plan(['src/engine/tax.test.ts']).commands.find(([command]) => command === 'vitest')
