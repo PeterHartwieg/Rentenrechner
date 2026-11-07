@@ -1,9 +1,9 @@
 {
   "label": "INTERNAL REGRESSION",
-  "baseSha": "4d7a317be5fda01d46d9e30d94e91fb6f1f2409d",
-  "baseShaCapturedAt": "2026-10-30T13:35:24.605Z",
+  "baseSha": "23b8a3bc9498ae59dfd61151034b0e522fcee5f1",
+  "baseShaCapturedAt": "2026-11-07T08:40:46.601Z",
   "engineSources": {
-    "digestSha": "d8ceb5a95a2d3caf",
+    "digestSha": "3c79cadffc88b14a",
     "dirty": false,
     "paths": []
   },
@@ -12,9 +12,9 @@
       "ruleSetId": "de2026",
       "ruleYear": 2026,
       "revision": 3,
-      "contentFingerprint": "2ebfd51c7a0ed60b"
+      "contentFingerprint": "36bd5587fc5a5c7a"
     },
-    "snapshotSha": "101e730879ce820c",
+    "snapshotSha": "ae21d80119407896",
     "cohortSchedules": {
       "besteuerungsanteilGrvByRetirementYear": {
         "2005": 0.5,
@@ -453,7 +453,17 @@
         "partialCapitalMaxPct": 0.3,
         "payoutPlanMinEndAge": 85,
         "transferCostOldProviderWithin5YearsEUR": 150,
-        "transferCostNewProviderEUR": 150
+        "transferCostNewProviderEUR": 150,
+        "selfEmployedEligibilityAgeLimit": 67,
+        "maxSubsidisedNewContracts": 2,
+        "guaranteeLevelPartial": 0.8,
+        "guaranteeLevelFull": 1,
+        "maxRiskClass": 5,
+        "standarddepotFundCount": 2,
+        "glidepathFirstCheckpointYearsBefore": 5,
+        "glidepathSecondCheckpointYearsBefore": 2,
+        "transferCostWindowYears": 5,
+        "terminationNoticeMonths": 3
       },
       "incomeTax": {
         "basicAllowance": 12348,
@@ -810,5 +820,5 @@
       ]
     }
   },
-  "notes": "Erfasst mit: npm run scenario:update -- --reason \"Correct Ertragsanteil bands against official EStG section 22 table; revision 3 and fingerprint now include band data\". rulesIdentity friert die RuleSetIdentity aus src/rules/ruleMetadata.ts (ruleSetId, Revision, Content-Fingerprint über Jahresregeln UND legalRuleData-Katalog), den Snapshot-Sha des kanonischen Regel-Snapshots, die evaluierten Kohortentabellen (Code, den kein JSON-Snapshot sehen kann) und die vollen Jahresregeln als kanonisches JSON ein; engineSources.digestSha identifiziert den Rechenwerkscode der Basis-Revision (sha256-Präfix). Rules-Identität dieser Erfassung: 363d4c49930bdd91. Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise."
+  "notes": "Erfasst mit: npm run scenario:update -- --reason \"Add descriptive AV-Depot rule fields (self-employed age limit, contract cap, guarantee levels, risk class, Standarddepot fund count, glidepath checkpoints, transfer window, notice period) for the draft pages; no existing rule value changed, 0 scenario cases diverge\". rulesIdentity friert die RuleSetIdentity aus src/rules/ruleMetadata.ts (ruleSetId, Revision, Content-Fingerprint über Jahresregeln UND legalRuleData-Katalog), den Snapshot-Sha des kanonischen Regel-Snapshots, die evaluierten Kohortentabellen (Code, den kein JSON-Snapshot sehen kann) und die vollen Jahresregeln als kanonisches JSON ein; engineSources.digestSha identifiziert den Rechenwerkscode der Basis-Revision (sha256-Präfix). Rules-Identität dieser Erfassung: 7ce64fc1b5a88e0b. Alle Werte sind INTERNE REGRESSIONSANKER, keine Rechtsnachweise."
 }

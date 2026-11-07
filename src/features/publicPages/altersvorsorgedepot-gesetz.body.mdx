@@ -1,5 +1,13 @@
 import { Faq } from './Faq'
 import faq from './altersvorsorgedepot-gesetz.faq.json'
+import {
+  AVD_BASIC_ALLOWANCE_MAX, AVD_CAREER_STARTER_AGE_LIMIT, AVD_CAREER_STARTER_BONUS, AVD_CHILD_ALLOWANCE_MAX,
+  AVD_CHILD_ALLOWANCE_RATE, AVD_CONTRACT_CONTRIBUTION_CAP, AVD_MINIMUM_OWN_CONTRIBUTION, AVD_PARTIAL_CAPITAL_MAX,
+  AVD_PAYOUT_MAX_AGE, AVD_PAYOUT_MIN_AGE, AVD_PAYOUT_PLAN_END_AGE, AVD_STANDARD_COST_CAP, AVD_TIER_1_MAX,
+  AVD_TIER_1_RATE, AVD_TIER_2_MAX, AVD_TIER_2_RATE, AVD_TIER_2_START, LAW_EXAMPLE_ROWS,
+  AVD_GUARANTEE_FULL, AVD_GUARANTEE_PARTIAL, AVD_MAX_CONTRACTS_WORD, AVD_MAX_RISK_CLASS,
+  AVD_SELF_EMPLOYED_AGE_LIMIT, AVD_STANDARD_FUND_COUNT_WORD,
+} from './avdDraftRuleCopy'
 
 {/* Source: AV-Depot handoff v2 (gesetz-und-zeitplan.de.md, Stand 2026-11-07, status: draft).
     H1, title, meta description and the "Kurz gesagt" summary live in
@@ -33,47 +41,47 @@ import faq from './altersvorsorgedepot-gesetz.faq.json'
 
 ## Förderung: Grundzulage, Kinderzulage, Höchstbetrag, Steuer
 
-- **Grundzulage:** 50 Prozent auf Beiträge bis 360 Euro im Jahr, 25 Prozent auf Beiträge von 360,01 bis 1.800 Euro. Das ergibt höchstens 540 Euro im Jahr.
-- **Berufseinsteigerbonus:** einmalig 200 Euro zusätzlich, wenn du zu Beginn des Beitragsjahres jünger als 25 Jahre bist.
-- **Kinderzulage:** 100 Prozent der Beiträge, höchstens 300 Euro je Kind im Jahr, für das du Kindergeld erhältst.
-- **Mindesteigenbeitrag:** Zulagen gibt es nur, wenn du mindestens 120 Euro im Jahr selbst einzahlst.
-- **Höchstbetrag:** In einen Vertrag dürfen höchstens 6.840 Euro im Jahr eingezahlt werden.
-- **Höchstens zwei Verträge:** Ab 2027 werden höchstens zwei neu abgeschlossene Verträge gefördert.
+- **Grundzulage:** {AVD_TIER_1_RATE} Prozent auf Beiträge bis {AVD_TIER_1_MAX} Euro im Jahr, {AVD_TIER_2_RATE} Prozent auf Beiträge von {AVD_TIER_2_START} bis {AVD_TIER_2_MAX} Euro. Das ergibt höchstens {AVD_BASIC_ALLOWANCE_MAX} Euro im Jahr.
+- **Berufseinsteigerbonus:** einmalig {AVD_CAREER_STARTER_BONUS} Euro zusätzlich, wenn du zu Beginn des Beitragsjahres jünger als {AVD_CAREER_STARTER_AGE_LIMIT} Jahre bist.
+- **Kinderzulage:** {AVD_CHILD_ALLOWANCE_RATE} Prozent der Beiträge, höchstens {AVD_CHILD_ALLOWANCE_MAX} Euro je Kind im Jahr, für das du Kindergeld erhältst.
+- **Mindesteigenbeitrag:** Zulagen gibt es nur, wenn du mindestens {AVD_MINIMUM_OWN_CONTRIBUTION} Euro im Jahr selbst einzahlst.
+- **Höchstbetrag:** In einen Vertrag dürfen höchstens {AVD_CONTRACT_CONTRIBUTION_CAP} Euro im Jahr eingezahlt werden.
+- **Höchstens {AVD_MAX_CONTRACTS_WORD} Verträge:** Ab 2027 werden höchstens {AVD_MAX_CONTRACTS_WORD} neu abgeschlossene Verträge gefördert.
 - **Steuer:** Die Beiträge können zusätzlich als Sonderausgaben abgesetzt werden; das Finanzamt prüft, was für dich günstiger ist. Die Auszahlungen im Alter werden versteuert (nachgelagerte Besteuerung).
 
 **Beispiele für die Zulage im Jahr** (eigene Berechnung nach § 84 und § 85 EStG):
 
 | Dein Eigenbeitrag | Grundzulage | Mit einem Kind |
 |---|---|---|
-| 360 € | 180 € | 480 € |
-| 1.200 € | 390 € | 690 € |
-| 1.800 € | 540 € | 840 € |
+| {LAW_EXAMPLE_ROWS[0].contribution} € | {LAW_EXAMPLE_ROWS[0].basic} € | {LAW_EXAMPLE_ROWS[0].withOneChild} € |
+| {LAW_EXAMPLE_ROWS[1].contribution} € | {LAW_EXAMPLE_ROWS[1].basic} € | {LAW_EXAMPLE_ROWS[1].withOneChild} € |
+| {LAW_EXAMPLE_ROWS[2].contribution} € | {LAW_EXAMPLE_ROWS[2].basic} € | {LAW_EXAMPLE_ROWS[2].withOneChild} € |
 
-**Förderberechtigt** sind die bisher Riester-berechtigten Personen, ab 2027 auch Selbständige unter 67 Jahren und Pflichtmitglieder berufsständischer Versorgungswerke. Wie viel Förderung du bei deinem Beitrag erhältst, kannst du mit dem [Altersvorsorgedepot-Rechner](/altersvorsorgedepot-rechner/) berechnen.
+**Förderberechtigt** sind die bisher Riester-berechtigten Personen, ab 2027 auch Selbständige unter {AVD_SELF_EMPLOYED_AGE_LIMIT} Jahren und Pflichtmitglieder berufsständischer Versorgungswerke. Wie viel Förderung du bei deinem Beitrag erhältst, kannst du mit dem [Altersvorsorgedepot-Rechner](/altersvorsorgedepot-rechner/) berechnen.
 
 ## Produktarten: AV-Depot, Standarddepot, Garantieprodukt
 
 | Produktart | Was das Gesetz vorgibt |
 |---|---|
 | Altersvorsorgedepot | Anlage in zugelassenen Fonds, ETFs und Anleihen; keine Garantie |
-| Standarddepot Altersvorsorge | Online abschließbar; zwei vom Anbieter festgelegte Fonds (ein risikoarmer und ein risikoreicherer); du bestimmst die Aufteilung; Effektivkosten höchstens 1,0 Prozent |
-| Garantieprodukt | Anbieter sagt 80 oder 100 Prozent der Beiträge und Zulagen zum Beginn der Auszahlung zu |
+| Standarddepot Altersvorsorge | Online abschließbar; {AVD_STANDARD_FUND_COUNT_WORD} vom Anbieter festgelegte Fonds (ein risikoarmer und ein risikoreicherer); du bestimmst die Aufteilung; Effektivkosten höchstens {AVD_STANDARD_COST_CAP} Prozent |
+| Garantieprodukt | Anbieter sagt {AVD_GUARANTEE_PARTIAL} oder {AVD_GUARANTEE_FULL} Prozent der Beiträge und Zulagen zum Beginn der Auszahlung zu |
 
 Jeder Anbieter eines Altersvorsorgedepots oder Garantieprodukts muss auch ein Standarddepot anbieten, selbst oder über einen kooperierenden Anbieter. Welche Anbieter welche Produktarten angekündigt haben, zeigt die Übersicht [Altersvorsorgedepot-Anbieter](/altersvorsorgedepot-anbieter/).
 
 ## Kostendeckel und Anlageregeln
 
-- **Kostendeckel:** Nur für das Standarddepot gilt ein Deckel von 1,0 Prozent Effektivkosten im Jahr.
+- **Kostendeckel:** Nur für das Standarddepot gilt ein Deckel von {AVD_STANDARD_COST_CAP} Prozent Effektivkosten im Jahr.
 - **Kostenangaben:** Alle Anbieter müssen die Effektivkosten nach einem einheitlichen Verfahren angeben.
 - **Abschlusskosten:** Abschluss- und Vertriebskosten müssen gleichmäßig über die Ansparphase verteilt werden.
-- **Erlaubte Anlagen:** Investmentfonds und ETFs (OGAW), bestimmte offene Publikumsfonds und europäische langfristige Investmentfonds bis Risikoklasse 5 sowie Euro-Anleihen öffentlicher Emittenten. Einzelaktien sind nicht vorgesehen.
+- **Erlaubte Anlagen:** Investmentfonds und ETFs (OGAW), bestimmte offene Publikumsfonds und europäische langfristige Investmentfonds bis Risikoklasse {AVD_MAX_RISK_CLASS} sowie Euro-Anleihen öffentlicher Emittenten. Einzelaktien sind nicht vorgesehen.
 - **Standarddepot vor der Rente:** Das Standarddepot schichtet vor Beginn der Auszahlung schrittweise in den risikoärmeren Fonds um. Du kannst andere Anteile vereinbaren.
 
 ## Auszahlungsphase und Kleinbetragsrente
 
-- **Beginn:** frühestens mit 65 Jahren oder früher, wenn vorher eine Leistung aus einem gesetzlichen Alterssicherungssystem beginnt. Spätestens mit 70 Jahren.
-- **Formen:** lebenslange Leibrente oder Auszahlungsplan, der frühestens mit 85 Jahren endet.
-- **Teilauszahlung:** Bis zu 30 Prozent des Kapitals können zu Beginn der Auszahlung gesondert ausgezahlt werden.
+- **Beginn:** frühestens mit {AVD_PAYOUT_MIN_AGE} Jahren oder früher, wenn vorher eine Leistung aus einem gesetzlichen Alterssicherungssystem beginnt. Spätestens mit {AVD_PAYOUT_MAX_AGE} Jahren.
+- **Formen:** lebenslange Leibrente oder Auszahlungsplan, der frühestens mit {AVD_PAYOUT_PLAN_END_AGE} Jahren endet.
+- **Teilauszahlung:** Bis zu {AVD_PARTIAL_CAPITAL_MAX} Prozent des Kapitals können zu Beginn der Auszahlung gesondert ausgezahlt werden.
 - **Kleinbetragsrente:** Sehr kleine Renten können mit einer Einmalzahlung abgefunden werden.
 
 Die Regeln für den Todesfall bereiten wir noch auf.
@@ -92,10 +100,10 @@ Die Frühstart-Rente für Kinder ist **nicht** Teil des Altersvorsorgereformgese
 
 - Altersvorsorgereformgesetz, BGBl. 2026 I Nr. 156 vom 29.05.2026: https://www.recht.bund.de/bgbl/1/2026/156/VO.html
   - Förderberechtigte: § 10a EStG
-  - Höchstens zwei geförderte Verträge: § 82 Abs. 5 EStG
+  - Höchstens {AVD_MAX_CONTRACTS_WORD} geförderte Verträge: § 82 Abs. 5 EStG
   - Grundzulage, Berufseinsteigerbonus: § 84 EStG
   - Kinderzulage: § 85 EStG
-  - Mindesteigenbeitrag 120 Euro: § 86 EStG
+  - Mindesteigenbeitrag {AVD_MINIMUM_OWN_CONTRIBUTION} Euro: § 86 EStG
   - Besteuerung der Auszahlungen: § 22 Nr. 5 EStG
   - Vertragsanforderungen, Auszahlung, Höchstbeitrag, Wechselkosten: § 1 Abs. 1 AltZertG
   - Altersvorsorgedepot und erlaubte Anlagen: § 1 Abs. 1b AltZertG

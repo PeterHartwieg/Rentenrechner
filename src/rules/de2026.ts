@@ -54,6 +54,26 @@ export const de2026Rules: GermanRules = {
     payoutPlanMinEndAge: 85,
     transferCostOldProviderWithin5YearsEUR: 150,
     transferCostNewProviderEUR: 150,
+    // Descriptive limits shown on the AV-Depot law/provider pages; no engine
+    // consumer yet. Altersvorsorgereformgesetz (BGBl. 2026 I Nr. 156).
+    // § 10a EStG: self-employed savers are eligible while under this age.
+    selfEmployedEligibilityAgeLimit: 67,
+    // § 82 Abs. 5 EStG: only the first two contracts concluded after 2026 are subsidised.
+    maxSubsidisedNewContracts: 2,
+    // § 1 Abs. 1 AltZertG: Garantieprodukt guarantee levels (share of contributions + allowances).
+    guaranteeLevelPartial: 0.80,
+    guaranteeLevelFull: 1.0,
+    // § 1 Abs. 1b AltZertG: highest permitted risk class of eligible funds.
+    maxRiskClass: 5,
+    // § 1 Abs. 1c AltZertG: the Standarddepot holds two provider-defined funds.
+    standarddepotFundCount: 2,
+    // Standarddepot glidepath checkpoints, in years before payout start.
+    glidepathFirstCheckpointYearsBefore: 5,
+    glidepathSecondCheckpointYearsBefore: 2,
+    // § 1 Abs. 1 AltZertG: transfer-cost window after contract start (years).
+    transferCostWindowYears: 5,
+    // § 1 Abs. 1 AltZertG: notice period for a provider switch (months, to quarter end).
+    terminationNoticeMonths: 3,
   },
   incomeTax: {
     basicAllowance: 12_348,
