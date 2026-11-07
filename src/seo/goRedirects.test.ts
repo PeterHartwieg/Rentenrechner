@@ -21,7 +21,7 @@ describe('/go/<slug> provider redirects (public/_redirects)', () => {
       .filter((row) => row.url !== null)
       .map((row) => `/go/${row.slug} ${row.url} 302`)
     expect(goBlock()).toEqual(expected)
-    expect(expected).toHaveLength(82)
+    expect(expected).toHaveLength(83)
   })
 
   it('has no rule for rows without a provider URL and no wildcard (unknown slug → 404)', () => {

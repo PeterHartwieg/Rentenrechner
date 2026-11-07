@@ -23,6 +23,12 @@ describe('anbieter table data (handoff 2026-11-07)', () => {
     expect(Array.isArray(rawTable)).toBe(false)
     expect(table.rows).toHaveLength(84)
     expect(table.stand).toBe('2026-11-07')
+    const counts = Object.fromEntries(table.statusOrder.map((s) => [s, table.rows.filter((r) => r.status === s).length]))
+    expect(counts).toEqual({ live: 0, waitlist: 28, announced: 26, rumoured: 30 })
+    // 08:32 input update: Debeka's 1 % is the statutory Standarddepot cap, not its price.
+    expect(table.rows.find((r) => r.slug === 'debeka')?.kosten_pct_jahr).toBeNull()
+    expect(table.rows.filter((r) => r.kosten_pct_jahr !== null)).toHaveLength(9)
+    expect(table.rows.find((r) => r.slug === 'growney')).toMatchObject({ status: 'waitlist', link_href: '/go/growney' })
     expect(table.typGruppen).toHaveLength(6)
     expect(table.statusOrder).toEqual(['live', 'waitlist', 'announced', 'rumoured'])
     expect([...table.sortableColumns].sort()).toEqual([...SORT_KEYS].sort())

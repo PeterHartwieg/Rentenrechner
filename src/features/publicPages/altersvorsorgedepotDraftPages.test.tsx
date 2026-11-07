@@ -10,6 +10,7 @@ import { HUB_CLUSTERS } from '../landing/hubClusters'
 import { AltersvorsorgedepotAnbieterPage } from './AltersvorsorgedepotAnbieterPage'
 import { AltersvorsorgedepotGesetzPage } from './AltersvorsorgedepotGesetzPage'
 import anbieterFaq from './altersvorsorgedepot-anbieter.faq.json'
+import anbieterTable from './altersvorsorgedepot-anbieter.table.json'
 import gesetzFaq from './altersvorsorgedepot-gesetz.faq.json'
 
 // ArticleLayout de-duplicates heading ids across the whole document.
@@ -62,7 +63,7 @@ describe('/altersvorsorgedepot-anbieter', () => {
   it('uses plain /go/ links with nofollow and no Werbelink', () => {
     const { container } = render(<AltersvorsorgedepotAnbieterPage />)
     const links = Array.from(container.querySelectorAll<HTMLAnchorElement>('.anbieter-table a[href^="/go/"]'))
-    expect(links).toHaveLength(82)
+    expect(links).toHaveLength(83)
     for (const a of links) {
       expect(a.getAttribute('rel')).toBe('nofollow noopener')
       expect(a.getAttribute('aria-label')).toMatch(/^Zur Anbieterseite von .+ \(externe Seite\)$/)
@@ -75,7 +76,7 @@ describe('/altersvorsorgedepot-anbieter', () => {
     const { container } = render(<AltersvorsorgedepotAnbieterPage />)
     const costCells = Array.from(container.querySelectorAll('.anbieter-table tbody tr'), (tr) => tr.children[6])
     const withNumber = costCells.filter((td) => td.querySelector('.anbieter-num'))
-    expect(withNumber).toHaveLength(10)
+    expect(withNumber).toHaveLength(9)
     for (const td of withNumber) expect(td.querySelector('.anbieter-cost-art')?.textContent).toBeTruthy()
     for (const td of costCells.filter((c) => !c.querySelector('.anbieter-num'))) {
       expect(td.textContent).toBe('k. A.')
@@ -112,6 +113,20 @@ describe('/altersvorsorgedepot-anbieter', () => {
     expect(html).not.toContain('Sortieren nach')
     expect(html).not.toContain('type="checkbox"')
     expect(html.indexOf('id="apobank"')).toBeLessThan(html.indexOf('id="zurich"'))
+  })
+
+  it('states the same status counts as the table rows (summary and FAQ)', () => {
+    const count = (status: string) => anbieterTable.rows.filter((r) => r.status === status).length
+    const { container } = render(<AltersvorsorgedepotAnbieterPage />)
+    const text = container.textContent ?? ''
+    expect(text).toContain(`Warteliste oder Vormerkung: ${count('waitlist')} Anbieter`)
+    expect(text).toContain(`Angekündigt: ${count('announced')} Anbieter`)
+    expect(text).toContain(`Unbestätigt: ${count('rumoured')} Einträge`)
+    const faqAnswer = anbieterFaq.find((f) => f.q === 'Welche Anbieter haben ein Altersvorsorgedepot angekündigt?')?.a ?? ''
+    expect(faqAnswer).toContain(
+      `${anbieterTable.rows.length} Anbieter: ${count('waitlist')} mit Warteliste oder Vormerkung, ` +
+      `${count('announced')} mit angekündigtem Angebot und ${count('rumoured')} unbestätigte Einträge`,
+    )
   })
 
   it('renders the visible FAQ from faq-anbieter.json', () => {
