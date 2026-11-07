@@ -74,14 +74,14 @@ function competingAvd(): Ws {
 }
 
 /** Age 22, existing active self-owned Riester that holds the career-starter bonus. */
-function competingRiester(): Ws {
+function competingRiester(monthlyOwnContribution = 100): Ws {
   const ws = buildBerndWorkspace()
   ws.baseline.profile.age = 22
   ws.baseline.assumptions.altersvorsorgedepot = []
   const riester = ws.baseline.assumptions.riester[0]
   riester.status = 'active'
   riester.ownedBy = 'self'
-  riester.monthlyOwnContribution = 100
+  riester.monthlyOwnContribution = monthlyOwnContribution
   riester.eligibility = {
     ...riester.eligibility, directlyEligible: true, indirectSpouseEligible: false,
     careerStarterBonusUsed: false, ageAtContractStart: 20,
@@ -111,10 +111,12 @@ function partnerRiester(): Ws {
 const DIVERGENT: Array<[string, () => Ws, number, number, number]> = [
   ['Bernd default, €200', buildBerndWorkspace, 200, 200, 173.416667],
   ['Bernd default, near AVD contract cap', buildBerndWorkspace, capMonthly + 200, 525, 498.416667],
+  ['salary €60k, €150', () => withSalary(60_000), 150, 150, 131.833333],
   ['salary €90k, €150', () => withSalary(90_000), 150, 150, 114.333333],
   ['salary €150k, near AVD contract cap', () => withSalary(150_000), capMonthly + 200, 525, 483.577917],
   ['competing AVD bonus recipient, €50', competingAvd, 50, 50, 39.416667],
-  ['competing Riester bonus recipient, €100', competingRiester, 100, 100, 86.268445],
+  ['competing Riester bonus recipient, €100', () => competingRiester(100), 100, 100, 86.268445],
+  ['competing €10/mo Riester bonus recipient, €100', () => competingRiester(10), 100, 100, 93.485178],
   ['partner household with partner Riester, €150', partnerRiester, 150, 150, 135.5],
 ]
 
@@ -133,6 +135,16 @@ describe('#436 reproduction — AVD candidate cost vs household net-cost delta (
       expect(r.after.altersvorsorgedepotByInstanceId[r.createdId].guenstigerpruefungBenefitAnnual).toBe(0)
       expect(r.householdDelta).toBeCloseTo(r.draft.netCashOutEUR, 8)
     }
+  })
+
+  it('no divergence with unclaimed children at low income (salary €25k, no other contracts)', () => {
+    const ws = withSalary(25_000)
+    ws.baseline.profile.childBirthYears = [2018, 2020]
+    ws.baseline.assumptions.riester = []
+    ws.baseline.assumptions.altersvorsorgedepot = []
+    const r = applyAvdCandidate(ws, 100)
+    expect(r.draft.netCashOutEUR).toBe(100)
+    expect(r.householdDelta).toBeCloseTo(100, 8)
   })
 
   it('competing AVD: the candidate takes the existing contract career-starter bonus', () => {
