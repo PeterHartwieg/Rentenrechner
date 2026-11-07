@@ -1,4 +1,4 @@
-// Head/H1/summary copy for the two AV-Depot draft pages, verbatim from the
+// Head/H1/summary copy for the two AV-Depot article pages, verbatim from the
 // handoff v2 front matter, H1 and "Kurz gesagt" paragraphs (Stand
 // 2026-11-07); only the title brand suffix follows the RentenWiki.de rule.
 // The years and dates are fixed facts (AVD start 2027, BGBl. 2026, date of

@@ -118,14 +118,6 @@ export interface PublicRoute {
    * unknown publication date may omit this field.
    */
   readonly datePublished?: string
-  /**
-   * Editorial status. `'draft'` marks a page that is prerendered (so a
-   * Workers Builds preview can show it) but not published: it must carry
-   * `robots: 'noindex,follow'` and `inSitemap: false`, stays out of
-   * `HUB_CLUSTERS`, and published pages hide it from their related links.
-   * Omitted means published. Publishing is a separate, approved change.
-   */
-  readonly status?: 'draft'
   /** Static robots policy. Share-state injects `noindex,follow` at runtime. */
   readonly robots: RobotsPolicy
   /** Whether this route appears in `sitemap.xml`. The `/404` route is excluded. */
@@ -389,6 +381,8 @@ export const publicRouteRegistry = {
       '/rentenluecke-rechner',
       '/riester-rechner',
       '/riester-vs-altersvorsorgedepot',
+      '/altersvorsorgedepot-anbieter',
+      '/altersvorsorgedepot-gesetz',
     ],
     calculatorCta: {
       label: 'Altersvorsorgedepot jetzt berechnen',
@@ -419,6 +413,7 @@ export const publicRouteRegistry = {
       '/rentenluecke-rechner',
       '/riester-rechner',
       '/altersvorsorgedepot-rechner',
+      '/altersvorsorgedepot-gesetz',
     ],
     calculatorCta: {
       label: 'Riester vs. AVD selbst berechnen',
@@ -429,18 +424,16 @@ export const publicRouteRegistry = {
       visibleProducts: ['riester', 'altersvorsorgedepot'],
     },
   },
-  // AV-Depot handoff v2 (Stand 2026-11-07). Both pages are drafts: reviewable
-  // on the PR preview, not indexed, not in the sitemap, the hub or the
-  // related links of published pages. Publishing needs Peter's OK.
+  // AV-Depot handoff v2 (Stand 2026-11-07), published 2026-11-07.
   '/altersvorsorgedepot-anbieter': {
     faq: validateFaq(avdAnbieterFaq, 'altersvorsorgedepot-anbieter.faq.json')
       .map(({ q, a }) => ({ question: q, answer: a })),
     canonical: '/altersvorsorgedepot-anbieter',
     ...AVD_ANBIETER_PAGE_COPY,
     dateModified: '2026-11-07',
-    status: 'draft',
-    robots: 'noindex,follow',
-    inSitemap: false,
+    datePublished: '2026-11-07',
+    robots: 'index,follow',
+    inSitemap: true,
     jsonLdType: 'Article',
     relatedRoutes: [
       '/altersvorsorgedepot-gesetz',
@@ -458,9 +451,9 @@ export const publicRouteRegistry = {
     canonical: '/altersvorsorgedepot-gesetz',
     ...AVD_GESETZ_PAGE_COPY,
     dateModified: '2026-11-07',
-    status: 'draft',
-    robots: 'noindex,follow',
-    inSitemap: false,
+    datePublished: '2026-11-07',
+    robots: 'index,follow',
+    inSitemap: true,
     jsonLdType: 'Article',
     relatedRoutes: [
       '/altersvorsorgedepot-anbieter',

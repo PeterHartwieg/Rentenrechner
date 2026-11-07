@@ -1,6 +1,6 @@
 {
   "stand": "2026-11-07",
-  "hinweis": "Entwurf, nicht veröffentlicht. Keine Rangfolge: alphabetisch innerhalb jeder Statusgruppe. Angaben laut Anbieter bzw. verlinkter Quelle, ohne Gewähr. null = nicht veröffentlicht/unbekannt. Kein Angebot ist abschließbar (Start frühestens 01.01.2027, Zertifizierung erforderlich).",
+  "hinweis": "Keine Rangfolge: alphabetisch innerhalb jeder Statusgruppe. Angaben laut Anbieter bzw. verlinkter Quelle, ohne Gewähr. null = nicht veröffentlicht/unbekannt. Kein Angebot ist abschließbar (Start frühestens 01.01.2027, Zertifizierung erforderlich).",
   "statusLabels": {
     "live": "Abschließbar",
     "waitlist": "Warteliste / Vormerkung",

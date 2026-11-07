@@ -327,10 +327,10 @@ describe('LandingPage — Erkunde Themen topic-page hub (issue #03)', () => {
     }
   })
 
-  it('renders exactly 10 hub anchor links to the locked canonical paths', () => {
+  it('renders exactly 12 hub anchor links to the locked canonical paths', () => {
     const { container } = render(<LandingPage onChoice={NOOP} navigate={NOOP} />)
     const hubLinks = container.querySelectorAll('a.landing-hub-link')
-    expect(hubLinks.length).toBe(10)
+    expect(hubLinks.length).toBe(12)
     const expectedPaths = [
       '/rentenluecke-rechner/',
       '/rente-netto-berechnen/',
@@ -339,6 +339,8 @@ describe('LandingPage — Erkunde Themen topic-page hub (issue #03)', () => {
       '/riester-rechner/',
       '/altersvorsorgedepot-rechner/',
       '/riester-vs-altersvorsorgedepot/',
+      '/altersvorsorgedepot-anbieter/',
+      '/altersvorsorgedepot-gesetz/',
       '/basisrente-rechner/',
       '/private-rentenversicherung-rechner/',
       '/altersvorsorgeprodukte-vergleichen/',
@@ -637,10 +639,10 @@ describe('LandingPage — editorial layout (PR 2)', () => {
 })
 
 describe('HUB_CLUSTERS — exported registry (single source of truth)', () => {
-  it('exposes 5 clusters and 10 links total', () => {
+  it('exposes 5 clusters and 12 links total', () => {
     expect(HUB_CLUSTERS.length).toBe(5)
     const total = HUB_CLUSTERS.reduce((acc, c) => acc + c.links.length, 0)
-    expect(total).toBe(10)
+    expect(total).toBe(12)
   })
 
   it('every link href is a valid canonical path with trailing slash (no query, no fragment)', () => {

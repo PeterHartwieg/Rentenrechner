@@ -7,9 +7,7 @@ interface Props {
 }
 
 /**
- * Draft page for `/altersvorsorgedepot-gesetz` (AV-Depot handoff v2): law and timeline explainer.
- * Registered with `status: 'draft'` — prerendered for the PR preview, but
- * noindex, out of the sitemap and the article hub until publication.
+ * Article page for `/altersvorsorgedepot-gesetz` (AV-Depot handoff v2): law and timeline explainer.
  */
 export function AltersvorsorgedepotGesetzPage({ navigate }: Props = {}) {
   return (

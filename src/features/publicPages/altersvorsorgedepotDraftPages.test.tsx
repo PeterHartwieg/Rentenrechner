@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { renderToString } from 'react-dom/server'
 import { activeRules } from '../../rules'
-import { publicRouteRegistry, type PublicRoute } from '../../seo/publicRouteRegistry'
+import { publicRouteRegistry, SITE_ORIGIN, type PublicRoute } from '../../seo/publicRouteRegistry'
+import { PRERENDER_COMPONENTS } from '../../seo/prerenderRoutes'
 import { generateSitemap } from '../../seo/sitemap'
 import { HUB_CLUSTERS } from '../landing/hubClusters'
 import { AltersvorsorgedepotAnbieterPage } from './AltersvorsorgedepotAnbieterPage'
@@ -16,27 +17,33 @@ import gesetzFaq from './altersvorsorgedepot-gesetz.faq.json'
 // ArticleLayout de-duplicates heading ids across the whole document.
 afterEach(cleanup)
 
-const DRAFTS = ['/altersvorsorgedepot-anbieter', '/altersvorsorgedepot-gesetz'] as const
+const PAGES = ['/altersvorsorgedepot-anbieter', '/altersvorsorgedepot-gesetz'] as const
 
-describe('AV-Depot draft pages — publication gate', () => {
-  it.each(DRAFTS)('%s is a draft: noindex, not in sitemap or hub', (id) => {
+describe('AV-Depot pages — publication gate', () => {
+  it.each(PAGES)('%s is published: indexable, in sitemap, hub and prerender', (id) => {
     const route: PublicRoute = publicRouteRegistry[id]
-    expect(route.status).toBe('draft')
-    expect(route.robots).toBe('noindex,follow')
-    expect(route.inSitemap).toBe(false)
-    expect(route.datePublished).toBeUndefined()
-    expect(generateSitemap()).not.toContain(id)
-    expect(HUB_CLUSTERS.flatMap((c) => c.links.map((l) => l.href))).not.toContain(`${id}/`)
+    expect(route.robots).toBe('index,follow')
+    expect(route.inSitemap).toBe(true)
+    expect(route.datePublished).toBe('2026-11-07')
+    expect(generateSitemap()).toContain(`${SITE_ORIGIN}${id}/`)
+    expect(HUB_CLUSTERS.flatMap((c) => c.links.map((l) => l.href))).toContain(`${id}/`)
+    expect(PRERENDER_COMPONENTS).toHaveProperty(id)
   })
 
-  it('no published route lists a draft among its related routes', () => {
-    for (const route of Object.values(publicRouteRegistry) as PublicRoute[]) {
-      if (route.status === 'draft') continue
-      for (const draft of DRAFTS) expect(route.relatedRoutes).not.toContain(draft)
-    }
+  it('the live AV-Depot pages link to both pages', () => {
+    expect(publicRouteRegistry['/altersvorsorgedepot-rechner'].relatedRoutes).toEqual(
+      expect.arrayContaining([...PAGES]),
+    )
+    expect(publicRouteRegistry['/riester-vs-altersvorsorgedepot'].relatedRoutes).toContain(
+      '/altersvorsorgedepot-gesetz',
+    )
   })
 
-  it.each(DRAFTS)('%s carries FAQPage data from its .faq.json', (id) => {
+  it('keeps every provider row non-affiliate', () => {
+    for (const row of anbieterTable.rows) expect(row.affiliate).toBe(false)
+  })
+
+  it.each(PAGES)('%s carries FAQPage data from its .faq.json', (id) => {
     const faq = id === '/altersvorsorgedepot-anbieter' ? anbieterFaq : gesetzFaq
     const route: PublicRoute = publicRouteRegistry[id]
     expect(route.faq).toEqual(faq.map(({ q, a }) => ({ question: q, answer: a })))
@@ -50,7 +57,7 @@ describe('/altersvorsorgedepot-anbieter', () => {
     expect(rows).toHaveLength(84)
     expect(container.querySelectorAll('.anbieter-card')).toHaveLength(84)
     expect(rows[0].id).toBe('apobank')
-    expect(screen.getByText(/Entwurf, nicht veröffentlicht\. Diese Seite/)).toBeTruthy()
+    expect(container.textContent).not.toMatch(/Entwurf, nicht veröffentlicht|· Entwurf/)
   })
 
   it('exposes the anchors the copy and ArticleLayout rely on', () => {
@@ -156,6 +163,11 @@ describe('/altersvorsorgedepot-gesetz', () => {
     const hrefs = Array.from(container.querySelectorAll('a'), (a) => a.getAttribute('href'))
     expect(hrefs).toContain('/altersvorsorgedepot-anbieter/')
     expect(hrefs).toContain('/altersvorsorgedepot-rechner/')
+  })
+
+  it('shows no draft markers', () => {
+    const { container } = render(<AltersvorsorgedepotGesetzPage />)
+    expect(container.textContent).not.toMatch(/Entwurf/)
   })
 
   it('renders the visible FAQ from faq-gesetz.json', () => {

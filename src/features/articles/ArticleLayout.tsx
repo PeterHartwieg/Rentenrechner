@@ -332,11 +332,6 @@ export function ArticleLayout({
 
           {/* Center — the article body. */}
           <article className="article-body">
-            {(route as PublicRoute).status === 'draft' && (
-              <p className="article-draft-notice" role="note">
-                Entwurf, nicht veröffentlicht. Diese Seite ist nur zur Prüfung erreichbar.
-              </p>
-            )}
             <h1 className="article-headline">{headlineNode}</h1>
             <p className="article-summary">{route.summary}</p>
             <div className="article-meta">

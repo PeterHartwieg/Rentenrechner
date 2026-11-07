@@ -1,6 +1,6 @@
 import { activeRules } from '../../rules'
 
-// Statutory amounts for the two AV-Depot draft pages
+// Statutory amounts for the two AV-Depot article pages
 // (altersvorsorgedepot-gesetz / altersvorsorgedepot-anbieter), formatted for
 // German copy. Values come from src/rules; worked examples combine them with
 // the handoff's example inputs (own contribution, income, tax rate), which are

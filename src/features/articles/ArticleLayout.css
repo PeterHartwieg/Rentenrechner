@@ -539,15 +539,3 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
-
-/* Draft pages (registry `status: 'draft'`) — visible only on previews until
-   publication; the notice keeps reviewers from mistaking them for live copy. */
-.article-draft-notice {
-  display: inline-block;
-  margin: 0 0 14px;
-  padding: 4px 10px;
-  border: 1px dashed var(--rw-ink-editorial-soft);
-  font-family: var(--rw-font-mono, monospace);
-  font-size: 0.8rem;
-  color: var(--rw-ink-editorial-soft);
-}

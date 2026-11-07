@@ -7,9 +7,7 @@ interface Props {
 }
 
 /**
- * Draft page for `/altersvorsorgedepot-anbieter` (AV-Depot handoff v2): provider overview with the sortable AnbieterTabelle.
- * Registered with `status: 'draft'` — prerendered for the PR preview, but
- * noindex, out of the sitemap and the article hub until publication.
+ * Article page for `/altersvorsorgedepot-anbieter` (AV-Depot handoff v2): provider overview with the sortable AnbieterTabelle.
  */
 export function AltersvorsorgedepotAnbieterPage({ navigate }: Props = {}) {
   return (
