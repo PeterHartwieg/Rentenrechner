@@ -64,8 +64,10 @@ Schedules skip a SHA that this workflow already verified successfully. The
 weekly property/mutation sweep also skips unchanged main. Scenario reports are
 artifacts of main full runs; push artifact generation is limited to scenario
 inputs. Main full failures open/update an assigned `ci-red` issue; the next green
-full run comments and closes it. PR tokens remain read-only. Workers Builds
-deploys independently of GitHub checks today; deployment gating is separate work.
+full run comments and closes it. PR tokens remain read-only. Production deploys
+are gated on full verification: the Workers Builds production trigger runs
+`npm run verify` before `npx wrangler deploy`, so a failing main commit is not
+deployed. Branch preview builds keep the cheaper `npm run build`.
 
 ## Project Documents
 
