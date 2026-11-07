@@ -5,7 +5,7 @@ import { activeRules } from '../../rules'
 // German copy. Values come from src/rules; worked examples combine them with
 // the handoff's example inputs (own contribution, income, tax rate), which are
 // assumptions, not statutory values. The .faq.json files cannot import, so
-// altersvorsorgedepotDraftPages.test.tsx pins their amounts to these rules.
+// avdDraftRuleLiterals.test.ts pins their amounts to these rules.
 
 const avd = activeRules.altersvorsorgedepot
 const riester = activeRules.riester
@@ -16,6 +16,23 @@ export function de(value: number, maxDecimals = 2): string {
 }
 
 const pct = (ratio: number) => de(ratio * 100)
+
+const CARDINALS: Record<number, string> = { 2: 'zwei', 3: 'drei', 4: 'vier', 5: 'fünf', 6: 'sechs', 7: 'sieben' }
+const ORDINALS_DATIVE: Record<number, string> = { 3: 'dritten', 4: 'vierten', 5: 'fünften' }
+
+/** Small count spelled out as in the copy ("zwei", "fünf"). */
+export function deWord(value: number): string {
+  const word = CARDINALS[value]
+  if (!word) throw new Error(`No German word for ${value}`)
+  return word
+}
+
+/** Dative ordinal as in "ab dem dritten Vertrag". */
+export function deOrdinalDative(value: number): string {
+  const word = ORDINALS_DATIVE[value]
+  if (!word) throw new Error(`No German ordinal for ${value}`)
+  return word
+}
 
 /** § 84 EStG (neu): Grundzulage for an annual own contribution. */
 export function avdBasicAllowance(ownContribution: number): number {
@@ -56,6 +73,18 @@ export const AVD_PAYOUT_PLAN_END_AGE = de(avd.payoutPlanMinEndAge)
 export const AVD_PARTIAL_CAPITAL_MAX = pct(avd.partialCapitalMaxPct)
 export const AVD_TRANSFER_COST_OLD_PROVIDER = de(avd.transferCostOldProviderWithin5YearsEUR)
 export const AVD_TRANSFER_COST_NEW_PROVIDER = de(avd.transferCostNewProviderEUR)
+export const AVD_TRANSFER_COST_WINDOW_YEARS = de(avd.transferCostWindowYears)
+export const AVD_TRANSFER_COST_WINDOW_YEARS_WORD = deWord(avd.transferCostWindowYears)
+export const AVD_TERMINATION_NOTICE_MONTHS_WORD = deWord(avd.terminationNoticeMonths)
+export const AVD_SELF_EMPLOYED_AGE_LIMIT = de(avd.selfEmployedEligibilityAgeLimit)
+export const AVD_MAX_CONTRACTS_WORD = deWord(avd.maxSubsidisedNewContracts)
+export const AVD_FIRST_UNSUBSIDISED_CONTRACT_WORD = deOrdinalDative(avd.maxSubsidisedNewContracts + 1)
+export const AVD_GUARANTEE_PARTIAL = pct(avd.guaranteeLevelPartial)
+export const AVD_GUARANTEE_FULL = pct(avd.guaranteeLevelFull)
+export const AVD_MAX_RISK_CLASS = de(avd.maxRiskClass)
+export const AVD_STANDARD_FUND_COUNT_WORD = deWord(avd.standarddepotFundCount)
+export const AVD_GLIDEPATH_FIRST_YEARS_WORD = deWord(avd.glidepathFirstCheckpointYearsBefore)
+export const AVD_GLIDEPATH_SECOND_YEARS_WORD = deWord(avd.glidepathSecondCheckpointYearsBefore)
 
 export const RIESTER_BASIC_ALLOWANCE = de(riester.grundzulage)
 export const RIESTER_CHILD_ALLOWANCE_PRE_2008 = de(riester.childAllowancePre2008)
@@ -157,7 +186,6 @@ export const EX2 = {
 
 const EX3_START_AGE = 58
 const EX3_CONTRIBUTION = avd.specialExpenseOwnContributionCap
-/** Copy spells this out ("sieben"); the test pins it. */
 export const EX3_YEARS = avd.payoutMinAge - EX3_START_AGE
 const ex3Allowances = avdBasicAllowance(EX3_CONTRIBUTION) * EX3_YEARS
 const ex3Contributions = EX3_CONTRIBUTION * EX3_YEARS
@@ -166,6 +194,7 @@ const ex3Months = (avd.payoutPlanMinEndAge - avd.payoutMinAge) * 12
 const ex3Partial = ex3Capital * avd.partialCapitalMaxPct
 export const EX3 = {
   startAge: de(EX3_START_AGE),
+  yearsWord: deWord(EX3_YEARS),
   contribution: de(EX3_CONTRIBUTION),
   allowancePerYear: de(avdBasicAllowance(EX3_CONTRIBUTION)),
   allowances: de(ex3Allowances),

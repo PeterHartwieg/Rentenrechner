@@ -11,7 +11,9 @@ import {
   AVD_INDIRECT_SPOUSE_ALLOWANCE_MAX, AVD_MINIMUM_OWN_CONTRIBUTION, AVD_PARTIAL_CAPITAL_MAX, AVD_PAYOUT_MAX_AGE,
   AVD_PAYOUT_MIN_AGE, AVD_PAYOUT_PLAN_END_AGE, AVD_SPECIAL_EXPENSE_OWN_CAP, AVD_STANDARD_COST_CAP,
   AVD_TIER_1_MAX, AVD_TIER_1_RATE, AVD_TIER_2_MAX, AVD_TIER_2_RATE, AVD_TIER_2_START,
-  AVD_TRANSFER_COST_NEW_PROVIDER, AVD_TRANSFER_COST_OLD_PROVIDER, EX3, EX3_YEARS,
+  AVD_TRANSFER_COST_NEW_PROVIDER, AVD_TRANSFER_COST_OLD_PROVIDER, EX3,
+  AVD_FIRST_UNSUBSIDISED_CONTRACT_WORD, AVD_GUARANTEE_FULL, AVD_GUARANTEE_PARTIAL, AVD_MAX_CONTRACTS_WORD,
+  AVD_SELF_EMPLOYED_AGE_LIMIT, AVD_STANDARD_FUND_COUNT_WORD, AVD_TRANSFER_COST_WINDOW_YEARS_WORD,
 } from './avdDraftRuleCopy'
 
 /**
@@ -31,6 +33,11 @@ const answer = (faq: { q: string; a: string }[], q: string) => {
 describe('altersvorsorgedepot-gesetz.faq.json amounts match src/rules', () => {
   it.each([
     ['Wer ist förderberechtigt?', [`Grundzulage von höchstens ${AVD_INDIRECT_SPOUSE_ALLOWANCE_MAX} Euro`]],
+    ['Können Selbständige gefördert werden?', [`Steuerpflichtige unter ${AVD_SELF_EMPLOYED_AGE_LIMIT} Jahren`]],
+    ['Welche Produktarten gibt es?', [
+      `Standarddepot Altersvorsorge mit ${AVD_STANDARD_FUND_COUNT_WORD} vom Anbieter festgelegten Fonds`,
+      `Zusage von ${AVD_GUARANTEE_PARTIAL} oder ${AVD_GUARANTEE_FULL} Prozent`,
+    ]],
     ['Wie hoch ist die Grundzulage?', [
       `${AVD_TIER_1_RATE} Prozent auf deine Beiträge bis ${AVD_TIER_1_MAX} Euro im Jahr`,
       `${AVD_TIER_2_RATE} Prozent auf Beiträge von ${AVD_TIER_2_START} bis ${AVD_TIER_2_MAX} Euro`,
@@ -59,7 +66,13 @@ describe('altersvorsorgedepot-anbieter.faq.json amounts match src/rules', () => 
   it.each([
     ['Was kostet ein Altersvorsorgedepot?', [`Effektivkosten des Standarddepots: höchstens ${AVD_STANDARD_COST_CAP} Prozent`]],
     ['Welchen Mindestbeitrag muss ich zahlen?', [`Mindesteigenbeitrag von ${AVD_MINIMUM_OWN_CONTRIBUTION} Euro im Jahr`]],
+    ['Gibt es Altersvorsorgedepots mit Garantie?', [`${AVD_GUARANTEE_PARTIAL} oder ${AVD_GUARANTEE_FULL} Prozent der eingezahlten Beiträge`]],
+    ['Wie viele geförderte Verträge kann ich abschließen?', [
+      `mehr als ${AVD_MAX_CONTRACTS_WORD} geförderte Altersvorsorgeverträge`,
+      `ab dem ${AVD_FIRST_UNSUBSIDISED_CONTRACT_WORD} Vertrag`,
+    ]],
     ['Was kostet ein späterer Anbieterwechsel?', [
+      `innerhalb von ${AVD_TRANSFER_COST_WINDOW_YEARS_WORD} Jahren nach Vertragsabschluss`,
       `darf der bisherige Anbieter höchstens ${AVD_TRANSFER_COST_OLD_PROVIDER} Euro berechnen`,
       `Verwaltungspauschale von höchstens ${AVD_TRANSFER_COST_NEW_PROVIDER} Euro`,
     ]],
@@ -68,7 +81,7 @@ describe('altersvorsorgedepot-anbieter.faq.json amounts match src/rules', () => 
       `bis zu ${AVD_CHILD_ALLOWANCE_MAX} Euro Kinderzulage je Kind`,
     ]],
     ['Was ergibt sich bei einem Beginn kurz vor der Rente?', [
-      `Wer mit ${EX3.startAge} beginnt und ab ${AVD_PAYOUT_MIN_AGE} auszahlen lässt`,
+      `Wer mit ${EX3.startAge} beginnt und ab ${AVD_PAYOUT_MIN_AGE} auszahlen lässt, zahlt rund ${EX3.yearsWord} Jahre ein`,
       `Bei ${EX3.contribution} Euro Eigenbeitrag und ${EX3.allowancePerYear} Euro Grundzulage im Jahr sind das ${EX3.capital} Euro`,
     ]],
     ['Was ist der Unterschied zu einem normalen ETF-Depot?', [
@@ -81,13 +94,7 @@ describe('altersvorsorgedepot-anbieter.faq.json amounts match src/rules', () => 
   })
 })
 
-describe('AV-Depot draft copy spelled out in words', () => {
-  // Beispiel 3 and its FAQ say "rund sieben" Beitragsjahre (start at 58).
-  it('Beispiel 3 runs seven contribution years', () => {
-    expect(EX3_YEARS).toBe(7)
-    expect(answer(anbieterFaq, 'Was ergibt sich bei einem Beginn kurz vor der Rente?')).toContain('rund sieben Jahre')
-  })
-
+describe('AV-Depot draft page summary', () => {
   it('the law-page summary reads the allowance caps from the rules', () => {
     expect(AVD_GESETZ_PAGE_COPY.summary).toContain(
       `bis zu ${activeRules.altersvorsorgedepot.basicAllowanceMax.toLocaleString('de-DE')} Euro Grundzulage und bis zu ` +
@@ -97,31 +104,24 @@ describe('AV-Depot draft copy spelled out in words', () => {
 })
 
 describe('AV-Depot draft MDX bodies have no statutory literals', () => {
-  // Amount-like literals (digits + €/Euro/Prozent/%/Jahre) left in the source
-  // after the rule wiring. Provider entries (ending in "Stand: dd.mm.yyyy.")
-  // are provider data, not law. The allowlisted rest has no rule field in
-  // src/rules yet; adding one would also shift the scenario-report
-  // provenance baseline, so they stay literal until a rule field exists.
-  const ALLOWED: Record<string, string[]> = {
-    'altersvorsorgedepot-gesetz.body.mdx': [
-      '67 Jahren', // Selbständige: eligible while under 67 (no rule field)
-      '100 Prozent', // Garantieprodukt: 80 or 100 % guarantee levels (no rule field)
-    ],
-    'altersvorsorgedepot-anbieter.body.mdx': [
-      '100 Prozent', // Garantieprodukt: 80 or 100 % guarantee levels (no rule field)
-      '0 Euro', // quoted provider advertising claim, not a statutory value
-      '67 Jahren', // Selbständige: eligible while under 67 (no rule field)
-    ],
-  }
+  // Amount-like literals left in the source after the rule wiring: digits with
+  // a unit (€/Euro/Prozent/%/Jahre/-Jahres), risk classes, and small counts
+  // spelled out before a period or contract noun. Provider entries (ending in
+  // "Stand: dd.mm.yyyy.") are provider data, not law. The one exception is a
+  // quoted provider advertising claim.
+  const NON_STATUTORY = ['0 Euro']
+  const AMOUNT = /(?<![\w{.,])\d[\d.,]*(?:\s?(?:€|Euro\b|Prozent\b|%|Jahren?\b)|-Jahres)|Risikoklasse \d/g
+  const SPELLED = /\b(?:zwei|drei|vier|fünf|sechs|sieben|dritten)\s+(?:Jahre|Jahren|Monaten|Beitragsjahre|Verträge|Vertrag|neu|geförderte|vom)\b/g
 
-  it.each(Object.keys(ALLOWED))('%s', (file) => {
+  it.each(['altersvorsorgedepot-gesetz.body.mdx', 'altersvorsorgedepot-anbieter.body.mdx'])('%s', (file) => {
     const source = readFileSync(join(process.cwd(), 'src/features/publicPages', file), 'utf8')
     const literals = source
       .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
       .split(/\r?\n/)
       .filter((line) => !/^(import|export)\b/.test(line))
       .filter((line) => !/Stand: \d{2}\.\d{2}\.\d{4}\.$/.test(line.trim()))
-      .flatMap((line) => line.match(/(?<![\w{.,])\d[\d.,]*\s?(?:€|Euro\b|Prozent\b|%|Jahren?\b)/g) ?? [])
-    expect(literals).toEqual(ALLOWED[file])
+      .flatMap((line) => [...(line.match(AMOUNT) ?? []), ...(line.match(SPELLED) ?? [])])
+      .filter((literal) => !NON_STATUTORY.includes(literal))
+    expect(literals).toEqual([])
   })
 })
