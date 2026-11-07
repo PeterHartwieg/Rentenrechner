@@ -49,6 +49,9 @@ jobs:
           echo 'run=true' >> "$GITHUB_OUTPUT"
 
   full: # ci-cost-lint: full-ok pre-deploy full run: every push to main is a production deploy via Cloudflare Workers Builds
+    # Workers Builds' production trigger runs `npm run verify` itself before
+    # `npx wrangler deploy`, so a main commit that fails full verify never
+    # deploys; this job is the GitHub-side record of the same suite.
     name: Full verify
     needs: gate
     if: needs.gate.outputs.run == 'true'

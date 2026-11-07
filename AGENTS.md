@@ -100,8 +100,11 @@ property/mutation sweeps skip unchanged main relative to their last successful
 scheduled run. Scenario artifacts come from main full runs, with push generation
 limited to scenario inputs. A failed main full job opens/comments on an assigned
 `ci-red` issue; the next green full run comments and closes it. PRs have read-only
-tokens and cannot reach issue-writing jobs. Workers Builds currently deploys
-independently of GitHub checks; gating deployment itself is separate work.
+tokens and cannot reach issue-writing jobs. Production deploys are gated on full
+verification: the Workers Builds production trigger (`main`) runs `npm run verify`
+before `npx wrangler deploy`, so a commit that fails it never reaches rentenwiki.de.
+Non-production branch builds stay on `npm run build` + `wrangler versions upload`.
+Workers Builds settings live in the Cloudflare dashboard/API, not in this repo.
 
 ## Quick navigation
 
