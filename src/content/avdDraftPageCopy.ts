@@ -5,6 +5,12 @@
 // the provider check), not rule-year copy, so they must not roll with
 // RULES_YEAR. They live here rather than in publicRouteRegistry.ts so the
 // registry's rule-year freshness scan stays strict for the copy it owns.
+// Statutory amounts read from src/rules (P0: no statutory literals).
+
+import { activeRules } from '../rules'
+
+const AVD_BASIC_ALLOWANCE_MAX = activeRules.altersvorsorgedepot.basicAllowanceMax.toLocaleString('de-DE')
+const AVD_CHILD_ALLOWANCE_MAX = activeRules.altersvorsorgedepot.childAllowanceMax.toLocaleString('de-DE')
 
 export const AVD_ANBIETER_PAGE_COPY = {
   title: 'Altersvorsorgedepot Anbieter 2027: Kosten & Status im Vergleich | RentenWiki.de',
@@ -30,8 +36,9 @@ export const AVD_GESETZ_PAGE_COPY = {
   summary:
     'Das Altersvorsorgereformgesetz reformiert ab dem 1. Januar 2027 die staatlich geförderte ' +
     'private Altersvorsorge (bisher Riester). Erstmals werden auch Depots mit Fonds und ETFs ' +
-    'ohne Garantie gefördert: das Altersvorsorgedepot (AV-Depot). Der Staat zahlt bis zu 540 Euro ' +
-    'Grundzulage und bis zu 300 Euro Kinderzulage je Kind im Jahr. Das Gesetz ist am 29.05.2026 ' +
+    'ohne Garantie gefördert: das Altersvorsorgedepot (AV-Depot). ' +
+    `Der Staat zahlt bis zu ${AVD_BASIC_ALLOWANCE_MAX} Euro Grundzulage und bis zu ` +
+    `${AVD_CHILD_ALLOWANCE_MAX} Euro Kinderzulage je Kind im Jahr. Das Gesetz ist am 29.05.2026 ` +
     'im Bundesgesetzblatt verkündet worden. Einige Details, etwa Verordnungen und die ' +
     'Zertifizierung der Produkte, sind noch offen.',
 } as const

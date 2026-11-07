@@ -2,6 +2,16 @@ import { Faq } from './Faq'
 import faq from './altersvorsorgedepot-anbieter.faq.json'
 import anbieterTable from './altersvorsorgedepot-anbieter.table.json'
 import { AnbieterTabelle } from '../avdAnbieter/AnbieterTabelle'
+import {
+  AVD_BASIC_ALLOWANCE_MAX, AVD_BREAK_EVEN_RATE, AVD_BREAK_EVEN_RATE_ROUNDED, AVD_CAREER_STARTER_AGE_LIMIT,
+  AVD_CAREER_STARTER_BONUS, AVD_CHILD_ALLOWANCE_MAX, AVD_CHILD_ALLOWANCE_RATE, AVD_CONTRACT_CONTRIBUTION_CAP,
+  AVD_GLIDEPATH_2Y_MAX, AVD_GLIDEPATH_5Y_MAX, AVD_MAX_DEDUCTION, AVD_MINIMUM_OWN_CONTRIBUTION,
+  AVD_PARTIAL_CAPITAL_MAX, AVD_PAYOUT_MAX_AGE, AVD_PAYOUT_MIN_AGE, AVD_PAYOUT_PLAN_END_AGE,
+  AVD_SPECIAL_EXPENSE_OWN_CAP, AVD_STANDARD_COST_CAP, AVD_TIER_1_MAX, AVD_TIER_1_RATE, AVD_TIER_2_MAX,
+  AVD_TIER_2_RATE, AVD_TRANSFER_COST_NEW_PROVIDER, AVD_TRANSFER_COST_OLD_PROVIDER, EX1, EX2, EX3, EX4,
+  RIESTER_BASIC_ALLOWANCE, RIESTER_CHILD_ALLOWANCE_POST_2007, RIESTER_CHILD_ALLOWANCE_PRE_2008,
+  RIESTER_MIN_CONTRIBUTION_PCT, RIESTER_MINIMUM_OWN_CONTRIBUTION, RIESTER_SPECIAL_EXPENSE_CAP, SWITCH,
+} from './avdDraftRuleCopy'
 
 {/* Source: AV-Depot handoff v2 (anbieter-v2.de.md, Stand 2026-11-07, status: draft).
     H1, title, meta description and the "Kurz gesagt" summary live in
@@ -51,7 +61,7 @@ import { AnbieterTabelle } from '../avdAnbieter/AnbieterTabelle'
 - **Anlageauswahl** gibt wieder, welche Fonds oder ETFs der Anbieter genannt hat, soweit bekannt.
 - **Laufende Kosten p. a.** zeigt eine Prozentzahl nur, wenn der Anbieter selbst eine nennt. Darunter steht, was die Zahl umfasst, zum Beispiel nur die ETF-Kosten (TER), eine Verwaltungsgebühr oder die Effektivkosten, und ob sie erst nach einer Aktion gilt. Die Zahlen sind deshalb nicht direkt vergleichbar. Fehlt eine Angabe, steht dort „k. A.“ (keine Angabe).
 - **Depotgebühr** zeigt die Depotgebühr in Euro im Jahr, soweit der Anbieter sie beziffert.
-- **Mindestbeitrag** ist der Mindestbeitrag des Anbieters, soweit veröffentlicht. Monatsangaben rechnen wir zum Sortieren auf ein Jahr um (× 12). Für die Zulagen gilt unabhängig davon ein gesetzlicher Mindesteigenbeitrag von 120 Euro im Jahr.
+- **Mindestbeitrag** ist der Mindestbeitrag des Anbieters, soweit veröffentlicht. Monatsangaben rechnen wir zum Sortieren auf ein Jahr um (× 12). Für die Zulagen gilt unabhängig davon ein gesetzlicher Mindesteigenbeitrag von {AVD_MINIMUM_OWN_CONTRIBUTION} Euro im Jahr.
 - **Stand** ist das Datum, an dem wir die Angabe zuletzt geprüft haben oder an dem die Quelle veröffentlicht wurde.
 - **Link** führt über rentenwiki.de/go/… zur Seite des Anbieters. Dabei zählen wir derzeit keine Klicks. Du verlässt dann rentenwiki.de. Abschluss und Vertrag laufen ausschließlich beim Anbieter.
 
@@ -117,7 +127,7 @@ Fondsgesellschaft der Volks- und Raiffeisenbanken, angekündigt. Angekündigt si
 Die Förderung ist überall gleich. Unterschiede gibt es vor allem bei den Kosten. Gesetzlich gilt:
 
 - Anbieter müssen die **Effektivkosten** nach einem einheitlichen Verfahren angeben. Sie zeigen, wie stark alle Kosten zusammen die Rendite bis zum Beginn der Auszahlung mindern.
-- Beim **Standarddepot** dürfen die Effektivkosten höchstens **1,0 Prozent** im Jahr betragen.
+- Beim **Standarddepot** dürfen die Effektivkosten höchstens **{AVD_STANDARD_COST_CAP} Prozent** im Jahr betragen.
 - **Abschluss- und Vertriebskosten** müssen gleichmäßig über die Ansparphase verteilt werden.
 
 Viele Anbieter haben noch keine Effektivkosten veröffentlicht. Werbeaussagen wie „0 Euro Depotgebühr“ oder „ETF-Kosten übernommen“ beschreiben oft nur einen Teil der Kosten oder einen begrenzten Zeitraum. Wie sich unterschiedliche Kosten über viele Jahre auswirken, kannst du mit dem [Altersvorsorgedepot-Rechner](/altersvorsorgedepot-rechner/) durchrechnen.
@@ -126,9 +136,9 @@ Viele Anbieter haben noch keine Effektivkosten veröffentlicht. Werbeaussagen wi
 
 Du kannst deinen Vertrag mit einer Frist von drei Monaten zum Quartalsende kündigen und das Guthaben zu einem anderen Anbieter übertragen.
 
-- **In den ersten fünf Jahren** nach Vertragsabschluss darf der bisherige Anbieter für die Übertragung höchstens **150 Euro** berechnen.
+- **In den ersten fünf Jahren** nach Vertragsabschluss darf der bisherige Anbieter für die Übertragung höchstens **{AVD_TRANSFER_COST_OLD_PROVIDER} Euro** berechnen.
 - **Danach** ist die Übertragung kostenfrei. Kostenfrei ist sie auch, wenn der Anbieter die Kosten ändert, oder bei einem Wechsel innerhalb desselben Anbieters.
-- **Der neue Anbieter** darf auf das übertragene geförderte Kapital keine Abschluss- und Vertriebskosten berechnen, aber eine einmalige Verwaltungspauschale von höchstens **150 Euro**.
+- **Der neue Anbieter** darf auf das übertragene geförderte Kapital keine Abschluss- und Vertriebskosten berechnen, aber eine einmalige Verwaltungspauschale von höchstens **{AVD_TRANSFER_COST_NEW_PROVIDER} Euro**.
 
 Wer einen bestehenden Riester-Vertrag hat, findet die Regeln zum Riester-Wechsel auf der Seite [Riester vs. Altersvorsorgedepot](/riester-vs-altersvorsorgedepot/).
 
@@ -142,10 +152,10 @@ Wie hoch die Förderung ausfällt, hängt vor allem von vier Dingen ab: Kindern,
 
 ### Wo die Förderung im Verhältnis hoch ist
 
-- **Mit Kindern:** Für jedes Kind, für das Kindergeld festgesetzt wird, gibt es 100 Prozent des Eigenbeitrags als Kinderzulage, höchstens 300 Euro im Jahr (§ 85 EStG). Schon bei kleinen Beiträgen ist die Förderung dann im Verhältnis hoch.
-- **Bei kleinen und mittleren Beiträgen:** Auf die ersten 360 Euro Eigenbeitrag im Jahr gibt es 50 Prozent Grundzulage, auf den Teil bis 1.800 Euro 25 Prozent (§ 84 EStG).
-- **Bei hohem Grenzsteuersatz:** Eigenbeiträge bis 1.800 Euro plus Zulagen sind als Sonderausgaben abziehbar (§ 10a EStG). Der Steuervorteil kann dann höher sein als die Zulage (siehe Günstigerprüfung).
-- **Unter 25 Jahren:** Wer zu Beginn des Beitragsjahres jünger als 25 ist, erhält einmalig 200 Euro zusätzlich zur Grundzulage (Berufseinsteigerbonus).
+- **Mit Kindern:** Für jedes Kind, für das Kindergeld festgesetzt wird, gibt es {AVD_CHILD_ALLOWANCE_RATE} Prozent des Eigenbeitrags als Kinderzulage, höchstens {AVD_CHILD_ALLOWANCE_MAX} Euro im Jahr (§ 85 EStG). Schon bei kleinen Beiträgen ist die Förderung dann im Verhältnis hoch.
+- **Bei kleinen und mittleren Beiträgen:** Auf die ersten {AVD_TIER_1_MAX} Euro Eigenbeitrag im Jahr gibt es {AVD_TIER_1_RATE} Prozent Grundzulage, auf den Teil bis {AVD_TIER_2_MAX} Euro {AVD_TIER_2_RATE} Prozent (§ 84 EStG).
+- **Bei hohem Grenzsteuersatz:** Eigenbeiträge bis {AVD_SPECIAL_EXPENSE_OWN_CAP} Euro plus Zulagen sind als Sonderausgaben abziehbar (§ 10a EStG). Der Steuervorteil kann dann höher sein als die Zulage (siehe Günstigerprüfung).
+- **Unter {AVD_CAREER_STARTER_AGE_LIMIT} Jahren:** Wer zu Beginn des Beitragsjahres jünger als {AVD_CAREER_STARTER_AGE_LIMIT} ist, erhält einmalig {AVD_CAREER_STARTER_BONUS} Euro zusätzlich zur Grundzulage (Berufseinsteigerbonus).
 - **Selbständige:** Ab 2027 können auch Selbständige unter 67 Jahren gefördert werden, wenn sie für das Beitragsjahr eine Steuererklärung abgeben. Einzelheiten stehen auf der Seite [Altersvorsorgedepot-Gesetz](/altersvorsorgedepot-gesetz/).
 - **Bei langer Anlagedauer:** Die Zulagen fließen viele Jahre, die Erträge werden in der Ansparphase nicht laufend besteuert, und Kursschwankungen haben mehr Zeit, sich auszugleichen. Eine Garantie gibt es beim AV-Depot und beim Standarddepot nicht.
 
@@ -153,16 +163,16 @@ Wie hoch die Förderung ausfällt, hängt vor allem von vier Dingen ab: Kindern,
 
 - **Ohne Förderberechtigung:** Ohne Zulage und Sonderausgabenabzug fällt der wichtigste Vorteil weg. Die Bindung bis zur Rente bleibt.
 - **Geld, das vor der Rente gebraucht werden könnte:** An das geförderte Kapital kommst du vorher nur in Ausnahmefällen. Sonst musst du die Förderung zurückzahlen (siehe [Auszahlung](#fuer-wen-auszahlung)).
-- **Beiträge über 1.800 Euro im Jahr:** Bis zu 6.840 Euro im Jahr sind möglich. Für den Teil über 1.800 Euro gibt es aber weder Zulage noch Sonderausgabenabzug.
-- **Kurz vor der Rente:** Es bleiben wenige Beitragsjahre mit Zulagen und wenig Zeit, Kursverluste auszugleichen. Das Standarddepot hält fünf Jahre vor der Auszahlung höchstens 50 Prozent und zwei Jahre vorher höchstens 30 Prozent im risikoreicheren Fonds, wenn nichts anderes vereinbart ist (Beispiel 3).
+- **Beiträge über {AVD_SPECIAL_EXPENSE_OWN_CAP} Euro im Jahr:** Bis zu {AVD_CONTRACT_CONTRIBUTION_CAP} Euro im Jahr sind möglich. Für den Teil über {AVD_SPECIAL_EXPENSE_OWN_CAP} Euro gibt es aber weder Zulage noch Sonderausgabenabzug.
+- **Kurz vor der Rente:** Es bleiben wenige Beitragsjahre mit Zulagen und wenig Zeit, Kursverluste auszugleichen. Das Standarddepot hält fünf Jahre vor der Auszahlung höchstens {AVD_GLIDEPATH_5Y_MAX} Prozent und zwei Jahre vorher höchstens {AVD_GLIDEPATH_2Y_MAX} Prozent im risikoreicheren Fonds, wenn nichts anderes vereinbart ist (Beispiel 3).
 - **Riester-Verträge mit Sockelbetrag:** Nach den alten Regeln kann es je Euro mehr Zulage geben. Ein neuer Vertrag ab 2027 stellt alle Verträge auf die neuen Regeln um (siehe [Riester](#fuer-wen-riester) und Beispiel 1).
 - **Mittelbar berechtigte Ehepartner:** Behält der unmittelbar berechtigte Ehepartner einen alten Riester-Vertrag, gibt es für einen neuen Vertrag des mittelbar berechtigten Ehepartners keine Zulage (§ 90 Abs. 2 EStG neu).
 
 ### Zulage oder Steuervorteil: die Günstigerprüfung
 
-Eigenbeiträge bis 1.800 Euro im Jahr plus die Zulagen kannst du als Sonderausgaben in der Einkommensteuererklärung angeben. Das Finanzamt vergleicht dann von Amts wegen (§ 10a Abs. 2 EStG): Ist die Steuerersparnis kleiner als die Zulagen, bleibt es bei den Zulagen. Ist sie größer, wird die Differenz über den Steuerbescheid erstattet; die Zulagen bleiben im Vertrag.
+Eigenbeiträge bis {AVD_SPECIAL_EXPENSE_OWN_CAP} Euro im Jahr plus die Zulagen kannst du als Sonderausgaben in der Einkommensteuererklärung angeben. Das Finanzamt vergleicht dann von Amts wegen (§ 10a Abs. 2 EStG): Ist die Steuerersparnis kleiner als die Zulagen, bleibt es bei den Zulagen. Ist sie größer, wird die Differenz über den Steuerbescheid erstattet; die Zulagen bleiben im Vertrag.
 
-Vereinfacht gilt: Steuerersparnis ≈ (Eigenbeitrag + Zulagen) × Grenzsteuersatz, also der Steuersatz auf den letzten verdienten Euro. Ohne Kinder und mit 1.800 Euro Eigenbeitrag übersteigt die Steuerersparnis die Grundzulage von 540 Euro ab einem Grenzsteuersatz von rund 23 Prozent (540 ÷ 2.340 = 23,1 %; eigene Rechnung). Mit Kindern liegt die Schwelle höher, weil die Kinderzulagen mitzählen. Bei geringem Einkommen bringt der Abzug deshalb meist nichts zusätzlich.
+Vereinfacht gilt: Steuerersparnis ≈ (Eigenbeitrag + Zulagen) × Grenzsteuersatz, also der Steuersatz auf den letzten verdienten Euro. Ohne Kinder und mit {AVD_SPECIAL_EXPENSE_OWN_CAP} Euro Eigenbeitrag übersteigt die Steuerersparnis die Grundzulage von {AVD_BASIC_ALLOWANCE_MAX} Euro ab einem Grenzsteuersatz von rund {AVD_BREAK_EVEN_RATE_ROUNDED} Prozent ({AVD_BASIC_ALLOWANCE_MAX} ÷ {AVD_MAX_DEDUCTION} = {AVD_BREAK_EVEN_RATE} %; eigene Rechnung). Mit Kindern liegt die Schwelle höher, weil die Kinderzulagen mitzählen. Bei geringem Einkommen bringt der Abzug deshalb meist nichts zusätzlich.
 
 Im Alter werden Auszahlungen aus geförderten Beiträgen voll mit dem dann geltenden persönlichen Steuersatz versteuert (§ 22 Nr. 5 EStG). Der Vorteil ist umso größer, je niedriger der Steuersatz im Alter im Vergleich zu heute ist.
 
@@ -170,24 +180,24 @@ Im Alter werden Auszahlungen aus geförderten Beiträgen voll mit dem dann gelte
 
 | | Altersvorsorgedepot | Normales ETF-Depot |
 |---|---|---|
-| Staatliche Förderung | Grund- und Kinderzulage, Sonderausgabenabzug bis 1.800 € Eigenbeitrag plus Zulagen | keine |
+| Staatliche Förderung | Grund- und Kinderzulage, Sonderausgabenabzug bis {AVD_SPECIAL_EXPENSE_OWN_CAP} € Eigenbeitrag plus Zulagen | keine |
 | Steuer in der Ansparphase | Erträge werden nicht laufend besteuert | Erträge unterliegen der Abgeltungsteuer |
 | Steuer bei Auszahlung | Auszahlungen aus geförderten Beiträgen voll steuerpflichtig mit dem persönlichen Steuersatz (§ 22 Nr. 5 EStG) | Beiträge stammen aus versteuertem Einkommen; Gewinne werden beim Verkauf mit Abgeltungsteuer besteuert |
 | Zugriff vor der Rente | nur in Ausnahmefällen, sonst Rückzahlung der Förderung | jederzeit |
-| Auszahlung | Leibrente oder Auszahlungsplan bis mindestens 85, bis zu 30 % zu Beginn als Einmalzahlung | frei |
+| Auszahlung | Leibrente oder Auszahlungsplan bis mindestens {AVD_PAYOUT_PLAN_END_AGE}, bis zu {AVD_PARTIAL_CAPITAL_MAX} % zu Beginn als Einmalzahlung | frei |
 | Anlageauswahl | Fonds, ETFs und öffentliche Anleihen nach gesetzlicher Liste, höchstens Risikoklasse 5; keine Einzelaktien | frei |
-| Einzahlung | höchstens 6.840 € im Jahr je Vertrag; gefördert bis 1.800 € | keine gesetzliche Grenze |
-| Kosten | Effektivkosten nach einheitlichem Verfahren ausgewiesen; Standarddepot höchstens 1,0 % im Jahr | je nach Depot und Fonds |
+| Einzahlung | höchstens {AVD_CONTRACT_CONTRIBUTION_CAP} € im Jahr je Vertrag; gefördert bis {AVD_SPECIAL_EXPENSE_OWN_CAP} € | keine gesetzliche Grenze |
+| Kosten | Effektivkosten nach einheitlichem Verfahren ausgewiesen; Standarddepot höchstens {AVD_STANDARD_COST_CAP} % im Jahr | je nach Depot und Fonds |
 
-Das nicht geförderte Sparen über 1.800 Euro im Jahr ist auch außerhalb eines Altersvorsorgevertrags möglich. Welcher Weg nach Steuern mehr ergibt, hängt vor allem von der Förderung und vom Steuersatz heute und im Alter ab.
+Das nicht geförderte Sparen über {AVD_SPECIAL_EXPENSE_OWN_CAP} Euro im Jahr ist auch außerhalb eines Altersvorsorgevertrags möglich. Welcher Weg nach Steuern mehr ergibt, hängt vor allem von der Förderung und vom Steuersatz heute und im Alter ab.
 
 <h3 id="fuer-wen-riester">Wer schon einen Riester-Vertrag hat</h3>
 
 Für Riester-Verträge, die vor dem 1. Januar 2027 abgeschlossen wurden (Bestandsverträge), gelten die bisherigen Förderregeln bis zum Beginn der Auszahlung weiter (§ 52 Abs. 50a Satz 1 EStG):
 
-- **Grundzulage** 175 Euro, **Kinderzulage** 185 Euro je Kind (300 Euro für Kinder, die nach 2007 geboren sind).
-- **Mindesteigenbeitrag:** 4 Prozent der beitragspflichtigen Einnahmen des Vorjahres, höchstens 2.100 Euro, abzüglich der Zulagen, mindestens 60 Euro (Sockelbetrag). Wer weniger zahlt, erhält eine gekürzte Zulage.
-- **Sonderausgabenabzug** bis 2.100 Euro einschließlich Zulagen.
+- **Grundzulage** {RIESTER_BASIC_ALLOWANCE} Euro, **Kinderzulage** {RIESTER_CHILD_ALLOWANCE_PRE_2008} Euro je Kind ({RIESTER_CHILD_ALLOWANCE_POST_2007} Euro für Kinder, die nach 2007 geboren sind).
+- **Mindesteigenbeitrag:** {RIESTER_MIN_CONTRIBUTION_PCT} Prozent der beitragspflichtigen Einnahmen des Vorjahres, höchstens {RIESTER_SPECIAL_EXPENSE_CAP} Euro, abzüglich der Zulagen, mindestens {RIESTER_MINIMUM_OWN_CONTRIBUTION} Euro (Sockelbetrag). Wer weniger zahlt, erhält eine gekürzte Zulage.
+- **Sonderausgabenabzug** bis {RIESTER_SPECIAL_EXPENSE_CAP} Euro einschließlich Zulagen.
 
 Drei Regeln gelten:
 
@@ -195,11 +205,11 @@ Drei Regeln gelten:
 2. **Neuer Vertrag (Satz 6):** Wird nach dem 31. Dezember 2026 ein neuer geförderter Vertrag abgeschlossen, etwa ein AV-Depot, gelten die neuen Regeln für alle Verträge dieser Person, auch für den alten Riester-Vertrag.
 3. **Hinweispflicht:** Der Anbieter muss vor dem Abschluss oder vor der Erklärung auf diese Folgen hinweisen (§ 7d AltZertG).
 
-Die neuen Regeln bringen typischerweise mehr Zulage, wenn mehr als der bisherige Mindestbeitrag eingezahlt wird. Ein Beispiel: Bei 40.000 Euro beitragspflichtigen Einnahmen im Vorjahr und ohne Kinder liegt der bisherige Mindesteigenbeitrag bei 1.425 Euro (4 % von 40.000 € = 1.600 € minus 175 € Zulage). Dafür gibt es bisher 175 Euro Grundzulage, nach den neuen Regeln 446,25 Euro (50 % von 360 € + 25 % von 1.065 €). Wer nur den Sockelbetrag zahlt, kann nach den bisherigen Regeln besser stehen (Beispiel 1). Übertragung und Kosten erklärt die Seite [Riester vs. Altersvorsorgedepot](/riester-vs-altersvorsorgedepot/).
+Die neuen Regeln bringen typischerweise mehr Zulage, wenn mehr als der bisherige Mindestbeitrag eingezahlt wird. Ein Beispiel: Bei {SWITCH.income} Euro beitragspflichtigen Einnahmen im Vorjahr und ohne Kinder liegt der bisherige Mindesteigenbeitrag bei {SWITCH.oldMinimum} Euro ({RIESTER_MIN_CONTRIBUTION_PCT} % von {SWITCH.income} € = {SWITCH.oldGross} € minus {RIESTER_BASIC_ALLOWANCE} € Zulage). Dafür gibt es bisher {RIESTER_BASIC_ALLOWANCE} Euro Grundzulage, nach den neuen Regeln {SWITCH.newBasic} Euro ({AVD_TIER_1_RATE} % von {AVD_TIER_1_MAX} € + {AVD_TIER_2_RATE} % von {SWITCH.tier2Part} €). Wer nur den Sockelbetrag zahlt, kann nach den bisherigen Regeln besser stehen (Beispiel 1). Übertragung und Kosten erklärt die Seite [Riester vs. Altersvorsorgedepot](/riester-vs-altersvorsorgedepot/).
 
 <h3 id="fuer-wen-auszahlung">Bindung bis zur und in der Auszahlungsphase</h3>
 
-- **Beginn und Form:** frühestens mit 65 (oder mit einer früheren gesetzlichen Altersrente), spätestens mit 70; Form wie in der Tabelle oben.
+- **Beginn und Form:** frühestens mit {AVD_PAYOUT_MIN_AGE} (oder mit einer früheren gesetzlichen Altersrente), spätestens mit {AVD_PAYOUT_MAX_AGE}; Form wie in der Tabelle oben.
 - **Vor der Rente:** Der Vertrag kann ruhen (keine Beiträge), das Guthaben kann auf einen anderen geförderten Vertrag übertragen oder für eine selbst genutzte Wohnung eingesetzt werden (§ 92a EStG).
 - **Schädliche Verwendung:** Wird gefördertes Kapital auf anderem Weg ausgezahlt, sind die darauf entfallenden Zulagen und Steuervorteile zurückzuzahlen (§ 93 Abs. 1 EStG). Ausnahmen gelten unter anderem für die Abfindung einer Kleinbetragsrente und für eine Übertragung auf einen anderen Vertrag.
 - **Steuer und Krankenversicherung:** Die Auszahlungen werden nachgelagert versteuert (§ 22 Nr. 5 EStG). Ob Beiträge zur Kranken- und Pflegeversicherung anfallen, hängt von der Versicherung im Alter ab. Mehr dazu beim [Altersvorsorgedepot-Rechner](/altersvorsorgedepot-rechner/).
@@ -208,46 +218,46 @@ Die neuen Regeln bringen typischerweise mehr Zulage, wenn mehr als der bisherige
 
 Die Beispiele sind vereinfacht und zeigen nur die Förderung für ein Beitragsjahr ab 2027. Nicht berücksichtigt sind Kosten, Erträge, Inflation, Solidaritätszuschlag und Kirchensteuer. Steuersätze sind Annahmen. Die Beispiele beziehen sich auf keinen bestimmten Anbieter, zeigen die Rechenweise und sagen nicht, ob ein Vertrag für dich passt. Stand: 31.10.2026.
 
-**Beispiel 1: Zulagen bei zwei Kindern und 600 Euro Eigenbeitrag**
+**Beispiel 1: Zulagen bei zwei Kindern und {EX1.contribution} Euro Eigenbeitrag**
 
-Annahme: rentenversicherungspflichtig beschäftigt, Kindergeld für zwei Kinder, Eigenbeitrag 600 Euro im Jahr (50 Euro im Monat).
+Annahme: rentenversicherungspflichtig beschäftigt, Kindergeld für zwei Kinder, Eigenbeitrag {EX1.contribution} Euro im Jahr ({EX1.monthly} Euro im Monat).
 
-- Grundzulage: 50 % von 360 € = 180 € plus 25 % von 240 € = 60 €, zusammen 240 €
-- Kinderzulage: 2 × 300 € = 600 €
-- Zulagen zusammen: 840 €. Ins Depot fließen 1.440 €.
-- Steuer: Bei einem angenommenen Grenzsteuersatz von 15 % beträgt die Steuerersparnis (600 € + 840 €) × 15 % = 216 €, also weniger als die Zulagen. Es bleibt bei den Zulagen.
+- Grundzulage: {AVD_TIER_1_RATE} % von {AVD_TIER_1_MAX} € = {EX1.tier1Allowance} € plus {AVD_TIER_2_RATE} % von {EX1.tier2Part} € = {EX1.tier2Allowance} €, zusammen {EX1.basic} €
+- Kinderzulage: {EX1.children} × {EX1.childPer} € = {EX1.child} €
+- Zulagen zusammen: {EX1.total} €. Ins Depot fließen {EX1.intoDepot} €.
+- Steuer: Bei einem angenommenen Grenzsteuersatz von {EX1.taxRate} % beträgt die Steuerersparnis ({EX1.contribution} € + {EX1.total} €) × {EX1.taxRate} % = {EX1.taxSaving} €, also weniger als die Zulagen. Es bleibt bei den Zulagen.
 
-Besteht schon ein Riester-Vertrag und lagen die beitragspflichtigen Einnahmen im Vorjahr bei 20.000 Euro, gilt bisher: Zulagen 175 € + 2 × 300 € = 775 €. Der Mindesteigenbeitrag beträgt 4 % von 20.000 € = 800 € minus 775 € = 25 €, also den Sockelbetrag von 60 €. Für 60 Euro Eigenbeitrag gibt es damit die vollen 775 Euro. Ein neues AV-Depot würde beide Verträge auf die neuen Regeln umstellen: Für 60 Euro gäbe es dann keine Zulage mehr (unter 120 Euro Mindesteigenbeitrag), für 600 Euro aber 840 Euro.
+Besteht schon ein Riester-Vertrag und lagen die beitragspflichtigen Einnahmen im Vorjahr bei {EX1.riesterIncome} Euro, gilt bisher: Zulagen {RIESTER_BASIC_ALLOWANCE} € + {EX1.children} × {RIESTER_CHILD_ALLOWANCE_POST_2007} € = {EX1.oldTotal} €. Der Mindesteigenbeitrag beträgt {RIESTER_MIN_CONTRIBUTION_PCT} % von {EX1.riesterIncome} € = {EX1.oldGross} € minus {EX1.oldTotal} € = {EX1.oldRemainder} €, also den Sockelbetrag von {RIESTER_MINIMUM_OWN_CONTRIBUTION} €. Für {RIESTER_MINIMUM_OWN_CONTRIBUTION} Euro Eigenbeitrag gibt es damit die vollen {EX1.oldTotal} Euro. Ein neues AV-Depot würde beide Verträge auf die neuen Regeln umstellen: Für {RIESTER_MINIMUM_OWN_CONTRIBUTION} Euro gäbe es dann keine Zulage mehr (unter {AVD_MINIMUM_OWN_CONTRIBUTION} Euro Mindesteigenbeitrag), für {EX1.contribution} Euro aber {EX1.total} Euro.
 
-**Beispiel 2: Günstigerprüfung bei 1.800 Euro Eigenbeitrag und 40 % Grenzsteuersatz**
+**Beispiel 2: Günstigerprüfung bei {EX2.contribution} Euro Eigenbeitrag und {EX2.taxRate} % Grenzsteuersatz**
 
-Annahme: keine Kinder, Eigenbeitrag 1.800 Euro im Jahr (150 Euro im Monat), angenommener Grenzsteuersatz 40 %.
+Annahme: keine Kinder, Eigenbeitrag {EX2.contribution} Euro im Jahr ({EX2.monthly} Euro im Monat), angenommener Grenzsteuersatz {EX2.taxRate} %.
 
-- Grundzulage: 180 € + 25 % von 1.440 € = 360 €, zusammen 540 €
-- Sonderausgaben: 1.800 € + 540 € = 2.340 €; Steuerersparnis 2.340 € × 40 % = 936 €
-- Günstigerprüfung: 936 € sind mehr als 540 €. Das Finanzamt erstattet die Differenz von 396 €.
-- Ergebnis: Ins Depot fließen 2.340 €. Der eigene Aufwand nach Steuern beträgt 1.800 € − 396 € = 1.404 €.
+- Grundzulage: {EX2.tier1Allowance} € + {AVD_TIER_2_RATE} % von {EX2.tier2Part} € = {EX2.tier2Allowance} €, zusammen {EX2.basic} €
+- Sonderausgaben: {EX2.contribution} € + {EX2.basic} € = {EX2.deduction} €; Steuerersparnis {EX2.deduction} € × {EX2.taxRate} % = {EX2.taxSaving} €
+- Günstigerprüfung: {EX2.taxSaving} € sind mehr als {EX2.basic} €. Das Finanzamt erstattet die Differenz von {EX2.refund} €.
+- Ergebnis: Ins Depot fließen {EX2.deduction} €. Der eigene Aufwand nach Steuern beträgt {EX2.contribution} € − {EX2.refund} € = {EX2.netCost} €.
 
 Auszahlungen, die auf geförderten Beiträgen beruhen, werden grundsätzlich nachgelagert besteuert; für nicht geförderte Beiträge können andere Regeln gelten. Wie viel Vorteil am Ende bleibt, hängt vom Steuersatz im Alter ab.
 
-**Beispiel 3: Beginn mit 58 Jahren und 1.800 Euro Eigenbeitrag**
+**Beispiel 3: Beginn mit {EX3.startAge} Jahren und {EX3.contribution} Euro Eigenbeitrag**
 
-Annahme: keine Kinder, Beginn 2027, Auszahlung ab 65, also rund sieben Beitragsjahre.
+Annahme: keine Kinder, Beginn 2027, Auszahlung ab {AVD_PAYOUT_MIN_AGE}, also rund sieben Beitragsjahre.
 
-- Zulage: 540 € im Jahr, in sieben Jahren 3.780 €
-- Eigenbeiträge in sieben Jahren: 12.600 €; zusammen 16.380 € (ohne Erträge und Kosten)
-- Auszahlungsplan von 65 bis 85 (240 Monate): 16.380 € ÷ 240 = 68,25 € im Monat vor Steuern
-- Mit 30 % Einmalzahlung zu Beginn: 4.914 € einmalig, danach 11.466 € ÷ 240 = 47,78 € im Monat vor Steuern
+- Zulage: {EX3.allowancePerYear} € im Jahr, in sieben Jahren {EX3.allowances} €
+- Eigenbeiträge in sieben Jahren: {EX3.contributions} €; zusammen {EX3.capital} € (ohne Erträge und Kosten)
+- Auszahlungsplan von {AVD_PAYOUT_MIN_AGE} bis {AVD_PAYOUT_PLAN_END_AGE} ({EX3.months} Monate): {EX3.capital} € ÷ {EX3.months} = {EX3.monthly} € im Monat vor Steuern
+- Mit {AVD_PARTIAL_CAPITAL_MAX} % Einmalzahlung zu Beginn: {EX3.partial} € einmalig, danach {EX3.rest} € ÷ {EX3.months} = {EX3.monthlyAfterPartial} € im Monat vor Steuern
 
-Die rechnerische Verteilung bis 85 ist keine garantierte Rente. Nicht berücksichtigt sind Kosten, Wertentwicklung, Steuern und das Risiko, länger als bis zum Ende des Auszahlungsplans zu leben.
+Die rechnerische Verteilung bis {AVD_PAYOUT_PLAN_END_AGE} ist keine garantierte Rente. Nicht berücksichtigt sind Kosten, Wertentwicklung, Steuern und das Risiko, länger als bis zum Ende des Auszahlungsplans zu leben.
 
-**Beispiel 4: Berufseinsteigerbonus bei 360 Euro Eigenbeitrag**
+**Beispiel 4: Berufseinsteigerbonus bei {EX4.contribution} Euro Eigenbeitrag**
 
-Annahme: 22 Jahre, Minijob, Eigenbeitrag 360 Euro im Jahr (30 Euro im Monat). Förderberechtigt ist die Person nur, wenn sie im Minijob in der gesetzlichen Rentenversicherung pflichtversichert ist.
+Annahme: {EX4.age} Jahre, Minijob, Eigenbeitrag {EX4.contribution} Euro im Jahr ({EX4.monthly} Euro im Monat). Förderberechtigt ist die Person nur, wenn sie im Minijob in der gesetzlichen Rentenversicherung pflichtversichert ist.
 
-- Grundzulage: 50 % von 360 € = 180 €
-- Berufseinsteigerbonus: einmalig 200 €, weil die Person zu Beginn des Beitragsjahres jünger als 25 ist
-- Im ersten Jahr: 380 € Zulagen auf 360 € Eigenbeitrag, in den Folgejahren 180 €. Mit dem Mindesteigenbeitrag von 120 € wären es 60 € Grundzulage (plus einmalig 200 €).
+- Grundzulage: {AVD_TIER_1_RATE} % von {EX4.contribution} € = {EX4.basic} €
+- Berufseinsteigerbonus: einmalig {AVD_CAREER_STARTER_BONUS} €, weil die Person zu Beginn des Beitragsjahres jünger als {AVD_CAREER_STARTER_AGE_LIMIT} ist
+- Im ersten Jahr: {EX4.firstYear} € Zulagen auf {EX4.contribution} € Eigenbeitrag, in den Folgejahren {EX4.basic} €. Mit dem Mindesteigenbeitrag von {AVD_MINIMUM_OWN_CONTRIBUTION} € wären es {EX4.minimumBasic} € Grundzulage (plus einmalig {AVD_CAREER_STARTER_BONUS} €).
 - Steuer: Ohne Einkommensteuer bringt der Sonderausgabenabzug keinen zusätzlichen Vorteil.
 
 Ohne Pflichtversicherung in der Rentenversicherung und ohne mittelbare Berechtigung über einen Ehepartner gibt es keine Förderung. Ob eine Pflichtversicherung besteht, zeigt zum Beispiel der Versicherungsverlauf bei der Deutschen Rentenversicherung.
