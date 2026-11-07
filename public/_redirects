@@ -20,3 +20,95 @@
 # scripts/prerender.mjs. The target lives outside /vertrag/ so it can never
 # match its own pattern.
 /vertrag/* /app-shell/ 200
+
+# AV-Depot provider links (/altersvorsorgedepot-anbieter). One static 302 per
+# row of src/features/publicPages/altersvorsorgedepot-anbieter.table.json that
+# has a public provider `url`; kept in sync by src/seo/goRedirects.test.ts.
+# Plain public URLs only — no partner IDs or affiliate targets (those may only
+# ever live in Cloudflare secrets/KV). Static asset redirects run no Worker
+# code, so nothing is logged (GO_CLICK_LOGGING off). Unknown slugs fall
+# through to the 404 page, so this is not an open redirect.
+# BEGIN go-redirects
+/go/apobank https://www.apobank.de/unsere-leistungen/vorsorge/altersvorsorgedepot 302
+/go/comdirect https://www.comdirect.de/altersvorsorge/altersvorsorgedepot.html 302
+/go/debeka https://www.debeka.de/privatkunden/vorsorgensparen/zukunftalter/altersvorsorgedepot.html 302
+/go/ergo https://www.ergo.de/de/Produkte/Rentenversicherung/altersvorsorgedepot/altersvorsorgedepot 302
+/go/evergreen https://www.evergreen.de/altersvorsorgedepot/ 302
+/go/finanzen-net-zero https://www.finanzen.net/zero/altersvorsorgedepot/ 302
+/go/finanzguru https://finanzguru.de/altersvorsorgedepot 302
+/go/ginmon https://www.ginmon.de/ginmon-pension 302
+/go/hypovereinsbank https://www.hypovereinsbank.de/hvb/privatkunden/geldanlage/sparen/altersvorsorgedepot 302
+/go/ing https://www.ing.de/sparen-anlegen/altersvorsorge-depot/ 302
+/go/liechtenstein-life https://liechtensteinlife.com/de-DE/markets/de/produkte/altersvorsorgedepot 302
+/go/liqid https://www.liqid.de/lp/avd 302
+/go/lvm https://www.lvm.de/versicherungen-und-finanzen/vorsorge/altersvorsorgedepot 302
+/go/n26 https://n26.com/de-de/altersvorsorgedepot 302
+/go/santander-openbank https://www.openbank.de/produkte/vorsorgen/altersvorsorgedepot/ 302
+/go/oskar https://www.oskar.de/altersvorsorgedepot 302
+/go/quirion https://www.quirion.de/vorsorgen 302
+/go/raisin https://www.raisin.com/de-de/altersvorsorgedepot/ 302
+/go/scalable-capital https://de.scalable.capital/altersvorsorgedepot 302
+/go/smartbroker-plus https://www.smartbrokerplus.de/de-de/altersvorsorgedepot/ 302
+/go/sunrise https://www.sunrise.app/de/altersvorsorgedepot 302
+/go/tomorrow https://www.tomorrow.one/de-DE/avd/ 302
+/go/trade-republic https://traderepublic.com/de-de/altersvorsorgedepot 302
+/go/trading-212 https://www.trading212.com/de/retirement-account 302
+/go/unitplus https://unitplus.eu/altersvorsorgedepot 302
+/go/vz-vermoegenszentrum https://www.vermoegenszentrum.de/altersvorsorge/vz-altersvorsorgedepot 302
+/go/whitebox https://whitebox.eu/altersvorsorgedepot 302
+/go/allianz https://www.allianz.de/vorsorge/altersvorsorgedepot/ 302
+/go/alte-leipziger https://www.alte-leipziger.de/privatkunden/private-vorsorge/altersvorsorgedepot 302
+/go/barmeniagothaer https://www.mynewsdesk.com/de/barmeniagothaer/pressreleases/neue-gefoerderte-altersvorsorge-barmeniagothaer-deckt-alle-produktwelten-ab 302
+/go/commerzbank https://www.commerzbank.de/kp/lp/ml/altersvorsorgedepot/ 302
+/go/consorsbank https://www.consorsbank.de/web/Sparen-Anlegen/Anlegen/Altersvorsorgedepot 302
+/go/cosmosdirekt https://www.generali.de/presse/mitteilungen/cosmosdirekt-bringt-zum-1-januar-2027-das-neue-preisguenstige-standarddepot-auf-den-markt 302
+/go/deka https://www.deka.de/privatkunden/aktuelles-themen/informationen/altersvorsorge-reform 302
+/go/deutsche-bank-dws https://www.deutsche-bank.de/pk/versichern-und-vorsorgen/versicherungen-optimieren/altersvorsorge-reform.html 302
+/go/devk https://www.devk.de/unternehmen/presse/pressemitteilungen/altersvorsorgedepot-junge-menschen-16-10-2026 302
+/go/dkb https://www.dkb.de/privatkunden/investieren/altersvorsorgedepot 302
+/go/europa https://www.europa.de/versicherungen/private-rentenversicherung/altersvorsorgedepot/ 302
+/go/fidelity https://www.fidelity.de/produkte-services/anlageloesungen/fidelity-vorsorgedepot/ 302
+/go/flatex https://www.flatex.de/altersvorsorgedepot/ 302
+/go/generali-dvag https://www.generali.de/presse/mitteilungen/deutschland-macht-rente-generali-dvag-126490 302
+/go/hansainvest https://www.hansainvest.de/de/presse/presse-detail/hansainvest-will-ab-2027-altersvorsorgevertraege-anbieten 302
+/go/oeffentliche-braunschweig https://www.oeffentliche.de/versicherungen/vorsorge/altersvorsorgedepot.html 302
+/go/postbank https://www.postbank.de/privatkunden/produkte/versicherungen-vorsorge/altersvorsorge/altersvorsorgedepot.html 302
+/go/prismalife https://www.prismalife.com/neues-altersvorsorgedepot/ 302
+/go/ruv https://www.ruv.de/altersvorsorge/private-rentenversicherung/altersvorsorgedepot 302
+/go/stuttgarter https://www.stuttgarter.de/reform-private-altersvorsorge 302
+/go/targobank https://www.targobank.de/de/vermoegen/altersvorsorgedepot.html 302
+/go/traders-place https://www.tradersplace.de/angebot/uebersicht/altersvorsorgedepot 302
+/go/union-investment https://www.union-investment.de/familien-und-altersvorsorge/fuers-alter-vorsorgen/altersvorsorgedepot 302
+/go/volkswohl-bund https://www.volkswohl-bund.de/kampagnen/pav-reform/ 302
+/go/wuerttembergische https://www.wuerttembergische.de/vermoegen-vorsorge/altersvorsorgedepot/ 302
+/go/wwk https://www.wwk.de/unternehmen/presse-kommunikation/presse/pressemitteilungen/detail/wwk-startet-neue-produktwelt-fuer-die-gefoerderte-private-altersvorsorge.html 302
+/go/1822direkt https://www.1822direkt.de/ 302
+/go/axa https://www.axa.de/pk/altersvorsorge/a/altersvorsorgedepot 302
+/go/beatvest https://www.beatvest.com/altersvorsorgedepot 302
+/go/bevestor https://www.bevestor.de/altersvorsorgedepot 302
+/go/bw-bank https://www.bw-bank.de/de/home/privatkunden/altersvorsorge/altersvorsorge-reform.html 302
+/go/concordia https://www.concordia.de/produkte/zukunft-vorsorge/altersvorsorge/altersvorsorgedepot/ 302
+/go/hannoversche https://www.hannoversche.de/altersvorsorge/riester-rente/reform 302
+/go/hdi https://www.hdi.de/versicherungen/altersvorsorge/altersvorsorgereformgesetz/ 302
+/go/helvetia https://www.helvetia.de/de/vertriebspartner/produkte/altersvorsorge/gefoerderte-altersvorsorge.html 302
+/go/huk-coburg https://www.huk.de/gesundheit-vorsorge-vermoegen/ratgeber/richtig-vorsorgen/altersvorsorgedepot.html 302
+/go/interrisk https://www.interrisk.de/de/landingpages/altersvorsorgedepot.php 302
+/go/itzehoer https://www.itzehoer.de/landingpage/altersvorsorgereform/ 302
+/go/justtrade https://www.justtrade.com/altersvorsorgedepot 302
+/go/lv1871 https://www.lv1871.de/altersvorsorgedepot/ 302
+/go/lynx https://www.lynxbroker.de/altersvorsorgedepot/ 302
+/go/morgenfund https://www.morgenfund.com/de/private/depot/altersvorsorgedepot 302
+/go/oeffentliche-oldenburg https://www.oeffentlicheoldenburg.de/de/vertreter-landingpages/altersvorsorgedepot_vertreter 302
+/go/oesa https://www.oesa.de/altersvorsorgedepot 302
+/go/onvista-bank https://www.onvista-bank.de/altersvorsorgedepot 302
+/go/signal-iduna https://signal-iduna.de/ratgeber/altersvorsorge-reformgesetz/ 302
+/go/sv-sachsen https://www.sv-sachsen.de/versicherungen/altersvorsorge-und-sparen/altersvorsorgedepot.html 302
+/go/sv-sparkassenversicherung https://www.sparkassenversicherung.de/privatkunden/altersvorsorgereform.html 302
+/go/swiss-life https://www.swisslife.de/altersvorsorgedepot.html 302
+/go/universa https://www.universa.de/agentur/ofenloch/universa/altersvorsorgereformgesetz/ 302
+/go/versicherungskammer-bayern https://www.vkb.de/v/gefoerderte-rente/riester-rente/altersvorsorgereformgesetz.html 302
+/go/vgh https://www.vgh.de/de/campaigns/2026/altersvorsorgedepot-anmeldung_vertreter 302
+/go/vpv https://www.vpv.de/produkte/vorsorge-vermoegen/riester-rente/ 302
+/go/xtb https://www.xtb.com/de/ausbildung/altersvorsorgedepot 302
+/go/zurich https://www.zurich.de/de-de/pk/altersvorsorge/altersvorsorgedepot 302
+# END go-redirects

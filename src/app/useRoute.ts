@@ -37,6 +37,8 @@ export type Route =
   | { kind: 'riester-rechner' }
   | { kind: 'altersvorsorgedepot-rechner' }
   | { kind: 'riester-vs-altersvorsorgedepot' }
+  | { kind: 'altersvorsorgedepot-anbieter' }
+  | { kind: 'altersvorsorgedepot-gesetz' }
   | { kind: 'basisrente-rechner' }
   | { kind: 'private-rentenversicherung-rechner' }
   | { kind: 'rente-netto-berechnen' }
@@ -88,6 +90,8 @@ export const ROUTES = {
   riesterRechner: { kind: 'riester-rechner' } as Route,
   altersvorsorgedepotRechner: { kind: 'altersvorsorgedepot-rechner' } as Route,
   riesterVsAltersvorsorgedepot: { kind: 'riester-vs-altersvorsorgedepot' } as Route,
+  altersvorsorgedepotAnbieter: { kind: 'altersvorsorgedepot-anbieter' } as Route,
+  altersvorsorgedepotGesetz: { kind: 'altersvorsorgedepot-gesetz' } as Route,
   basisrenteRechner: { kind: 'basisrente-rechner' } as Route,
   privateRentenversicherungRechner: { kind: 'private-rentenversicherung-rechner' } as Route,
   renteNettoBerechnen: { kind: 'rente-netto-berechnen' } as Route,
@@ -122,6 +126,8 @@ export function routeToPath(route: Route): string {
     case 'riester-rechner': return '/riester-rechner'
     case 'altersvorsorgedepot-rechner': return '/altersvorsorgedepot-rechner'
     case 'riester-vs-altersvorsorgedepot': return '/riester-vs-altersvorsorgedepot'
+    case 'altersvorsorgedepot-anbieter': return '/altersvorsorgedepot-anbieter'
+    case 'altersvorsorgedepot-gesetz': return '/altersvorsorgedepot-gesetz'
     case 'basisrente-rechner': return '/basisrente-rechner'
     case 'private-rentenversicherung-rechner': return '/private-rentenversicherung-rechner'
     case 'rente-netto-berechnen': return '/rente-netto-berechnen'
@@ -213,6 +219,8 @@ export function pathToRoute(pathname: string): Route {
     case '/riester-rechner': return ROUTES.riesterRechner
     case '/altersvorsorgedepot-rechner': return ROUTES.altersvorsorgedepotRechner
     case '/riester-vs-altersvorsorgedepot': return ROUTES.riesterVsAltersvorsorgedepot
+    case '/altersvorsorgedepot-anbieter': return ROUTES.altersvorsorgedepotAnbieter
+    case '/altersvorsorgedepot-gesetz': return ROUTES.altersvorsorgedepotGesetz
     case '/basisrente-rechner': return ROUTES.basisrenteRechner
     case '/private-rentenversicherung-rechner': return ROUTES.privateRentenversicherungRechner
     case '/rente-netto-berechnen': return ROUTES.renteNettoBerechnen

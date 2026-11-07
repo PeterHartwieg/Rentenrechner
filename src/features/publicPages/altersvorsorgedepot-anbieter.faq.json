@@ -1,0 +1,105 @@
+[
+  {
+    "q": "Kann ich ein Altersvorsorgedepot schon abschließen?",
+    "a": "Nein. Geförderte Altersvorsorgedepots gibt es nach dem Altersvorsorgereformgesetz ab dem 1. Januar 2027. Jedes Produkt muss vorher zertifiziert sein. Zum Stand 07.11.2026 ist in unserer Übersicht kein Angebot abschließbar. Viele Anbieter führen Wartelisten oder haben ein Angebot angekündigt.",
+    "sources": [
+      "https://www.recht.bund.de/bgbl/1/2026/156/VO.html",
+      "https://rentenwiki.de/altersvorsorgedepot-anbieter#methode"
+    ]
+  },
+  {
+    "q": "Welche Anbieter haben ein Altersvorsorgedepot angekündigt?",
+    "a": "Unsere Übersicht enthält zum Stand 07.11.2026 84 Anbieter: 27 mit Warteliste oder Vormerkung, 26 mit angekündigtem Angebot und 31 unbestätigte Einträge. Dazu gehören zum Beispiel Trade Republic, Scalable Capital und ING (Warteliste) sowie Deka/Sparkassen, DKB und Union Investment (angekündigt). Die Reihenfolge ist alphabetisch und keine Bewertung.",
+    "sources": [
+      "https://rentenwiki.de/altersvorsorgedepot-anbieter#methode"
+    ]
+  },
+  {
+    "q": "Bekomme ich bei jedem Anbieter dieselbe Förderung?",
+    "a": "Ja. Grundzulage, Kinderzulage und Berufseinsteigerbonus sind gesetzlich festgelegt und hängen von deinen Beiträgen ab, nicht vom Anbieter. Unterschiede zwischen Anbietern gibt es bei Kosten, Anlageauswahl, Produktarten und Auszahlungsformen.",
+    "sources": [
+      "https://www.recht.bund.de/bgbl/1/2026/156/VO.html"
+    ]
+  },
+  {
+    "q": "Was kostet ein Altersvorsorgedepot?",
+    "a": "Das legt jeder Anbieter selbst fest. Viele haben ihre Kosten noch nicht veröffentlicht. Gesetzlich begrenzt sind nur die Effektivkosten des Standarddepots: höchstens 1,0 Prozent. Die Kostenangaben in unserer Tabelle stammen von den Anbietern bzw. der verlinkten Quelle und gelten zum jeweils angegebenen Stand.",
+    "sources": [
+      "https://www.recht.bund.de/bgbl/1/2026/156/VO.html",
+      "https://rentenwiki.de/altersvorsorgedepot-anbieter#methode"
+    ]
+  },
+  {
+    "q": "Muss jeder Anbieter ein Standarddepot anbieten?",
+    "a": "Ein Anbieter, der ein Altersvorsorgedepot oder ein Garantieprodukt zertifizieren lassen will, muss auch ein Standarddepot anbieten. Er kann dafür mit einem anderen Anbieter kooperieren.",
+    "sources": [
+      "https://www.recht.bund.de/bgbl/1/2026/156/VO.html"
+    ]
+  },
+  {
+    "q": "Gibt es Altersvorsorgedepots mit Garantie?",
+    "a": "Das Altersvorsorgedepot und das Standarddepot haben keine Beitragsgarantie. Daneben gibt es Garantieprodukte, bei denen der Anbieter zum Beginn der Auszahlung 80 oder 100 Prozent der eingezahlten Beiträge und Zulagen zusagt. Welche Anbieter Garantieprodukte angekündigt haben, siehst du in der Spalte Produktarten.",
+    "sources": [
+      "https://www.recht.bund.de/bgbl/1/2026/156/VO.html",
+      "https://rentenwiki.de/altersvorsorgedepot-anbieter#methode"
+    ]
+  },
+  {
+    "q": "Welchen Mindestbeitrag muss ich zahlen?",
+    "a": "Für die Zulagen verlangt das Gesetz ab dem Beitragsjahr 2027 einen Mindesteigenbeitrag von 120 Euro im Jahr. Anbieter können eigene Mindestbeiträge festlegen. Soweit veröffentlicht, stehen sie in der Spalte Mindestbeitrag.",
+    "sources": [
+      "https://www.recht.bund.de/bgbl/1/2026/156/VO.html",
+      "https://rentenwiki.de/altersvorsorgedepot-anbieter#methode"
+    ]
+  },
+  {
+    "q": "Was kostet ein späterer Anbieterwechsel?",
+    "a": "Wechselst du innerhalb von fünf Jahren nach Vertragsabschluss zu einem anderen Anbieter, darf der bisherige Anbieter höchstens 150 Euro berechnen. Danach ist die Übertragung kostenfrei. Der neue Anbieter darf auf das übertragene geförderte Kapital keine Abschluss- und Vertriebskosten berechnen, aber eine einmalige Verwaltungspauschale von höchstens 150 Euro.",
+    "sources": [
+      "https://www.recht.bund.de/bgbl/1/2026/156/VO.html"
+    ]
+  },
+  {
+    "q": "Wie viele geförderte Verträge kann ich abschließen?",
+    "a": "Schließt du nach dem 31. Dezember 2026 mehr als zwei geförderte Altersvorsorgeverträge ab, werden Beiträge ab dem dritten Vertrag nicht mehr gefördert. Maßgeblich ist die Reihenfolge der Vertragsabschlüsse.",
+    "sources": [
+      "https://www.recht.bund.de/bgbl/1/2026/156/VO.html"
+    ]
+  },
+  {
+    "q": "Wovon hängt die Höhe der Förderung ab?",
+    "a": "Vor allem von Kindern, Beitragshöhe, Einkommen, Alter und einem bestehenden Riester-Vertrag. Die Zulagen sind im Verhältnis zum Beitrag bei kleinen Beiträgen und mit Kindern hoch (50 Prozent auf die ersten 360 Euro im Jahr, bis zu 300 Euro Kinderzulage je Kind). Der Sonderausgabenabzug wirkt bei hohem Grenzsteuersatz stärker. Das Geld ist bis zur Rente gebunden. Deine eigenen Zahlen kannst du mit dem Altersvorsorgedepot-Rechner berechnen.",
+    "sources": [
+      "https://www.recht.bund.de/bgbl/1/2026/156/VO.html"
+    ]
+  },
+  {
+    "q": "Was ergibt sich bei einem Beginn kurz vor der Rente?",
+    "a": "Die Zulagen gibt es auch dann jedes Jahr, aber nur für wenige Jahre. Wer mit 58 beginnt und ab 65 auszahlen lässt, zahlt rund sieben Jahre ein. Bei 1.800 Euro Eigenbeitrag und 540 Euro Grundzulage im Jahr sind das 16.380 Euro, ohne Erträge und Kosten. Das Depot hat wenig Zeit, Kursverluste auszugleichen, und die Auszahlungen aus geförderten Beiträgen sind voll steuerpflichtig. Vereinfachte Rechnung, Stand 31.10.2026.",
+    "sources": [
+      "https://www.recht.bund.de/bgbl/1/2026/156/VO.html"
+    ]
+  },
+  {
+    "q": "Was ist der Unterschied zu einem normalen ETF-Depot?",
+    "a": "Ins Altersvorsorgedepot fließen Zulagen, und die Beiträge sind bis 1.800 Euro im Jahr plus Zulagen als Sonderausgaben abziehbar. Dafür ist das Geld bis zur Rente gebunden, die Auszahlung erfolgt als Leibrente oder Auszahlungsplan bis mindestens 85, und die Auszahlungen werden voll mit dem persönlichen Steuersatz versteuert. Ein normales ETF-Depot hat keine Förderung, du kannst aber jederzeit über das Geld verfügen, und Gewinne werden mit der Abgeltungsteuer besteuert.",
+    "sources": [
+      "https://www.recht.bund.de/bgbl/1/2026/156/VO.html"
+    ]
+  },
+  {
+    "q": "Was passiert mit meinem Riester-Vertrag, wenn ich ein Altersvorsorgedepot abschließe?",
+    "a": "Für Riester-Verträge, die vor 2027 abgeschlossen wurden, gelten die bisherigen Förderregeln weiter. Schließt du nach dem 31. Dezember 2026 einen neuen geförderten Vertrag ab, gelten die neuen Regeln für alle deine Verträge, auch für den Riester-Vertrag (§ 52 Abs. 50a Satz 6 EStG). Du kannst auch ohne neuen Vertrag unwiderruflich in die neuen Regeln wechseln (Satz 4). Der Anbieter muss dich vorher auf diese Folgen hinweisen.",
+    "sources": [
+      "https://www.recht.bund.de/bgbl/1/2026/156/VO.html",
+      "https://www.gesetze-im-internet.de/estg/"
+    ]
+  },
+  {
+    "q": "Gibt es einen Testsieger?",
+    "a": "RentenWiki bewertet und rangiert keine Anbieter. Eine endgültige Bewertung ist auch schwierig, solange Produkte noch nicht zertifiziert und viele Kosten nicht veröffentlicht sind. Stiftung Warentest hat über die Preisangebote mehrerer Anbieter berichtet.",
+    "sources": [
+      "https://www.test.de/Altersvorsorgedepot-Preiskampf-der-Anbieter-ING-Trade-Republic-Smartbroker-6335719-0/"
+    ]
+  }
+]

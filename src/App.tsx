@@ -73,6 +73,16 @@ const RiesterVsAltersvorsorgedepotPage = lazy(() =>
     default: m.RiesterVsAltersvorsorgedepotPage,
   })),
 )
+const AltersvorsorgedepotAnbieterPage = lazy(() =>
+  import('./features/publicPages/AltersvorsorgedepotAnbieterPage').then((m) => ({
+    default: m.AltersvorsorgedepotAnbieterPage,
+  })),
+)
+const AltersvorsorgedepotGesetzPage = lazy(() =>
+  import('./features/publicPages/AltersvorsorgedepotGesetzPage').then((m) => ({
+    default: m.AltersvorsorgedepotGesetzPage,
+  })),
+)
 const BasisrenteRechnerPage = lazy(() =>
   import('./features/publicPages/BasisrenteRechnerPage').then((m) => ({ default: m.BasisrenteRechnerPage })),
 )
@@ -253,6 +263,12 @@ function App() {
       break
     case 'riester-vs-altersvorsorgedepot':
       body = <RiesterVsAltersvorsorgedepotPage navigate={navigate} />
+      break
+    case 'altersvorsorgedepot-anbieter':
+      body = <AltersvorsorgedepotAnbieterPage navigate={navigate} />
+      break
+    case 'altersvorsorgedepot-gesetz':
+      body = <AltersvorsorgedepotGesetzPage navigate={navigate} />
       break
     case 'basisrente-rechner':
       body = <BasisrenteRechnerPage navigate={navigate} />

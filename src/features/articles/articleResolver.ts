@@ -177,5 +177,14 @@ export function isArticleRoute(routeId: PublicRouteId): boolean {
  */
 export function isEditorialChromeRoute(routeId: string): boolean {
   if (routeId === '/artikel') return true
-  return findArticleByPath(routeId) !== null
+  return findArticleByPath(routeId) !== null || isDraftArticleRoute(routeId)
+}
+
+/**
+ * Draft article routes (`status: 'draft'` in the registry) wear the same
+ * editorial chrome as clustered articles, but stay out of HUB_CLUSTERS so
+ * neither the hub nor the landing page links to them before publication.
+ */
+export function isDraftArticleRoute(routeId: string): boolean {
+  return (publicRouteRegistry as Record<string, PublicRoute>)[routeId]?.status === 'draft'
 }

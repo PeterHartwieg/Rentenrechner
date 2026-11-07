@@ -1,6 +1,9 @@
 import { RULES_YEAR } from '../rules'
 import { validateFaq } from '../content/faq'
 import avdFaq from '../features/publicPages/altersvorsorgedepot-rechner.faq.json'
+import avdAnbieterFaq from '../features/publicPages/altersvorsorgedepot-anbieter.faq.json'
+import avdGesetzFaq from '../features/publicPages/altersvorsorgedepot-gesetz.faq.json'
+import { AVD_ANBIETER_PAGE_COPY, AVD_GESETZ_PAGE_COPY } from '../content/avdDraftPageCopy'
 
 // ---------------------------------------------------------------------------
 // publicRouteRegistry — single source of truth for every prerendered public
@@ -115,6 +118,14 @@ export interface PublicRoute {
    * unknown publication date may omit this field.
    */
   readonly datePublished?: string
+  /**
+   * Editorial status. `'draft'` marks a page that is prerendered (so a
+   * Workers Builds preview can show it) but not published: it must carry
+   * `robots: 'noindex,follow'` and `inSitemap: false`, stays out of
+   * `HUB_CLUSTERS`, and published pages hide it from their related links.
+   * Omitted means published. Publishing is a separate, approved change.
+   */
+  readonly status?: 'draft'
   /** Static robots policy. Share-state injects `noindex,follow` at runtime. */
   readonly robots: RobotsPolicy
   /** Whether this route appears in `sitemap.xml`. The `/404` route is excluded. */
@@ -416,6 +427,49 @@ export const publicRouteRegistry = {
     preselection: {
       mode: 'compare',
       visibleProducts: ['riester', 'altersvorsorgedepot'],
+    },
+  },
+  // AV-Depot handoff v2 (Stand 2026-11-07). Both pages are drafts: reviewable
+  // on the PR preview, not indexed, not in the sitemap, the hub or the
+  // related links of published pages. Publishing needs Peter's OK.
+  '/altersvorsorgedepot-anbieter': {
+    faq: validateFaq(avdAnbieterFaq, 'altersvorsorgedepot-anbieter.faq.json')
+      .map(({ q, a }) => ({ question: q, answer: a })),
+    canonical: '/altersvorsorgedepot-anbieter',
+    ...AVD_ANBIETER_PAGE_COPY,
+    dateModified: '2026-11-07',
+    status: 'draft',
+    robots: 'noindex,follow',
+    inSitemap: false,
+    jsonLdType: 'Article',
+    relatedRoutes: [
+      '/altersvorsorgedepot-gesetz',
+      '/altersvorsorgedepot-rechner',
+      '/riester-vs-altersvorsorgedepot',
+    ],
+    calculatorCta: {
+      label: 'Altersvorsorgedepot jetzt berechnen',
+      href: '/?topic=altersvorsorgedepot-rechner',
+    },
+  },
+  '/altersvorsorgedepot-gesetz': {
+    faq: validateFaq(avdGesetzFaq, 'altersvorsorgedepot-gesetz.faq.json')
+      .map(({ q, a }) => ({ question: q, answer: a })),
+    canonical: '/altersvorsorgedepot-gesetz',
+    ...AVD_GESETZ_PAGE_COPY,
+    dateModified: '2026-11-07',
+    status: 'draft',
+    robots: 'noindex,follow',
+    inSitemap: false,
+    jsonLdType: 'Article',
+    relatedRoutes: [
+      '/altersvorsorgedepot-anbieter',
+      '/altersvorsorgedepot-rechner',
+      '/riester-vs-altersvorsorgedepot',
+    ],
+    calculatorCta: {
+      label: 'Altersvorsorgedepot jetzt berechnen',
+      href: '/?topic=altersvorsorgedepot-rechner',
     },
   },
   // ---------------------------------------------------------------------------
@@ -834,6 +888,8 @@ export const HYDRATE_STABLE_ROUTE_IDS: readonly PublicRouteId[] = [
   '/riester-rechner',
   '/altersvorsorgedepot-rechner',
   '/riester-vs-altersvorsorgedepot',
+  '/altersvorsorgedepot-anbieter',
+  '/altersvorsorgedepot-gesetz',
   '/basisrente-rechner',
   '/private-rentenversicherung-rechner',
   '/rente-netto-berechnen',

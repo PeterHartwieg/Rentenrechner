@@ -16,6 +16,8 @@ export const PRERENDER_COMPONENTS = {
   '/riester-rechner': { module: '/src/features/publicPages/RiesterRechnerPage.tsx', exportName: 'RiesterRechnerPage' },
   '/altersvorsorgedepot-rechner': { module: '/src/features/publicPages/AltersvorsorgedepotRechnerPage.tsx', exportName: 'AltersvorsorgedepotRechnerPage' },
   '/riester-vs-altersvorsorgedepot': { module: '/src/features/publicPages/RiesterVsAltersvorsorgedepotPage.tsx', exportName: 'RiesterVsAltersvorsorgedepotPage' },
+  '/altersvorsorgedepot-anbieter': { module: '/src/features/publicPages/AltersvorsorgedepotAnbieterPage.tsx', exportName: 'AltersvorsorgedepotAnbieterPage' },
+  '/altersvorsorgedepot-gesetz': { module: '/src/features/publicPages/AltersvorsorgedepotGesetzPage.tsx', exportName: 'AltersvorsorgedepotGesetzPage' },
   '/basisrente-rechner': { module: '/src/features/publicPages/BasisrenteRechnerPage.tsx', exportName: 'BasisrenteRechnerPage' },
   '/private-rentenversicherung-rechner': { module: '/src/features/publicPages/PrivateRentenversicherungRechnerPage.tsx', exportName: 'PrivateRentenversicherungRechnerPage' },
   '/rente-netto-berechnen': { module: '/src/features/publicPages/RenteNettoBerechnePage.tsx', exportName: 'RenteNettoBerechnePage' },
