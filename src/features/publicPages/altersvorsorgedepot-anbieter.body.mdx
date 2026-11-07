@@ -1,0 +1,313 @@
+import { Faq } from './Faq'
+import faq from './altersvorsorgedepot-anbieter.faq.json'
+import anbieterTable from './altersvorsorgedepot-anbieter.table.json'
+import { AnbieterTabelle } from '../avdAnbieter/AnbieterTabelle'
+import {
+  AVD_BASIC_ALLOWANCE_MAX, AVD_BREAK_EVEN_RATE, AVD_BREAK_EVEN_RATE_ROUNDED, AVD_CAREER_STARTER_AGE_LIMIT,
+  AVD_CAREER_STARTER_BONUS, AVD_CHILD_ALLOWANCE_MAX, AVD_CHILD_ALLOWANCE_RATE, AVD_CONTRACT_CONTRIBUTION_CAP,
+  AVD_GLIDEPATH_2Y_MAX, AVD_GLIDEPATH_5Y_MAX, AVD_MAX_DEDUCTION, AVD_MINIMUM_OWN_CONTRIBUTION,
+  AVD_PARTIAL_CAPITAL_MAX, AVD_PAYOUT_MAX_AGE, AVD_PAYOUT_MIN_AGE, AVD_PAYOUT_PLAN_END_AGE,
+  AVD_SPECIAL_EXPENSE_OWN_CAP, AVD_STANDARD_COST_CAP, AVD_TIER_1_MAX, AVD_TIER_1_RATE, AVD_TIER_2_MAX,
+  AVD_TIER_2_RATE, AVD_TRANSFER_COST_NEW_PROVIDER, AVD_TRANSFER_COST_OLD_PROVIDER, EX1, EX2, EX3, EX4,
+  RIESTER_BASIC_ALLOWANCE, RIESTER_CHILD_ALLOWANCE_POST_2007, RIESTER_CHILD_ALLOWANCE_PRE_2008,
+  RIESTER_MIN_CONTRIBUTION_PCT, RIESTER_MINIMUM_OWN_CONTRIBUTION, RIESTER_SPECIAL_EXPENSE_CAP, SWITCH,
+  AVD_FIRST_UNSUBSIDISED_CONTRACT_WORD, AVD_GLIDEPATH_FIRST_YEARS_WORD, AVD_GLIDEPATH_SECOND_YEARS_WORD,
+  AVD_GUARANTEE_FULL, AVD_GUARANTEE_PARTIAL, AVD_MAX_CONTRACTS_WORD, AVD_MAX_RISK_CLASS,
+  AVD_SELF_EMPLOYED_AGE_LIMIT, AVD_TERMINATION_NOTICE_MONTHS_WORD, AVD_TRANSFER_COST_WINDOW_YEARS,
+  AVD_TRANSFER_COST_WINDOW_YEARS_WORD,
+} from './avdDraftRuleCopy'
+
+{/* Source: AV-Depot handoff v2 (anbieter-v2.de.md, Stand 2026-11-07, status: draft).
+    H1, title, meta description and the "Kurz gesagt" summary live in
+    publicRouteRegistry ('/altersvorsorgedepot-anbieter'); the FAQ renders
+    from altersvorsorgedepot-anbieter.faq.json (also the FAQPage JSON-LD). */}
+
+*Stand: 07.11.2026*
+
+## Kurzantwort
+
+- **Abschließbar:** noch keiner. Verträge sind ab dem 01.01.2027 möglich, nur mit zertifizierten Produkten.
+- **Warteliste oder Vormerkung:** 28 Anbieter, darunter Trade Republic, Scalable Capital, ING, comdirect, quirion und Smartbroker+.
+- **Angekündigt:** 26 Anbieter, darunter Deka/Sparkassen, DKB, Consorsbank, flatex und Union Investment.
+- **Unbestätigt:** 30 Einträge, bei denen es nur allgemeine Informationen oder Medienberichte gibt.
+- **Förderung:** Die Zulagen sind gesetzlich festgelegt und bei jedem Anbieter gleich. Die Regeln erklären wir auf der Seite [Altersvorsorgedepot-Gesetz](/altersvorsorgedepot-gesetz/).
+- **Wovon die Förderung abhängt:** von Kindern, Einkommen und Beitragshöhe, vom Alter und von einem bestehenden Riester-Vertrag. Rechenbeispiele stehen im Abschnitt [So wirkt die Förderung in typischen Situationen](#fuer-wen).
+
+<h2 id="anbietertabelle">Anbietertabelle</h2>
+
+{/* Entscheidungen Peter 31.10.2026, 10:44: Kostensortierung mit Kostenart je Zelle; Kennzeichnung „Werbelink*“; /go/ ohne Logging bis zur Datenschutz-Freigabe (Sätze „Dabei zählen wir derzeit keine Klicks …“ erst mit der freigegebenen Datenschutz-Formulierung ersetzen); „Für wen“ bleibt auf dieser Seite. */}
+{/* Entscheidungen Peter 31.10.2026, 12:10–14:08 (siehe decisions.md): Start mit einfachen Links, affiliate: false überall; Werbelinks erst bei echtem Traffic und nach der Aktivierungs-Checkliste (Spec §9 Nr. 16); Versicherer nie mit Werbelink; Netzwerk-Tracking später nur nach Einwilligung (CMP), zum Start kein Banner und keine Skripte; Anrede „du“; Typ-Gruppen zusammengefasst (Online-Broker, Bank / Direktbank); einfache Filter nach Typ und Status. */}
+{/* Spezifikation: drafts/vergleichstabelle-spec.md (31.10.2026). Box A wird automatisch durch Box B ersetzt, sobald mindestens eine Zeile affiliate: true hat. Derzeit sind alle 84 Zeilen affiliate: false. */}
+
+> **So ist die Tabelle aufgebaut.** Die Grundreihenfolge ist fest: nach Status gruppiert und innerhalb jeder Gruppe alphabetisch. Du kannst die Tabelle selbst nach einzelnen Spalten sortieren und nach Typ und Status filtern. Ob ein Anbieter aufgenommen wird, an welcher Stelle er steht und wie er dargestellt wird, hängt nie von einer Provision ab. Wir vergeben keine Noten, keine Plätze und keine Siegel wie „Testsieger“. Zurzeit erhalten wir für keinen Link auf dieser Seite eine Provision.
+
+<AnbieterTabelle
+  table={anbieterTable}
+  defaultSort="status,anbieter"
+  sortable="anbieter,typ_gruppe,status,kosten_pct_jahr,depotgebuehr_eur_jahr,mindestbeitrag_eur_jahr,stand"
+  filters="typ_gruppe,status"
+  nullsLast
+  mobile="cards"
+/>
+
+{/* Nur anzeigen, wenn mindestens ein Werbelink aktiv ist (direkt unter der Tabelle bzw. der Kartenliste):
+\* Werbelink: Eröffnest du über diesen Link ein Depot, erhält rentenwiki.de möglicherweise eine Provision. Für dich ändert sich der Preis nicht. Auf die Reihenfolge und Darstellung in der Tabelle hat das keinen Einfluss.
+*/}
+
+**Sortierung:** Ohne eigene Auswahl ist die Tabelle nach Status gruppiert (abschließbar, Warteliste, angekündigt, unbestätigt) und innerhalb jeder Gruppe alphabetisch sortiert. Du kannst nach Anbieter, Typ, Status, laufenden Kosten, Depotgebühr, Mindestbeitrag und Stand sortieren und nach Typ und Status filtern. Ohne Auswahl zeigen die Filter alle Einträge; die Sortierung gilt auch für die gefilterte Liste. Einträge ohne Angabe („k. A.“) stehen dabei immer am Ende. Keine Reihenfolge ist eine Bewertung. Mit „Standardreihenfolge“ kehrst du zur Grundreihenfolge zurück, mit „Alle anzeigen“ setzt du die Filter zurück.
+
+## So liest du die Tabelle
+
+- **Status** zeigt, was der Anbieter öffentlich gemacht hat. *Warteliste* heißt, du kannst dich vormerken lassen. *Angekündigt* heißt, der Anbieter hat ein Angebot genannt, aber noch keine Vormerkung geöffnet. *Unbestätigt* heißt, es gibt nur allgemeine Informationen oder einen Medienbericht.
+- **Produktarten** nennt, ob der Anbieter ein Standarddepot, ein AV-Depot ohne Garantie oder ein Garantieprodukt ({AVD_GUARANTEE_PARTIAL} oder {AVD_GUARANTEE_FULL} Prozent) angekündigt hat.
+- **Kosten laut Anbieter** gibt die Angabe des Anbieters wörtlich oder sinngemäß wieder. Aktionen wie übernommene ETF-Kosten sind oft befristet. Verbindlich sind erst die Effektivkosten im Produktinformationsblatt.
+- **Typ** beschreibt die Art des Anbieters. Zum Sortieren und Filtern fassen wir die Typen in sechs Gruppen zusammen: Bank / Direktbank, Fondsgesellschaft / Fondsplattform, Online-Broker, Robo-Advisor / Vermögensverwaltung, Versicherer und Sonstige (Fintech/App).
+- **Anlageauswahl** gibt wieder, welche Fonds oder ETFs der Anbieter genannt hat, soweit bekannt.
+- **Laufende Kosten p. a.** zeigt eine Prozentzahl nur, wenn der Anbieter selbst eine nennt. Darunter steht, was die Zahl umfasst, zum Beispiel nur die ETF-Kosten (TER), eine Verwaltungsgebühr oder die Effektivkosten, und ob sie erst nach einer Aktion gilt. Die Zahlen sind deshalb nicht direkt vergleichbar. Fehlt eine Angabe, steht dort „k. A.“ (keine Angabe).
+- **Depotgebühr** zeigt die Depotgebühr in Euro im Jahr, soweit der Anbieter sie beziffert.
+- **Mindestbeitrag** ist der Mindestbeitrag des Anbieters, soweit veröffentlicht. Monatsangaben rechnen wir zum Sortieren auf ein Jahr um (× 12). Für die Zulagen gilt unabhängig davon ein gesetzlicher Mindesteigenbeitrag von {AVD_MINIMUM_OWN_CONTRIBUTION} Euro im Jahr.
+- **Stand** ist das Datum, an dem wir die Angabe zuletzt geprüft haben oder an dem die Quelle veröffentlicht wurde.
+- **Link** führt über rentenwiki.de/go/… zur Seite des Anbieters. Dabei zählen wir derzeit keine Klicks. Du verlässt dann rentenwiki.de. Abschluss und Vertrag laufen ausschließlich beim Anbieter.
+
+<h2 id="methode">Methodik und Quellen</h2>
+
+- **Quellen:** Für jeden Eintrag verlinken wir die Quelle, vorrangig die Seite oder Pressemitteilung des Anbieters. Medienberichte nutzen wir nur, wenn es keine Anbieterquelle gibt. Diese Einträge stehen immer in der Gruppe „unbestätigt“.
+- **Aufnahme:** Wir nehmen nur Anbieter auf, die Verbrauchern einen eigenen Vertrag anbieten wollen. Reine Fondsanbieter, technische Dienstleister und Banken, die nur Produkte eines anderen Anbieters vermitteln, sind nicht aufgeführt. Einträge ohne Quelle nehmen wir nicht auf.
+- **Unsicherheit:** Ist eine Angabe nicht ausreichend belegt, ordnen wir den Anbieter als „unbestätigt“ ein.
+- **Kein Ranking:** Wir vergeben keine Noten und keine Platzierungen. Wir nennen keinen „Testsieger“.
+- **Links und Provisionen:** Alle Anbieter-Links führen über rentenwiki.de/go/… direkt zur Seite des Anbieters (rel="nofollow"). Dabei zählen wir derzeit keine Klicks und speichern keine Daten. Zurzeit ist kein Link ein Werbelink, und kein Anbieter hat für die Aufnahme bezahlt. Sollten wir später Werbelinks nutzen, kennzeichnen wir sie direkt am Link mit „Werbelink*“ und erklären das unter der Tabelle. Provisionen ändern weder die Aufnahme noch die Reihenfolge noch die Darstellung eines Anbieters.
+- **Aktualisierung:** Wir prüfen die Angaben regelmäßig. Änderungen stehen im [Changelog](#changelog). Hast du eine neue oder abweichende Angabe gefunden? Schreib uns.
+
+## Anbieter im Detail
+
+Die folgenden Anbieter werden besonders häufig gesucht. Sie sind alphabetisch sortiert. Alle Angaben stammen vom Anbieter und gelten zum genannten Stand.
+
+### comdirect
+
+Direktbank der Commerzbank, Warteliste. Angekündigt sind ein Standarddepot und ein AV-Depot ohne Garantie. Kosten: noch nicht veröffentlicht. Mindestbeitrag laut Anbieter: 10 Euro im Monat. Stand: 27.08.2026.
+
+### Consorsbank
+
+Direktbank, angekündigt. Angekündigt sind ein Standarddepot und ein AV-Depot ohne Garantie. Kosten: noch nicht veröffentlicht. Mindestbeitrag laut Anbieter: 120 Euro im Jahr. Stand: 07.11.2026.
+
+### Deka / Sparkassen
+
+Fondsgesellschaft der Sparkassen, angekündigt. Angekündigt sind ein Standarddepot und ein AV-Depot ohne Garantie. Kosten laut Anbieter: Standarddepot 0,1 Prozent im Jahr, Depot kostenlos, Variante „VorsorgePlus“ 1,0 bis 1,5 Prozent. Stand: 07.11.2026.
+
+### DKB
+
+Direktbank, angekündigt. Angekündigt sind ein Standarddepot und ein AV-Depot ohne Garantie. Kosten: noch nicht veröffentlicht. Stand: 07.11.2026.
+
+### flatex
+
+Broker (flatexDEGIRO), angekündigt. Angekündigt sind ein Standarddepot und ein AV-Depot ohne Garantie. Kosten laut Anbieter für die Variante „Core“: keine Depot- und Ordergebühren, ETF-Kosten für fünf Jahre übernommen, danach höchstens 0,07 Prozent. Stand: 07.11.2026.
+
+### ING
+
+Direktbank, Warteliste. Angekündigt sind ein Standarddepot und ein AV-Depot ohne Garantie. Kosten laut Anbieter: keine eigenen Gebühren, ETFs der Reihe „Relax“ mit 0,20 Prozent laufenden Kosten (TER). Mindestbeitrag laut Anbieter: 10 Euro im Monat. Stand: 07.11.2026.
+
+### quirion
+
+Robo-Advisor, Warteliste. Angekündigt ist ein Standarddepot. Kosten laut Anbieter: keine Depotgebühr, ETF-Kosten (TER) 0,07 bzw. 0,08 Prozent, im ersten Jahr erstattet. Stand: 07.11.2026.
+
+### Scalable Capital
+
+Neobroker, Warteliste. Angekündigt sind ein Standarddepot und ein AV-Depot ohne Garantie. Kosten laut Anbieter: Depot 0 Euro; beim Standarddepot ETF-Kosten bis Ende 2027 übernommen, danach höchstens 0,15 Prozent. Stand: 07.11.2026.
+
+### Smartbroker+
+
+Broker mit der Baader Bank als Depotbank, Warteliste. Angekündigt ist ein Standarddepot. Kosten laut Anbieter: Depot und Orders 0 Euro, ETF-Kosten für drei Jahre erstattet (bis 25.000 Euro). Stand: 07.11.2026.
+
+### Trade Republic
+
+Neobroker, Warteliste. Angekündigt sind ein Standarddepot und ein AV-Depot ohne Garantie. Kosten laut Anbieter: Depot und Sparplan 0 Euro; das Standarddepot ist laut Anbieter durch Erstattung der ETF-Kosten (TER) kostenfrei; in der flexiblen Variante werden die ETF-Kosten für mehr als 50 ETFs erstattet. Stand: 07.11.2026.
+
+### Union Investment
+
+Fondsgesellschaft der Volks- und Raiffeisenbanken, angekündigt. Angekündigt sind ein Standarddepot, ein AV-Depot ohne Garantie und ein Garantieprodukt (100 Prozent). Kosten: kein Ausgabeaufschlag; weitere Kostenzahlen hat der Anbieter auf seiner Seite nicht veröffentlicht. Stand: 07.11.2026.
+
+## Kosten: Worauf es beim Vergleich ankommt
+
+Die Förderung ist überall gleich. Unterschiede gibt es vor allem bei den Kosten. Gesetzlich gilt:
+
+- Anbieter müssen die **Effektivkosten** nach einem einheitlichen Verfahren angeben. Sie zeigen, wie stark alle Kosten zusammen die Rendite bis zum Beginn der Auszahlung mindern.
+- Beim **Standarddepot** dürfen die Effektivkosten höchstens **{AVD_STANDARD_COST_CAP} Prozent** im Jahr betragen.
+- **Abschluss- und Vertriebskosten** müssen gleichmäßig über die Ansparphase verteilt werden.
+
+Viele Anbieter haben noch keine Effektivkosten veröffentlicht. Werbeaussagen wie „0 Euro Depotgebühr“ oder „ETF-Kosten übernommen“ beschreiben oft nur einen Teil der Kosten oder einen begrenzten Zeitraum. Wie sich unterschiedliche Kosten über viele Jahre auswirken, kannst du mit dem [Altersvorsorgedepot-Rechner](/altersvorsorgedepot-rechner/) durchrechnen.
+
+## Anbieter wechseln: Gebühr und {AVD_TRANSFER_COST_WINDOW_YEARS}-Jahres-Regel
+
+Du kannst deinen Vertrag mit einer Frist von {AVD_TERMINATION_NOTICE_MONTHS_WORD} Monaten zum Quartalsende kündigen und das Guthaben zu einem anderen Anbieter übertragen.
+
+- **In den ersten {AVD_TRANSFER_COST_WINDOW_YEARS_WORD} Jahren** nach Vertragsabschluss darf der bisherige Anbieter für die Übertragung höchstens **{AVD_TRANSFER_COST_OLD_PROVIDER} Euro** berechnen.
+- **Danach** ist die Übertragung kostenfrei. Kostenfrei ist sie auch, wenn der Anbieter die Kosten ändert, oder bei einem Wechsel innerhalb desselben Anbieters.
+- **Der neue Anbieter** darf auf das übertragene geförderte Kapital keine Abschluss- und Vertriebskosten berechnen, aber eine einmalige Verwaltungspauschale von höchstens **{AVD_TRANSFER_COST_NEW_PROVIDER} Euro**.
+
+Wer einen bestehenden Riester-Vertrag hat, findet die Regeln zum Riester-Wechsel auf der Seite [Riester vs. Altersvorsorgedepot](/riester-vs-altersvorsorgedepot/).
+
+<h2 id="fuer-wen">So wirkt die Förderung in typischen Situationen</h2>
+
+{/* Bleibt auf dieser Seite (Peter, 31.10.2026). Gekürzt und allgemein umformuliert am 31.10.2026 nach den Vorschlägen in legal/legal-analysis-opus-5.5.md (F6–F8) und legal/legal-analysis-gpt-6-astra.md (3.1–3.2). Anker #fuer-wen bleibt trotz neuer Überschrift. Kein zusätzlicher Hinweis „keine Steuerberatung“ (Peter, 31.10.2026). Vor dem ersten Werbelink trotzdem anwaltliche Prüfung (OPEN-QUESTIONS 49). */}
+
+Wie hoch die Förderung ausfällt, hängt vor allem von vier Dingen ab: Kindern, Beitragshöhe und Einkommen, der Zeit bis zur Rente und einem bestehenden Riester-Vertrag. Dieser Abschnitt erklärt die Zusammenhänge allgemein. Deine eigenen Zahlen kannst du mit dem [Altersvorsorgedepot-Rechner](/altersvorsorgedepot-rechner/) durchrechnen.
+
+*Stand: 31.10.2026. Alle Beträge gelten für ein Beitragsjahr ab 2027.*
+
+### Wo die Förderung im Verhältnis hoch ist
+
+- **Mit Kindern:** Für jedes Kind, für das Kindergeld festgesetzt wird, gibt es {AVD_CHILD_ALLOWANCE_RATE} Prozent des Eigenbeitrags als Kinderzulage, höchstens {AVD_CHILD_ALLOWANCE_MAX} Euro im Jahr (§ 85 EStG). Schon bei kleinen Beiträgen ist die Förderung dann im Verhältnis hoch.
+- **Bei kleinen und mittleren Beiträgen:** Auf die ersten {AVD_TIER_1_MAX} Euro Eigenbeitrag im Jahr gibt es {AVD_TIER_1_RATE} Prozent Grundzulage, auf den Teil bis {AVD_TIER_2_MAX} Euro {AVD_TIER_2_RATE} Prozent (§ 84 EStG).
+- **Bei hohem Grenzsteuersatz:** Eigenbeiträge bis {AVD_SPECIAL_EXPENSE_OWN_CAP} Euro plus Zulagen sind als Sonderausgaben abziehbar (§ 10a EStG). Der Steuervorteil kann dann höher sein als die Zulage (siehe Günstigerprüfung).
+- **Unter {AVD_CAREER_STARTER_AGE_LIMIT} Jahren:** Wer zu Beginn des Beitragsjahres jünger als {AVD_CAREER_STARTER_AGE_LIMIT} ist, erhält einmalig {AVD_CAREER_STARTER_BONUS} Euro zusätzlich zur Grundzulage (Berufseinsteigerbonus).
+- **Selbständige:** Ab 2027 können auch Selbständige unter {AVD_SELF_EMPLOYED_AGE_LIMIT} Jahren gefördert werden, wenn sie für das Beitragsjahr eine Steuererklärung abgeben. Einzelheiten stehen auf der Seite [Altersvorsorgedepot-Gesetz](/altersvorsorgedepot-gesetz/).
+- **Bei langer Anlagedauer:** Die Zulagen fließen viele Jahre, die Erträge werden in der Ansparphase nicht laufend besteuert, und Kursschwankungen haben mehr Zeit, sich auszugleichen. Eine Garantie gibt es beim AV-Depot und beim Standarddepot nicht.
+
+### Wo die Förderung gering ist oder Nachteile überwiegen können
+
+- **Ohne Förderberechtigung:** Ohne Zulage und Sonderausgabenabzug fällt der wichtigste Vorteil weg. Die Bindung bis zur Rente bleibt.
+- **Geld, das vor der Rente gebraucht werden könnte:** An das geförderte Kapital kommst du vorher nur in Ausnahmefällen. Sonst musst du die Förderung zurückzahlen (siehe [Auszahlung](#fuer-wen-auszahlung)).
+- **Beiträge über {AVD_SPECIAL_EXPENSE_OWN_CAP} Euro im Jahr:** Bis zu {AVD_CONTRACT_CONTRIBUTION_CAP} Euro im Jahr sind möglich. Für den Teil über {AVD_SPECIAL_EXPENSE_OWN_CAP} Euro gibt es aber weder Zulage noch Sonderausgabenabzug.
+- **Kurz vor der Rente:** Es bleiben wenige Beitragsjahre mit Zulagen und wenig Zeit, Kursverluste auszugleichen. Das Standarddepot hält {AVD_GLIDEPATH_FIRST_YEARS_WORD} Jahre vor der Auszahlung höchstens {AVD_GLIDEPATH_5Y_MAX} Prozent und {AVD_GLIDEPATH_SECOND_YEARS_WORD} Jahre vorher höchstens {AVD_GLIDEPATH_2Y_MAX} Prozent im risikoreicheren Fonds, wenn nichts anderes vereinbart ist (Beispiel 3).
+- **Riester-Verträge mit Sockelbetrag:** Nach den alten Regeln kann es je Euro mehr Zulage geben. Ein neuer Vertrag ab 2027 stellt alle Verträge auf die neuen Regeln um (siehe [Riester](#fuer-wen-riester) und Beispiel 1).
+- **Mittelbar berechtigte Ehepartner:** Behält der unmittelbar berechtigte Ehepartner einen alten Riester-Vertrag, gibt es für einen neuen Vertrag des mittelbar berechtigten Ehepartners keine Zulage (§ 90 Abs. 2 EStG neu).
+
+### Zulage oder Steuervorteil: die Günstigerprüfung
+
+Eigenbeiträge bis {AVD_SPECIAL_EXPENSE_OWN_CAP} Euro im Jahr plus die Zulagen kannst du als Sonderausgaben in der Einkommensteuererklärung angeben. Das Finanzamt vergleicht dann von Amts wegen (§ 10a Abs. 2 EStG): Ist die Steuerersparnis kleiner als die Zulagen, bleibt es bei den Zulagen. Ist sie größer, wird die Differenz über den Steuerbescheid erstattet; die Zulagen bleiben im Vertrag.
+
+Vereinfacht gilt: Steuerersparnis ≈ (Eigenbeitrag + Zulagen) × Grenzsteuersatz, also der Steuersatz auf den letzten verdienten Euro. Ohne Kinder und mit {AVD_SPECIAL_EXPENSE_OWN_CAP} Euro Eigenbeitrag übersteigt die Steuerersparnis die Grundzulage von {AVD_BASIC_ALLOWANCE_MAX} Euro ab einem Grenzsteuersatz von rund {AVD_BREAK_EVEN_RATE_ROUNDED} Prozent ({AVD_BASIC_ALLOWANCE_MAX} ÷ {AVD_MAX_DEDUCTION} = {AVD_BREAK_EVEN_RATE} %; eigene Rechnung). Mit Kindern liegt die Schwelle höher, weil die Kinderzulagen mitzählen. Bei geringem Einkommen bringt der Abzug deshalb meist nichts zusätzlich.
+
+Im Alter werden Auszahlungen aus geförderten Beiträgen voll mit dem dann geltenden persönlichen Steuersatz versteuert (§ 22 Nr. 5 EStG). Der Vorteil ist umso größer, je niedriger der Steuersatz im Alter im Vergleich zu heute ist.
+
+### Altersvorsorgedepot oder normales ETF-Depot
+
+| | Altersvorsorgedepot | Normales ETF-Depot |
+|---|---|---|
+| Staatliche Förderung | Grund- und Kinderzulage, Sonderausgabenabzug bis {AVD_SPECIAL_EXPENSE_OWN_CAP} € Eigenbeitrag plus Zulagen | keine |
+| Steuer in der Ansparphase | Erträge werden nicht laufend besteuert | Erträge unterliegen der Abgeltungsteuer |
+| Steuer bei Auszahlung | Auszahlungen aus geförderten Beiträgen voll steuerpflichtig mit dem persönlichen Steuersatz (§ 22 Nr. 5 EStG) | Beiträge stammen aus versteuertem Einkommen; Gewinne werden beim Verkauf mit Abgeltungsteuer besteuert |
+| Zugriff vor der Rente | nur in Ausnahmefällen, sonst Rückzahlung der Förderung | jederzeit |
+| Auszahlung | Leibrente oder Auszahlungsplan bis mindestens {AVD_PAYOUT_PLAN_END_AGE}, bis zu {AVD_PARTIAL_CAPITAL_MAX} % zu Beginn als Einmalzahlung | frei |
+| Anlageauswahl | Fonds, ETFs und öffentliche Anleihen nach gesetzlicher Liste, höchstens Risikoklasse {AVD_MAX_RISK_CLASS}; keine Einzelaktien | frei |
+| Einzahlung | höchstens {AVD_CONTRACT_CONTRIBUTION_CAP} € im Jahr je Vertrag; gefördert bis {AVD_SPECIAL_EXPENSE_OWN_CAP} € | keine gesetzliche Grenze |
+| Kosten | Effektivkosten nach einheitlichem Verfahren ausgewiesen; Standarddepot höchstens {AVD_STANDARD_COST_CAP} % im Jahr | je nach Depot und Fonds |
+
+Das nicht geförderte Sparen über {AVD_SPECIAL_EXPENSE_OWN_CAP} Euro im Jahr ist auch außerhalb eines Altersvorsorgevertrags möglich. Welcher Weg nach Steuern mehr ergibt, hängt vor allem von der Förderung und vom Steuersatz heute und im Alter ab.
+
+<h3 id="fuer-wen-riester">Wer schon einen Riester-Vertrag hat</h3>
+
+Für Riester-Verträge, die vor dem 1. Januar 2027 abgeschlossen wurden (Bestandsverträge), gelten die bisherigen Förderregeln bis zum Beginn der Auszahlung weiter (§ 52 Abs. 50a Satz 1 EStG):
+
+- **Grundzulage** {RIESTER_BASIC_ALLOWANCE} Euro, **Kinderzulage** {RIESTER_CHILD_ALLOWANCE_PRE_2008} Euro je Kind ({RIESTER_CHILD_ALLOWANCE_POST_2007} Euro für Kinder, die nach 2007 geboren sind).
+- **Mindesteigenbeitrag:** {RIESTER_MIN_CONTRIBUTION_PCT} Prozent der beitragspflichtigen Einnahmen des Vorjahres, höchstens {RIESTER_SPECIAL_EXPENSE_CAP} Euro, abzüglich der Zulagen, mindestens {RIESTER_MINIMUM_OWN_CONTRIBUTION} Euro (Sockelbetrag). Wer weniger zahlt, erhält eine gekürzte Zulage.
+- **Sonderausgabenabzug** bis {RIESTER_SPECIAL_EXPENSE_CAP} Euro einschließlich Zulagen.
+
+Drei Regeln gelten:
+
+1. **Freiwilliger Wechsel der Regeln (Satz 4):** Du kannst gegenüber deinem Anbieter unwiderruflich erklären, dass für alle deine Bestandsverträge die neuen Regeln gelten. Das wirkt ab dem Beitragsjahr, in dem die Erklärung beim Anbieter eingeht.
+2. **Neuer Vertrag (Satz 6):** Wird nach dem 31. Dezember 2026 ein neuer geförderter Vertrag abgeschlossen, etwa ein AV-Depot, gelten die neuen Regeln für alle Verträge dieser Person, auch für den alten Riester-Vertrag.
+3. **Hinweispflicht:** Der Anbieter muss vor dem Abschluss oder vor der Erklärung auf diese Folgen hinweisen (§ 7d AltZertG).
+
+Die neuen Regeln bringen typischerweise mehr Zulage, wenn mehr als der bisherige Mindestbeitrag eingezahlt wird. Ein Beispiel: Bei {SWITCH.income} Euro beitragspflichtigen Einnahmen im Vorjahr und ohne Kinder liegt der bisherige Mindesteigenbeitrag bei {SWITCH.oldMinimum} Euro ({RIESTER_MIN_CONTRIBUTION_PCT} % von {SWITCH.income} € = {SWITCH.oldGross} € minus {RIESTER_BASIC_ALLOWANCE} € Zulage). Dafür gibt es bisher {RIESTER_BASIC_ALLOWANCE} Euro Grundzulage, nach den neuen Regeln {SWITCH.newBasic} Euro ({AVD_TIER_1_RATE} % von {AVD_TIER_1_MAX} € + {AVD_TIER_2_RATE} % von {SWITCH.tier2Part} €). Wer nur den Sockelbetrag zahlt, kann nach den bisherigen Regeln besser stehen (Beispiel 1). Übertragung und Kosten erklärt die Seite [Riester vs. Altersvorsorgedepot](/riester-vs-altersvorsorgedepot/).
+
+<h3 id="fuer-wen-auszahlung">Bindung bis zur und in der Auszahlungsphase</h3>
+
+- **Beginn und Form:** frühestens mit {AVD_PAYOUT_MIN_AGE} (oder mit einer früheren gesetzlichen Altersrente), spätestens mit {AVD_PAYOUT_MAX_AGE}; Form wie in der Tabelle oben.
+- **Vor der Rente:** Der Vertrag kann ruhen (keine Beiträge), das Guthaben kann auf einen anderen geförderten Vertrag übertragen oder für eine selbst genutzte Wohnung eingesetzt werden (§ 92a EStG).
+- **Schädliche Verwendung:** Wird gefördertes Kapital auf anderem Weg ausgezahlt, sind die darauf entfallenden Zulagen und Steuervorteile zurückzuzahlen (§ 93 Abs. 1 EStG). Ausnahmen gelten unter anderem für die Abfindung einer Kleinbetragsrente und für eine Übertragung auf einen anderen Vertrag.
+- **Steuer und Krankenversicherung:** Die Auszahlungen werden nachgelagert versteuert (§ 22 Nr. 5 EStG). Ob Beiträge zur Kranken- und Pflegeversicherung anfallen, hängt von der Versicherung im Alter ab. Mehr dazu beim [Altersvorsorgedepot-Rechner](/altersvorsorgedepot-rechner/).
+
+### Rechenbeispiele
+
+Die Beispiele sind vereinfacht und zeigen nur die Förderung für ein Beitragsjahr ab 2027. Nicht berücksichtigt sind Kosten, Erträge, Inflation, Solidaritätszuschlag und Kirchensteuer. Steuersätze sind Annahmen. Die Beispiele beziehen sich auf keinen bestimmten Anbieter, zeigen die Rechenweise und sagen nicht, ob ein Vertrag für dich passt. Stand: 31.10.2026.
+
+**Beispiel 1: Zulagen bei zwei Kindern und {EX1.contribution} Euro Eigenbeitrag**
+
+Annahme: rentenversicherungspflichtig beschäftigt, Kindergeld für zwei Kinder, Eigenbeitrag {EX1.contribution} Euro im Jahr ({EX1.monthly} Euro im Monat).
+
+- Grundzulage: {AVD_TIER_1_RATE} % von {AVD_TIER_1_MAX} € = {EX1.tier1Allowance} € plus {AVD_TIER_2_RATE} % von {EX1.tier2Part} € = {EX1.tier2Allowance} €, zusammen {EX1.basic} €
+- Kinderzulage: {EX1.children} × {EX1.childPer} € = {EX1.child} €
+- Zulagen zusammen: {EX1.total} €. Ins Depot fließen {EX1.intoDepot} €.
+- Steuer: Bei einem angenommenen Grenzsteuersatz von {EX1.taxRate} % beträgt die Steuerersparnis ({EX1.contribution} € + {EX1.total} €) × {EX1.taxRate} % = {EX1.taxSaving} €, also weniger als die Zulagen. Es bleibt bei den Zulagen.
+
+Besteht schon ein Riester-Vertrag und lagen die beitragspflichtigen Einnahmen im Vorjahr bei {EX1.riesterIncome} Euro, gilt bisher: Zulagen {RIESTER_BASIC_ALLOWANCE} € + {EX1.children} × {RIESTER_CHILD_ALLOWANCE_POST_2007} € = {EX1.oldTotal} €. Der Mindesteigenbeitrag beträgt {RIESTER_MIN_CONTRIBUTION_PCT} % von {EX1.riesterIncome} € = {EX1.oldGross} € minus {EX1.oldTotal} € = {EX1.oldRemainder} €, also den Sockelbetrag von {RIESTER_MINIMUM_OWN_CONTRIBUTION} €. Für {RIESTER_MINIMUM_OWN_CONTRIBUTION} Euro Eigenbeitrag gibt es damit die vollen {EX1.oldTotal} Euro. Ein neues AV-Depot würde beide Verträge auf die neuen Regeln umstellen: Für {RIESTER_MINIMUM_OWN_CONTRIBUTION} Euro gäbe es dann keine Zulage mehr (unter {AVD_MINIMUM_OWN_CONTRIBUTION} Euro Mindesteigenbeitrag), für {EX1.contribution} Euro aber {EX1.total} Euro.
+
+**Beispiel 2: Günstigerprüfung bei {EX2.contribution} Euro Eigenbeitrag und {EX2.taxRate} % Grenzsteuersatz**
+
+Annahme: keine Kinder, Eigenbeitrag {EX2.contribution} Euro im Jahr ({EX2.monthly} Euro im Monat), angenommener Grenzsteuersatz {EX2.taxRate} %.
+
+- Grundzulage: {EX2.tier1Allowance} € + {AVD_TIER_2_RATE} % von {EX2.tier2Part} € = {EX2.tier2Allowance} €, zusammen {EX2.basic} €
+- Sonderausgaben: {EX2.contribution} € + {EX2.basic} € = {EX2.deduction} €; Steuerersparnis {EX2.deduction} € × {EX2.taxRate} % = {EX2.taxSaving} €
+- Günstigerprüfung: {EX2.taxSaving} € sind mehr als {EX2.basic} €. Das Finanzamt erstattet die Differenz von {EX2.refund} €.
+- Ergebnis: Ins Depot fließen {EX2.deduction} €. Der eigene Aufwand nach Steuern beträgt {EX2.contribution} € − {EX2.refund} € = {EX2.netCost} €.
+
+Auszahlungen, die auf geförderten Beiträgen beruhen, werden grundsätzlich nachgelagert besteuert; für nicht geförderte Beiträge können andere Regeln gelten. Wie viel Vorteil am Ende bleibt, hängt vom Steuersatz im Alter ab.
+
+**Beispiel 3: Beginn mit {EX3.startAge} Jahren und {EX3.contribution} Euro Eigenbeitrag**
+
+Annahme: keine Kinder, Beginn 2027, Auszahlung ab {AVD_PAYOUT_MIN_AGE}, also rund {EX3.yearsWord} Beitragsjahre.
+
+- Zulage: {EX3.allowancePerYear} € im Jahr, in {EX3.yearsWord} Jahren {EX3.allowances} €
+- Eigenbeiträge in {EX3.yearsWord} Jahren: {EX3.contributions} €; zusammen {EX3.capital} € (ohne Erträge und Kosten)
+- Auszahlungsplan von {AVD_PAYOUT_MIN_AGE} bis {AVD_PAYOUT_PLAN_END_AGE} ({EX3.months} Monate): {EX3.capital} € ÷ {EX3.months} = {EX3.monthly} € im Monat vor Steuern
+- Mit {AVD_PARTIAL_CAPITAL_MAX} % Einmalzahlung zu Beginn: {EX3.partial} € einmalig, danach {EX3.rest} € ÷ {EX3.months} = {EX3.monthlyAfterPartial} € im Monat vor Steuern
+
+Die rechnerische Verteilung bis {AVD_PAYOUT_PLAN_END_AGE} ist keine garantierte Rente. Nicht berücksichtigt sind Kosten, Wertentwicklung, Steuern und das Risiko, länger als bis zum Ende des Auszahlungsplans zu leben.
+
+**Beispiel 4: Berufseinsteigerbonus bei {EX4.contribution} Euro Eigenbeitrag**
+
+Annahme: {EX4.age} Jahre, Minijob, Eigenbeitrag {EX4.contribution} Euro im Jahr ({EX4.monthly} Euro im Monat). Förderberechtigt ist die Person nur, wenn sie im Minijob in der gesetzlichen Rentenversicherung pflichtversichert ist.
+
+- Grundzulage: {AVD_TIER_1_RATE} % von {EX4.contribution} € = {EX4.basic} €
+- Berufseinsteigerbonus: einmalig {AVD_CAREER_STARTER_BONUS} €, weil die Person zu Beginn des Beitragsjahres jünger als {AVD_CAREER_STARTER_AGE_LIMIT} ist
+- Im ersten Jahr: {EX4.firstYear} € Zulagen auf {EX4.contribution} € Eigenbeitrag, in den Folgejahren {EX4.basic} €. Mit dem Mindesteigenbeitrag von {AVD_MINIMUM_OWN_CONTRIBUTION} € wären es {EX4.minimumBasic} € Grundzulage (plus einmalig {AVD_CAREER_STARTER_BONUS} €).
+- Steuer: Ohne Einkommensteuer bringt der Sonderausgabenabzug keinen zusätzlichen Vorteil.
+
+Ohne Pflichtversicherung in der Rentenversicherung und ohne mittelbare Berechtigung über einen Ehepartner gibt es keine Förderung. Ob eine Pflichtversicherung besteht, zeigt zum Beispiel der Versicherungsverlauf bei der Deutschen Rentenversicherung.
+
+## Frühstart-Rente
+
+Die Frühstart-Rente für Kinder ist ein eigenes Gesetzgebungsvorhaben. **Sie ist noch nicht final.** Welche Anbieter sie umsetzen werden, steht nicht fest. Wir ergänzen diese Seite, sobald das Gesetz verabschiedet ist. Den aktuellen Stand findest du auf der Seite [Altersvorsorgedepot-Gesetz](/altersvorsorgedepot-gesetz/#fruehstart-rente).
+
+## Jetzt schon eröffnen? Warteliste vs. Abwarten
+
+Ein geförderter Vertrag kann frühestens ab dem 01.01.2027 und nur mit einem zertifizierten Produkt geschlossen werden. Was eine Vormerkung auf einer Warteliste genau bedeutet, regeln die Bedingungen des jeweiligen Anbieters. Vor einem Abschluss kannst du diese Punkte prüfen:
+
+- Ist das Produkt zertifiziert?
+- Wie hoch sind die Effektivkosten laut Produktinformationsblatt?
+- Welche Fonds oder ETFs stehen zur Auswahl?
+- Welche Auszahlungsformen bietet der Anbieter an?
+- Gelten beworbene Konditionen dauerhaft oder nur befristet?
+
+Beachte: Ab 2027 werden höchstens {AVD_MAX_CONTRACTS_WORD} neu abgeschlossene geförderte Verträge gefördert. Beiträge ab dem {AVD_FIRST_UNSUBSIDISED_CONTRACT_WORD} Vertrag erhalten keine Förderung.
+
+<Faq items={faq} title="Häufige Fragen zu den Anbietern" />
+
+## Weiterführende Seiten
+
+- [Altersvorsorgedepot-Gesetz: Was ab 1.1.2027 gilt](/altersvorsorgedepot-gesetz/)
+- [Altersvorsorgedepot-Rechner](/altersvorsorgedepot-rechner/)
+- [Riester vs. Altersvorsorgedepot](/riester-vs-altersvorsorgedepot/)
+
+## Quellen
+
+- Gesetz zur Reform der steuerlich geförderten privaten Altersvorsorge (Altersvorsorgereformgesetz), BGBl. 2026 I Nr. 156 vom 29.05.2026: https://www.recht.bund.de/bgbl/1/2026/156/VO.html
+- Bundesministerium der Finanzen, FAQ zur Reform der privaten Altersvorsorge: https://www.bundesfinanzministerium.de/Content/DE/FAQ/reform-der-privaten-altersvorsorge.html
+- Stiftung Warentest, Bericht über die Preise der Anbieter: https://www.test.de/Altersvorsorgedepot-Preiskampf-der-Anbieter-ING-Trade-Republic-Smartbroker-6335719-0/
+- Bisherige Fassung der §§ 10a, 84, 85, 86 EStG (gilt für Riester-Bestandsverträge weiter): https://www.gesetze-im-internet.de/estg/
+- Anbieterangaben: jeweils verlinkt in der Anbietertabelle (Spalte Quelle, mit Stand).
+
+<h2 id="changelog">Changelog</h2>
+
+- **07.11.2026:** Re-Check von Status, Kosten und URLs für ausgewählte Anbieter (Trade Republic, Scalable Capital, ING, quirion, Smartbroker+, flatex, DKB, Consorsbank, Deka/Sparkassen, Union Investment, Deutsche Bank/DWS); Tabellen-Stand aktualisiert. Keine Statuswechsel; weiterhin kein abschließbares/zertifiziertes Angebot bekannt.
+- **31.10.2026:** Sortierbare Vergleichstabelle (Spalten Typ, Anlageauswahl, laufende Kosten, Depotgebühr, Mindestbeitrag; feste Grundreihenfolge; Kennzeichnung möglicher Werbelinks) ergänzt (Entwurf).
+- **31.10.2026:** Abschnitt „So wirkt die Förderung in typischen Situationen“ (vorher „Für wen ein Altersvorsorgedepot sinnvoll sein kann“) gekürzt und allgemeiner formuliert; Anrede auf „du“ umgestellt; Filter nach Typ und Status und zusammengefasste Typ-Gruppen ergänzt (Entwurf).
+- **31.10.2026:** Abschnitt „Für wen ein Altersvorsorgedepot sinnvoll sein kann“ mit vier vereinfachten Rechenbeispielen und vier Fragen im FAQ ergänzt (Entwurf).
+- **30.10.2026:** Erste Fassung. 84 Anbieter, Stand der Angaben je Anbieter in der Tabelle.
+
+---
+
+**Keine Anlageberatung.** Diese Seite informiert allgemein über die gesetzlichen Regeln und über öffentliche Angaben der Anbieter. Sie ersetzt keine individuelle Beratung und ist keine Empfehlung für ein bestimmtes Produkt oder einen bestimmten Anbieter. Alle Angaben ohne Gewähr; maßgeblich sind Gesetz, Vertragsbedingungen und Produktinformationsblatt.
+
+*Stand: 07.11.2026*

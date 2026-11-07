@@ -66,6 +66,8 @@ export function routeToNavId(route: Route): ChromeNavId | null {
     case 'riester-rechner':
     case 'altersvorsorgedepot-rechner':
     case 'riester-vs-altersvorsorgedepot':
+    case 'altersvorsorgedepot-anbieter':
+    case 'altersvorsorgedepot-gesetz':
     case 'basisrente-rechner':
     case 'private-rentenversicherung-rechner':
     case 'rente-netto-berechnen':

@@ -1,6 +1,14 @@
 import { SITE_ORIGIN } from './publicRouteRegistry'
 
 /**
+ * Outbound provider redirects (`/go/<slug>`, see `public/_redirects`). They
+ * are not content, so every crawler that may index the site is told to skip
+ * them. Listed after `Allow: /` so the wildcard block never starts with a
+ * `Disallow` line.
+ */
+export const GO_REDIRECT_PREFIX = '/go/'
+
+/**
  * Crawler allow-list — pinned in issue #01 (locked decisions).
  *
  * Allowed bots get a per-bot block with `Allow: /` so the policy is explicit
@@ -73,6 +81,7 @@ export function generateRobots(): string {
   for (const bot of ALLOWED_BOTS) {
     lines.push(`User-agent: ${bot}`)
     lines.push('Allow: /')
+    lines.push(`Disallow: ${GO_REDIRECT_PREFIX}`)
     lines.push('')
   }
 
@@ -91,6 +100,7 @@ export function generateRobots(): string {
   lines.push('User-agent: *')
   lines.push(`Content-Signal: ${ORIGIN_CONTENT_SIGNAL}`)
   lines.push('Allow: /')
+  lines.push(`Disallow: ${GO_REDIRECT_PREFIX}`)
   lines.push('')
 
   return lines.join('\n')

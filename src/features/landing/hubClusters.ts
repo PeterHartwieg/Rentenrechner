@@ -6,7 +6,7 @@
 // component (Vite's react-refresh rule). The hub data is referenced from the
 // page itself and from regression tests.
 //
-// Locked structure (5 clusters, 10 anchors). Most target slugs do not have
+// Locked structure (5 clusters, 12 anchors). Most target slugs do not have
 // pages yet — issues #04–#07 ship them later. We deliberately do NOT introduce
 // interim placeholder pages; the anchors link to bare canonical paths and
 // resolve as the topic pages land.
@@ -52,6 +52,8 @@ export const HUB_CLUSTERS: readonly HubCluster[] = [
       { href: '/riester-rechner/', label: 'Riester-Rechner' },
       { href: '/altersvorsorgedepot-rechner/', label: 'Altersvorsorgedepot-Rechner' },
       { href: '/riester-vs-altersvorsorgedepot/', label: 'Riester oder Altersvorsorgedepot' },
+      { href: '/altersvorsorgedepot-anbieter/', label: 'Altersvorsorgedepot-Anbieter' },
+      { href: '/altersvorsorgedepot-gesetz/', label: 'Altersvorsorgedepot-Gesetz' },
     ],
   },
   {

@@ -1,6 +1,9 @@
 import { RULES_YEAR } from '../rules'
 import { validateFaq } from '../content/faq'
 import avdFaq from '../features/publicPages/altersvorsorgedepot-rechner.faq.json'
+import avdAnbieterFaq from '../features/publicPages/altersvorsorgedepot-anbieter.faq.json'
+import avdGesetzFaq from '../features/publicPages/altersvorsorgedepot-gesetz.faq.json'
+import { AVD_ANBIETER_PAGE_COPY, AVD_GESETZ_PAGE_COPY } from '../content/avdDraftPageCopy'
 
 // ---------------------------------------------------------------------------
 // publicRouteRegistry — single source of truth for every prerendered public
@@ -378,6 +381,8 @@ export const publicRouteRegistry = {
       '/rentenluecke-rechner',
       '/riester-rechner',
       '/riester-vs-altersvorsorgedepot',
+      '/altersvorsorgedepot-anbieter',
+      '/altersvorsorgedepot-gesetz',
     ],
     calculatorCta: {
       label: 'Altersvorsorgedepot jetzt berechnen',
@@ -408,6 +413,7 @@ export const publicRouteRegistry = {
       '/rentenluecke-rechner',
       '/riester-rechner',
       '/altersvorsorgedepot-rechner',
+      '/altersvorsorgedepot-gesetz',
     ],
     calculatorCta: {
       label: 'Riester vs. AVD selbst berechnen',
@@ -416,6 +422,47 @@ export const publicRouteRegistry = {
     preselection: {
       mode: 'compare',
       visibleProducts: ['riester', 'altersvorsorgedepot'],
+    },
+  },
+  // AV-Depot handoff v2 (Stand 2026-11-07), published 2026-11-07.
+  '/altersvorsorgedepot-anbieter': {
+    faq: validateFaq(avdAnbieterFaq, 'altersvorsorgedepot-anbieter.faq.json')
+      .map(({ q, a }) => ({ question: q, answer: a })),
+    canonical: '/altersvorsorgedepot-anbieter',
+    ...AVD_ANBIETER_PAGE_COPY,
+    dateModified: '2026-11-07',
+    datePublished: '2026-11-07',
+    robots: 'index,follow',
+    inSitemap: true,
+    jsonLdType: 'Article',
+    relatedRoutes: [
+      '/altersvorsorgedepot-gesetz',
+      '/altersvorsorgedepot-rechner',
+      '/riester-vs-altersvorsorgedepot',
+    ],
+    calculatorCta: {
+      label: 'Altersvorsorgedepot jetzt berechnen',
+      href: '/?topic=altersvorsorgedepot-rechner',
+    },
+  },
+  '/altersvorsorgedepot-gesetz': {
+    faq: validateFaq(avdGesetzFaq, 'altersvorsorgedepot-gesetz.faq.json')
+      .map(({ q, a }) => ({ question: q, answer: a })),
+    canonical: '/altersvorsorgedepot-gesetz',
+    ...AVD_GESETZ_PAGE_COPY,
+    dateModified: '2026-11-07',
+    datePublished: '2026-11-07',
+    robots: 'index,follow',
+    inSitemap: true,
+    jsonLdType: 'Article',
+    relatedRoutes: [
+      '/altersvorsorgedepot-anbieter',
+      '/altersvorsorgedepot-rechner',
+      '/riester-vs-altersvorsorgedepot',
+    ],
+    calculatorCta: {
+      label: 'Altersvorsorgedepot jetzt berechnen',
+      href: '/?topic=altersvorsorgedepot-rechner',
     },
   },
   // ---------------------------------------------------------------------------
@@ -834,6 +881,8 @@ export const HYDRATE_STABLE_ROUTE_IDS: readonly PublicRouteId[] = [
   '/riester-rechner',
   '/altersvorsorgedepot-rechner',
   '/riester-vs-altersvorsorgedepot',
+  '/altersvorsorgedepot-anbieter',
+  '/altersvorsorgedepot-gesetz',
   '/basisrente-rechner',
   '/private-rentenversicherung-rechner',
   '/rente-netto-berechnen',

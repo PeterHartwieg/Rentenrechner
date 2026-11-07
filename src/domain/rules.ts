@@ -62,6 +62,26 @@ export interface GermanRules {
     transferCostOldProviderWithin5YearsEUR: number
     /** Max one-time admin fee from new provider (150 EUR). */
     transferCostNewProviderEUR: number
+    /** Self-employed savers are eligible while younger than this age (67). */
+    selfEmployedEligibilityAgeLimit: number
+    /** Number of contracts concluded after 2026 that are subsidised (2). */
+    maxSubsidisedNewContracts: number
+    /** Garantieprodukt partial guarantee level, decimal (0.80). */
+    guaranteeLevelPartial: number
+    /** Garantieprodukt full guarantee level, decimal (1.0). */
+    guaranteeLevelFull: number
+    /** Highest permitted risk class of eligible funds (5). */
+    maxRiskClass: number
+    /** Number of provider-defined funds in the Standarddepot (2). */
+    standarddepotFundCount: number
+    /** First Standarddepot glidepath checkpoint, years before payout start (5). */
+    glidepathFirstCheckpointYearsBefore: number
+    /** Second Standarddepot glidepath checkpoint, years before payout start (2). */
+    glidepathSecondCheckpointYearsBefore: number
+    /** Years after contract start in which the old provider may charge transfer costs (5). */
+    transferCostWindowYears: number
+    /** Notice period for a provider switch in months, to quarter end (3). */
+    terminationNoticeMonths: number
   }
   incomeTax: {
     basicAllowance: number

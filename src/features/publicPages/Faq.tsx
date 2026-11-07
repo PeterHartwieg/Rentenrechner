@@ -1,10 +1,10 @@
 import { validateFaq, type FaqItem } from '../../content/faq'
 
 /** Import a neighbouring .faq.json in MDX and pass it as `items`. */
-export function Faq({ items }: { items: readonly FaqItem[] }) {
+export function Faq({ items, title = 'Häufige Fragen' }: { items: readonly FaqItem[]; title?: string }) {
   return (
-    <section className="faq" aria-label="Häufige Fragen">
-      <h2>Häufige Fragen</h2>
+    <section className="faq" aria-label={title}>
+      <h2>{title}</h2>
       {validateFaq(items).map(({ q, a, sources }) => (
         <div className="faq-item" key={q}>
           <h3>{q}</h3>

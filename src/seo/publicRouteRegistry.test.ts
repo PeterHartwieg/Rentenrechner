@@ -26,6 +26,8 @@ describe('publicRouteRegistry — entry shape', () => {
       '/riester-rechner',
       '/altersvorsorgedepot-rechner',
       '/riester-vs-altersvorsorgedepot',
+      '/altersvorsorgedepot-anbieter',
+      '/altersvorsorgedepot-gesetz',
       '/basisrente-rechner',
       '/private-rentenversicherung-rechner',
       '/rente-netto-berechnen',
