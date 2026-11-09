@@ -142,7 +142,7 @@ jobs:
       actions: read
     steps:
       # No checkout: issue-writing code comes from the trusted main workflow.
-      - uses: actions/github-script@v8
+      - uses: actions/github-script@v9
         with:
           script: |
             const repo = context.repo;
@@ -178,7 +178,7 @@ jobs:
     permissions:
       issues: write
     steps:
-      - uses: actions/github-script@v8
+      - uses: actions/github-script@v9
         with:
           script: |
             const repo = context.repo;
