@@ -39,10 +39,10 @@
   },
   "dependencies": {
     "html-to-image": "^1.11.13",
-    "lucide-react": "^1.11.0",
+    "lucide-react": "^1.69.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "recharts": "^3.8.1"
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.66.0",
