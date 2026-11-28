@@ -60,7 +60,7 @@ describe('production security headers', () => {
     )).toThrow(/Duplicate CSP directive/)
   })
 
-  it('prevents framing, MIME sniffing, and unnecessary browser capabilities', () => {
+  it('prevents MIME sniffing and unnecessary browser capabilities', () => {
     expect(baselineHeaders).toEqual({
       'Content-Security-Policy': expect.any(String),
       'Cross-Origin-Opener-Policy': 'same-origin',
@@ -68,8 +68,16 @@ describe('production security headers', () => {
       'Referrer-Policy': 'strict-origin-when-cross-origin',
       'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
       'X-Content-Type-Options': 'nosniff',
-      'X-Frame-Options': 'DENY',
     })
+  })
+
+  it('never sets X-Frame-Options, so CSP frame-ancestors alone governs framing', () => {
+    const headerNames = headers
+      .split(/\r?\n/)
+      .filter((line) => /^\s+\S/.test(line) && !line.trim().startsWith('#'))
+      .map((line) => line.slice(0, line.indexOf(':')).trim().toLowerCase())
+    expect(headerNames.length).toBeGreaterThan(0)
+    expect(headerNames).not.toContain('x-frame-options')
   })
 
   it('keeps the calculator same-origin except for the sanctioned QA services', () => {
@@ -83,7 +91,7 @@ describe('production security headers', () => {
       'default-src': ["'self'"],
       'font-src': ["'self'"],
       'form-action': ["'none'"],
-      'frame-ancestors': ["'none'"],
+      'frame-ancestors': ["'self'", 'https://hartwieg.com', 'https://www.hartwieg.com'],
       'frame-src': ['https://challenges.cloudflare.com'],
       'img-src': ["'self'", 'data:', 'blob:'],
       'object-src': ["'none'"],
